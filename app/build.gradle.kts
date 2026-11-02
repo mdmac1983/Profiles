@@ -68,6 +68,8 @@ android {
         getByName("release") { res.srcDirs("../launcher3/go/res") }
     }
 
+    buildFeatures { buildConfig = true }   // Launcher3 reads BuildConfig.APPLICATION_ID (authority = com.tj.launcher.settings)
+
     lint {
         abortOnError = true
         warningsAsErrors = false
