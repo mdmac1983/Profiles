@@ -113,7 +113,9 @@ if [ "$#" -ge 4 ]; then
   echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
   adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|com.tj.launcher|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
   adb shell input tap $X $Y; sleep 2
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep "press" >> "$OUT/press-restart.txt"
+  adb logcat -d -s TjA11y:I > "$OUT/tja11y-full.txt" 2>&1
+  grep "press" "$OUT/tja11y-full.txt" >> "$OUT/press-restart.txt"
+  adb shell dumpsys input 2>/dev/null | grep -iE 'TjA11y|com.tj.launcher|ActionsDialog' | head -8 >> "$OUT/press-restart.txt"
 else
   echo "no card rect found in log" | tee -a "$OUT/press-restart.txt"
 fi
