@@ -56,3 +56,17 @@ quick settings with only Auto-rotate tile). Modifications:
 - [ ] P4 CI emulator job (reactivecircus/android-emulator-runner, API 29): install, set Home, drawer, mode flip, forced crashes, Restore byte-identical
 - [ ] P5 Release v0.2 "safe core" (needs keystore): Release link + residual-risk note + first-install checklist
 - [ ] P6 L2, L6, L3 -> v0.3;  P7 L7, L5, L9 each default OFF -> v0.4;  P8 L4 experimental -> v0.5
+
+## Tj's answers, 2026-11-02 (verbatim)
+1) "I can send adb commands at a later time, but I want as much as possible to work without adb, with an option to add adb features later"
+2) "I want a two finger clockwise gesture to return to quickstep, and either a small killswitch button on screen or a two finger counter clockwise gesture for the kill switch, or pressing both volume buttons at the same time"
+3) "try the flicker power menu but only hide the screenshot button. Make this an option I can quickly turn off if it doesn't work"
+4) "it can be signed by github if possible, security isn't important"
+Decisions that follow (see DESIGN section 8): no-adb path first (accessibility + notification-listener are enabled in Settings, not adb);
+return from Quickstep = launcher's own app icon + volume combo; power menu = hide ONLY the Screenshot entry (my reading of 3; ask if wrong);
+keystore committed under signing/ (Tj waived secrecy), workflow signs with it.
+- [ ] G1 two-finger clockwise rotate on custom home/drawer -> Quickstep mode (pass-through)
+- [ ] G2 kill switch: small on-screen button, two-finger counter-clockwise, both volume keys (accessibility); each independently switchable
+- [ ] G3 power menu: hide only the Screenshot entry (accessibility overlay on that node), quick on/off switch (also reachable in Quickstep mode)
+- [ ] G4 keyboard (L7): no-adb fallback = on mode change show the system keyboard picker / notification; adb grant makes it automatic
+- [x] G5 GitHub signs releases: keystore generated once, committed under signing/, android.yml uses it
