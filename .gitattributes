@@ -1,0 +1,6 @@
+# Append-only logs written by hooks on several branches: keep BOTH sides on a merge instead of
+# conflicting (a merge conflict in an autosave path would wedge the safety net).
+INBOX.md merge=union
+BUILDLOG.md merge=union
+*.sh text eol=lf
+gradlew text eol=lf

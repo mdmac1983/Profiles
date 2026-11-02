@@ -1,0 +1,20 @@
+# Android/Gradle build output
+build/
+.gradle/
+.kotlin/
+app/build/
+local.properties
+releases/
+__pycache__/
+
+# Local secrets. Real credentials never enter the repo (tools/secretscan.sh blocks them).
+.env
+.env.local
+.env.*.local
+
+# The release-signing keystore: NOT a build artifact, deliberately never in git.
+# tools/keystore.fingerprint (the SHA-256, not the key) IS committed. See BRIEF.md.
+app/sideload.jks
+
+.DS_Store
+*.log

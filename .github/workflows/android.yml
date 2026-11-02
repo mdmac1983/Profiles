@@ -1,0 +1,177 @@
+# Build the Launcher APK on GitHub's runners (Tj's rule across all his repos: "GitHub actions
+# should do all the app compiling and apk making. Claude codes the app, GitHub makes the apk.")
+#
+# TWO MODES, picked by whether the signing keystore secret exists:
+#   RELEASE  SIGNING_KEYSTORE_BASE64 is set  -> signed release APK, certificate verified against
+#            tools/keystore.fingerprint, published as a GitHub Release (tag created server-side).
+#   PREVIEW  secret not set yet              -> debug-signed APK as a workflow ARTIFACT (14 days),
+#            never a Release and never recorded in BUILDLOG: installable to try the app, but its
+#            certificate differs from every later release, so installing a release over it needs an
+#            uninstall first. It exists so CI is useful before the keystore decision is made.
+#
+# MINUTES ARE THE SCARCE RESOURCE (tools/test_handoff.sh fails if either rule is undone):
+#   1. NEVER add a `push:` branch trigger. autosave commits and pushes after every tool call; a
+#      push trigger would start a run every few seconds. Tags and manual dispatch only.
+#   2. Cheap gates first; a manual run does the gates only unless full_build is ticked.
+#
+# This workflow COMMITS NOTHING: a workflow that pushed would retrigger the autosave machinery and
+# race with whatever session is running. ship.sh owns versionCode discipline and BUILDLOG.md.
+name: Build APK
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      full_build:
+        description: 'Build the APK (~6-10 min of Actions minutes). Leave OFF for a ~1 min check that the setup still works.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Decide how much of this run costs money
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.full_build }}" = "true" ]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            echo "FULL BUILD — tests, APK$([ -n "$KS_B64" ] && echo ', signed release, publish' || echo ' (PREVIEW: debug-signed artifact)')." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "full=false" >> "$GITHUB_OUTPUT"
+            echo "GATES ONLY — re-run with **full_build** ticked, or push a \`v*\` tag, to build." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$KS_B64" ]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
+        env:
+          KS_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+
+      # ---- cheap gates: seconds each ----
+      - name: Gate — shell tooling self-test (handoff, secret scan, workflows)
+        run: bash tools/test_handoff.sh
+
+      - name: Gate — restore and check the signing keystore (release mode)
+        if: steps.mode.outputs.release == 'true'
+        env:
+          KS_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$KS_B64" | base64 -d > app/sideload.jks
+          chmod 600 app/sideload.jks
+          bash tools/checkkeystore.sh
+
+      - name: Gate — versionCode is not a downgrade
+        run: |
+          VCODE=$(grep -m1 -oE 'versionCode *= *[0-9]+' app/build.gradle.kts | grep -oE '[0-9]+')
+          PREV=$(grep -oE 'code [0-9]+' BUILDLOG.md 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)
+          PREV=${PREV:-0}
+          echo "versionCode $VCODE, highest shipped $PREV"
+          if [ "$VCODE" -lt "$PREV" ]; then
+            echo "::error::versionCode $VCODE is LOWER than the highest shipped ($PREV): Android refuses a downgrade."
+            exit 1
+          fi
+          # An EQUAL code is a rebuild of the current release (allowed: same certificate => in-place
+          # reinstall). ship.sh, which publishes a NEW release, enforces the stricter "higher".
+
+      # ---- everything below costs real minutes ----
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.mode.outputs.full == 'true'
+
+      - name: Android SDK packages
+        if: steps.mode.outputs.full == 'true'
+        run: |
+          SDKM="$(command -v sdkmanager || true)"
+          for c in "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"; do
+            [ -n "$SDKM" ] && break
+            [ -x "$c" ] && SDKM="$c"
+          done
+          [ -n "$SDKM" ] || { echo "::error::sdkmanager not found on this runner ($ANDROID_HOME)"; exit 1; }
+          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+
+      - name: Unit tests
+        if: steps.mode.outputs.full == 'true'
+        run: ./gradlew testDebugUnitTest --console=plain
+
+      - name: Lint
+        if: steps.mode.outputs.full == 'true'
+        run: ./gradlew :app:lintDebug --console=plain
+
+      - name: Build the release APK
+        if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release == 'true'
+        run: ./gradlew :app:assembleRelease --console=plain
+
+      - name: Verify the APK signature (the artifact, not just the input)
+        if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release == 'true'
+        run: bash tools/verify-apk.sh app/build/outputs/apk/release/app-release.apk
+
+      - name: Build the preview APK (no keystore yet)
+        if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release != 'true'
+        run: ./gradlew :app:assembleDebug --console=plain
+
+      - name: Name the APK
+        id: v
+        if: steps.mode.outputs.full == 'true'
+        run: |
+          VNAME=$(grep -m1 -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE '"[^"]+"' | tr -d '"')
+          VCODE=$(grep -m1 -oE 'versionCode *= *[0-9]+' app/build.gradle.kts | grep -oE '[0-9]+')
+          if [ "${{ steps.mode.outputs.release }}" = "true" ]; then
+            cp app/build/outputs/apk/release/app-release.apk "Launcher-v${VNAME}.apk"
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk "Launcher-v${VNAME}-preview.apk"
+          fi
+          echo "vname=$VNAME" >> "$GITHUB_OUTPUT"
+          echo "vcode=$VCODE" >> "$GITHUB_OUTPUT"
+          echo "Built Launcher v$VNAME (versionCode $VCODE)" >> "$GITHUB_STEP_SUMMARY"
+
+      # GitHub creates the tag itself (`gh release create --target`): a tag PUSH from a Claude
+      # container is refused (403), only branch pushes are allowed.
+      - name: Publish the Release (signed builds only)
+        if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.v.outputs.vname }}
+          APK: Launcher-v${{ steps.v.outputs.vname }}.apk
+        run: |
+          NOTES="versionCode ${{ steps.v.outputs.vcode }}, built and signed by GitHub Actions. The certificate was verified on this APK, so it installs over an existing install as an in-place update."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --title "Launcher $TAG" --notes "$NOTES"
+          fi
+          echo "Published $TAG -> $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the preview APK (14 days, not a Release)
+        if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: launcher-preview-apk
+          path: Launcher-*-preview.apk
+          retention-days: 14
+
+      - name: Keep the APK for inspection (failed signed runs only)
+        if: failure() && steps.mode.outputs.release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unpublished-apk
+          path: Launcher-v*.apk
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Remove the keystore from the workspace
+        if: always()
+        run: rm -f app/sideload.jks

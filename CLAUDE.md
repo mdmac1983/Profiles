@@ -1,0 +1,111 @@
+# Launcher — working agreement
+
+Tj's **Android 10 (API 29) Go-edition home-screen launcher**, `com.tj.launcher`, Kotlin, sideloaded (not on
+the Play Store). GitHub Actions builds the APK; Claude writes the code. Worked on across many Claude Code
+sessions — a new one may start on another account or device, or right after a usage cap killed the last one
+mid-step. **Everything below exists to make that handoff lossless.** What is decided about the platform and what
+is still open: `BRIEF.md`. The job list: `TASKS.md`. Where the last session stopped: `CHECKPOINT.md`.
+
+Sibling repos in this container (`novig`, `Mirage`) are the origin of this system; they are **read only** for
+Launcher's work. Never commit, push or run their scripts from here.
+
+## FIRST ACTION OF EVERY SESSION — install the hooks, don't assume they exist
+
+Claude Code on the web does **not** load hooks from a repo's own `.claude/settings.json` when the repo sits under a
+shared session root (`CLAUDE_PROJECT_DIR` is unset). So, before anything else:
+```bash
+bash tools/install-hooks.sh          # idempotent; MERGES, never overwrites other repos' hooks
+bash tools/install-hooks.sh --check && echo installed || echo MISSING
+```
+`tools/ckpt.sh` and `tools/resume.sh` repair the hooks too, so a session that forgets still gets the net back at its
+first checkpoint. Every hook is an absolute path into **this repo's** `tools/` only (marker
+`launcher-checkpoint-hooks`); nothing here touches a sibling repo.
+Verify over a few tool calls, not one: after 2-3 real edits, `git log --oneline -3` should show
+`auto-checkpoint:` commits. If none appear, the hooks are not firing — run `bash tools/ckpt.sh "did" "next"` by hand
+after every step for the rest of the session, and say so.
+
+## Starting a session
+
+The `SessionStart` hook ran `tools/resume.sh`, which fetched GitHub and printed: sync state, any
+**INTERRUPTED MID-CHANGE** / **UNCOMMITTED WORK** warning, any *other branch with work this one lacks*,
+`CHECKPOINT.md`, the open `TASKS.md` items, the `INBOX.md` tail and the rules (kept under Claude Code's 10,000-char
+hook cap; `tools/test_handoff.sh` checks it). **Do not re-plan or re-read finished work.** Continue from
+**Do this next**, or the first `[ ]` in `TASKS.md`. If you did not see the briefing: `bash tools/resume.sh`, and tell Tj
+it did not fire.
+- *INTERRUPTED MID-CHANGE* — the tree is clean only because a hook committed a half-written change, and
+  `CHECKPOINT.md` is stale. Run the `git diff` it names, finish that change, `ckpt` — then new work.
+- *Another branch has N commits this one lacks* — a cut-off session's work. Look (`git log --oneline HEAD..origin/X`),
+  then `git merge origin/X`. If it contradicts this branch, tell Tj before merging blind.
+- Check the `INBOX.md` tail against `TASKS.md`: anything in INBOX that TASKS lacks is a request nobody wrote down.
+
+## The save ladder (assume you can be cut off at ANY moment)
+
+| Rung | What | Who runs it | Saves |
+| :- | :- | :- | :- |
+| 0 | `tools/capture_inbox.sh` (UserPromptSubmit) | hook | every message Tj sends, verbatim (keys redacted), committed + pushed before any work |
+| 1 | `tools/autosave.sh` (PostToolUse Edit/Write/Bash, Stop) | hook | `git add -A`, secret scan, commit, push — after every tool call; no tests, no gate |
+| 2 | `bash tools/ckpt.sh "did" "next"` | **you, after every completed step** | rewrites `CHECKPOINT.md` (did / next / state), fast checks, commit, push |
+| 3 | `bash ship.sh "note"` | you, at real versions | full gate (handoff test, unit tests, lint, versionCode), push, queue the GitHub build |
+| 4 | GitHub Actions | GitHub | builds + signs the APK, publishes the Release; `BUILDLOG.md` is the durable record |
+
+Rules that make the ladder work:
+- **"next" is the one thing no diff can reconstruct.** Make it specific: file, function, command. Run `ckpt` after
+  every step, not at the end of the session. Never hold findings or intent only in the conversation or `/tmp`.
+- **New request from Tj:** write it into `TASKS.md` in his own words as `[ ]` boxes and `ckpt` **before** any code.
+  Tick a box only when written, tested and committed; name the test that proves it.
+- **Low on usage?** Spend what is left on `ckpt` with an honest "next", not on one more edit.
+- **Long conversation** (many compactions, a big task just finished): `ckpt`, then tell Tj *"Handoff ready: start a
+  new session, it resumes from CHECKPOINT.md"*. `tools/toobig.sh` (PreCompact) saves and says this too.
+- **Push failure is never silent.** Autosave warns when commits exist only in this container (they are lost when
+  the session ends). Fix the connection and `git push origin HEAD` at once.
+
+## Branches
+
+Claude Code gives every session its own branch, so work can strand on a branch nobody opens. Rules:
+- Develop and push on **the branch the session was assigned**; `push.sh` pushes it after every checkpoint.
+- `tools/MIRROR_MAIN` (`on`/`off`, committed) makes every push also fast-forward `origin/main` (plain push, never
+  forced). It is **off** until Tj says to turn it on — landing on `main` is his call. When on, a fresh session that
+  just opens the repo sees the real state.
+- `resume.sh` names every other remote branch with unmerged commits; merge deliberately, not blindly.
+
+## GitHub Actions does the building (Tj's rule on all repos)
+
+`.github/workflows/android.yml` builds the APK; `ci.yml` runs tests + lint on pull requests; Dependabot proposes
+updates monthly. **Minutes are the scarce resource** — never add a `push:` branch trigger to any workflow
+(autosave pushes after every tool call; `test_handoff.sh` fails if you do). Tags and manual dispatch only.
+- Check the setup for ~1 min: dispatch `android.yml` with `full_build=false` (gates only).
+- No keystore secret yet → a full build makes a **PREVIEW** (debug-signed APK as a 14-day workflow artifact, not
+  a Release). With `SIGNING_KEYSTORE_BASE64` set → signed release, certificate verified, Release published.
+- Release order: `bash ship.sh "note"` → trigger `android.yml` on the branch with `full_build=true`
+  (`mcp__github__actions_run_trigger`, `run_workflow`) → confirm the Release (`get_release_by_tag`) →
+  `bash tools/record-release.sh vX.Y.Z "note"` **only after the run is green** → give Tj the Release link as plain
+  tappable text on its own line, never in a code block. A tag *push* from a container is refused (403); GitHub
+  creates the tag server-side.
+- Hand mechanical work to Actions instead of polling (builds, test runs, waiting on CI): trigger, end the turn or
+  do other work, read the result when it lands.
+- Local builds are for tests, lint and debug only: `bash tools/gradle.sh <task>` (never `./gradlew` directly — it
+  installs the SDK if missing and refuses a release build without the right keystore). Run **one** Gradle at a
+  time; long builds go in the background and are polled with `tail`.
+
+## Credentials — never commit one
+
+`tools/secretscan.sh` blocks autosave from committing anything shaped like a live credential, and
+`capture_inbox.sh` redacts them from INBOX. If it trips, remove the credential — never bypass it. A pushed key must
+be rotated, not deleted. The keystore `app/sideload.jks` is gitignored; only its SHA-256
+(`tools/keystore.fingerprint`) is committed. Never paste secrets in chat; `tools/init-keystore.sh` prints the base64
+command rather than the value, on purpose.
+
+## Skills and tools for this project
+
+`.claude/skills/android-go-launcher` (Go-edition constraints; load before changing the manifest, app list, memory
+behaviour or adding any dependency) and `kotlin-concurrency-and-flow` (Chris Banes, Apache-2.0, unchanged) — use the
+Skill tool. Compose skills are intentionally absent: add them when the UI toolkit decision in `BRIEF.md` lands on
+Compose. Generic plugins that fit: `engineering:code-review`/`code-review` before a release,
+`claude-android-qa-plugin:android-emulator-qa` once an emulator exists, `security-review` on anything touching
+permissions. Where a skill disagrees with this file or BRIEF.md, this repo wins. Don't install anything that costs
+money or sends repo data out without Tj's word.
+
+## Project rules
+
+`BRIEF.md`: platform decisions, the keystore rules, pinned toolchain, build traps, and what is still OPEN. Do not
+decide an OPEN item for Tj — resolve it with him, one real decision at a time.

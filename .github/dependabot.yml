@@ -1,0 +1,13 @@
+# Free dependency + workflow-action update PRs, monthly (a launcher has almost no dependencies,
+# and the toolchain is pinned on purpose — BRIEF.md — so these are reviewed, never auto-merged).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: gradle
+    directory: /
+    schedule: { interval: monthly }
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+      - dependency-name: "org.jetbrains.kotlin.*"

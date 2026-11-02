@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Wallpaper theme: the system wallpaper shows behind the app grid. -->
+    <style name="Theme.Launcher" parent="@android:style/Theme.DeviceDefault.Wallpaper.NoTitleBar" />
+</resources>
