@@ -135,3 +135,8 @@ Maybe it can force stop apps or find another way to close apps, or at least hide
 ```
 If the custom launcher can permanently only show solitaire in the recent apps menu, this is even better than closing the apps
 ```
+
+## 2026-11-02T20:37:27Z
+```
+Also add the option to do the clear all button for both the recent apps and the notifications you already suggested, put both methods in the launcher so I can see which one works better. I can switch between them in the launcher settings 
+```
