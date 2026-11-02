@@ -88,8 +88,8 @@ protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.0.0-alpha-3" }
     generateProtoTasks {
         all().forEach { task ->
+            task.builtins.remove(task.builtins.getByName("java"))
             task.builtins {
-                remove("java")
                 create("javanano") {
                     option("java_package=launcher_log_extension.proto|com.android.launcher3.userevent.nano")
                     option("java_package=launcher_log.proto|com.android.launcher3.userevent.nano")
