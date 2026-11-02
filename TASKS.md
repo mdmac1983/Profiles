@@ -85,3 +85,5 @@ v0.2.0 = 4x4 grid + search bar + dock, 4-column tall-row opaque drawer.  Recents
 - [ ] LK4 first-run home layout like his (folders Connect/Games, same app order) — default_workspace XML or label-based importer (stock DB is not readable without system permission)
 - [x] R3 recents button works with our router as Home (Tj, v0.2.0)
 - [ ] G3b power menu: hide the Screenshot button completely; if impossible, suppress the whole power menu until Quickstep (his rule)
+- [x] LK1/LK2 measured (2026-11-02): stock drawer = 5 columns, tile 55 px (=> Go icon 60 dp at 170 dpi), scrim = 50% white (least-squares over 2 stock screenshots, residual 8); applied in go/res device_profiles + styles (v0.2.1 candidate)
+- [ ] G3b result so far: emulator has the same AOSP power menu; first accessibility run did nothing (service probably unbound by the test's force-stop; no logs). Re-running with diagnostics + rebind. Tj's extra question: can a NEW power menu replace the system one (answer: yes via accessibility cover/replace, same dependency; no non-accessibility route on a locked Android 10)
