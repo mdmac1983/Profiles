@@ -52,7 +52,7 @@ quick settings with only Auto-rotate tile). Modifications:
 ## Build plan (2026-11-02) — do in order; checkpoint after each
 - [x] P1 (compiles + packages 2026-11-02: launcher3/ imported, Gradle module, protos, plugin_core, manifest merged; see launcher3/PATCHES.md; NOT yet run on a device/emulator) Port: fetch pinned sources, build `plugin_core` from SystemUI plugin source, protos via Gradle, stub/reflect @hide APIs until `l3goWithoutQuickstep` compiles in a new Gradle module (one-Gradle-at-a-time; use CI for long builds)
 - [ ] P2 Look check: emulator API 29 screenshots vs research/uploads/2026-11-02 (home 3 cols, drawer 5 cols translucent + Search apps, folders, popup, Home settings)
-- [ ] P3 Safety core: RestoreStore, crash-loop breaker, Quickstep pass-through mode, Restore action, manifest/source guard test (no admin/keyguard/overlay/lock settings), tools/adb-grant.sh + tools/adb-restore.sh
+- [~] P3 (router, Mode, StockLauncher, CrashGuard, RestoreStore, Features, rotation detector + ControlActivity DONE with JVM tests 2026-11-02; still TODO: manifest/source guard test, adb scripts, emulator scenarios) Safety core: RestoreStore, crash-loop breaker, Quickstep pass-through mode, Restore action, manifest/source guard test (no admin/keyguard/overlay/lock settings), tools/adb-grant.sh + tools/adb-restore.sh
 - [ ] P4 CI emulator job (reactivecircus/android-emulator-runner, API 29): install, set Home, drawer, mode flip, forced crashes, Restore byte-identical
 - [ ] P5 Release v0.2 "safe core" (needs keystore): Release link + residual-risk note + first-install checklist
 - [ ] P6 L2, L6, L3 -> v0.3;  P7 L7, L5, L9 each default OFF -> v0.4;  P8 L4 experimental -> v0.5

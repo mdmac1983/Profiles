@@ -9,3 +9,9 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
 - All provider authorities/permissions use `${packageName}` = `com.tj.launcher`, so they cannot collide with the stock `com.android.launcher3`.
 - applicationId `com.tj.launcher`, resource namespace stays `com.android.launcher3` (the code imports `com.android.launcher3.R`).
 - `launcher3/iconloaderlib/src_full_lib` is not compiled (unused by the app; needs hidden UserHandle.getIdentifier).
+
+## Source patches (Launcher.java and resources)
+- `Launcher.java`: `onResume`/`onPause` call `TjHooks` (foreground tracking); `dispatchTouchEvent` override calls `TjHooks.onTouch` (observation only, never consumes);
+  `onNewIntent`'s `alreadyOnHome` is also true when the router passes `EXTRA_HOME_WHILE_ON_HOME` (the invisible router answers Home, so Launcher has already lost focus).
+- Manifest: `Launcher` no longer has the HOME category — `com.tj.launcher.RouterActivity` is the only HOME activity (fails open to the stock launcher).
+- `res/values/strings.xml`: `app_name` Launcher3 -> Launcher.
