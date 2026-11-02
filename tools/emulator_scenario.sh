@@ -44,6 +44,25 @@ check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.androi
 setmode custom; home; resumed > "$OUT/resumed-custom2.txt"
 check "switching back to custom works" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
 
+# ---- power-menu helper (screenshots only: judged by eye + overlay window check)
+setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
+adb shell settings put secure enabled_accessibility_services "$PKG/com.tj.launcher.TjAccessibilityService"; adb shell settings put secure accessibility_enabled 1; sleep 2
+setmode custom; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setpower hide_screenshot; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot
+adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setpower block; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setmode quickstep; setpower hide_screenshot; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 13-power-menu-quickstep-mode
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell settings put secure enabled_accessibility_services ""; adb shell settings put secure accessibility_enabled 0
+setpower off; setmode custom
+
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
