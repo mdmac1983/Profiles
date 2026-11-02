@@ -1,23 +1,29 @@
-# CHECKPOINT 74 — read me first, then TASKS.md
+# CHECKPOINT 77 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T18:54:25Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `3b4ddc2` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T18:56:41Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `032dc02` (this checkpoint is the commit after it)
 
 ## Just done
-Card buttons rebuilt (icon+label stack, 12sp), touch/click/press logging, emulator nav-bar simulation (wm overscan 48).
+BACK1: double-press Home in Quickstep mode returns to the custom launcher (router rule + tests + emulator check + FIRST_INSTALL).
 
 ## Do this next
-Dispatch emulator.yml; read press-restart.txt + logcat (card touch/click lines) to see why the Restart tap didn't press the real button; compare 01-home/03-drawer row pitch (expect ~113 with the 48px bar) to STOCK.
+Check the in-flight emulator run (card/Restart diagnostics), then dispatch again to include the double-Home check; then fix Restart press; ship v0.2.2 with: 8 rows no dock, two-button card, double-Home back.
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+     M TASKS.md
+     M app/src/main/java/com/tj/launcher/Mode.java
+     M app/src/main/java/com/tj/launcher/RouterActivity.java
+     M research/FIRST_INSTALL.md
      M tools/emulator_scenario.sh
+    ?? app/src/main/java/com/tj/launcher/HomeDoublePress.java
+    ?? app/src/test/java/com/tj/launcher/HomeDoublePressTest.java
 
 ## Last ten checkpoints
 ```
+  16a2407 ckpt 74: Card buttons rebuilt (icon+label stack, 12sp), touch/click/press logging, emula
   3b4ddc2 ckpt 73: No dock (8 rows, hotseat removed, caret hidden even with accessibility), stock 
   d5cce69 ckpt 66: Released v0.2.1 (Go icon size, 5-col grid/drawer, 50% scrim, opt-in power-menu 
   72fedad ckpt 64: gated v0.2.1 (code 3) and pushed it: the handoff self-test, the full unit suite
@@ -27,5 +33,7 @@ Dispatch emulator.yml; read press-restart.txt + logcat (card touch/click lines) 
   ac02e74 ckpt 58: Fixed power-menu service feedback loop (ignore own events, debounce, no re-layo
   1f2e3e9 ckpt 55: Power-menu helper: TjAccessibilityService (cover Screenshot entry / block menu,
   c3955b4 ckpt 52: Look pass 1: grid 5x7 + 5-icon dock (derived from stock photo geometry), no hom
-  8495c8f ckpt 49: Saved Tj's v0.2.0 report + 8 photos (density 170, font scale 1.2, stock 3x4 hom
 ```
+
+(2 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)

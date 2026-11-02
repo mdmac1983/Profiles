@@ -97,3 +97,4 @@ v0.2.0 = 4x4 grid + search bar + dock, 4-column tall-row opaque drawer.  Recents
 - [x] REF stock photos stored permanently: research/reference/stock/INDEX.md (+ CLAUDE.md rule + resume.sh line)
 - [ ] LK5 done by answer: no dock -> 8 rows, hotseat removed, no "^" caret on the home screen (match stock-home.png)
 - [ ] G3c power menu: a TWO-BUTTON replacement card (Power off, Restart) exactly covering the system card, so no Screenshot slot and no gray gap; fail-open (if a tap cannot reach the real button, reveal the original menu)
+- [ ] BACK1 (Tj, 2026-11-02: "When I do the gesture, it goes to quickstep, but I don't know how to go back to the new launcher. There needs to be a quick way to go back."): DOUBLE-PRESS HOME in Quickstep mode -> custom launcher (router sees every Home press; no permission). Also: Launcher control icon (exists), volume-combo via accessibility (later). Add a one-line hint when switching to Quickstep.

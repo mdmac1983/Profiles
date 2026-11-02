@@ -15,6 +15,11 @@ public final class Mode {
 
     private Mode() {}
 
+    public static long lastHomePressMs(Context c) { return prefs(c).getLong("lastHome", 0); }
+
+    /** apply(): called on every Home press, must stay cheap. */
+    public static void recordHomePress(Context c, long now) { prefs(c).edit().putLong("lastHome", now).apply(); }
+
     private static SharedPreferences prefs(Context c) {
         return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }

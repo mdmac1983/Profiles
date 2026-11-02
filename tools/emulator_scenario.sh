@@ -47,6 +47,12 @@ check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.androi
 setmode custom; home; resumed > "$OUT/resumed-custom2.txt"
 check "switching back to custom works" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
 
+# ---- double-press Home in Quickstep mode returns to the custom launcher (BACK1)
+setmode quickstep; home; sleep 2
+adb shell input keyevent KEYCODE_HOME KEYCODE_HOME; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
+check "double Home in Quickstep mode returns to the custom launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
+setmode custom; home
+
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home

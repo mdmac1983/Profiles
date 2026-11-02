@@ -23,3 +23,7 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
   > find "Launcher power-menu helper" > turn it on. It only acts while the custom launcher is active and never on the lock screen; switch back to Quickstep (or choose "leave alone") and the normal power menu returns.
   Proven on an Android 10 emulator (Screenshot entry fully hidden). Your tablet's panel colour may differ a little: send a photo if you can see a patch.
 - If Android ever shows "Select a Home app": choose Launcher > Always (or Quickstep to go back). It is only a chooser.
+
+## Getting back to the custom launcher from Quickstep (v0.2.2)
+- **Press Home twice quickly** (within ~0.7 s) while the stock launcher is showing: you are back on the custom launcher. No settings or permissions needed.
+- Or open the "Launcher control" app icon (in the stock drawer) > "Use custom launcher".

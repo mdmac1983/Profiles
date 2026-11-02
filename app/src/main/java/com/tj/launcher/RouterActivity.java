@@ -29,6 +29,15 @@ public class RouterActivity extends Activity {
     }
 
     private void route() {
+        // Double-press Home while the stock launcher is active = back to the custom launcher (Tj: "a quick way to go back").
+        // This router answers every Home press, so no permission or accessibility is needed for it.
+        long now = System.currentTimeMillis();
+        long last = Mode.lastHomePressMs(this);
+        Mode.recordHomePress(this, now);
+        if (!Mode.isCustom(this) && HomeDoublePress.isDouble(last, now)) {
+            CrashGuard.clearTripped(this);
+            Mode.set(this, Mode.CUSTOM);
+        }
         if (Mode.isCustom(this)) {
             Intent i = new Intent(Intent.ACTION_MAIN)
                     .setComponent(new ComponentName(this, "com.android.launcher3.Launcher"))
