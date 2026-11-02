@@ -96,6 +96,21 @@ adb shell settings put secure enabled_accessibility_services ""; adb shell setti
 setpower off; setmode custom
 
 adb logcat -d | grep -iE 'AndroidRuntime|FATAL|TjRouter|TjHooks|TjRestore' | tail -80 > "$OUT/logcat-tj.txt" 2>&1
+
+# ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
+setmode custom; setpower hide_screenshot; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart
+RECT="$(adb logcat -d -s TjA11y:I | grep -o 'bounds=Rect([0-9, -]*)' | tail -1 | grep -o '[0-9]*' | tr '\n' ' ')"
+set -- $RECT
+if [ "$#" -ge 4 ]; then
+  X=$(( ($1 + $3) / 2 )); Y=$(( $2 + ($4 - $2) * 3 / 4 ))
+  echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
+  adb shell input tap $X $Y; sleep 2
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep "press" >> "$OUT/press-restart.txt"
+else
+  echo "no card rect found in log" | tee -a "$OUT/press-restart.txt"
+fi
+check "card's Restart pressed the real Restart button" grep -q "press 'Restart' -> true" "$OUT/press-restart.txt"
 echo "failed checks: $FAILS" | tee -a "$OUT/results.txt"
 ls -la "$OUT"
 exit "$FAILS"
