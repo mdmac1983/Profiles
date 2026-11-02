@@ -116,3 +116,9 @@ Then consider even faster ways to hide the screenshot button. Can the accessibil
 - [ ] LOCK1: Launcher control / hidden-apps chooser only visible+openable while Quickstep mode is on; our own icons never in the custom drawer
 - [ ] L3 SET1 (consider, then build): curated "Settings" clone — see research/SETTINGS_CLONE_2026-11-02.md
 - [ ] PWR2 research: can accessibility see the power key / prevent or pre-empt the power menu? (diagnostic in emulator, answer Tj)
+
+## Tj's v0.2.3 report, 2026-11-02 (verbatim)
+"The solitaire opened and the wifi turned off, but the opened apps did not close. The notification access feature says this feature is not available on this device. Maybe it can force stop apps or find another way to close apps, or at least hide the open apps from the recent apps menu. Can the launcher simply make it so it always shows only solitaire in the recent apps menu permanently?"
+Findings: killBackgroundProcesses did not close his apps on the tablet; Go devices (low-RAM) do not offer Notification access, so the listener route cannot work there.
+- [ ] RESET2 rebuild the return reset on the ACCESSIBILITY helper (he already enables it): open the notification shade and press "Clear all"; open Recents and press "Clear all" (that removes the tasks AND closes the apps and empties Recents); then go home and open Solitaire; fallbacks: killBackgroundProcesses. Control shows what each step did last time. Drop the notification-access button/status.
+- [ ] REC1 "always only Solitaire in Recents": system owns Recents; answer + optional auto-clear when Recents opens (accessibility) — decide after RESET2 is tested on the tablet
