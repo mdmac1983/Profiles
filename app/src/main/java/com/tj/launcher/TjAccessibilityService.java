@@ -265,26 +265,6 @@ public class TjAccessibilityService extends AccessibilityService {
         Features.setString(this, RESET_REPORT_KEY, resetReport.toString());
     }
 
-    private void resetRecents(final Runnable done) {
-        performGlobalAction(GLOBAL_ACTION_RECENTS);
-        recentsAttempt(0, done);
-    }
-
-    private void recentsAttempt(final int attempt, final Runnable done) {
-        handler.postDelayed(new Runnable() { @Override public void run() {
-            boolean cleared = pressInSystemUi("clear all", "com.android.launcher3", "com.android.systemui");
-            if (!cleared && attempt < 6) {
-                // the button can sit at the far end of the task carousel: scroll it and look again
-                scrollSomething("com.android.launcher3", "com.android.systemui");
-                recentsAttempt(attempt + 1, done);
-                return;
-            }
-            resetReport.append("recents: ").append(cleared ? "cleared (apps closed)" : "no Clear all button found").append("\n");
-            Log.i(TAG, "RESET recents cleared=" + cleared + " attempts=" + (attempt + 1));
-            finishReset(done);
-        } }, attempt == 0 ? 750 : 280);
-    }
-
     /** Presses the first clickable node whose text starts with {@code label}, but ONLY inside windows of the given system packages (never in another app). */
     private boolean pressInSystemUi(String label, String... packages) {
         try {
