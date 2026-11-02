@@ -9,12 +9,17 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 import java.util.List;
+import com.android.launcher3.R;
 
 /**
  * Power-menu helper (L4 / G3b). Only active in custom-launcher mode, only when Tj chose a power mode, never on the lock screen.
@@ -77,18 +82,15 @@ public class TjAccessibilityService extends AccessibilityService {
                         List<AccessibilityNodeInfo> sc = root.findAccessibilityNodeInfosByText("Screenshot");
                         if (off != null && !off.isEmpty() && sc != null && !sc.isEmpty()) {
                             menuOpen = true;
-                            AccessibilityNodeInfo n = sc.get(0);
-                            // the tappable entry is usually a parent of the text node: grow to the first clickable ancestor
-                            AccessibilityNodeInfo t = n;
-                            for (int i = 0; i < 4 && t != null && !t.isClickable(); i++) t = t.getParent();
-                            AccessibilityNodeInfo item = t != null && t.isClickable() ? t : n;
-                            item.getBoundsInScreen(shot);
-                            // widen to the whole panel column so the cover has no visible left/right edges
-                            AccessibilityNodeInfo parent = item.getParent();
-                            if (parent != null) {
-                                Rect pr = new Rect();
-                                parent.getBoundsInScreen(pr);
-                                if (!pr.isEmpty() && pr.height() >= shot.height()) { shot.left = pr.left; shot.right = pr.right; shot.bottom = Math.min(pr.bottom, shot.bottom + 24); }
+                            // the card = the smallest ancestor of "Power off" that also contains the Screenshot entry
+                            AccessibilityNodeInfo offItem = clickableAncestor(off.get(0));
+                            Rect scr = new Rect(), c = new Rect();
+                            clickableAncestor(sc.get(0)).getBoundsInScreen(scr);
+                            AccessibilityNodeInfo t = offItem;
+                            for (int i = 0; i < 6 && t != null; i++) {
+                                t.getBoundsInScreen(c);
+                                if (c.contains(scr.centerX(), scr.centerY()) && c.height() > scr.height()) { shot.set(c); break; }
+                                t = t.getParent();
                             }
                             found = !shot.isEmpty();
                             break;
@@ -109,6 +111,61 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     }
 
+    private AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo n) {
+        AccessibilityNodeInfo t = n;
+        for (int i = 0; i < 4 && t != null && !t.isClickable(); i++) t = t.getParent();
+        return t != null && t.isClickable() ? t : n;
+    }
+
+    /** Presses the real system button with this label (found fresh, never a stale node). Returns false if it could not. */
+    private boolean pressReal(String label) {
+        try {
+            List<AccessibilityWindowInfo> windows = getWindows();
+            if (windows == null) return false;
+            for (AccessibilityWindowInfo w : windows) {
+                AccessibilityNodeInfo root = w.getRoot();
+                if (root == null) continue;
+                try {
+                    List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(label);
+                    if (hit != null && !hit.isEmpty()) {
+                        boolean ok = clickableAncestor(hit.get(0)).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        Log.i(TAG, "press '" + label + "' -> " + ok);
+                        return ok;
+                    }
+                } finally { root.recycle(); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "press failed", t); }
+        return false;
+    }
+
+    private TextView cardButton(String label, int iconRes, final String realLabel) {
+        TextView b = new TextView(this);
+        b.setText(label);
+        b.setTextSize(14);
+        b.setTextColor(Color.parseColor("#FF5F6368"));
+        b.setGravity(Gravity.CENTER);
+        Drawable d = getDrawable(iconRes);
+        b.setCompoundDrawablesWithIntrinsicBounds(null, d, null, null);
+        b.setCompoundDrawablePadding(8);
+        b.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                // fail open: if the real button cannot be pressed, take our card away so the original menu is usable
+                if (!pressReal(realLabel)) removeOverlay();
+            }
+        });
+        return b;
+    }
+
+    private View buildCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundColor(PANEL_COLOR);
+        card.addView(cardButton("Power off", R.drawable.tj_ic_power, "Power off"));
+        card.addView(cardButton("Restart", R.drawable.tj_ic_restart, "Restart"));
+        return card;
+    }
+
     private void showOverlay(Rect r) {
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
@@ -119,8 +176,7 @@ public class TjAccessibilityService extends AccessibilityService {
         lp.gravity = Gravity.TOP | Gravity.START;
         lp.x = r.left; lp.y = r.top;
         if (overlay == null) {
-            overlay = new View(this);
-            overlay.setBackgroundColor(PANEL_COLOR);
+            overlay = buildCard();
             wm.addView(overlay, lp);
             shownAt.set(r);
         } else if (!shownAt.equals(r)) {

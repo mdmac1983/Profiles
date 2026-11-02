@@ -38,7 +38,7 @@ public class ControlActivity extends Activity {
         }}));
         root.addView(label("Power menu (needs the helper turned on in Accessibility)"));
         root.addView(button("Power menu: leave alone (default)", new Runnable() { public void run() { setPower(Features.POWER_OFF); }}));
-        root.addView(button("Power menu: hide Screenshot button", new Runnable() { public void run() { setPower(Features.POWER_HIDE_SCREENSHOT); }}));
+        root.addView(button("Power menu: remove Screenshot (two-button menu)", new Runnable() { public void run() { setPower(Features.POWER_HIDE_SCREENSHOT); }}));
         root.addView(button("Power menu: block it completely", new Runnable() { public void run() { setPower(Features.POWER_BLOCK); }}));
         root.addView(button("Open Accessibility settings", new Runnable() { public void run() {
             startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
