@@ -79,3 +79,8 @@ The recents button works in the new launcher.
 
 Notice the grid layout and transparency of the stock launcher
 ```
+
+## 2026-11-02T17:55:00Z
+```
+compare the screenshots to my stock launcher, including the amount of transparency. If the accessibility for the power menu doesn't work, is it possible to build a new power menu that opens with the side key using accessibility or any other method?
+```
