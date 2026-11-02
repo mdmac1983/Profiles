@@ -45,9 +45,11 @@ public class RouterActivity extends Activity {
         long now = System.currentTimeMillis();
         long last = Mode.lastHomePressMs(this);
         Mode.recordHomePress(this, now);
+        boolean returnedByDoubleHome = false;
         if (!Mode.isCustom(this) && HomeDoublePress.isDouble(last, now)) {
             CrashGuard.clearTripped(this);
             Mode.set(this, Mode.CUSTOM);
+            returnedByDoubleHome = true;
         }
         if (Mode.isCustom(this)) {
             Intent i = new Intent(Intent.ACTION_MAIN)
@@ -56,6 +58,8 @@ public class RouterActivity extends Activity {
             if (TjHooks.launcherWasForeground()) i.putExtra(TjHooks.EXTRA_HOME_WHILE_ON_HOME, true);
             try {
                 startActivity(i);
+                // Tj: coming back by double Home also closes apps, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire (ReturnReset).
+                if (returnedByDoubleHome) ReturnReset.run(this);
                 return;
             } catch (Throwable t) {
                 Log.e(TAG, "custom launcher failed to start", t);
