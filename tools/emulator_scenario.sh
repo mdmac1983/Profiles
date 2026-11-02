@@ -53,6 +53,28 @@ adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME";
 check "double Home in Quickstep mode returns to the custom launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
 setmode custom; home
 
+# ---- RESET1: double Home back to custom closes apps, clears notifications, turns Wi-Fi off and opens the chosen app
+setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+setfeat; setmode quickstep
+adb shell cmd notification allow_listener "$PKG/com.android.launcher3.notification.NotificationListener" > "$OUT/allow-listener.txt" 2>&1; sleep 2
+adb shell svc wifi enable; sleep 2
+adb shell am start -n com.android.settings/.Settings >/dev/null 2>&1; sleep 3
+adb shell cmd notification post -S bigtext -t TjTest tjtag1 "hello from the test" >/dev/null 2>&1; sleep 2
+adb shell dumpsys notification --noredact | grep -c tjtag1 > "$OUT/notif-before.txt" 2>&1
+home; sleep 2
+adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 7
+resumed > "$OUT/resumed-reset.txt"
+adb shell pidof com.android.settings > "$OUT/settings-pid-after.txt" 2>&1
+adb shell dumpsys notification --noredact | grep -c tjtag1 > "$OUT/notif-after.txt" 2>&1
+adb shell settings get global wifi_on > "$OUT/wifi-after.txt" 2>&1
+adb logcat -d -s TjReset:I > "$OUT/tjreset-log.txt" 2>&1
+check "reset: the chosen app (Calendar) was opened" grep -qi 'calendar' "$OUT/resumed-reset.txt"
+check "reset: the previously open app (Settings) was closed" bash -c "[ -z \"$(cat $OUT/settings-pid-after.txt | tr -d ' \r\n')\" ]"
+check "reset: the test notification was cleared" bash -c "[ \"$(cat $OUT/notif-before.txt | tr -d ' \r\n')\" != 0 ] && [ \"$(cat $OUT/notif-after.txt | tr -d ' \r\n')\" = 0 ]"
+check "reset: Wi-Fi was turned off" bash -c "[ \"$(cat $OUT/wifi-after.txt | tr -d ' \r\n')\" = 0 ]"
+adb shell svc wifi enable >/dev/null 2>&1
+setmode custom; home
+
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
@@ -89,7 +111,7 @@ setmode custom; home; prefhome after-setmode-home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off; prefhome after-menu
 adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower hide_screenshot; prefhome after-setpower; rebind; prefhome after-rebind; home; prefhome after-home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot; a11ydump hide
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 0.3; shot 15-card-immediately; sleep 2.7; shot 11-power-menu-hide-screenshot; a11ydump hide
 adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
 adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower block; rebind; home
