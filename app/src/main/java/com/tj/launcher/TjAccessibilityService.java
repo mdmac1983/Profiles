@@ -160,36 +160,95 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String RESET_REPORT_KEY = "reset_last";
     private final StringBuilder resetReport = new StringBuilder();
 
-    /** Runs on the main thread. Calls {@code done} when finished (always, even if nothing could be pressed). Fail-open: a missing button just means that step is skipped. */
+    /**
+     * Runs on the main thread. Calls {@code done} when finished (always, even if nothing could be pressed). Fail-open: a missing button just means that step is skipped.
+     * SPEED (V3): no fixed sleeps. After opening the shade / Recents it polls every 40 ms and presses "Clear all" the moment it appears; an EMPTY shade / Recents
+     * ("No notifications" / "No recent items") ends that step at once.
+     */
     public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) {
         resetReport.setLength(0);
         removeOverlay();
+        final long t0 = android.os.SystemClock.uptimeMillis();
         Log.i(TAG, "RESET start notifications=" + clearNotifications + " recents=" + clearRecents);
+        final Runnable afterShade = new Runnable() { @Override public void run() {
+            if (clearRecents) resetRecents(t0, done); else { resetReport.append("recents: switch is OFF\n"); finishReset(t0, done); }
+        } };
         if (!clearNotifications) {
             resetReport.append("notifications: switch is OFF\n");
-            if (clearRecents) resetRecents(done); else finishReset(done);
+            afterShade.run();
             return;
         }
-        final boolean thenRecents = clearRecents;
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
-        handler.postDelayed(new Runnable() { @Override public void run() {
-            boolean cleared = pressInSystemUi("clear all", "com.android.systemui");
-            resetReport.append("notifications: ").append(cleared ? "cleared" : "no Clear all button (nothing to clear?)").append("\n");
-            Log.i(TAG, "RESET notifications cleared=" + cleared);
-            performGlobalAction(GLOBAL_ACTION_BACK);
-            handler.postDelayed(new Runnable() { @Override public void run() {
-                if (thenRecents) resetRecents(done);
-                else { resetReport.append("recents: switch is OFF\n"); finishReset(done); }
-            } }, 350);
-        } }, 600);
+        pollPress("clear all", new String[] {"no notifications"}, new String[] {"com.android.systemui"}, 1500, false, new PollResult() {
+            @Override public void done(int result) {
+                resetReport.append("notifications: ").append(result == PRESSED ? "cleared" : result == EMPTY ? "none to clear" : "no Clear all button found").append("\n");
+                Log.i(TAG, "RESET notifications result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
+                performGlobalAction(GLOBAL_ACTION_BACK);
+                handler.postDelayed(afterShade, 90);
+            }
+        });
     }
 
-    private void finishReset(final Runnable done) {
-        // NO Home press here: on the slow tablet it landed AFTER the app start and covered it (Tj: "in the recent apps but didn't open on the screen").
+    private static final int PRESSED = 1, EMPTY = 2, TIMEOUT = 3;
+    private interface PollResult { void done(int result); }
+
+    /** Polls every 40 ms: press {@code label} if it is there; end with EMPTY if one of {@code emptyTexts} is visible instead; scroll now and then if asked; TIMEOUT after maxMs. */
+    private void pollPress(final String label, final String[] emptyTexts, final String[] packages, final long maxMs, final boolean scroll, final PollResult cb) {
+        final long deadline = android.os.SystemClock.uptimeMillis() + maxMs;
+        final int[] tick = {0};
         handler.postDelayed(new Runnable() { @Override public void run() {
+            try {
+                if (pressInSystemUi(label, packages)) { cb.done(PRESSED); return; }
+                if (anyTextPresent(emptyTexts, packages)) { cb.done(EMPTY); return; }
+                tick[0]++;
+                if (scroll && tick[0] % 5 == 0) scrollSomething(packages);
+            } catch (Throwable t) { Log.e(TAG, "poll failed", t); }
+            if (android.os.SystemClock.uptimeMillis() >= deadline) { cb.done(TIMEOUT); return; }
+            handler.postDelayed(this, 40);
+        } }, 60);
+    }
+
+    private boolean anyTextPresent(String[] texts, String[] packages) {
+        if (texts == null || texts.length == 0) return false;
+        try {
+            List<AccessibilityWindowInfo> windows = getWindows();
+            if (windows == null) return false;
+            for (AccessibilityWindowInfo w : windows) {
+                AccessibilityNodeInfo root = w.getRoot();
+                if (root == null) continue;
+                try {
+                    String pkg = root.getPackageName() == null ? "" : root.getPackageName().toString();
+                    boolean ok = false;
+                    for (String p : packages) if (p.equals(pkg)) ok = true;
+                    if (!ok) continue;
+                    for (String t : texts) {
+                        List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(t);
+                        if (hit != null && !hit.isEmpty()) return true;
+                    }
+                } finally { root.recycle(); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "anyTextPresent failed", t); }
+        return false;
+    }
+
+    private void resetRecents(final long t0, final Runnable done) {
+        performGlobalAction(GLOBAL_ACTION_RECENTS);
+        pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 2600, true, new PollResult() {
+            @Override public void done(int result) {
+                resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found").append("\n");
+                Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
+                finishReset(t0, done);
+            }
+        });
+    }
+
+    private void finishReset(final long t0, final Runnable done) {
+        // NO Home press here: on the slow tablet it landed AFTER the app start and covered it.
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            resetReport.append("took ").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms\n");
             Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
             try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
-        } }, 350);
+        } }, 90);
     }
 
     /** True if a window of this package is the active (front) one. */

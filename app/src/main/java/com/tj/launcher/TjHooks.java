@@ -12,7 +12,23 @@ public final class TjHooks {
 
     private TjHooks() {}
 
-    public static void onLauncherResumed() { launcherResumed = true; }
+    private static boolean startedOnce = false;
+    public static final String STARTUP_KEY = "startup_open";   // default ON
+
+    /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
+    public static void onLauncherResumed(final Context c) {
+        launcherResumed = true;
+        try {
+            if (!startedOnce) {
+                startedOnce = true;
+                if (Mode.isCustom(c) && Features.get(c, STARTUP_KEY, true)) {
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                        @Override public void run() { try { ReturnReset.openStartupApp(c); } catch (Throwable t) { android.util.Log.e("TjHooks", "startup open failed", t); } }
+                    }, 350);
+                }
+            }
+        } catch (Throwable t) { android.util.Log.e("TjHooks", "startup hook failed", t); }
+    }
 
     public static void onLauncherPaused() {
         launcherResumed = false;

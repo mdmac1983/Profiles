@@ -119,6 +119,9 @@ public final class ReturnReset {
         return ris;
     }
 
+    /** Puts the target app in front because the custom launcher just STARTED (boot / restart). Same safe, verified launch as the return reset; nothing else is touched. */
+    public static void openStartupApp(Context c) { openApp(c.getApplicationContext()); }
+
     private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
 
     /** Starts the target app and makes sure it ends up in FRONT: re-starts it (harmless if already on top) up to 3 more times, checking with the accessibility helper when it is on. */

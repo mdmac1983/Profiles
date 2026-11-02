@@ -944,7 +944,7 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
 
     @Override
     protected void onResume() {
-        com.tj.launcher.TjHooks.onLauncherResumed();
+        com.tj.launcher.TjHooks.onLauncherResumed(this);
         RaceConditionTracker.onEvent(ON_RESUME_EVT, ENTER);
         TraceHelper.beginSection("ON_RESUME");
         super.onResume();
