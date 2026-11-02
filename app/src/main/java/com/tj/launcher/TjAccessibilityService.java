@@ -77,6 +77,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 for (AccessibilityWindowInfo w : windows) {
                     AccessibilityNodeInfo root = w.getRoot();
                     if (root == null) continue;
+                    if (getPackageName().contentEquals(root.getPackageName() == null ? "" : root.getPackageName())) { root.recycle(); continue; }
                     try {
                         List<AccessibilityNodeInfo> off = root.findAccessibilityNodeInfosByText("Power off");
                         List<AccessibilityNodeInfo> sc = root.findAccessibilityNodeInfosByText("Screenshot");
@@ -125,6 +126,8 @@ public class TjAccessibilityService extends AccessibilityService {
             for (AccessibilityWindowInfo w : windows) {
                 AccessibilityNodeInfo root = w.getRoot();
                 if (root == null) continue;
+                // never "press" our own card: it is the topmost window and carries the same labels (that was an endless self-click)
+                if (getPackageName().contentEquals(root.getPackageName() == null ? "" : root.getPackageName())) { root.recycle(); continue; }
                 try {
                     List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(label);
                     if (hit != null && !hit.isEmpty()) {

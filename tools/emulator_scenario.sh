@@ -49,7 +49,7 @@ check "switching back to custom works" grep -q 'com.tj.launcher/com.android.laun
 
 # ---- double-press Home in Quickstep mode returns to the custom launcher (BACK1)
 setmode quickstep; home; sleep 2
-adb shell input keyevent KEYCODE_HOME KEYCODE_HOME; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
+adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
 check "double Home in Quickstep mode returns to the custom launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
 setmode custom; home
 

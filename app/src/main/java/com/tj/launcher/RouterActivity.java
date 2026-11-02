@@ -18,6 +18,17 @@ public class RouterActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        handleHome();
+    }
+
+    /** A second Home press that arrives while this invisible instance is still alive is delivered here, not to onCreate: handle it the same way. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleHome();
+    }
+
+    private void handleHome() {
         try {
             route();
         } catch (Throwable t) {
