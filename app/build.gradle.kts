@@ -56,10 +56,17 @@ android {
             // AOSP Launcher3 Go flavor: src + src_ui_overrides + go/src, resources res + go/res (go wins), plugin API sources
             java.srcDirs("../launcher3/src", "../launcher3/src_ui_overrides", "../launcher3/go/src",
                 "../launcher3/src_plugins", "../launcher3/plugin_core_src")
-            res.srcDirs("../launcher3/res", "../launcher3/go/res")
+            res.srcDirs("../launcher3/res")
             (this as org.gradle.api.plugins.ExtensionAware).extensions.getByName("proto")
                 .let { (it as org.gradle.api.file.SourceDirectorySet).srcDir("../launcher3/protos").srcDir("../launcher3/proto_overrides") }
         }
+    }
+
+    // Go resource overrides must OVERLAY the base resources by name (AAPT2 rejects duplicates within one source set),
+    // so they live in the build-type source sets, which rank above main.
+    sourceSets {
+        getByName("debug") { res.srcDirs("../launcher3/go/res") }
+        getByName("release") { res.srcDirs("../launcher3/go/res") }
     }
 
     lint {
