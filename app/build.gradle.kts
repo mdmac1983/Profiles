@@ -58,7 +58,7 @@ android {
                 "../launcher3/src_plugins", "../launcher3/plugin_core_src")
             res.srcDirs("../launcher3/res", "../launcher3/go/res")
             (this as org.gradle.api.plugins.ExtensionAware).extensions.getByName("proto")
-                .let { (it as org.gradle.api.file.SourceDirectorySet).srcDir("../launcher3/protos") }
+                .let { (it as org.gradle.api.file.SourceDirectorySet).srcDir("../launcher3/protos").srcDir("../launcher3/proto_overrides") }
         }
     }
 
