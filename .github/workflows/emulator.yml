@@ -6,9 +6,6 @@ name: Emulator check
 
 on:
   workflow_dispatch:
-  push:
-    branches: ['ccr-4ff66321-chzhhg', 'main']
-    paths: ['.github/workflows/emulator.yml']
 
 permissions:
   contents: read
