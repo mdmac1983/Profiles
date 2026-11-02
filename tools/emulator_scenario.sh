@@ -79,6 +79,30 @@ check "reset: Wi-Fi was turned off" bash -c "[ \"$(cat $OUT/wifi-after.txt | tr 
 adb shell svc wifi enable >/dev/null 2>&1
 setmode custom; home
 
+# ---- HIDE1 / LOCK1: hidden apps (drawer + search), new installs hidden, settings unreachable in custom mode
+ALLOW="com.android.contacts com.android.gallery3d com.android.camera2 com.android.deskclock com.android.documentsui com.android.messaging com.android.dialer com.android.quicksearchbox com.android.settings com.android.webview"
+SET=""; for a in $ALLOW; do SET="$SET<string>$a</string>"; done
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"baseline_done\\\" value=\\\"true\\\" /><set name=\\\"allowed\\\">$SET</set></map>\" > shared_prefs/tj_apps.xml'"
+setmode custom; home; sleep 2
+adb shell input swipe 300 900 300 200 400; sleep 3; shot 20-hidden-drawer
+adb shell input tap 300 60; sleep 2; adb shell input text cal; sleep 2; shot 21-search-hidden-app
+adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_BACK; sleep 1
+home
+adb shell "run-as $PKG cat shared_prefs/tj_apps.xml" > "$OUT/apps-prefs-before.txt" 2>&1
+adb shell pm uninstall -k --user 0 com.android.gallery3d > "$OUT/gallery-uninstall.txt" 2>&1; sleep 3
+adb shell pm install-existing --user 0 com.android.gallery3d >> "$OUT/gallery-uninstall.txt" 2>&1; sleep 4
+adb shell "run-as $PKG cat shared_prefs/tj_apps.xml" > "$OUT/apps-prefs-after.txt" 2>&1
+check "hidden: contacts allowed before, gallery allowed before" bash -c "grep -q gallery3d $OUT/apps-prefs-before.txt && grep -q contacts $OUT/apps-prefs-before.txt"
+check "hidden: a REINSTALLED app is forgotten, so it is hidden until Tj allows it" bash -c "! grep -q gallery3d $OUT/apps-prefs-after.txt && grep -q contacts $OUT/apps-prefs-after.txt"
+adb shell input swipe 300 900 300 200 400; sleep 3; shot 22-drawer-after-reinstall
+adb shell input keyevent KEYCODE_HOME; sleep 2
+# LOCK1: Launcher control must not open while the custom launcher is on
+setmode custom; home
+adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3; resumed > "$OUT/resumed-control-in-custom.txt"
+check "lock: Launcher control does not open in custom mode" bash -c "! grep -q ControlActivity $OUT/resumed-control-in-custom.txt"
+adb shell pm install-existing --user 0 com.android.gallery3d >/dev/null 2>&1
+home
+
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
@@ -129,6 +153,12 @@ setpower off; setmode custom
 
 adb logcat -d | grep -iE 'AndroidRuntime|FATAL|TjRouter|TjHooks|TjRestore' | tail -80 > "$OUT/logcat-tj.txt" 2>&1
 
+# ---- PWR2 research: which hardware keys reach an accessibility service? (debug build only)
+rebind; setmode custom; home
+adb shell input keyevent KEYCODE_VOLUME_UP; sleep 1
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2
+adb logcat -d -s TjA11y:I | grep -E 'KEY code' > "$OUT/key-diag.txt" 2>&1
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart

@@ -85,6 +85,12 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
 
+    /** Research only (debug builds declare the capability): logs which hardware keys reach an accessibility service. Never consumes a key. */
+    @Override protected boolean onKeyEvent(android.view.KeyEvent event) {
+        Log.i(TAG, "KEY code=" + event.getKeyCode() + " (" + android.view.KeyEvent.keyCodeToString(event.getKeyCode()) + ") action=" + event.getAction() + " t=" + event.getEventTime());
+        return false;
+    }
+
     @Override public void onInterrupt() { removeOverlay(); }
 
     @Override public boolean onUnbind(android.content.Intent i) { removeOverlay(); return super.onUnbind(i); }
