@@ -33,7 +33,7 @@ public class TwoFingerRotationTest {
     }
 
     @Test public void pinchIsNotARotation() {
-        assertEquals(TwoFingerRotation.NONE, rotate(new TwoFingerRotation(), 0, 60, 100, 260));
+        assertEquals(TwoFingerRotation.NONE, rotate(new TwoFingerRotation(), 0, 15, 100, 260));
     }
 
     @Test public void firesOnlyOncePerGesture() {

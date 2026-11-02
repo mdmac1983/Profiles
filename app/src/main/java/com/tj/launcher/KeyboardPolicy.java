@@ -22,6 +22,7 @@ public final class KeyboardPolicy {
             String p = i.pkg == null ? "" : i.pkg.toLowerCase(Locale.ROOT);
             if (p.contains("inputmethod.latin")) score += 3;
             if (p.startsWith("com.android") || p.startsWith("com.google")) score += 1;
+            if (p.equals("com.android.inputmethod.latin")) score += 1;   // the AOSP keyboard wins a tie with Gboard
             if (score > bestScore) { bestScore = score; best = i; }
         }
         return best == null ? null : best.id;
