@@ -47,28 +47,6 @@ check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.androi
 setmode custom; home; resumed > "$OUT/resumed-custom2.txt"
 check "switching back to custom works" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
 
-# ---- power-menu helper (screenshots only: judged by eye + overlay window check)
-setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
-A11Y="$PKG/com.tj.launcher.TjAccessibilityService"
-rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep 1; adb shell settings put secure enabled_accessibility_services "$A11Y"; adb shell settings put secure accessibility_enabled 1; sleep 3; }
-a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
-rebind
-setmode custom; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off
-adb shell input keyevent KEYCODE_BACK; sleep 1
-setpower hide_screenshot; rebind; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot; a11ydump hide
-adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
-adb shell input keyevent KEYCODE_BACK; sleep 1
-setpower block; rebind; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block; a11ydump block
-adb shell input keyevent KEYCODE_BACK; sleep 1
-setmode quickstep; setpower hide_screenshot; rebind; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 13-power-menu-quickstep-mode; a11ydump quickstep
-adb shell input keyevent KEYCODE_BACK; sleep 1
-adb shell settings put secure enabled_accessibility_services ""; adb shell settings put secure accessibility_enabled 0
-setpower off; setmode custom
-
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
@@ -88,6 +66,34 @@ adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sl
 # ---- uninstall must leave a working stock home
 adb uninstall "$PKG" > "$OUT/uninstall.txt" 2>&1; sleep 2; home; resumed > "$OUT/resumed-uninstalled.txt"
 check "after uninstall, stock launcher is Home" grep -q 'com.android.launcher3/' "$OUT/resumed-uninstalled.txt"
+
+
+# ---- PHASE 2 (after the safety checks, so it cannot disturb them): power-menu helper on a fresh install
+adb install -r "$APK" >/dev/null 2>&1
+adb shell cmd package set-home-activity "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1
+prefhome(){ { echo "== $1"; adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep -E 'name=|packageName=' | head -2; adb shell dumpsys package preferred-xml 2>/dev/null | grep -iE 'tj|launcher' | head -4; } >> "$OUT/prefhome.txt" 2>&1; }
+# ---- power-menu helper (screenshots only: judged by eye + overlay window check)
+setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
+A11Y="$PKG/com.tj.launcher.TjAccessibilityService"
+rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep 1; adb shell settings put secure enabled_accessibility_services "$A11Y"; adb shell settings put secure accessibility_enabled 1; sleep 3; }
+a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
+rebind
+prefhome start
+setmode custom; home; prefhome after-setmode-home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off; prefhome after-menu
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setpower hide_screenshot; prefhome after-setpower; rebind; prefhome after-rebind; home; prefhome after-home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot; a11ydump hide
+adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setpower block; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block; a11ydump block
+adb shell input keyevent KEYCODE_BACK; sleep 1
+setmode quickstep; setpower hide_screenshot; prefhome after-setpower; rebind; prefhome after-rebind; home; prefhome after-home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 13-power-menu-quickstep-mode; a11ydump quickstep
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell settings put secure enabled_accessibility_services ""; adb shell settings put secure accessibility_enabled 0
+setpower off; setmode custom
 
 adb logcat -d | grep -iE 'AndroidRuntime|FATAL|TjRouter|TjHooks|TjRestore' | tail -80 > "$OUT/logcat-tj.txt" 2>&1
 echo "failed checks: $FAILS" | tee -a "$OUT/results.txt"
