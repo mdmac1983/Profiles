@@ -43,6 +43,13 @@ public class ControlActivity extends Activity {
         root.addView(button("Open Accessibility settings", new Runnable() { public void run() {
             startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
         }}));
+        root.addView(label("Return reset (when you double-press Home to come back)"));
+        root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
+        }}));
+        root.addView(button("Open notification access settings", new Runnable() { public void run() {
+            startActivity(new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        }}));
         root.addView(button("Restore everything", new Runnable() { public void run() {
             RestoreStore.restoreAll(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
@@ -64,6 +71,11 @@ public class ControlActivity extends Activity {
     private void refresh() {
         String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
         s += "\nPower menu: " + Features.powerMode(this);
+        String app = ReturnReset.findAppLabel(this);
+        s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")
+                + " - will open: " + (app == null ? "(no app matching '" + ReturnReset.appLabel(this) + "' found)" : app)
+                + "\nNotification access for clearing notifications: "
+                + (com.android.launcher3.notification.NotificationListener.getInstanceIfConnected() != null ? "ON" : "OFF (turn the launcher on in notification access)");
         if (CrashGuard.wasTripped(this)) s += "\n\nThe launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.";
         status.setText(s);
     }

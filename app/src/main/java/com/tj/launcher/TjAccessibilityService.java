@@ -50,7 +50,34 @@ public class TjAccessibilityService extends AccessibilityService {
             if (overlay != null) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
         }
-        if (!pending) { pending = true; handler.postDelayed(debounced, 120); }
+        // Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content.
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastEvalMs >= 40) {
+            lastEvalMs = now;
+            try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+        }
+        if (!pending) { pending = true; handler.postDelayed(debounced, 80); }
+    }
+
+    private long lastEvalMs = 0;
+
+    private static final String CARD_KEY = "power_card_rect";
+
+    private Rect cachedCard() {
+        String v = Features.getString(this, CARD_KEY, "");
+        String[] p = v.split(",");
+        if (p.length != 4) return null;
+        try { return new Rect(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]), Integer.parseInt(p[3])); }
+        catch (NumberFormatException e) { return null; }
+    }
+
+    private boolean dialogWindowPresent(List<AccessibilityWindowInfo> windows) {
+        if (windows == null) return false;
+        for (AccessibilityWindowInfo w : windows) {
+            CharSequence t = w.getTitle();
+            if (t != null && t.toString().contains("ActionsDialog")) return true;
+        }
+        return false;
     }
 
     @Override protected void onServiceConnected() {
@@ -73,6 +100,10 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean menuOpen = false, found = false;
         if (custom && !locked && !Features.POWER_OFF.equals(mode)) {
             List<AccessibilityWindowInfo> windows = getWindows();
+            if (overlay == null && Features.POWER_HIDE_SCREENSHOT.equals(mode)) {
+                Rect cached = cachedCard();
+                if (cached != null && dialogWindowPresent(windows)) showOverlay(cached);   // instant: no node scan yet
+            }
             if (windows != null) {
                 for (AccessibilityWindowInfo w : windows) {
                     AccessibilityNodeInfo root = w.getRoot();
@@ -104,6 +135,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
+            Features.setString(this, CARD_KEY, shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
             handler.removeCallbacks(recheck);
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
