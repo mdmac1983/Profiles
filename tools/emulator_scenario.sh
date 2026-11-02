@@ -12,7 +12,7 @@ check(){ # check "<name>" <command...>
   local name="$1"; shift
   if "$@" >/dev/null 2>&1; then echo "PASS  $name" | tee -a "$OUT/results.txt"; else echo "FAIL  $name" | tee -a "$OUT/results.txt"; FAILS=$((FAILS+1)); fi
 }
-setmode(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">$1</string></map>\" > shared_prefs/tj_mode.xml'"; }
+setmode(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">$1</string></map>\" > shared_prefs/tj_mode.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
 getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | grep -o 'mode">[a-z]*' | cut -d'>' -f2; }
 home(){ adb shell input keyevent KEYCODE_HOME; sleep 4; }
 
@@ -46,7 +46,12 @@ check "switching back to custom works" grep -q 'com.tj.launcher/com.android.laun
 
 # ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
 setmode custom; home
-for i in 1 2 3; do adb shell am crash "$PKG"; sleep 4; done
+adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
+for i in 1 2 3; do
+  adb shell am crash "$PKG"; sleep 5
+  adb shell "run-as $PKG cat shared_prefs/tj_crash.xml" > "$OUT/crash-prefs-$i.txt" 2>&1
+  adb shell input keyevent KEYCODE_HOME; sleep 4     # restarts the launcher process for the next crash, dismisses a crash dialog
+done
 sleep 3; echo "mode after 3 crashes: $(getmode)" | tee "$OUT/crash-mode.txt"
 check "crash breaker switched to quickstep" bash -c "[ \"$(getmode)\" = quickstep ]"
 home; resumed > "$OUT/resumed-after-crashes.txt"
