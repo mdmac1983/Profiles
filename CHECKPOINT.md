@@ -1,21 +1,23 @@
-# CHECKPOINT 115 — read me first, then TASKS.md
+# CHECKPOINT 116 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T20:41:29Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `5db5449` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T20:51:34Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `c04c44e` (this checkpoint is the commit after it)
 
 ## Just done
-SOL1: reset no longer presses HOME (it raced the app launch on the slow tablet); target app started last, verified in front via accessibility and re-started up to 3 times; report in Launcher control.
+Emulator 25/26 PASS (hide apps, search, reinstall=hidden, lock, reset2 notification cleared, Solitaire/Calendar opened). Fixed the Recents test (stale tasks): uses never-launched apps Messaging/Clock.
 
 ## Do this next
-Dispatch final emulator run on this commit; if green ship v0.3.0 (hide apps, lock, recents policy, switches, Solitaire fix).
+Dispatch emulator.yml; if the recents checks pass ship v0.3.0; power-key diagnostic is inconclusive (injected keys bypass the accessibility filter).
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  c04c44e ckpt 115: SOL1: reset no longer presses HOME (it raced the app launch on the slow tablet
   c88c0ac ckpt 112: SW1: three independent switches in Launcher control (A launch flag, B1 shade C
   8b3859b ckpt 109: REC1 built: RecentsPolicy adds FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS to every lau
   8c9345b ckpt 106: RESET2 built: TjAccessibilityService.runReset (open shade -> press Clear all; 
@@ -25,8 +27,4 @@ Dispatch final emulator run on this commit; if green ship v0.3.0 (hide apps, loc
   ae2f0ba ckpt 98: Wrote Tj's HIDE1/LOCK1/SET1/PWR2 requests.
   c39bd5e ckpt 96: Released v0.2.3. Emulator 19/19: reset (apps closed 2/3, notifications cleared,
   9b4b4e6 ckpt 94: gated v0.2.3 (code 5) and pushed it: the handoff self-test, the full unit suite
-  0615a14 ckpt 93: pre-ship: v0.2.3: return reset on double-Home (close apps, clear notifications,
 ```
-
-(2 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
