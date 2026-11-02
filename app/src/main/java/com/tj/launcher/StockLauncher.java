@@ -14,7 +14,7 @@ public final class StockLauncher {
     private StockLauncher() {}
 
     /** Pure choice rule, testable on the JVM: skip ourselves, prefer a system app, prefer com.android.launcher3, else first. */
-    public static ComponentName choose(List<ActivityInfo> homes, String selfPackage) {
+    public static ActivityInfo choose(List<ActivityInfo> homes, String selfPackage) {
         ActivityInfo best = null;
         int bestScore = -1;
         for (ActivityInfo a : homes) {
@@ -24,7 +24,7 @@ public final class StockLauncher {
             if ("com.android.launcher3".equals(a.packageName)) score += 4;
             if (score > bestScore) { bestScore = score; best = a; }
         }
-        return best == null ? null : new ComponentName(best.packageName, best.name);
+        return best;
     }
 
     public static ComponentName find(Context c) {
@@ -32,6 +32,7 @@ public final class StockLauncher {
         List<ResolveInfo> ris = c.getPackageManager().queryIntentActivities(home, PackageManager.MATCH_DEFAULT_ONLY);
         java.util.ArrayList<ActivityInfo> infos = new java.util.ArrayList<>();
         for (ResolveInfo ri : ris) infos.add(ri.activityInfo);
-        return choose(infos, c.getPackageName());
+        ActivityInfo a = choose(infos, c.getPackageName());
+        return a == null ? null : new ComponentName(a.packageName, a.name);
     }
 }

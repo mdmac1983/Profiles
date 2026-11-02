@@ -2,7 +2,6 @@ package com.tj.launcher;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import android.content.ComponentName;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import java.util.Arrays;
@@ -23,14 +22,14 @@ public class StockLauncherTest {
     }
 
     @Test public void prefersSystemQuickstep() {
-        ComponentName c = StockLauncher.choose(Arrays.asList(
+        ActivityInfo c = StockLauncher.choose(Arrays.asList(
                 home("com.tj.launcher", "R", false), home("com.nova", "N", false),
                 home("com.android.launcher3", "com.android.launcher3.uioverrides.QuickstepLauncher", true)), "com.tj.launcher");
-        assertEquals("com.android.launcher3", c.getPackageName());
+        assertEquals("com.android.launcher3", c.packageName);
     }
 
     @Test public void fallsBackToAnyOtherHome() {
-        ComponentName c = StockLauncher.choose(Arrays.asList(home("com.tj.launcher", "R", false), home("com.other", "O", false)), "com.tj.launcher");
-        assertEquals("com.other", c.getPackageName());
+        ActivityInfo c = StockLauncher.choose(Arrays.asList(home("com.tj.launcher", "R", false), home("com.other", "O", false)), "com.tj.launcher");
+        assertEquals("com.other", c.packageName);
     }
 }
