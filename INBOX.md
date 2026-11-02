@@ -54,3 +54,11 @@ Before any release apk on the project, Claude must be highly confident that the 
 A friend made a custom launcher similar to what I described here, and it made my lock screen glitch and wouldn't log in and it returned all of the quick settings tiles to the notification panel. I only want the auto rotate quick setting tile, which is currently what I have. 
 It is extremely important that any release I install does not break anything like my friend's launcher did. I must be able to revert any changes if something goes wrong, and Claude should be confident that the apk won't interfere or break anything on the tablet.
 ```
+
+## 2026-11-02T14:40:21Z
+```
+1) I can send adb commands at a later time, but I want as much as possible to work without adb, with an option to add adb features later 
+2) I want a two finger clockwise gesture to return to quickstep, and either a small killswitch button on screen or a two finger counter clockwise gesture for the kill switch, or pressing both volume buttons at the same time 
+3) try the flicker power menu but only hide the screenshot button. Make this an option I can quickly turn off if it doesn't work 
+4) it can be signed by github if possible, security isn't important
+```
