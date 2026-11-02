@@ -10,3 +10,4 @@ No releases yet.
 <!-- format once entries start:
 | v0.1.0 | code 1 | 2026-01-01T00:00Z | what changed this release
 -->
+| v0.2.0 | code 2 | 2026-11-02T15:15Z | safe core test build: Launcher3 Go port + router + Quickstep switch + crash breaker + restore; no system settings touched
