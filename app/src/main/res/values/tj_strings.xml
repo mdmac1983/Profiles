@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tj_accessibility_description">Launcher power-menu helper: hides the Screenshot button (or the whole power menu) while the custom launcher is active. Turn it off here at any time.</string>
+    <string name="tj_accessibility_label">Launcher power-menu helper</string>
+</resources>
