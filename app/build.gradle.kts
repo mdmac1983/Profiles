@@ -17,8 +17,8 @@ android {
         // the app is ever to run on a newer phone.
         minSdk = 29
         targetSdk = 28   // AOSP Launcher3 Go value; <=28 lets the kill switch toggle Wi-Fi/Bluetooth (BRIEF.md)
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     // The keystore is NOT in git (BRIEF.md). Signing is wired only when the file exists, so
@@ -38,8 +38,9 @@ android {
     buildTypes {
         release {
             // Go edition: small APK and low RAM matter. R8 shrinks code and resources.
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // R8 off for now: a minifier-only crash on the real tablet is a failure class we cannot test here, and 1.3 GB free is plenty for a ~10 MB APK. Revisit with an emulator run on the minified build.
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfigs.findByName("sideload")?.let { signingConfig = it }
         }
