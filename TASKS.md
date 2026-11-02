@@ -54,7 +54,7 @@ quick settings with only Auto-rotate tile). Modifications:
 - [ ] P2 Look check: emulator API 29 screenshots vs research/uploads/2026-11-02 (home 3 cols, drawer 5 cols translucent + Search apps, folders, popup, Home settings)
 - [~] P3 (router, Mode, StockLauncher, CrashGuard, RestoreStore, Features, rotation detector + ControlActivity DONE with JVM tests 2026-11-02; still TODO: manifest/source guard test, adb scripts, emulator scenarios) Safety core: RestoreStore, crash-loop breaker, Quickstep pass-through mode, Restore action, manifest/source guard test (no admin/keyguard/overlay/lock settings), tools/adb-grant.sh + tools/adb-restore.sh
 - [x] P4 CI emulator job (emulator.yml, manual): router/mode flip/crash breaker/uninstall/manifest checks all PASS 2026-11-02 (run 41468097179)
-- [ ] P5 Release v0.2 "safe core" (needs keystore): Release link + residual-risk note + first-install checklist
+- [x] P5 Release v0.2.0 published 2026-11-02 (signed by GitHub; https://github.com/tjshea90/Launcher/releases/tag/v0.2.0). Tj has NOT yet tested it on the tablet. Release v0.2 "safe core":
 - [ ] P6 L2, L6, L3 -> v0.3;  P7 L7, L5, L9 each default OFF -> v0.4;  P8 L4 experimental -> v0.5
 
 ## Tj's answers, 2026-11-02 (verbatim)
