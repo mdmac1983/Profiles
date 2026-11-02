@@ -84,6 +84,9 @@ v0.2.0 = 4x4 grid + search bar + dock, 4-column tall-row opaque drawer.  Recents
 - [ ] LK3 emulator scenario at 600x1024, density 170, font_scale 1.2 for side-by-side comparison with the STOCK photos
 - [ ] LK4 first-run home layout like his (folders Connect/Games, same app order) — default_workspace XML or label-based importer (stock DB is not readable without system permission)
 - [x] R3 recents button works with our router as Home (Tj, v0.2.0)
-- [ ] G3b power menu: hide the Screenshot button completely; if impossible, suppress the whole power menu until Quickstep (his rule)
+- [x] G3b power menu: Screenshot hidden completely on the emulator (v0.2.1, opt-in accessibility); block-whole-menu mode also built; needs Tj device test
 - [x] LK1/LK2 measured (2026-11-02): stock drawer = 5 columns, tile 55 px (=> Go icon 60 dp at 170 dpi), scrim = 50% white (least-squares over 2 stock screenshots, residual 8); applied in go/res device_profiles + styles (v0.2.1 candidate)
 - [ ] G3b result so far: emulator has the same AOSP power menu; first accessibility run did nothing (service probably unbound by the test's force-stop; no logs). Re-running with diagnostics + rebind. Tj's extra question: can a NEW power menu replace the system one (answer: yes via accessibility cover/replace, same dependency; no non-accessibility route on a locked Android 10)
+- [ ] LK5 OPEN QUESTION for Tj: does the stock home have a dock (can he drop icons at the bottom edge)? Decides 8 rows/no dock (pitch 113 px like stock) vs 7 rows + dock (pitch 121 px, current). Stock row pitch measured 113 px, mine 121.
+- [ ] LK6 first-run home layout like his (folders Connect/Games + app order) — needs package names; label-based importer
+- [ ] L2 hide apps / L6 hide new installs / L3 clone Settings (v0.3), G2 kill switch (button, CCW twist, both volume keys), L7 keyboard switch, L5 tiles guard
