@@ -32,3 +32,10 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
 - Home screen: 8 rows, NO dock, no "^" caret (matches your stock photos). Drawer unchanged from v0.2.1 (it matched).
 - Power menu: "remove Screenshot (two-button menu)" now covers the whole system card with Power off + Restart (no gray gap); tapping them presses the real buttons. If a press ever fails the original menu is revealed.
 - **Double-press Home** in the stock launcher = back to the custom launcher.
+
+## v0.2.3 (2026-11-02)
+- **Return reset.** When you double-press Home to come back from the stock launcher, the launcher now: asks Android to close every app (apps with their own running service may stay), clears all notifications,
+  turns Wi-Fi and Bluetooth off, and opens your Solitaire app (found by name; Launcher control shows which app it found). Master switch: Launcher control > "Return reset: ON / OFF".
+  For notifications to clear, turn on **Notification access** for "Launcher" (Launcher control has a button that opens that page). Recents thumbnails can remain (clearing the Recents list needs a system permission).
+- **Twist gesture** is more responsive: the home screen no longer scrolls while two fingers are down, and it fires after 30 degrees (was 40).
+- **Faster power-menu cover**: acts on the first event and remembers where the card is (a very brief flash may remain; Android creates the menu before we can react).
