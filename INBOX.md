@@ -105,3 +105,12 @@ What about drawing a copy of an identical portion of the wallpaper over the scre
 ```
 When I do the gesture, it goes to quickstep, but I don't know how to go back to the new launcher. There needs to be a quick way to go back to the new launcher
 ```
+
+## 2026-11-02T19:47:25Z
+```
+Don't worry about the home layout, I will set the apps how i want. 
+
+1) is there a faster way to cover the screenshot button so it doesn't show at all? 
+2) forget the kill switch button, but make it so when I double tap the home button to go back to the custom launcher, it automatically and immediately closes all apps and clears all notifications and turns off all connections such as Bluetooth or wifi so the notification panel only shows the battery symbol and clock, and automatically and immediately opens the solitaire app already on the tablet.  Maybe this needs to be set in the launcher so it does all of this when the launcher opens
+3) sometimes the gesture to return to quickstep is unresponsive because it instead drags the home screen left and right. This is a normal android behavior, but see if the gesture can be more responsive
+```
