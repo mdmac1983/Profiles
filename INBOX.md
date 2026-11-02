@@ -114,3 +114,12 @@ Don't worry about the home layout, I will set the apps how i want.
 2) forget the kill switch button, but make it so when I double tap the home button to go back to the custom launcher, it automatically and immediately closes all apps and clears all notifications and turns off all connections such as Bluetooth or wifi so the notification panel only shows the battery symbol and clock, and automatically and immediately opens the solitaire app already on the tablet.  Maybe this needs to be set in the launcher so it does all of this when the launcher opens
 3) sometimes the gesture to return to quickstep is unresponsive because it instead drags the home screen left and right. This is a normal android behavior, but see if the gesture can be more responsive
 ```
+
+## 2026-11-02T20:24:42Z
+```
+Now build the ability to hide apps from the app drawer. Any hidden apps should never show up in the app drawer search bar.  Additionally, newly installed apps are automatically hidden from the app drawer, unless i go into the launcher settings and explicitly unhide apps one by one.  The settings menu for the custom launcher should only be visible and accessible when the quickstep launcher is on. The goal is to "lock" the user into the custom launcher, which looks and behaves completely stock, unless i do the gesture to switch to quickstep.
+
+Then consider how you can build a cloned settings app which looks and behaves exactly identical to the stock Android 10 go settings already on the tablet, but I can customize it to remove settings and rearrange settings. Maybe download the actual settings app code just like you did with the actual quickstep launcher code?
+
+Then consider even faster ways to hide the screenshot button.  Can the accessibility mode prevent the power menu completely without hiding it? Can the accessibility feature make the alerted power menu show immediately on side key press (such as the time it usually takes for a quick button press to turn the screen off) while the original Android power menu takes a little longer because it requires a long side key press?
+```
