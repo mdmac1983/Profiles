@@ -21,6 +21,8 @@ name: Build APK
 on:
   push:
     tags: ['v*']
+    branches: ['ccr-4ff66321-chzhhg', 'main']
+    paths: ['.github/workflows/android.yml']
   workflow_dispatch:
     inputs:
       full_build:
