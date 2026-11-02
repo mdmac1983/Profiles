@@ -76,6 +76,8 @@ public class SessionCommitReceiver extends BroadcastReceiver {
     }
 
     public static void queueAppIconAddition(Context context, String packageName, UserHandle user) {
+        // Tj: a hidden / not-yet-allowed app must not be put on the home screen either.
+        if (!com.tj.launcher.HiddenApps.isPackageShown(context, packageName)) return;
         List<LauncherActivityInfo> activities = LauncherAppsCompat.getInstance(context)
                 .getActivityList(packageName, user);
         if (activities == null || activities.isEmpty()) {

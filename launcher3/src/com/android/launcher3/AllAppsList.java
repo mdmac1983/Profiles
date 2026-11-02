@@ -90,8 +90,8 @@ public class AllAppsList {
                               PackageInstallerCompat.PackageInstallInfo installInfo) {
         ApplicationInfo applicationInfo = LauncherAppsCompat.getInstance(context)
                 .getApplicationInfo(installInfo.packageName, 0, Process.myUserHandle());
-        // only if not yet installed
-        if (applicationInfo == null) {
+        // only if not yet installed (and Tj has not hidden / not yet allowed it)
+        if (applicationInfo == null && com.tj.launcher.HiddenApps.isPackageShown(context, installInfo.packageName)) {
             PromiseAppInfo info = new PromiseAppInfo(installInfo);
             mIconCache.getTitleAndIcon(info, info.usingLowResIcon());
             data.add(info);

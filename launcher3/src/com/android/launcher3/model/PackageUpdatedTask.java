@@ -124,6 +124,7 @@ public class PackageUpdatedTask extends BaseModelUpdateTask {
             case OP_REMOVE: {
                 for (int i = 0; i < N; i++) {
                     iconCache.removeIconsForPkg(packages[i], mUser);
+                    com.tj.launcher.HiddenApps.onRemoved(context, packages[i]);   // Tj: a reinstall counts as a NEW app
                 }
                 // Fall through
             }
