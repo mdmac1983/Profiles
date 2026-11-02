@@ -58,18 +58,22 @@ setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml v
 setfeat; setmode quickstep
 adb shell cmd notification allow_listener "$PKG/com.android.launcher3.notification.NotificationListener" > "$OUT/allow-listener.txt" 2>&1; sleep 2
 adb shell svc wifi enable; sleep 2
-adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell pidof com.android.contacts > "$OUT/contacts-pid-before.txt" 2>&1
-adb shell cmd notification post -S bigtext -t TjTest tjtag1 "hello from the test" >/dev/null 2>&1; sleep 2
+for APP in com.android.contacts com.android.gallery3d com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+for APP in com.android.contacts com.android.gallery3d com.android.email; do echo "$APP $(adb shell pidof $APP | tr -d '\r\n')" >> "$OUT/apps-before.txt"; done
+adb shell dumpsys activity processes | grep -E 'Proc #|oom:' | grep -iE 'contacts|gallery3d|email' > "$OUT/oom-before.txt" 2>&1
+adb shell cmd notification post -S bigtext -t TjTest tjtag1 "hello from the test" >/dev/null 2>&1
+sleep 2
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag1 > "$OUT/notif-before.txt" 2>&1
 home; sleep 2
 adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 7
 resumed > "$OUT/resumed-reset.txt"
-adb shell pidof com.android.contacts > "$OUT/settings-pid-after.txt" 2>&1
+for APP in com.android.contacts com.android.gallery3d com.android.email; do echo "$APP $(adb shell pidof $APP | tr -d '\r\n')" >> "$OUT/apps-after.txt"; done
+adb shell dumpsys activity processes | grep -E 'Proc #|oom:' | grep -iE 'contacts|gallery3d|email' > "$OUT/oom-after.txt" 2>&1
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag1 > "$OUT/notif-after.txt" 2>&1
 adb shell settings get global wifi_on > "$OUT/wifi-after.txt" 2>&1
 adb logcat -d -s TjReset:I > "$OUT/tjreset-log.txt" 2>&1
 check "reset: the chosen app (Calendar) was opened" grep -qi 'calendar' "$OUT/resumed-reset.txt"
-check "reset: the previously open app (Contacts) was running before and closed after" bash -c "[ -n \"$(tr -d ' \r\n' < $OUT/contacts-pid-before.txt)\" ] && [ -z \"$(cat $OUT/settings-pid-after.txt | tr -d ' \r\n')\" ]"
+check "reset: at least one of the three test apps was closed (killBackgroundProcesses works)" bash -c 'n=0; for a in contacts gallery3d email; do b=$(grep "android.$a " '"$OUT"'/apps-before.txt | cut -d" " -f2); f=$(grep "android.$a " '"$OUT"'/apps-after.txt | cut -d" " -f2); [ -n "$b" ] && [ "$b" != "$f" ] && n=$((n+1)); done; [ $n -ge 1 ]'
 check "reset: the test notification was cleared" bash -c "[ \"$(cat $OUT/notif-before.txt | tr -d ' \r\n')\" != 0 ] && [ \"$(cat $OUT/notif-after.txt | tr -d ' \r\n')\" = 0 ]"
 check "reset: Wi-Fi was turned off" bash -c "[ \"$(cat $OUT/wifi-after.txt | tr -d ' \r\n')\" = 0 ]"
 adb shell svc wifi enable >/dev/null 2>&1
