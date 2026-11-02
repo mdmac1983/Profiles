@@ -944,6 +944,7 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
 
     @Override
     protected void onResume() {
+        com.tj.launcher.TjHooks.onLauncherResumed();
         RaceConditionTracker.onEvent(ON_RESUME_EVT, ENTER);
         TraceHelper.beginSection("ON_RESUME");
         super.onResume();
@@ -971,6 +972,7 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
 
     @Override
     protected void onPause() {
+        com.tj.launcher.TjHooks.onLauncherPaused();
         // Ensure that items added to Launcher are queued until Launcher returns
         InstallShortcutReceiver.enableInstallQueue(InstallShortcutReceiver.FLAG_ACTIVITY_PAUSED);
 
@@ -1348,13 +1350,21 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
     public int getOrientation() { return mOldConfig.orientation; }
 
     @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        com.tj.launcher.TjHooks.onTouch(this, ev);   // Tj: observation only, never consumes
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
     protected void onNewIntent(Intent intent) {
         TraceHelper.beginSection("NEW_INTENT");
         super.onNewIntent(intent);
 
-        boolean alreadyOnHome = hasWindowFocus() && ((intent.getFlags() &
+        boolean alreadyOnHome = (hasWindowFocus() && ((intent.getFlags() &
                 Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT)
-                != Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT);
+                != Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT))
+                // Tj: the invisible RouterActivity answers Home, so Launcher has already lost focus; the router tells us Home was pressed while on Home.
+                || intent.getBooleanExtra(com.tj.launcher.TjHooks.EXTRA_HOME_WHILE_ON_HOME, false);
 
         // Check this condition before handling isActionMain, as this will get reset.
         boolean shouldMoveToDefaultScreen = alreadyOnHome && isInState(NORMAL)

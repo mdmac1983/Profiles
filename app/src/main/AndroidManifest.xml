@@ -43,6 +43,7 @@
     <uses-permission android:name="${packageName}.permission.WRITE_SETTINGS" />
 
     <application
+        android:name="com.tj.launcher.TjApplication"
         android:allowBackup="false"
         android:theme="@style/AppTheme"
         android:hardwareAccelerated="true"
@@ -169,7 +170,6 @@
             android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
@@ -177,6 +177,36 @@
             <meta-data
                 android:name="com.android.launcher3.grid.control"
                 android:value="${packageName}.grid_control" />
+        </activity>
+
+        <!-- Tj: the ONLY HOME activity. Invisible; forwards to our Launcher or the stock launcher (RouterActivity). -->
+        <activity
+            android:name="com.tj.launcher.RouterActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:stateNotNeeded="true"
+            android:taskAffinity=""
+            android:label="@string/derived_app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Tj: "Launcher control" icon; reachable from the stock launcher too (switch back, restore everything). -->
+        <activity
+            android:name="com.tj.launcher.ControlActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:label="Launcher control">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>
