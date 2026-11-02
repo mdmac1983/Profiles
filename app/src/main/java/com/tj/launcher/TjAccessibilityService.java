@@ -138,20 +138,32 @@ public class TjAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    private TextView cardButton(String label, int iconRes, final String realLabel) {
-        TextView b = new TextView(this);
-        b.setText(label);
-        b.setTextSize(14);
-        b.setTextColor(Color.parseColor("#FF5F6368"));
+    private View cardButton(String label, int iconRes, final String realLabel) {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.VERTICAL);
         b.setGravity(Gravity.CENTER);
-        Drawable d = getDrawable(iconRes);
-        b.setCompoundDrawablesWithIntrinsicBounds(null, d, null, null);
-        b.setCompoundDrawablePadding(8);
         b.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        android.widget.ImageView icon = new android.widget.ImageView(this);
+        icon.setImageDrawable(getDrawable(iconRes));
+        b.addView(icon, new LinearLayout.LayoutParams((int) (24 * getResources().getDisplayMetrics().density), (int) (24 * getResources().getDisplayMetrics().density)));
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextSize(12);
+        t.setTextColor(Color.parseColor("#FF5F6368"));
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(0, (int) (8 * getResources().getDisplayMetrics().density), 0, 0);
+        b.addView(t);
+        b.setOnTouchListener(new View.OnTouchListener() {
+            @Override public boolean onTouch(View v, android.view.MotionEvent e) {
+                Log.i(TAG, "card touch " + realLabel + " action=" + e.getActionMasked());
+                return false;
+            }
+        });
         b.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
+                Log.i(TAG, "card click " + realLabel);
                 // fail open: if the real button cannot be pressed, take our card away so the original menu is usable
-                if (!pressReal(realLabel)) removeOverlay();
+                if (!pressReal(realLabel)) { Log.i(TAG, "press '" + realLabel + "' -> false (revealing original menu)"); removeOverlay(); }
             }
         });
         return b;

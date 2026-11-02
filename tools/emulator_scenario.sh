@@ -19,7 +19,7 @@ setmode(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml v
 getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | grep -o 'mode">[a-z]*' | cut -d'>' -f2; }
 home(){ adb shell input keyevent KEYCODE_HOME; sleep 4; }
 
-adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
+adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
 adb shell dumpsys package "$PKG" > "$OUT/package-dump.txt" 2>&1
 
@@ -105,6 +105,7 @@ set -- $RECT
 if [ "$#" -ge 4 ]; then
   X=$(( ($1 + $3) / 2 )); Y=$(( $2 + ($4 - $2) * 3 / 4 ))
   echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
+  adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|com.tj.launcher|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
   adb shell input tap $X $Y; sleep 2
   adb logcat -d -s TjA11y:I 2>/dev/null | grep "press" >> "$OUT/press-restart.txt"
 else
