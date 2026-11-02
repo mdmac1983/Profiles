@@ -2,6 +2,9 @@
 # emulator_scenario.sh — runs INSIDE the CI emulator (adb connected). Screenshots + results land in emulator-out/. Exit != 0 if a SAFETY assertion fails.
 # Not for local use. Screenshot steps tolerate failure; the SAFETY checks (marked CHECK) decide the exit code.
 set -uo pipefail
+# every adb call is bounded: a hung command must cost seconds, not the whole run (an earlier run hung for 15+ minutes)
+adb(){ timeout 60 "$(command -v adb)" "$@"; }
+export -f adb
 OUT=emulator-out; mkdir -p "$OUT"
 APK=app/build/outputs/apk/debug/app-debug.apk
 PKG=com.tj.launcher

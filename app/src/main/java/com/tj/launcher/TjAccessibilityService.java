@@ -29,8 +29,23 @@ public class TjAccessibilityService extends AccessibilityService {
     private View overlay;
     private final Runnable recheck = new Runnable() { @Override public void run() { evaluate(); } };
 
+    private boolean pending = false;
+    private final Rect shownAt = new Rect();
+    private final Runnable debounced = new Runnable() {
+        @Override public void run() {
+            pending = false;
+            try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+        }
+    };
+
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+        // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
+        if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
+        if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
+            if (overlay != null) removeOverlay();
+            return;   // nothing to do and nothing scanned: zero cost when the feature is off
+        }
+        if (!pending) { pending = true; handler.postDelayed(debounced, 120); }
     }
 
     @Override public void onInterrupt() { removeOverlay(); }
@@ -73,7 +88,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
             handler.removeCallbacks(recheck);
-            handler.postDelayed(recheck, 1500);   // if the menu closed without an event we still clean up
+            handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
@@ -93,8 +108,10 @@ public class TjAccessibilityService extends AccessibilityService {
             overlay = new View(this);
             overlay.setBackgroundColor(PANEL_COLOR);
             wm.addView(overlay, lp);
-        } else {
+            shownAt.set(r);
+        } else if (!shownAt.equals(r)) {
             wm.updateViewLayout(overlay, lp);
+            shownAt.set(r);
         }
     }
 
@@ -103,5 +120,6 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlay == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(overlay); } catch (Throwable ignored) { }
         overlay = null;
+        shownAt.setEmpty();
     }
 }
