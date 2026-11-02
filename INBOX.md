@@ -84,3 +84,14 @@ Notice the grid layout and transparency of the stock launcher
 ```
 compare the screenshots to my stock launcher, including the amount of transparency. If the accessibility for the power menu doesn't work, is it possible to build a new power menu that opens with the side key using accessibility or any other method?
 ```
+
+## 2026-11-02T18:42:23Z
+```
+It has no dock, use 8 rows. 
+
+Go back and look at the photos of the stock launcher. Remember these photos for reference at all times, even in a new Claude session. 1.png and 2.png from earlier in this session are the screenshots of the stock launcher. 
+
+Review the screenshots attached here for how the new launcher looks. See if they are identical. 
+
+Also, is there a way to completely hide the screenshot button and just make that whole section look identical to the wallpaper below it or make a new power menu with no screenshot button or gray space at all?
+```
