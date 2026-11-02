@@ -1,1 +1,56 @@
 # INBOX — every message Tj sends, verbatim (written by tools/capture_inbox.sh)
+
+## 2026-11-02T14:26:37Z
+```
+Review this session history for context and the goals of this project. Make a repo for this project and an environment for building apk files with skills and plug-ins loaded for maximum efficiency and proficiency at building the app. Implement a thorough checkpoint, ladder, and save mechanism that frequently saves all progress to github in case of Claude usage running out and interrupting Claude processing. You may adopt this system from other repos I have on github. Choose the most comprehensive system. 
+
+
+During this entire app build and project, keep the goals in mind which I described earlier in this session. 
+Build a custom launcher and send it to me as an apk file. The custom launcher must be optimized and work seamlessly with the following hardware and software :
+
+
+Secure generic Alps 711 tb8168p1_bsp
+
+Mt8168B
+
+GPU: Mali-G52 MC2
+
+Modified Android 10 Go Api level 29, security patch level July 5, 2021
+
+Build fingerprint: alps/vnd_tb8168p1_bsp/tb8168p1_bsp:10/QP1A.190711.020/1719850017:user/release-keys
+
+Android device id: efecad8ee802edae
+
+Treble: supported
+
+Kernel: 4.14.141
+
+Secure boot
+
+Locked bootloader
+
+Build no. : sys_mssi_t_32_ago-user.2024070111 release-keys
+
+Custom build version: alps-mp-q0.mp3-V4.160
+Stock launcher: Quickstep version 10
+
+The custom launcher should be the default Android launcher and boot with android, but may be switched back to the normal quickstep stock launcher by using a custom gesture. 
+The launcher must adopt the default Android 10 go layouts and fonts, app drawer and functionality. Review the attached screenshots for the exact look and layout of the Quickstep version 10 launcher. The entire launcher must look and function  completely identical to the stock launcher (quickstep version 10), and may simply adopt the quickstep code (Claude may download from the internet and inspect and analyze Quickstep version 10) with the following modifications :
+
+1) ability to give the launcher special permissions using adb which you described earlier in the session, plus additional permissions needed for the rest of the features below. If I don't add the special permissions, the rest of the launcher should work exactly as described, but any features which require the special permissions simply won't be available until adb grants them. 
+2) feature to hide apps which I select  from the app drawer and from the app drawer search feature, which reappear when I switch back to quickstep. 
+3) feature to show  only a clone android settings app in the app drawer  which I can customize with working settings but hiding other settings which I choose, switching back to the regular settings app when I switch back to quickstep. 
+4) feature to disable the power menu that displays with the side key, but return it when I switch back to quickstep. 
+5) feature to automatically and permanently remove all quick settings tiles from the notification panel except the screen rotation toggle. This feature should persist permanently, even when switched back to quickstep launcher, unless it can safely add and remove quick settings tiles without adb every time (Android currently says I must have at least 6 quick settings tiles, unless I remove them via adb. I want to switch between 1 and 3 tiles without adb. But if this is not possible, permanently keep the one auto rotate toggle tile and consider if an overlay can be added when quickstep launcher is on which adds additional functions to the notification panel ) 
+6) feature which prevents any newly installed app from showing up in the custom launcher app drawer, but appear when I switch back to quickstep. 
+7) feature to default to the stock android keyboard while the custom launcher is active then automatically switch to Microsoft SwiftKey when I switch back to quickstep. 
+
+
+Essentially, the custom launcher and quickstep should look and behave identically, but with the added features for the custom launcher, and a custom gesture to return to the regular quickstep launcher.
+The default launcher should be the custom launcher, with quickstep only appearing when I do the custom gesture. 
+There should be a separate custom  gesture or kill switch button, which automatically and immediately closes all open apps, closes all notifications, turns off Bluetooth if it is on, turns off wifi if it is on, and immediately returns to the custom launcher. 
+
+Before any release apk on the project, Claude must be highly confident that the apk will not break anything on the tablet, and if possible, include a failsafe to remove all modifications and restore android to the state before the custom launcher. 
+A friend made a custom launcher similar to what I described here, and it made my lock screen glitch and wouldn't log in and it returned all of the quick settings tiles to the notification panel. I only want the auto rotate quick setting tile, which is currently what I have. 
+It is extremely important that any release I install does not break anything like my friend's launcher did. I must be able to revert any changes if something goes wrong, and Claude should be confident that the apk won't interfere or break anything on the tablet.
+```
