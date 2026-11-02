@@ -48,6 +48,11 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!pending) { pending = true; handler.postDelayed(debounced, 120); }
     }
 
+    @Override protected void onServiceConnected() {
+        super.onServiceConnected();
+        Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
+    }
+
     @Override public void onInterrupt() { removeOverlay(); }
 
     @Override public boolean onUnbind(android.content.Intent i) { removeOverlay(); return super.onUnbind(i); }
@@ -85,6 +90,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
         }
         int action = PowerMenuRule.decide(mode, custom, locked, menuOpen, found);
+        if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
             handler.removeCallbacks(recheck);

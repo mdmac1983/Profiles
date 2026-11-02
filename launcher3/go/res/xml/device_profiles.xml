@@ -17,8 +17,8 @@
             launcher:name="Alps 711 tablet"
             launcher:minWidthDps="296"
             launcher:minHeightDps="491.33"
-            launcher:iconImageSize="46"
-            launcher:iconTextSize="13.0"
+            launcher:iconImageSize="60"
+            launcher:iconTextSize="14.0"
             launcher:canBeDefault="true" />
     </grid-option>
 </profiles>

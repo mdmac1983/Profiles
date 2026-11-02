@@ -30,7 +30,7 @@
     </style>
 
     <style name="LauncherTheme" parent="@style/BaseLauncherTheme">
-        <item name="allAppsScrimColor">#99FFFFFF</item>
+        <item name="allAppsScrimColor">#80FFFFFF</item>
         <item name="allAppsInterimScrimAlpha">46</item>
         <item name="allAppsNavBarScrimColor">#66FFFFFF</item>
         <item name="popupColorPrimary">#FFF</item>

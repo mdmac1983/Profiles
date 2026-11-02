@@ -49,19 +49,22 @@ check "switching back to custom works" grep -q 'com.tj.launcher/com.android.laun
 
 # ---- power-menu helper (screenshots only: judged by eye + overlay window check)
 setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
-adb shell settings put secure enabled_accessibility_services "$PKG/com.tj.launcher.TjAccessibilityService"; adb shell settings put secure accessibility_enabled 1; sleep 2
+A11Y="$PKG/com.tj.launcher.TjAccessibilityService"
+rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep 1; adb shell settings put secure enabled_accessibility_services "$A11Y"; adb shell settings put secure accessibility_enabled 1; sleep 3; }
+a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
+rebind
 setmode custom; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off
 adb shell input keyevent KEYCODE_BACK; sleep 1
-setpower hide_screenshot; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot
+setpower hide_screenshot; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 11-power-menu-hide-screenshot; a11ydump hide
 adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
 adb shell input keyevent KEYCODE_BACK; sleep 1
-setpower block; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block
+setpower block; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block; a11ydump block
 adb shell input keyevent KEYCODE_BACK; sleep 1
-setmode quickstep; setpower hide_screenshot; home
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 13-power-menu-quickstep-mode
+setmode quickstep; setpower hide_screenshot; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 13-power-menu-quickstep-mode; a11ydump quickstep
 adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell settings put secure enabled_accessibility_services ""; adb shell settings put secure accessibility_enabled 0
 setpower off; setmode custom
