@@ -203,6 +203,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Tj: chooser for the apps shown in the custom launcher (opens only in Quickstep mode; no launcher icon of its own). -->
+        <activity
+            android:name="com.tj.launcher.HiddenAppsActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:label="Apps shown in the custom launcher" />
+
         <!-- Tj: "Launcher control" icon; reachable from the stock launcher too (switch back, restore everything). -->
         <activity
             android:name="com.tj.launcher.ControlActivity"

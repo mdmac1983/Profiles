@@ -18,6 +18,8 @@ public class ControlActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // Tj: the launcher's settings are only available while the stock launcher (Quickstep) is on ("lock" the user into the custom launcher).
+        if (Mode.isCustom(this)) { finish(); return; }
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -35,6 +37,9 @@ public class ControlActivity extends Activity {
         root.addView(button("Use stock launcher (Quickstep)", new Runnable() { public void run() {
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
             goHome();
+        }}));
+        root.addView(button("Choose apps shown in the custom launcher", new Runnable() { public void run() {
+            startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
         }}));
         root.addView(label("Power menu (needs the helper turned on in Accessibility)"));
         root.addView(button("Power menu: leave alone (default)", new Runnable() { public void run() { setPower(Features.POWER_OFF); }}));
@@ -58,7 +63,7 @@ public class ControlActivity extends Activity {
         setContentView(root);
     }
 
-    @Override protected void onResume() { super.onResume(); refresh(); }
+    @Override protected void onResume() { super.onResume(); if (Mode.isCustom(this)) { finish(); return; } refresh(); }
 
     private void setPower(String m) { Features.setString(this, Features.POWER_MODE, m); refresh(); }
 
