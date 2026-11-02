@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
      Tj: replaces the AOSP Go profile (one 4x4 grid) with the grid measured on Tj's Alps 711 tablet from his stock-launcher photos (2026-11-02):
-     5 columns x 7 rows + a 5-icon dock, ~113 px cells at 170 dpi; the drawer uses the same 5-column cell. See research/DESIGN_2026-11-02.md section 9.
+     5 columns x 8 rows, NO dock (Tj confirmed), ~113 px cells at 170 dpi; the drawer uses the same 5-column cell. See research/DESIGN_2026-11-02.md section 9.
      Derived from AOSP Launcher3 go/res/xml/device_profiles.xml (Apache License 2.0).
 -->
 <profiles xmlns:launcher="http://schemas.android.com/apk/res-auto" >
     <grid-option
-        launcher:name="5_by_7"
-        launcher:numRows="7"
+        launcher:name="5_by_8"
+        launcher:numRows="8"
         launcher:numColumns="5"
         launcher:numFolderRows="4"
         launcher:numFolderColumns="4"
         launcher:numHotseatIcons="5"
-        launcher:defaultLayoutId="@xml/default_workspace_5x7" >
+        launcher:defaultLayoutId="@xml/default_workspace_5x8" >
         <display-option
             launcher:name="Alps 711 tablet"
             launcher:minWidthDps="296"

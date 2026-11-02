@@ -333,7 +333,8 @@ public class ScrimView extends View implements Insettable, OnChangeListener,
     }
 
     private void updateDragHandleVisibility(Drawable recycle) {
-        boolean visible = mLauncher.getDeviceProfile().isVerticalBarLayout() || mAM.isEnabled();
+        boolean visible = mLauncher.getDeviceProfile().isVerticalBarLayout()
+                || (mAM.isEnabled() && !com.tj.launcher.TjLook.NO_DOCK);   // Tj: stock has no "^" caret, even with accessibility on
         boolean wasVisible = mDragHandle != null;
         if (visible != wasVisible) {
             if (visible) {

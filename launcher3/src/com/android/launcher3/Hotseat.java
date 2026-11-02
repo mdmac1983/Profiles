@@ -98,6 +98,7 @@ public class Hotseat extends CellLayout implements LogContainerProvider, Insetta
         }
         Rect padding = grid.getHotseatLayoutPadding();
         setPadding(padding.left, padding.top, padding.right, padding.bottom);
+        if (com.tj.launcher.TjLook.NO_DOCK) setVisibility(View.GONE);   // Tj: no dock
 
         setLayoutParams(lp);
         InsettableFrameLayout.dispatchInsets(this, insets);

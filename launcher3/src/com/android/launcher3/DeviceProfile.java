@@ -209,6 +209,7 @@ public class DeviceProfile {
                 ? (hotseatBarSidePaddingStartPx + hotseatBarSidePaddingEndPx)
                 : (res.getDimensionPixelSize(R.dimen.dynamic_grid_hotseat_extra_vertical_size)
                         + hotseatBarTopPaddingPx + hotseatBarBottomPaddingPx));
+        if (com.tj.launcher.TjLook.NO_DOCK) hotseatBarSizePx = 0;   // Tj: the stock home has no dock
 
         // Calculate all of the remaining variables.
         updateAvailableDimensions(dm, res);
