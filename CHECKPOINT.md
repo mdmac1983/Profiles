@@ -1,23 +1,24 @@
-# CHECKPOINT 31 — read me first, then TASKS.md
+# CHECKPOINT 32 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T14:48:11Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `f6d17d7` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T14:48:44Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `e4d2b52` (this checkpoint is the commit after it)
 
 ## Just done
-P1: AOSP Launcher3 Go (r47, no Quickstep) imported under launcher3/, builds as :app (applicationId com.tj.launcher, targetSdk 28), protos via protobuf plugin, plugin_core sources, merged manifest (no INSTALL_SHORTCUT decl, no boot permission). assembleDebug OK -> 10 MB APK. Signed R8 release path verified earlier.
+Added emulator.yml (manual API29 emulator run, screenshots artifact) + tools/emulator_scenario.sh.
 
 ## Do this next
-Inspect built manifest with aapt (package, permissions, provider authorities), run release+R8 (proguard keep rules for Launcher3), then P2: emulator screenshots vs Tj's; add CI emulator job. Then P3 safety core.
+Register emulator.yml with GitHub (temporary path-filtered push trigger, see CLAUDE.md), dispatch it, download/inspect screenshots vs Tj's, fix look/crash issues; then release+R8 keep rules; then P3 safety core.
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
-     M app/build.gradle.kts
+    ?? .github/workflows/emulator.yml
+    ?? tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  e4d2b52 ckpt 31: P1: AOSP Launcher3 Go (r47, no Quickstep) imported under launcher3/, builds as 
   debbfb4 ckpt 16: Keystore generated, committed as signing/launcher-keystore.b64 (+ fingerprint p
   7090841 ckpt 14: Recorded Tj's 4 answers + gesture/power-menu/keyboard/signing tasks (G1-G5).
   0d0b4ac ckpt 12: Researched feasibility: AOSP Launcher3 android-10.0.0_r47 reachable + pinned (t
@@ -28,6 +29,3 @@ Inspect built manifest with aapt (package, permissions, provider authorities), r
   86b7b54 ckpt 3: Fixed dependabot ignores (AGP/Kotlin/Gradle stay pinned); turned MIRROR_MAIN on 
   f80b634 ckpt 1: Launcher foundation: ladder (inbox/autosave/ckpt/ship), cold-resume briefing, sc
 ```
-
-(14 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
