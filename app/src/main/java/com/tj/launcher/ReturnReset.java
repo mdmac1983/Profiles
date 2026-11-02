@@ -24,6 +24,11 @@ public final class ReturnReset {
     public static final String KEY = "return_reset";            // master switch, default ON
     public static final String APP_KEY = "return_app_label";    // label substring of the app to open, default "solitaire"
     public static final String DEFAULT_APP = "solitaire";
+    public static final String CLEAR_NOTIF_KEY = "reset_clear_notifications";   // default ON
+    public static final String CLEAR_RECENTS_KEY = "reset_clear_recents";       // default ON
+
+    public static boolean clearNotifications(Context c) { return Features.get(c, CLEAR_NOTIF_KEY, true); }
+    public static boolean clearRecents(Context c) { return Features.get(c, CLEAR_RECENTS_KEY, true); }
 
     private ReturnReset() {}
 
@@ -35,15 +40,18 @@ public final class ReturnReset {
         final Context app = c.getApplicationContext();
         try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
         try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+        final boolean notif = clearNotifications(app), recents = clearRecents(app);
         TjAccessibilityService svc = TjAccessibilityService.get();
-        if (svc != null) {
-            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade and Recents, THEN open the app.
-            try { svc.runReset(new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } } }); return; }
+        if (svc != null && (notif || recents)) {
+            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents (each switchable), THEN open the app.
+            try { svc.runReset(notif, recents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } } }); return; }
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); }
-        } else {
+        } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
+        } else {
+            Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Both Clear all switches are OFF.");
         }
-        try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); }
+        if (notif) { try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); } }
         try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
     }
 

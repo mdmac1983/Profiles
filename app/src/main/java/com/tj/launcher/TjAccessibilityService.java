@@ -161,18 +161,35 @@ public class TjAccessibilityService extends AccessibilityService {
     private final StringBuilder resetReport = new StringBuilder();
 
     /** Runs on the main thread. Calls {@code done} when finished (always, even if nothing could be pressed). Fail-open: a missing button just means that step is skipped. */
-    public void runReset(final Runnable done) {
+    public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) {
         resetReport.setLength(0);
         removeOverlay();
-        Log.i(TAG, "RESET start");
+        Log.i(TAG, "RESET start notifications=" + clearNotifications + " recents=" + clearRecents);
+        if (!clearNotifications) {
+            resetReport.append("notifications: switch is OFF\n");
+            if (clearRecents) resetRecents(done); else finishReset(done);
+            return;
+        }
+        final boolean thenRecents = clearRecents;
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
         handler.postDelayed(new Runnable() { @Override public void run() {
             boolean cleared = pressInSystemUi("clear all", "com.android.systemui");
             resetReport.append("notifications: ").append(cleared ? "cleared" : "no Clear all button (nothing to clear?)").append("\n");
             Log.i(TAG, "RESET notifications cleared=" + cleared);
             performGlobalAction(GLOBAL_ACTION_BACK);
-            handler.postDelayed(new Runnable() { @Override public void run() { resetRecents(done); } }, 350);
+            handler.postDelayed(new Runnable() { @Override public void run() {
+                if (thenRecents) resetRecents(done);
+                else { resetReport.append("recents: switch is OFF\n"); finishReset(done); }
+            } }, 350);
         } }, 600);
+    }
+
+    private void finishReset(final Runnable done) {
+        performGlobalAction(GLOBAL_ACTION_HOME);
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
+            try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
+        } }, 450);
     }
 
     private void resetRecents(final Runnable done) {
@@ -191,11 +208,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
             resetReport.append("recents: ").append(cleared ? "cleared (apps closed)" : "no Clear all button found").append("\n");
             Log.i(TAG, "RESET recents cleared=" + cleared + " attempts=" + (attempt + 1));
-            performGlobalAction(GLOBAL_ACTION_HOME);
-            handler.postDelayed(new Runnable() { @Override public void run() {
-                Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
-                try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
-            } }, 450);
+            finishReset(done);
         } }, attempt == 0 ? 750 : 280);
     }
 

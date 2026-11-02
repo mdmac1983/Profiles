@@ -52,8 +52,16 @@ public class ControlActivity extends Activity {
         root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
             Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
         }}));
-        root.addView(button("Recents shows only Solitaire: ON / OFF (tap to toggle)", new Runnable() { public void run() {
+        root.addView(label("Method A - keep Recents clean"));
+        root.addView(button("A: Recents shows only Solitaire (launch flag): ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, RecentsPolicy.KEY, !RecentsPolicy.enabled(ControlActivity.this)); refresh();
+        }}));
+        root.addView(label("Method B - press the real Clear all buttons on return (needs the accessibility helper)"));
+        root.addView(button("B1: clear notifications (shade Clear all): ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, !ReturnReset.clearNotifications(ControlActivity.this)); refresh();
+        }}));
+        root.addView(button("B2: clear Recents (Recents Clear all, closes apps): ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, !ReturnReset.clearRecents(ControlActivity.this)); refresh();
         }}));
         root.addView(button("Restore everything", new Runnable() { public void run() {
             RestoreStore.restoreAll(ControlActivity.this);
@@ -76,6 +84,7 @@ public class ControlActivity extends Activity {
     private void refresh() {
         String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
         s += "\nPower menu: " + Features.powerMode(this);
+        s += "\nA (launch flag) " + (RecentsPolicy.enabled(this) ? "ON" : "OFF") + " | B1 notifications " + (ReturnReset.clearNotifications(this) ? "ON" : "OFF") + " | B2 recents " + (ReturnReset.clearRecents(this) ? "ON" : "OFF");
         s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
         String app = ReturnReset.findAppLabel(this);
         s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")
