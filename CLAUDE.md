@@ -73,6 +73,10 @@ Claude Code gives every session its own branch, so work can strand on a branch n
 `.github/workflows/android.yml` builds the APK; `ci.yml` runs tests + lint on pull requests; Dependabot proposes
 updates monthly. **Minutes are the scarce resource** — never add a `push:` branch trigger to any workflow
 (autosave pushes after every tool call; `test_handoff.sh` fails if you do). Tags and manual dispatch only.
+- **A brand-new workflow whose triggers are only tags + dispatch is invisible to the API (dispatch → 404) until one
+  event touches it.** Register it once: add a temporary `push: branches: [<branch>, main]` + `paths: [that file]`,
+  push, then remove it (Launcher's android.yml was registered this way on 2026-11-02). Dependabot/PR events register
+  `ci.yml` by themselves.
 - Check the setup for ~1 min: dispatch `android.yml` with `full_build=false` (gates only).
 - No keystore secret yet → a full build makes a **PREVIEW** (debug-signed APK as a 14-day workflow artifact, not
   a Release). With `SIGNING_KEYSTORE_BASE64` set → signed release, certificate verified, Release published.
