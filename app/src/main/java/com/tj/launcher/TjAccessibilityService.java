@@ -185,11 +185,25 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void finishReset(final Runnable done) {
-        performGlobalAction(GLOBAL_ACTION_HOME);
+        // NO Home press here: on the slow tablet it landed AFTER the app start and covered it (Tj: "in the recent apps but didn't open on the screen").
         handler.postDelayed(new Runnable() { @Override public void run() {
             Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
             try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
-        } }, 450);
+        } }, 350);
+    }
+
+    /** True if a window of this package is the active (front) one. */
+    public boolean isForeground(String pkg) {
+        try {
+            AccessibilityNodeInfo r = getRootInActiveWindow();
+            if (r == null) return false;
+            try { return pkg.contentEquals(r.getPackageName() == null ? "" : r.getPackageName()); } finally { r.recycle(); }
+        } catch (Throwable t) { return false; }
+    }
+
+    public void appendReport(String line) {
+        resetReport.append(line).append("\n");
+        Features.setString(this, RESET_REPORT_KEY, resetReport.toString());
     }
 
     private void resetRecents(final Runnable done) {

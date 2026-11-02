@@ -119,15 +119,45 @@ public final class ReturnReset {
         return ris;
     }
 
-    private static void openApp(Context c) {
-        List<String> labels = new ArrayList<>();
+    private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    /** Starts the target app and makes sure it ends up in FRONT: re-starts it (harmless if already on top) up to 3 more times, checking with the accessibility helper when it is on. */
+    private static void openApp(final Context c) {
+        final List<String> labels = new ArrayList<>();
         List<ResolveInfo> ris = launchables(c, labels);
         int i = ResetPolicy.pickLabel(labels, appLabel(c));
-        if (i < 0) { Log.i(TAG, "no app matching '" + appLabel(c) + "' found"); return; }
-        ResolveInfo ri = ris.get(i);
-        c.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        if (i < 0) { Log.i(TAG, "no app matching '" + appLabel(c) + "' found"); report(c, "app: no app matching '" + appLabel(c) + "' is installed"); return; }
+        final ResolveInfo ri = ris.get(i);
+        final String label = labels.get(i);
+        launchOnce(c, ri, 0);
+        scheduleVerify(c, ri, label, 1);
+    }
+
+    private static void launchOnce(Context c, ResolveInfo ri, int attempt) {
+        Intent it = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setComponent(new ComponentName(ri.activityInfo.packageName, ri.activityInfo.name))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
-        Log.i(TAG, "opened " + labels.get(i));
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | (attempt > 0 ? Intent.FLAG_ACTIVITY_REORDER_TO_FRONT : 0));
+        c.startActivity(it);
+        Log.i(TAG, "start app attempt " + (attempt + 1));
+    }
+
+    private static void scheduleVerify(final Context c, final ResolveInfo ri, final String label, final int attempt) {
+        MAIN.postDelayed(new Runnable() { @Override public void run() {
+            try {
+                TjAccessibilityService svc = TjAccessibilityService.get();
+                boolean front = svc != null && svc.isForeground(ri.activityInfo.packageName);
+                if (front) { report(c, "app: " + label + " is on screen" + (attempt > 1 ? " (needed " + attempt + " starts)" : "")); return; }
+                if (attempt >= 4) { report(c, "app: " + label + " was started " + attempt + " times but could not be confirmed on screen" + (svc == null ? " (accessibility helper off, cannot check)" : "")); return; }
+                launchOnce(c, ri, attempt);                 // not in front yet (e.g. the home screen came up late): bring it forward again
+                scheduleVerify(c, ri, label, attempt + 1);
+            } catch (Throwable t) { Log.e(TAG, "verify failed", t); }
+        } }, attempt == 1 ? 900 : 800);
+    }
+
+    private static void report(Context c, String line) {
+        TjAccessibilityService svc = TjAccessibilityService.get();
+        if (svc != null) svc.appendReport(line);
+        else Features.setString(c, TjAccessibilityService.RESET_REPORT_KEY, line);
+        Log.i(TAG, line);
     }
 }
