@@ -1,10 +1,13 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.protobuf")
 }
 
 android {
-    namespace = "com.tj.launcher"
+    // Resource namespace stays com.android.launcher3 (the AOSP code imports com.android.launcher3.R);
+    // the installed package is com.tj.launcher (applicationId below), so it can sit beside the stock launcher.
+    namespace = "com.android.launcher3"
     compileSdk = 36
 
     defaultConfig {
@@ -13,7 +16,8 @@ android {
         // runtime so no newer-Android compatibility behaviour is silently assumed; revisit if
         // the app is ever to run on a newer phone.
         minSdk = 29
-        targetSdk = 29
+        targetSdk = 28   // AOSP Launcher3 Go value; <=28 lets the kill switch toggle Wi-Fi/Bluetooth (BRIEF.md)
+        manifestPlaceholders["packageName"] = "com.tj.launcher"
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -47,6 +51,16 @@ android {
         }
     }
 
+    sourceSets {
+        getByName("main") {
+            // AOSP Launcher3 Go flavor: src + src_ui_overrides + go/src, resources res + go/res (go wins), plugin API sources
+            java.srcDirs("../launcher3/src", "../launcher3/src_ui_overrides", "../launcher3/go/src",
+                "../launcher3/src_plugins", "../launcher3/plugin_core_src")
+            res.srcDirs("../launcher3/res", "../launcher3/go/res")
+            proto { srcDir("../launcher3/protos") }
+        }
+    }
+
     lint {
         abortOnError = true
         warningsAsErrors = false
@@ -69,7 +83,29 @@ kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
 
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:3.0.0-alpha-3" }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                remove("java")
+                create("javanano") {
+                    option("java_package=launcher_log_extension.proto|com.android.launcher3.userevent.nano")
+                    option("java_package=launcher_log.proto|com.android.launcher3.userevent.nano")
+                    option("java_package=launcher_dump.proto|com.android.launcher3.model.nano")
+                    option("enum_style=java")
+                }
+            }
+        }
+    }
+}
+
 dependencies {
+    implementation(project(":iconloaderlib"))
+    implementation("androidx.dynamicanimation:dynamicanimation:1.0.0")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.preference:preference:1.1.1")
+    implementation("com.google.protobuf.nano:protobuf-javanano:3.0.0-alpha-7")
     // Deliberately nothing but the Kotlin stdlib (added by the plugin): a Go launcher must stay
     // small and light on RAM, and the UI toolkit is an OPEN decision (BRIEF.md). Add a
     // dependency only with a reason written in BRIEF.md.
