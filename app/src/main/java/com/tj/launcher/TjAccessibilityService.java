@@ -23,7 +23,7 @@ import java.util.List;
  */
 public class TjAccessibilityService extends AccessibilityService {
     private static final String TAG = "TjA11y";
-    private static final int PANEL_COLOR = Color.parseColor("#F4F6F7");
+    private static final int PANEL_COLOR = Color.parseColor("#EFF1F3");   // measured on the AOSP Android 10 power menu; Tj's panel may differ slightly
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private View overlay;
@@ -81,7 +81,15 @@ public class TjAccessibilityService extends AccessibilityService {
                             // the tappable entry is usually a parent of the text node: grow to the first clickable ancestor
                             AccessibilityNodeInfo t = n;
                             for (int i = 0; i < 4 && t != null && !t.isClickable(); i++) t = t.getParent();
-                            (t != null && t.isClickable() ? t : n).getBoundsInScreen(shot);
+                            AccessibilityNodeInfo item = t != null && t.isClickable() ? t : n;
+                            item.getBoundsInScreen(shot);
+                            // widen to the whole panel column so the cover has no visible left/right edges
+                            AccessibilityNodeInfo parent = item.getParent();
+                            if (parent != null) {
+                                Rect pr = new Rect();
+                                parent.getBoundsInScreen(pr);
+                                if (!pr.isEmpty() && pr.height() >= shot.height()) { shot.left = pr.left; shot.right = pr.right; shot.bottom = Math.min(pr.bottom, shot.bottom + 24); }
+                            }
                             found = !shot.isEmpty();
                             break;
                         }

@@ -1,22 +1,23 @@
-# CHECKPOINT 60 — read me first, then TASKS.md
+# CHECKPOINT 62 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T18:10:09Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `6a6cffc` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T18:17:26Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `1085495` (this checkpoint is the commit after it)
 
 ## Just done
-Look fixes from measurement (icon 60dp, text 14sp, drawer scrim 50% white); service diagnostics (Log.i) + scenario rebinds a11y after force-stop and dumps accessibility/window state.
+Power-menu cover widened to the panel column + colour tuned; scenario reordered: safety checks first, power-menu phase 2 on a fresh install with home-preference diagnostics (prefhome.txt).
 
 ## Do this next
-Dispatch emulator.yml, read a11y-diag.txt + 10-13 screenshots + new 01/03 vs STOCK; if the service works fix the cover; then write the answer on a custom power menu; then v0.2.1 release (look) when satisfied.
+Dispatch emulator.yml; read results.txt (safety must be all PASS again), prefhome.txt (which step loses the Home preference -> chooser 'Select a Home app'), a11y-diag.txt, 11-13 screenshots, 01/03 look vs STOCK. Then v0.2.1 release.
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
 
 ## Last ten checkpoints
 ```
+  3f157bf ckpt 60: Look fixes from measurement (icon 60dp, text 14sp, drawer scrim 50% white); ser
   ac02e74 ckpt 58: Fixed power-menu service feedback loop (ignore own events, debounce, no re-layo
   1f2e3e9 ckpt 55: Power-menu helper: TjAccessibilityService (cover Screenshot entry / block menu,
   c3955b4 ckpt 52: Look pass 1: grid 5x7 + 5-icon dock (derived from stock photo geometry), no hom
@@ -26,7 +27,6 @@ Dispatch emulator.yml, read a11y-diag.txt + 10-13 screenshots + new 01/03 vs STO
   921312e ckpt 44: Emulator safety scenario fully green. Prepared v0.2.0 (code 2): R8 off, FIRST_I
   54a4b86 ckpt 43: Emulator scenario harness fixes (force-stop after editing prefs; home between c
   eff4fa4 ckpt 41: Emulator scenario now asserts safety: manifest has no admin/overlay/keyguard/bo
-  b772b25 ckpt 40: P3 core: RouterActivity (only HOME activity, fail-open to stock), Mode, StockLa
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
