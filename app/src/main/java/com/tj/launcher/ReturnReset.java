@@ -30,12 +30,21 @@ public final class ReturnReset {
     public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
     public static String appLabel(Context c) { return Features.getString(c, APP_KEY, DEFAULT_APP); }
 
-    public static void run(Context c) {
+    public static void run(final Context c) {
         if (!enabled(c)) return;
-        try { killApps(c); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
+        final Context app = c.getApplicationContext();
+        try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
+        try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+        TjAccessibilityService svc = TjAccessibilityService.get();
+        if (svc != null) {
+            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade and Recents, THEN open the app.
+            try { svc.runReset(new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } } }); return; }
+            catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); }
+        } else {
+            Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
+        }
         try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); }
-        try { radiosOff(c); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
-        try { openApp(c); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+        try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
     }
 
     private static void killApps(Context c) {

@@ -30,6 +30,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private static final String TAG = "TjA11y";
     private static final int PANEL_COLOR = Color.parseColor("#EFF1F3");   // measured on the AOSP Android 10 power menu; Tj's panel may differ slightly
 
+    private static volatile TjAccessibilityService instance;
+    /** The running helper, or null when Tj has not turned it on in Accessibility settings. */
+    public static TjAccessibilityService get() { return instance; }
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private View overlay;
     private final Runnable recheck = new Runnable() { @Override public void run() { evaluate(); } };
@@ -82,6 +86,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
+        instance = this;
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
 
@@ -93,9 +98,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeOverlay(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { removeOverlay(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { removeOverlay(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
@@ -148,6 +153,105 @@ public class TjAccessibilityService extends AccessibilityService {
             removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
         }
+    }
+
+
+    // ---------------------------------------------------------------- return reset (RESET2): press "Clear all" in the REAL notification shade and the REAL Recents screen
+    public static final String RESET_REPORT_KEY = "reset_last";
+    private final StringBuilder resetReport = new StringBuilder();
+
+    /** Runs on the main thread. Calls {@code done} when finished (always, even if nothing could be pressed). Fail-open: a missing button just means that step is skipped. */
+    public void runReset(final Runnable done) {
+        resetReport.setLength(0);
+        removeOverlay();
+        Log.i(TAG, "RESET start");
+        performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            boolean cleared = pressInSystemUi("clear all", "com.android.systemui");
+            resetReport.append("notifications: ").append(cleared ? "cleared" : "no Clear all button (nothing to clear?)").append("\n");
+            Log.i(TAG, "RESET notifications cleared=" + cleared);
+            performGlobalAction(GLOBAL_ACTION_BACK);
+            handler.postDelayed(new Runnable() { @Override public void run() { resetRecents(done); } }, 350);
+        } }, 600);
+    }
+
+    private void resetRecents(final Runnable done) {
+        performGlobalAction(GLOBAL_ACTION_RECENTS);
+        recentsAttempt(0, done);
+    }
+
+    private void recentsAttempt(final int attempt, final Runnable done) {
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            boolean cleared = pressInSystemUi("clear all", "com.android.launcher3", "com.android.systemui");
+            if (!cleared && attempt < 6) {
+                // the button can sit at the far end of the task carousel: scroll it and look again
+                scrollSomething("com.android.launcher3", "com.android.systemui");
+                recentsAttempt(attempt + 1, done);
+                return;
+            }
+            resetReport.append("recents: ").append(cleared ? "cleared (apps closed)" : "no Clear all button found").append("\n");
+            Log.i(TAG, "RESET recents cleared=" + cleared + " attempts=" + (attempt + 1));
+            performGlobalAction(GLOBAL_ACTION_HOME);
+            handler.postDelayed(new Runnable() { @Override public void run() {
+                Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
+                try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
+            } }, 450);
+        } }, attempt == 0 ? 750 : 280);
+    }
+
+    /** Presses the first clickable node whose text starts with {@code label}, but ONLY inside windows of the given system packages (never in another app). */
+    private boolean pressInSystemUi(String label, String... packages) {
+        try {
+            List<AccessibilityWindowInfo> windows = getWindows();
+            if (windows == null) return false;
+            for (AccessibilityWindowInfo w : windows) {
+                AccessibilityNodeInfo root = w.getRoot();
+                if (root == null) continue;
+                try {
+                    String pkg = root.getPackageName() == null ? "" : root.getPackageName().toString();
+                    boolean ok = false;
+                    for (String p : packages) if (p.equals(pkg)) ok = true;
+                    if (!ok) continue;
+                    List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(label);
+                    if (hit == null) continue;
+                    for (AccessibilityNodeInfo n : hit) {
+                        CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
+                        if (t == null || !t.toString().trim().toLowerCase(java.util.Locale.ROOT).startsWith(label)) continue;
+                        if (clickableAncestor(n).performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+                    }
+                } finally { root.recycle(); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "pressInSystemUi failed", t); }
+        return false;
+    }
+
+    private void scrollSomething(String... packages) {
+        try {
+            List<AccessibilityWindowInfo> windows = getWindows();
+            if (windows == null) return;
+            for (AccessibilityWindowInfo w : windows) {
+                AccessibilityNodeInfo root = w.getRoot();
+                if (root == null) continue;
+                try {
+                    String pkg = root.getPackageName() == null ? "" : root.getPackageName().toString();
+                    boolean ok = false;
+                    for (String p : packages) if (p.equals(pkg)) ok = true;
+                    if (!ok) continue;
+                    AccessibilityNodeInfo sc = findScrollable(root, 0);
+                    if (sc != null && sc.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return;
+                } finally { root.recycle(); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "scroll failed", t); }
+    }
+
+    private AccessibilityNodeInfo findScrollable(AccessibilityNodeInfo n, int depth) {
+        if (n == null || depth > 8) return null;
+        if (n.isScrollable()) return n;
+        for (int i = 0; i < n.getChildCount(); i++) {
+            AccessibilityNodeInfo r = findScrollable(n.getChild(i), depth + 1);
+            if (r != null) return r;
+        }
+        return null;
     }
 
     private AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo n) {
