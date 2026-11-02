@@ -70,3 +70,18 @@ keystore committed under signing/ (Tj waived secrecy), workflow signs with it.
 - [ ] G3 power menu: hide only the Screenshot entry (accessibility overlay on that node), quick on/off switch (also reachable in Quickstep mode)
 - [ ] G4 keyboard (L7): no-adb fallback = on mode change show the system keyboard picker / notification; adb grant makes it automatic
 - [x] G5 GitHub signs releases: keystore generated once, committed under signing/, android.yml uses it
+
+## Tj's v0.2.0 test report, 2026-11-02 (verbatim summary) — photos in research/uploads/2026-11-02b/
+"It installed fine. My display size is default. ... 1.png and 2.png are what the stock launcher looks like. 3.png and 4.png are the launcher you made.
+It must look and function identically as the stock launcher. For the power menu, I want to hide the screenshot button (picture attached) completely, but if not
+possible, disable the power menu completely, until I switch back to quickstep. The recents button works in the new launcher. Notice the grid layout and
+transparency of the stock launcher."
+Measured from the photos: 1024x600, **170 dpi**, **font scale 1.2**, 7.2 in, 32-bit ARMv7 (armeabi-v7a), MT8168B 4x2.0 GHz, Mali-G52.
+Stock home = 3 columns x 4 rows, NO search bar, NO dock/hotseat, white labels; stock drawer = 5 columns, compact rows, TRANSLUCENT (wallpaper visible), "Search apps" bar;
+v0.2.0 = 4x4 grid + search bar + dock, 4-column tall-row opaque drawer.  Recents button: WORKS (R3 resolved). Power menu has Power off / Restart / Screenshot.
+- [ ] LK1 grid: home 3x4, no QSB, no hotseat; drawer 5 columns with the stock row height; icon/text sizes at 170 dpi + font scale 1.2
+- [ ] LK2 drawer transparency like stock (wallpaper visible through it)
+- [ ] LK3 emulator scenario at 600x1024, density 170, font_scale 1.2 for side-by-side comparison with the STOCK photos
+- [ ] LK4 first-run home layout like his (folders Connect/Games, same app order) — default_workspace XML or label-based importer (stock DB is not readable without system permission)
+- [x] R3 recents button works with our router as Home (Tj, v0.2.0)
+- [ ] G3b power menu: hide the Screenshot button completely; if impossible, suppress the whole power menu until Quickstep (his rule)
