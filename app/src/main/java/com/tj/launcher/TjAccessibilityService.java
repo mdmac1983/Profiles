@@ -233,7 +233,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void resetRecents(final long t0, final Runnable done) {
         performGlobalAction(GLOBAL_ACTION_RECENTS);
-        pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 2600, true, new PollResult() {
+        pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 1800, true, new PollResult() {
             @Override public void done(int result) {
                 resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found").append("\n");
                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");

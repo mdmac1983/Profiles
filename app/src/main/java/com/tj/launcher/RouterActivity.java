@@ -54,7 +54,7 @@ public class RouterActivity extends Activity {
         if (Mode.isCustom(this)) {
             Intent i = new Intent(Intent.ACTION_MAIN)
                     .setComponent(new ComponentName(this, "com.android.launcher3.Launcher"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);   // V4: our launcher never appears in Recents
             if (TjHooks.launcherWasForeground()) i.putExtra(TjHooks.EXTRA_HOME_WHILE_ON_HOME, true);
             try {
                 startActivity(i);
