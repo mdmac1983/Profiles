@@ -18,14 +18,17 @@ will be building an Android 10 go launcher apk." The feature list is not written
 | Signing | Not created yet. `app/sideload.jks` is gitignored; builds sign with it only when present | See Keystore. Without the CI secret a build is a **preview** (debug-signed artifact). |
 | Branches | Work on the assigned branch; `tools/MIRROR_MAIN` = `off` | Turn on only on Tj's word. |
 
-## OPEN — ask Tj, one real decision at a time (do not assume)
-1. **UI toolkit:** plain Views (lightest, current) vs Jetpack Compose (nicer to build, heavier on Go devices).
-2. **Feature scope:** app drawer vs home grid, search, folders, gestures, icon packs, widgets, notifications badges,
-   hidden apps, wallpapers, settings, themes, "Go" extras (data/battery saving), default-launcher onboarding.
-3. **Device:** make/model and RAM of the target phone; is it armv7 (32-bit)? Needed before choosing image sizes,
-   caching and whether to risk any native library.
-4. **Keystore:** create it deliberately (below), back it up, add the CI secret.
-5. **Release cadence / naming** beyond `0.1.0` (versionName scheme).
+## The device and the plan (2026-11-02 second message — full spec in TASKS.md L1-L11, design in `research/DESIGN_2026-11-02.md`)
+Target = Alps 711 `tb8168p1_bsp` tablet, MT8168B, 32-bit, Android 10 Go, locked bootloader, stock launcher Quickstep v10, 600x1024, 1.3 GB free.
+Decided: port AOSP Launcher3 Go (android-10.0.0_r47, `tools/fetch_launcher3.sh`) minus the Quickstep recents layer (not installable without system signature);
+UI toolkit = Launcher3's own Views (no Compose); switching back to Quickstep = pass-through mode; every secure-setting feature is opt-in, snapshot-first,
+default OFF; staged releases v0.2 safe core -> v0.3 in-app features -> v0.4+ permission features. **The safety rules in DESIGN section 6 override every feature.**
+
+## OPEN — ask Tj (do not assume)
+1. The "go back to Quickstep" gesture (DESIGN section 4: icon in Quickstep drawer vs accessibility key gesture) and the kill-switch gesture.
+2. Whether he can use a PC with USB debugging (adb) — needed for L1/L4/L5/L7 permissions and for the first-install safety net.
+3. Power-menu block (L4) is experimental and may not be possible reliably: is a flickering best-effort acceptable?
+4. Keystore creation (below).
 
 ## The signing keystore (not created yet)
 Generating it is safe until something signed with it is installed; after that it is **irreplaceable**: a different key

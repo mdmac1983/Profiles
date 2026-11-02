@@ -48,3 +48,11 @@ quick settings with only Auto-rotate tile). Modifications:
       that must never happen. Must be revertible if anything goes wrong.
 - [ ] L11 deliver an APK (GitHub Release link when signed; preview artifact until the keystore exists)
 
+
+## Build plan (2026-11-02) — do in order; checkpoint after each
+- [ ] P1 Port: fetch pinned sources, build `plugin_core` from SystemUI plugin source, protos via Gradle, stub/reflect @hide APIs until `l3goWithoutQuickstep` compiles in a new Gradle module (one-Gradle-at-a-time; use CI for long builds)
+- [ ] P2 Look check: emulator API 29 screenshots vs research/uploads/2026-11-02 (home 3 cols, drawer 5 cols translucent + Search apps, folders, popup, Home settings)
+- [ ] P3 Safety core: RestoreStore, crash-loop breaker, Quickstep pass-through mode, Restore action, manifest/source guard test (no admin/keyguard/overlay/lock settings), tools/adb-grant.sh + tools/adb-restore.sh
+- [ ] P4 CI emulator job (reactivecircus/android-emulator-runner, API 29): install, set Home, drawer, mode flip, forced crashes, Restore byte-identical
+- [ ] P5 Release v0.2 "safe core" (needs keystore): Release link + residual-risk note + first-install checklist
+- [ ] P6 L2, L6, L3 -> v0.3;  P7 L7, L5, L9 each default OFF -> v0.4;  P8 L4 experimental -> v0.5
