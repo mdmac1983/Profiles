@@ -62,3 +62,20 @@ It is extremely important that any release I install does not break anything lik
 3) try the flicker power menu but only hide the screenshot button. Make this an option I can quickly turn off if it doesn't work 
 4) it can be signed by github if possible, security isn't important
 ```
+
+## 2026-11-02T17:45:12Z
+```
+It installed fine
+
+My display size is default. 
+
+The attached images have information about the tablet.  1.png and 2.png are what the stock launcher looks like.  3.png and 4.png are the launcher you made. 
+
+It must look and function identically as the stock launcher 
+
+For the power menu, I want to hide the screenshot button (picture attached) completely, but if not possible,  disable the power menu completely, until I switch back to quickstep.
+
+The recents button works in the new launcher. 
+
+Notice the grid layout and transparency of the stock launcher
+```
