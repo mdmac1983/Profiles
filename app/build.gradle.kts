@@ -12,12 +12,11 @@ android {
 
     defaultConfig {
         applicationId = "com.tj.launcher"
-        // Android 10 (API 29) Go edition is the target device (BRIEF.md). targetSdk matches the
+        // Android 10 (API 29) Go edition is the target device (BRIEF.md). targetSdk is 28 (AOSP value), below the
         // runtime so no newer-Android compatibility behaviour is silently assumed; revisit if
         // the app is ever to run on a newer phone.
         minSdk = 29
         targetSdk = 28   // AOSP Launcher3 Go value; <=28 lets the kill switch toggle Wi-Fi/Bluetooth (BRIEF.md)
-        manifestPlaceholders["packageName"] = "com.tj.launcher"
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -75,7 +74,7 @@ android {
         // Pinned toolchain (BRIEF.md): upgrades are deliberate, not lint-driven.
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
         // Play Store rule only: this app is sideloaded onto a fixed Android 10 device, never
-        // published, and targetSdk 29 is deliberate (BRIEF.md). Remove if that ever changes.
+        // published, and targetSdk 28 is deliberate (BRIEF.md). Remove if that ever changes.
         disable += "ExpiredTargetSdkVersion"
     }
 
