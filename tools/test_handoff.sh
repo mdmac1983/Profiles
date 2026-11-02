@@ -80,7 +80,7 @@ git reset -q; rm -f leak.txt
 echo hi > a.txt
 check "autosave commits and pushes"  'bash tools/autosave.sh --text >/dev/null; git log -1 --format=%s | grep -q "^auto-checkpoint:" && [ "$(bash tools/unpushed.sh)" = 0 ]'
 check "branch reached the remote"    'git ls-remote --heads origin sess1 | grep -q sess1'
-check "main is NOT touched while MIRROR_MAIN=off" '! git ls-remote --heads origin main | grep -q main'
+check "main is NOT touched while MIRROR_MAIN=off (fixture copy)" '! git ls-remote --heads origin main | grep -q main'
 printf 'ghp_%s\n' "$(printf 'b%.0s' $(seq 1 36))" > leak2.txt
 check "autosave refuses a credential"  'bash tools/autosave.sh --text | grep -q "AUTOSAVE BLOCKED"; ! git log --format=%s | head -1 | grep -q leak; ! git ls-tree -r HEAD --name-only | grep -q leak2'
 rm -f leak2.txt

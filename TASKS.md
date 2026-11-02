@@ -21,7 +21,7 @@ with github actions, just like the other repos do."
       appears — the workflow has never run on a real runner
 - [ ] Tj decides the OPEN items in BRIEF.md (UI toolkit, features, device, keystore)
 - [ ] Create the keystore (`bash tools/init-keystore.sh`), back it up, Tj adds `SIGNING_KEYSTORE_BASE64`
-- [ ] Tj says whether to turn `tools/MIRROR_MAIN` on (every push also fast-forwards `main`)
+- [x] Tj approved `tools/MIRROR_MAIN` = on (2026-11-02): every push also fast-forwards `main`
 - [ ] Install the preview APK on the Android 10 Go device; set it as default home app; report what happens
 
 ## Features

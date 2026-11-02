@@ -64,8 +64,8 @@ Rules that make the ladder work:
 Claude Code gives every session its own branch, so work can strand on a branch nobody opens. Rules:
 - Develop and push on **the branch the session was assigned**; `push.sh` pushes it after every checkpoint.
 - `tools/MIRROR_MAIN` (`on`/`off`, committed) makes every push also fast-forward `origin/main` (plain push, never
-  forced). It is **off** until Tj says to turn it on — landing on `main` is his call. When on, a fresh session that
-  just opens the repo sees the real state.
+  forced). **On** since 2026-11-02 (Tj approved), so a fresh session that just opens the repo sees the real state;
+  GitHub can only dispatch workflows that exist on the default branch.
 - `resume.sh` names every other remote branch with unmerged commits; merge deliberately, not blindly.
 
 ## GitHub Actions does the building (Tj's rule on all repos)
