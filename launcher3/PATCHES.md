@@ -15,3 +15,6 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
   `onNewIntent`'s `alreadyOnHome` is also true when the router passes `EXTRA_HOME_WHILE_ON_HOME` (the invisible router answers Home, so Launcher has already lost focus).
 - Manifest: `Launcher` no longer has the HOME category — `com.tj.launcher.RouterActivity` is the only HOME activity (fails open to the stock launcher).
 - `res/values/strings.xml`: `app_name` Launcher3 -> Launcher.
+- `go/res/xml/device_profiles.xml`: single grid 5 columns x 7 rows + 5-icon dock (measured from Tj's stock-launcher photos, 170 dpi), icon 46dp, text 13sp; `res/xml/default_workspace_5x7.xml` (copy of the 5x5 default, workspace icons on columns 0/2/4, rows 0/2).
+- `config/BaseFlags.java`: `QSB_ON_FIRST_SCREEN = false` (stock has no home search bar).
+- `res/values/styles.xml`: `allAppsScrimColor` #EAFFFFFF -> #99FFFFFF (translucent drawer like stock; tune against the photos).
