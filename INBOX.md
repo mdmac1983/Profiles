@@ -123,3 +123,10 @@ Then consider how you can build a cloned settings app which looks and behaves ex
 
 Then consider even faster ways to hide the screenshot button.  Can the accessibility mode prevent the power menu completely without hiding it? Can the accessibility feature make the alerted power menu show immediately on side key press (such as the time it usually takes for a quick button press to turn the screen off) while the original Android power menu takes a little longer because it requires a long side key press?
 ```
+
+## 2026-11-02T20:29:50Z
+```
+The solitaire opened and the wifi turned off, but the opened apps did not close. The notification access feature says this feature is not available on this device. 
+
+Maybe it can force stop apps or find another way to close apps, or at least hide the open apps from the recent apps menu.  Can the launcher simply make it so it always shows only solitaire in the recent apps menu permanently?
+```
