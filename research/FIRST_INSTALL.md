@@ -47,3 +47,10 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
 - **Reset on double-Home** (Quickstep -> custom): no more Home press (that caused the Solitaire glitch: Solitaire was in Recents but the home screen covered it). Solitaire is started last and re-started up to 3 times until it is actually in front; Launcher control > "Last reset" says what happened.
 - **Three independent switches** (Launcher control, Quickstep mode): A = apps launched from the custom launcher stay out of Recents except Solitaire; B1 = press "Clear all" in the notification shade; B2 = press "Clear all" in Recents (closes those apps). B1/B2 need the accessibility helper. Try them alone and together and tell me which works best.
 - Notification access does not exist on Android Go, so the old notification route is gone.
+
+## v0.3.1 (2026-11-02)
+- **Twist gesture** fires after 18 degrees (was 30), with looser pinch tolerance: more responsive. **Double-press Home** window is now 0.9 s (was 0.7 s).
+- **Solitaire in front whenever the custom launcher starts** (boot, or if Android restarts it) and on return from Quickstep. Switch: Launcher control > "Open the launcher at start". Normal Home presses stay stock.
+- **Our launcher never appears in Recents** (it lost its home status when the router took over; fixed with an exclude flag).
+- **Faster reset:** polls every 40 ms for the real "Clear all" buttons instead of waiting; an empty shade/Recents ends instantly; "Last reset" shows how many ms it took.
+- **Keyboard switch (needs one adb command):** `adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS`, then Launcher control > "Keyboard: stock in custom launcher, SwiftKey in Quickstep: ON". It only switches to a keyboard that is already enabled, and "Restore everything" puts your original back.

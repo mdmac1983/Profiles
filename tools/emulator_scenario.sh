@@ -165,8 +165,9 @@ setlabel(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml 
 setlabel Clock; setmode custom; home; sleep 2
 adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 255; sleep 4; shot 32-launched-messaging; adb shell input keyevent KEYCODE_HOME; sleep 2     # Messaging (row 2, col 3)
 adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 135; sleep 4; shot 33-launched-clock; adb shell input keyevent KEYCODE_HOME; sleep 2         # Clock = target (row 1, col 3)
-adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1
-adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; shot 31-recents-only-target; adb shell input keyevent KEYCODE_HOME; sleep 1
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; shot 31-recents-only-target
+adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1     # taken while the Recents screen is open: the (excluded) launcher is no longer the top task, so a leak would show here
+adb shell input keyevent KEYCODE_HOME; sleep 1
 check "recents: the target app (Clock) is in Recents" grep -qiE 'clock' "$OUT/recents-policy.txt"
 check "recents: an ordinary app launched from the launcher (Messaging) is NOT in Recents" bash -c "! grep -qi 'messaging' $OUT/recents-policy.txt"
 check "recents: our own launcher is NOT in Recents (V4)" bash -c "! grep -q 'com.tj.launcher' $OUT/recents-policy.txt"

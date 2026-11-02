@@ -128,8 +128,8 @@ Findings: killBackgroundProcesses did not close his apps on the tablet; Go devic
 
 ## Tj's v0.3.0 report, 2026-11-02 (verbatim)
 "So far it works well but : 1) make the gesture to go back to quickstep even more responsive 2) if possible, make the default keyboard while in the custom launcher the stock Android keyboard but switch to Microsoft SwiftKey when I switch to quickstep 3) can the closing apps and notifications be faster? The faster the better 4) sometimes the launcher app itself shows up in recent apps. I want the recent apps to only show solitaire 5) the default should be solitaire in the foreground when the custom launcher opens"
-- [ ] V1 gesture even more responsive (threshold lower, looser pinch tolerance, fire on the first qualifying samples)
-- [ ] V2 keyboard: stock IME in custom mode, SwiftKey in Quickstep (needs WRITE_SECURE_SETTINGS via adb; only switches to an IME that is already enabled; snapshot/restore; default OFF until granted)
-- [ ] V3 faster close/clear: poll for the Clear all buttons instead of fixed waits; start Solitaire right after the last press
-- [ ] V4 our Launcher activity must never be in Recents (it lost its HOME category when the router took over, so Android lists it): excludeFromRecents on Launcher + Launcher control + chooser
-- [ ] V5 Solitaire in the foreground whenever the custom launcher starts (cold start / boot) and on return from Quickstep (every Home press stays stock; ask Tj if he wants it on EVERY Home press)
+- [x] V1 (v0.3.1) gesture even more responsive (threshold lower, looser pinch tolerance, fire on the first qualifying samples)
+- [x] V2 (v0.3.1) keyboard: stock IME in custom mode, SwiftKey in Quickstep (needs WRITE_SECURE_SETTINGS via adb; only switches to an IME that is already enabled; snapshot/restore; default OFF until granted)
+- [x] V3 (v0.3.1) faster close/clear: poll for the Clear all buttons instead of fixed waits; start Solitaire right after the last press
+- [x] V4 (v0.3.1) our Launcher activity must never be in Recents (it lost its HOME category when the router took over, so Android lists it): excludeFromRecents on Launcher + Launcher control + chooser
+- [x] V5 (v0.3.1) Solitaire in the foreground whenever the custom launcher starts (cold start / boot) and on return from Quickstep (every Home press stays stock; ask Tj if he wants it on EVERY Home press)
