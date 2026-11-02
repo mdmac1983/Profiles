@@ -1,22 +1,22 @@
-# CHECKPOINT 122 — read me first, then TASKS.md
+# CHECKPOINT 128 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T23:02:36Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `58efa80` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T23:06:34Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `5e2eed7` (this checkpoint is the commit after it)
 
 ## Just done
-Wrote Tj's v0.3.0 feedback V1-V5.
+V1-V5 built: gesture 18 deg/looser pinch/min 80px; keyboard switch (KeyboardPolicy+KeyboardSwitch, WRITE_SECURE_SETTINGS via adb, default OFF, snapshot/verify); poll-based reset (40 ms polling, EMPTY detection, no fixed waits); excludeFromRecents on Launcher/Control/chooser; Solitaire opens on launcher start; Control toggles; scenario tests (launcher not in Recents, startup open, keyboard info).
 
 ## Do this next
-Read emulator run (REC1 fixed test); implement V1-V5; ship v0.3.1.
+Dispatch emulator.yml; check results (V4 launcher not in recents, startup, reset timing 'took N ms'); fix; ship v0.3.1.
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  0bdbd14 ckpt 122: Wrote Tj's v0.3.0 feedback V1-V5.
   81dda79 ckpt 120: Released v0.3.0. Emulator 25/26 before release (only the Recents check, whose 
   10c8d10 ckpt 118: gated v0.3.0 (code 6) and pushed it: the handoff self-test, the full unit suit
   e3d4abd ckpt 117: pre-ship: v0.3.0: hide apps + hidden new installs, lock settings to Quickstep 
@@ -26,8 +26,7 @@ Read emulator run (REC1 fixed test); implement V1-V5; ship v0.3.1.
   8b3859b ckpt 109: REC1 built: RecentsPolicy adds FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS to every lau
   8c9345b ckpt 106: RESET2 built: TjAccessibilityService.runReset (open shade -> press Clear all; 
   ee74728 ckpt 104: Wrote Tj's v0.2.3 report (apps not closed, no notification access on Go) + RES
-  50c240f ckpt 102: Researched cloning Settings (AOSP Settings r47: 95 MB, 2,917 files, sharedUser
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(5 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
