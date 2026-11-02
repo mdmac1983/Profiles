@@ -17,8 +17,8 @@ with github actions, just like the other repos do."
 - [x] Local debug build + lint green (2.5 MB debug APK)
 - [x] Workflows: `android.yml` (gates / preview / signed release), `ci.yml` (PR tests + lint), Dependabot
 - [x] Project skill `android-go-launcher`; kotlin-concurrency-and-flow copied
-- [ ] **Run `android.yml` once on GitHub** (dispatch, `full_build=false` then `true`) and confirm the preview APK artifact
-      appears — the workflow has never run on a real runner
+- [x] **Run `android.yml` once on GitHub** (done 2026-11-02: run 41369698320 green in ~2.5 min, artifact launcher-preview-apk 813 KB) (dispatch, `full_build=false` then `true`) and confirm the preview APK artifact
+      (kept for history)
 - [ ] Tj decides the OPEN items in BRIEF.md (UI toolkit, features, device, keystore)
 - [ ] Create the keystore (`bash tools/init-keystore.sh`), back it up, Tj adds `SIGNING_KEYSTORE_BASE64`
 - [x] Tj approved `tools/MIRROR_MAIN` = on (2026-11-02): every push also fast-forwards `main`
