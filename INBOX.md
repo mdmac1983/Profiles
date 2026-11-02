@@ -100,3 +100,8 @@ Also, is there a way to completely hide the screenshot button and just make that
 ```
 What about drawing a copy of an identical portion of the wallpaper over the screenshot button so it just looks like the wallpaper
 ```
+
+## 2026-11-02T18:56:00Z
+```
+When I do the gesture, it goes to quickstep, but I don't know how to go back to the new launcher. There needs to be a quick way to go back to the new launcher
+```
