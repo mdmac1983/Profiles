@@ -27,3 +27,8 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
 ## Getting back to the custom launcher from Quickstep (v0.2.2)
 - **Press Home twice quickly** (within ~0.7 s) while the stock launcher is showing: you are back on the custom launcher. No settings or permissions needed.
 - Or open the "Launcher control" app icon (in the stock drawer) > "Use custom launcher".
+
+## v0.2.2 (2026-11-02)
+- Home screen: 8 rows, NO dock, no "^" caret (matches your stock photos). Drawer unchanged from v0.2.1 (it matched).
+- Power menu: "remove Screenshot (two-button menu)" now covers the whole system card with Power off + Restart (no gray gap); tapping them presses the real buttons. If a press ever fails the original menu is revealed.
+- **Double-press Home** in the stock launcher = back to the custom launcher.
