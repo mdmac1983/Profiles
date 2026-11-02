@@ -52,6 +52,14 @@ public class ControlActivity extends Activity {
         root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
             Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
         }}));
+        root.addView(label("Keyboard (needs a one-time adb grant)"));
+        root.addView(button("Keyboard: stock in custom launcher, SwiftKey in Quickstep: ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, KeyboardSwitch.KEY, !KeyboardSwitch.enabled(ControlActivity.this));
+            KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this)); refresh();
+        }}));
+        root.addView(button("Open the launcher at start (Solitaire in front): ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, !Features.get(ControlActivity.this, TjHooks.STARTUP_KEY, true)); refresh();
+        }}));
         root.addView(label("Method A - keep Recents clean"));
         root.addView(button("A: Recents shows only Solitaire (launch flag): ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, RecentsPolicy.KEY, !RecentsPolicy.enabled(ControlActivity.this)); refresh();
@@ -86,6 +94,8 @@ public class ControlActivity extends Activity {
         s += "\nPower menu: " + Features.powerMode(this);
         s += "\nA (launch flag) " + (RecentsPolicy.enabled(this) ? "ON" : "OFF") + " | B1 notifications " + (ReturnReset.clearNotifications(this) ? "ON" : "OFF") + " | B2 recents " + (ReturnReset.clearRecents(this) ? "ON" : "OFF");
         s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
+        s += "\nKeyboard switch: " + (KeyboardSwitch.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (KeyboardSwitch.permitted(this) ? "yes" : "NO") + " | " + KeyboardSwitch.status(this);
+        s += "\nSolitaire at launcher start: " + (Features.get(this, TjHooks.STARTUP_KEY, true) ? "ON" : "OFF");
         String app = ReturnReset.findAppLabel(this);
         s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")
                 + " - will open: " + (app == null ? "(no app matching '" + ReturnReset.appLabel(this) + "' found)" : app)

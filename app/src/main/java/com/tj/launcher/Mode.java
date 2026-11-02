@@ -33,6 +33,8 @@ public final class Mode {
 
     /** commit() (not apply): the router reads this a moment later, possibly after our process is killed. */
     public static void set(Context c, String mode) {
-        prefs(c).edit().putString(KEY, QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM).commit();
+        String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
+        prefs(c).edit().putString(KEY, m).commit();
+        KeyboardSwitch.apply(c, m);   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }

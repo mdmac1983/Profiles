@@ -24,7 +24,7 @@ adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
 adb shell dumpsys package "$PKG" > "$OUT/package-dump.txt" 2>&1
 
 # ---- the manifest must not contain anything that can touch the lock screen / device policy (L10 rule 1)
-for bad in BIND_DEVICE_ADMIN SYSTEM_ALERT_WINDOW DISABLE_KEYGUARD RECEIVE_BOOT_COMPLETED WRITE_SECURE_SETTINGS; do
+for bad in BIND_DEVICE_ADMIN SYSTEM_ALERT_WINDOW DISABLE_KEYGUARD RECEIVE_BOOT_COMPLETED; do
   check "manifest has no $bad" bash -c "! grep -q $bad $OUT/package-dump.txt"
 done
 check "declares no INSTALL_SHORTCUT permission itself" bash -c "! grep -E 'declared permissions' -A6 $OUT/package-dump.txt | grep -q 'com.android.launcher.permission.INSTALL_SHORTCUT'"
@@ -54,7 +54,7 @@ check "double Home in Quickstep mode returns to the custom launcher" grep -q 'co
 setmode custom; home
 
 # ---- RESET1: double Home back to custom closes apps, clears notifications, turns Wi-Fi off and opens the chosen app
-setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 setfeat; setmode quickstep
 adb shell cmd notification allow_listener "$PKG/com.android.launcher3.notification.NotificationListener" > "$OUT/allow-listener.txt" 2>&1; sleep 2
 adb shell svc wifi enable; sleep 2
@@ -161,7 +161,7 @@ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCOD
 adb logcat -d -s TjA11y:I | grep -E 'KEY code' > "$OUT/key-diag.txt" 2>&1
 # ---- REC1: apps launched from the custom launcher stay out of Recents; the target app (Clock here) stays in.
 #      Uses apps NOT launched earlier in this run (a task that already exists keeps its old Recents entry: the flag only applies when a task is created).
-setlabel(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"return_app_label\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; }
+setlabel(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; }
 setlabel Clock; setmode custom; home; sleep 2
 adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 255; sleep 4; shot 32-launched-messaging; adb shell input keyevent KEYCODE_HOME; sleep 2     # Messaging (row 2, col 3)
 adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 135; sleep 4; shot 33-launched-clock; adb shell input keyevent KEYCODE_HOME; sleep 2         # Clock = target (row 1, col 3)
@@ -169,6 +169,7 @@ adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; shot 31-recents-only-target; adb shell input keyevent KEYCODE_HOME; sleep 1
 check "recents: the target app (Clock) is in Recents" grep -qiE 'clock' "$OUT/recents-policy.txt"
 check "recents: an ordinary app launched from the launcher (Messaging) is NOT in Recents" bash -c "! grep -qi 'messaging' $OUT/recents-policy.txt"
+check "recents: our own launcher is NOT in Recents (V4)" bash -c "! grep -q 'com.tj.launcher' $OUT/recents-policy.txt"
 
 # ---- RESET2: accessibility helper ON, notification access OFF (like the Go tablet): double Home presses "Clear all" in the real shade and Recents, closes apps, then opens the app
 info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
@@ -188,6 +189,18 @@ check "reset2: the chosen app (Calendar) was opened after the accessibility rese
 check "reset2: the notification was cleared through the real shade (no notification access)" bash -c "[ \"$(tr -d ' \r\n' < $OUT/notif2-before.txt)\" != 0 ] && [ \"$(tr -d ' \r\n' < $OUT/notif2-after.txt)\" = 0 ]"
 info "recents entries before=$(tr -d ' \r\n' < $OUT/recents-before.txt) after=$(tr -d ' \r\n' < $OUT/recents-after.txt); apps still running: $(cat $OUT/apps2-after.txt | tr '\n' ';')"
 adb shell svc wifi enable >/dev/null 2>&1
+
+# ---- V5 + V2: Solitaire (Clock here) opens when the custom launcher STARTS; keyboard switch applies without error once granted
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/grant-secure.txt" 2>&1
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"true\\\" /><boolean name=\\\"keyboard_switch\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Clock</string></map>\" > shared_prefs/tj_features.xml'"
+adb shell settings get secure default_input_method > "$OUT/ime-before.txt" 2>&1
+setmode quickstep; setmode custom
+adb shell settings get secure default_input_method > "$OUT/ime-after-custom.txt" 2>&1
+adb shell am force-stop "$PKG"; sleep 1; adb shell input keyevent KEYCODE_HOME; sleep 6; resumed > "$OUT/resumed-startup.txt"
+check "startup: the target app (Clock) is in front when the custom launcher starts" grep -qi 'clock' "$OUT/resumed-startup.txt"
+adb logcat -d -s TjKeyboard:I > "$OUT/keyboard-log.txt" 2>&1
+info "keyboard: before=$(tr -d '\r\n' < $OUT/ime-before.txt) afterCustom=$(tr -d '\r\n' < $OUT/ime-after-custom.txt); $(tail -1 $OUT/keyboard-log.txt | cut -c1-160)"
+setlabel Clock; home
 
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
