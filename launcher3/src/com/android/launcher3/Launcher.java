@@ -1351,7 +1351,16 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        com.tj.launcher.TjHooks.onTouch(this, ev);   // Tj: observation only, never consumes
+        // Tj: two-finger twist. Once a second finger is down the page scroll is cancelled and events are swallowed until all fingers are up (responsive twist).
+        int tj = com.tj.launcher.TjHooks.onTouch(this, ev);
+        if (tj == com.tj.launcher.TjHooks.CANCEL_THEN_SWALLOW) {
+            android.view.MotionEvent cancel = android.view.MotionEvent.obtain(ev);
+            cancel.setAction(android.view.MotionEvent.ACTION_CANCEL);
+            super.dispatchTouchEvent(cancel);
+            cancel.recycle();
+            return true;
+        }
+        if (tj == com.tj.launcher.TjHooks.SWALLOW) return true;
         return super.dispatchTouchEvent(ev);
     }
 

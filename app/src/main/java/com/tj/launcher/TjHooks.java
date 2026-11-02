@@ -24,20 +24,37 @@ public final class TjHooks {
         return launcherResumed || System.currentTimeMillis() - lastLauncherPauseMs < 600;
     }
 
-    /** Observation only: never consumes an event. */
-    public static void onTouch(Context c, MotionEvent ev) {
+    public static final int PASS = 0, CANCEL_THEN_SWALLOW = 1, SWALLOW = 2;
+    private static boolean swallowing = false;
+
+    /**
+     * Called for every touch event the Launcher receives. Returns what Launcher.dispatchTouchEvent should do:
+     * PASS (normal), CANCEL_THEN_SWALLOW (a second finger just came down: cancel the page scroll/drag the first finger started, then eat events),
+     * SWALLOW (keep eating events until every finger is up, so the twist can never drag the home screen left/right).
+     * Never throws: any failure returns PASS.
+     */
+    public static int onTouch(Context c, MotionEvent ev) {
         try {
-            if (ev.getPointerCount() == 2) {
-                int dir = rotation.onTwoPointers(ev.getX(0), ev.getY(0), ev.getX(1), ev.getY(1));
-                if (dir == TwoFingerRotation.CLOCKWISE) goToQuickstep(c);
-                // counter-clockwise (kill switch) arrives with the kill-switch feature
-            } else if (ev.getActionMasked() == MotionEvent.ACTION_UP || ev.getActionMasked() == MotionEvent.ACTION_CANCEL
-                    || ev.getPointerCount() < 2) {
-                rotation.reset();
+            int action = ev.getActionMasked();
+            if (ev.getPointerCount() >= 2 && !Features.get(c, "twist_off", false)) {
+                int ret = swallowing ? SWALLOW : CANCEL_THEN_SWALLOW;
+                swallowing = true;
+                if (ev.getPointerCount() == 2) {
+                    int dir = rotation.onTwoPointers(ev.getX(0), ev.getY(0), ev.getX(1), ev.getY(1));
+                    if (dir == TwoFingerRotation.CLOCKWISE) goToQuickstep(c);
+                }
+                return ret;
             }
+            if (swallowing) {
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) { swallowing = false; rotation.reset(); }
+                return SWALLOW;   // a lone remaining finger after a two-finger gesture must not scroll the page
+            }
+            rotation.reset();
         } catch (Throwable t) {
             android.util.Log.e("TjHooks", "touch hook failed", t);
+            swallowing = false;
         }
+        return PASS;
     }
 
     public static void goToQuickstep(Context c) {

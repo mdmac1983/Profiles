@@ -19,3 +19,4 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
 - `config/BaseFlags.java`: `QSB_ON_FIRST_SCREEN = false` (stock has no home search bar).
 - `res/values/styles.xml`: `allAppsScrimColor` #EAFFFFFF -> #80FFFFFF (stock drawer measured from Tj's photos: 50% white over the wallpaper, least-squares fit, residual 8).
 - No dock (Tj, 2026-11-02): `com.tj.launcher.TjLook.NO_DOCK`; `DeviceProfile` sets `hotseatBarSizePx = 0`; `Hotseat.setInsets` hides the view; `ScrimView.updateDragHandleVisibility` no longer shows the "^" caret when accessibility is on; grid is now 5 columns x 8 rows (`go/res/xml/device_profiles.xml`, `res/xml/default_workspace_5x8.xml` without hotseat entries).
+- `Launcher.dispatchTouchEvent`: `TjHooks.onTouch` may cancel + swallow touches while two fingers are down (two-finger twist must not scroll the home pages).
