@@ -145,3 +145,14 @@ Also add the option to do the clear all button for both the recent apps and the 
 ```
 The solitaire opening is a little glitch right now. It was in the recent apps but didn't open on the screen. Diagnose and ship the newest launcher version
 ```
+
+## 2026-11-02T23:01:41Z
+```
+So far it works well but :
+
+1) make the gesture to go back to quickstep even more responsive 
+2) if possible, make the default keyboard while in the custom launcher the stock Android keyboard but switch to Microsoft SwiftKey when I switch to quickstep 
+3) can the closing apps and notifications be faster? The faster the better 
+4) sometimes the launcher app itself shows up in recent apps. I want the recent apps to only show solitaire
+5) the default should be solitaire in the foreground when the custom launcher opens
+```
