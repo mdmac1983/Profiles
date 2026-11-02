@@ -39,3 +39,11 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
   For notifications to clear, turn on **Notification access** for "Launcher" (Launcher control has a button that opens that page). Recents thumbnails can remain (clearing the Recents list needs a system permission).
 - **Twist gesture** is more responsive: the home screen no longer scrolls while two fingers are down, and it fires after 30 degrees (was 40).
 - **Faster power-menu cover**: acts on the first event and remembers where the card is (a very brief flash may remain; Android creates the menu before we can react).
+
+## v0.3.0 (2026-11-02) — hide apps, lock, Recents, reset fixes
+- **Hide apps / new installs.** Quickstep mode > Launcher control > "Choose apps shown in the custom launcher": tick = shown in the custom drawer AND its search. Everything you already have is ticked the first time the new launcher runs;
+  apps installed (or uninstalled and reinstalled) later start UNticked and stay hidden (also kept off the home screen) until you tick them. Quickstep always shows everything.
+- **Lock.** Launcher control and the app chooser do not open and have no icon while the custom launcher is on; use the twist (or Home-Home is for the other direction) to reach Quickstep first.
+- **Reset on double-Home** (Quickstep -> custom): no more Home press (that caused the Solitaire glitch: Solitaire was in Recents but the home screen covered it). Solitaire is started last and re-started up to 3 times until it is actually in front; Launcher control > "Last reset" says what happened.
+- **Three independent switches** (Launcher control, Quickstep mode): A = apps launched from the custom launcher stay out of Recents except Solitaire; B1 = press "Clear all" in the notification shade; B2 = press "Clear all" in Recents (closes those apps). B1/B2 need the accessibility helper. Try them alone and together and tell me which works best.
+- Notification access does not exist on Android Go, so the old notification route is gone.
