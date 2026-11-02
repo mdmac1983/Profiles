@@ -8,3 +8,4 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
 - Removed `RECEIVE_BOOT_COMPLETED` (safety rule: nothing runs at boot) and the backup agent (`allowBackup=false`).
 - All provider authorities/permissions use `${packageName}` = `com.tj.launcher`, so they cannot collide with the stock `com.android.launcher3`.
 - applicationId `com.tj.launcher`, resource namespace stays `com.android.launcher3` (the code imports `com.android.launcher3.R`).
+- `launcher3/iconloaderlib/src_full_lib` is not compiled (unused by the app; needs hidden UserHandle.getIdentifier).

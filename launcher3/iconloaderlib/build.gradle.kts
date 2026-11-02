@@ -7,7 +7,7 @@ android {
     defaultConfig { minSdk = 29 }
     sourceSets {
         getByName("main") {
-            java.srcDirs("src", "src_full_lib")
+            java.srcDirs("src")
             manifest.srcFile("AndroidManifest.xml")
             res.srcDirs("res")
         }
