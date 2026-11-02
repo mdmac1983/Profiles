@@ -2,7 +2,7 @@
 # should do all the app compiling and apk making. Claude codes the app, GitHub makes the apk.")
 #
 # TWO MODES, picked by whether the signing keystore secret exists:
-#   RELEASE  SIGNING_KEYSTORE_BASE64 is set  -> signed release APK, certificate verified against
+#   RELEASE  a signing key exists (secret, or the committed signing/launcher-keystore.b64) -> signed release APK, certificate verified against
 #            tools/keystore.fingerprint, published as a GitHub Release (tag created server-side).
 #   PREVIEW  secret not set yet              -> debug-signed APK as a workflow ARTIFACT (14 days),
 #            never a Release and never recorded in BUILDLOG: installable to try the app, but its
@@ -57,7 +57,8 @@ jobs:
             echo "full=false" >> "$GITHUB_OUTPUT"
             echo "GATES ONLY — re-run with **full_build** ticked, or push a \`v*\` tag, to build." >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ -n "$KS_B64" ]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
+          # Signing key: the SIGNING_KEYSTORE_BASE64 secret if set, else the committed signing/launcher-keystore.b64 (Tj waived secrecy).
+          if [ -n "$KS_B64" ] || [ -f signing/launcher-keystore.b64 ]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
         env:
           KS_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
 
@@ -70,6 +71,7 @@ jobs:
         env:
           KS_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
+          if [ -z "$KS_B64" ]; then KS_B64="$(cat signing/launcher-keystore.b64)"; fi
           printf '%s' "$KS_B64" | base64 -d > app/sideload.jks
           chmod 600 app/sideload.jks
           bash tools/checkkeystore.sh

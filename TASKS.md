@@ -20,7 +20,7 @@ with github actions, just like the other repos do."
 - [x] **Run `android.yml` once on GitHub** (done 2026-11-02: run 41369698320 green in ~2.5 min, artifact launcher-preview-apk 813 KB) (dispatch, `full_build=false` then `true`) and confirm the preview APK artifact
       (kept for history)
 - [ ] Tj decides the OPEN items in BRIEF.md (UI toolkit, features, device, keystore)
-- [ ] Create the keystore (`bash tools/init-keystore.sh`), back it up, Tj adds `SIGNING_KEYSTORE_BASE64`
+- [x] Keystore created and committed under signing/ (Tj waived secrecy, 2026-11-02); GitHub signs
 - [x] Tj approved `tools/MIRROR_MAIN` = on (2026-11-02): every push also fast-forwards `main`
 - [ ] Install the preview APK on the Android 10 Go device; set it as default home app; report what happens
 

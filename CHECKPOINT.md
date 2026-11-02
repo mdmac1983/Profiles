@@ -1,22 +1,25 @@
-# CHECKPOINT 14 — read me first, then TASKS.md
+# CHECKPOINT 16 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T14:40:55Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `4c7bb41` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T14:41:25Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `31d5fb6` (this checkpoint is the commit after it)
 
 ## Just done
-Recorded Tj's 4 answers + gesture/power-menu/keyboard/signing tasks (G1-G5).
+Keystore generated, committed as signing/launcher-keystore.b64 (+ fingerprint pinned); android.yml signs with it (secret wins if set).
 
 ## Do this next
-Generate keystore (tools/init-keystore.sh), commit as signing/launcher-keystore.b64 + tools/keystore.fingerprint, make android.yml restore it when the secret is absent; then P1 port.
+Dispatch android.yml full_build on main to prove a SIGNED release publishes + verify-apk passes; then P1 port (tools/fetch_launcher3.sh -> new Gradle module).
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
+     M .github/workflows/android.yml
      M CHECKPOINT.md
      M TASKS.md
+    ?? signing/
 
 ## Last ten checkpoints
 ```
+  7090841 ckpt 14: Recorded Tj's 4 answers + gesture/power-menu/keyboard/signing tasks (G1-G5).
   0d0b4ac ckpt 12: Researched feasibility: AOSP Launcher3 android-10.0.0_r47 reachable + pinned (t
   d62f513 ckpt 9: Wrote Tj's launcher spec (L1-L11, device details) into TASKS.md before any code.
   d441d13 ckpt 7: android.yml full build verified on GitHub: run green, preview APK artifact (813 
