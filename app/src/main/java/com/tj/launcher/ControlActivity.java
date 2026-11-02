@@ -36,6 +36,13 @@ public class ControlActivity extends Activity {
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
             goHome();
         }}));
+        root.addView(label("Power menu (needs the helper turned on in Accessibility)"));
+        root.addView(button("Power menu: leave alone (default)", new Runnable() { public void run() { setPower(Features.POWER_OFF); }}));
+        root.addView(button("Power menu: hide Screenshot button", new Runnable() { public void run() { setPower(Features.POWER_HIDE_SCREENSHOT); }}));
+        root.addView(button("Power menu: block it completely", new Runnable() { public void run() { setPower(Features.POWER_BLOCK); }}));
+        root.addView(button("Open Accessibility settings", new Runnable() { public void run() {
+            startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }}));
         root.addView(button("Restore everything", new Runnable() { public void run() {
             RestoreStore.restoreAll(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
@@ -46,8 +53,17 @@ public class ControlActivity extends Activity {
 
     @Override protected void onResume() { super.onResume(); refresh(); }
 
+    private void setPower(String m) { Features.setString(this, Features.POWER_MODE, m); refresh(); }
+
+    private TextView label(String t) {
+        TextView v = new TextView(this);
+        v.setText(t); v.setTextColor(Color.DKGRAY); v.setPadding(0, 32, 0, 0);
+        return v;
+    }
+
     private void refresh() {
         String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
+        s += "\nPower menu: " + Features.powerMode(this);
         if (CrashGuard.wasTripped(this)) s += "\n\nThe launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.";
         status.setText(s);
     }
