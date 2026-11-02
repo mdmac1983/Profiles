@@ -12,20 +12,21 @@
  * permissions and limitations under the License.
  */
 
-package com.android.systemui.plugins;
+package com.android.systemui.plugins.annotations;
 
-import com.android.systemui.plugins.annotations.ProvidesInterface;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-@ProvidesInterface(version = PluginDependency.VERSION)
-public class PluginDependency {
-    public static final int VERSION = 1;
-    static DependencyProvider sProvider;
+/**
+ * Used to indicate that an interface in the plugin library needs another
+ * interface to function properly. When this is added, it will be enforced
+ * that all plugins that @Requires the annotated interface also @Requires
+ * the specified class as well.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Repeatable(value = Dependencies.class)
+public @interface DependsOn {
+    Class<?> target();
 
-    public static <T> T get(Plugin p, Class<T> cls) {
-        return sProvider.get(p, cls);
-    }
-
-    static abstract class DependencyProvider {
-        abstract <T> T get(Plugin p, Class<T> cls);
-    }
 }

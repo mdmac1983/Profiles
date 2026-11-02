@@ -15,19 +15,24 @@
 package com.android.systemui.plugins;
 
 import android.content.Context;
-import android.view.View;
 
 /**
- * Interface to deal with lack of multiple inheritance
- *
- * This interface is designed to be used as a base class for plugin interfaces
- * that need fragment methods. Plugins should not extend Fragment directly, so
- * plugins that are fragments should be extending PluginFragment, but in SysUI
- * these same versions should extend Fragment directly.
- *
- * Only methods that are on Fragment should be included here.
+ * Interface for listening to plugins being connected.
  */
-public interface FragmentBase {
-    View getView();
-    Context getContext();
+public interface PluginListener<T extends Plugin> {
+    /**
+     * Called when the plugin has been loaded and is ready to be used.
+     * This may be called multiple times if multiple plugins are allowed.
+     * It may also be called in the future if the plugin package changes
+     * and needs to be reloaded.
+     */
+    void onPluginConnected(T plugin, Context pluginContext);
+
+    /**
+     * Called when a plugin has been uninstalled/updated and should be removed
+     * from use.
+     */
+    default void onPluginDisconnected(T plugin) {
+        // Optional.
+    }
 }
