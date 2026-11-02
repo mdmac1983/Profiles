@@ -90,3 +90,10 @@ v0.2.0 = 4x4 grid + search bar + dock, 4-column tall-row opaque drawer.  Recents
 - [ ] LK5 OPEN QUESTION for Tj: does the stock home have a dock (can he drop icons at the bottom edge)? Decides 8 rows/no dock (pitch 113 px like stock) vs 7 rows + dock (pitch 121 px, current). Stock row pitch measured 113 px, mine 121.
 - [ ] LK6 first-run home layout like his (folders Connect/Games + app order) — needs package names; label-based importer
 - [ ] L2 hide apps / L6 hide new installs / L3 clone Settings (v0.3), G2 kill switch (button, CCW twist, both volume keys), L7 keyboard switch, L5 tiles guard
+
+## Tj, 2026-11-02 (after v0.2.1 on the tablet), verbatim summary
+"It has no dock, use 8 rows." / "Go back and look at the photos of the stock launcher. Remember these photos for reference at all times, even in a new Claude session." /
+"Review the screenshots attached here for how the new launcher looks. See if they are identical." / "is there a way to completely hide the screenshot button and just make that whole section look identical to the wallpaper below it or make a new power menu with no screenshot button or gray space at all?"
+- [x] REF stock photos stored permanently: research/reference/stock/INDEX.md (+ CLAUDE.md rule + resume.sh line)
+- [ ] LK5 done by answer: no dock -> 8 rows, hotseat removed, no "^" caret on the home screen (match stock-home.png)
+- [ ] G3c power menu: a TWO-BUTTON replacement card (Power off, Restart) exactly covering the system card, so no Screenshot slot and no gray gap; fail-open (if a tap cannot reach the real button, reveal the original menu)

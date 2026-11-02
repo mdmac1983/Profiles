@@ -9,6 +9,13 @@ is still open: `BRIEF.md`. The job list: `TASKS.md`. Where the last session stop
 Sibling repos in this container (`novig`, `Mirage`) are the origin of this system; they are **read only** for
 Launcher's work. Never commit, push or run their scripts from here.
 
+## The stock launcher photos are the ground truth for the look (Tj, 2026-11-02, permanent)
+
+**Standing instruction (verbatim):** "Remember these photos for reference at all times, even in a new Claude session." The custom launcher must look and function IDENTICALLY to the
+stock Quickstep v10. Photos + measured facts: **`research/reference/stock/INDEX.md`** (`stock-home.png`, `stock-drawer.png`, power menu, device info). Before saying any look is matched,
+open `stock-home.png` / `stock-drawer.png` next to the newest emulator or tablet screenshot and measure (grid, row pitch 113 px, scrim 50% white, no dock, no caret, 5 columns). Emulator runs:
+`emulator.yml` (manual) at 600x1024, 170 dpi, font scale 1.2. Never rely on memory of the photos.
+
 ## FIRST ACTION OF EVERY SESSION — install the hooks, don't assume they exist
 
 Claude Code on the web does **not** load hooks from a repo's own `.claude/settings.json` when the repo sits under a
