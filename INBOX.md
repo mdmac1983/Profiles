@@ -95,3 +95,8 @@ Review the screenshots attached here for how the new launcher looks. See if they
 
 Also, is there a way to completely hide the screenshot button and just make that whole section look identical to the wallpaper below it or make a new power menu with no screenshot button or gray space at all?
 ```
+
+## 2026-11-02T18:55:13Z
+```
+What about drawing a copy of an identical portion of the wallpaper over the screenshot button so it just looks like the wallpaper
+```
