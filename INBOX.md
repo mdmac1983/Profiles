@@ -130,3 +130,8 @@ The solitaire opened and the wifi turned off, but the opened apps did not close.
 
 Maybe it can force stop apps or find another way to close apps, or at least hide the open apps from the recent apps menu.  Can the launcher simply make it so it always shows only solitaire in the recent apps menu permanently?
 ```
+
+## 2026-11-02T20:32:47Z
+```
+If the custom launcher can permanently only show solitaire in the recent apps menu, this is even better than closing the apps
+```
