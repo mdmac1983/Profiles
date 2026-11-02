@@ -80,6 +80,22 @@ public final class ReturnReset {
         if (bt != null && bt.isEnabled()) { boolean ok = bt.disable(); Log.i(TAG, "bluetooth off -> " + ok); }
     }
 
+    private static volatile String cachedLabel, cachedPkg;
+    private static volatile long cachedAt = 0;
+
+    /** Package of the app we open / keep in Recents (e.g. Solitaire), or null. Cached for 30 s: it is consulted on every app launch. */
+    public static String targetPackage(Context c) {
+        long now = System.currentTimeMillis();
+        String label = appLabel(c);
+        if (cachedLabel != null && cachedLabel.equals(label) && now - cachedAt < 30_000) return cachedPkg;
+        List<String> labels = new ArrayList<>();
+        List<ResolveInfo> ris = launchables(c, labels);
+        int i = ResetPolicy.pickLabel(labels, label);
+        cachedPkg = i < 0 ? null : ris.get(i).activityInfo.packageName;
+        cachedLabel = label; cachedAt = now;
+        return cachedPkg;
+    }
+
     /** Label of the app we would open, or null if none is installed (used by Launcher control's status line). */
     public static String findAppLabel(Context c) {
         List<String> labels = new ArrayList<>();

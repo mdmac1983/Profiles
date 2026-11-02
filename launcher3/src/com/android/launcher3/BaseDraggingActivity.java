@@ -149,6 +149,7 @@ public abstract class BaseDraggingActivity extends BaseActivity
 
         // Prepare intent
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        com.tj.launcher.RecentsPolicy.apply(this, intent);   // Tj: apps launched here stay out of Recents (except the target app)
         if (v != null) {
             intent.setSourceBounds(getViewBounds(v));
         }

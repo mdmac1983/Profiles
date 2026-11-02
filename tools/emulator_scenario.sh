@@ -159,6 +159,15 @@ adb shell input keyevent KEYCODE_VOLUME_UP; sleep 1
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2
 adb logcat -d -s TjA11y:I | grep -E 'KEY code' > "$OUT/key-diag.txt" 2>&1
+# ---- REC1: apps launched from the custom launcher stay out of Recents; the target app (Calendar here) stays in
+setfeat; setmode custom; home; sleep 2
+adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 414 135; sleep 4; adb shell input keyevent KEYCODE_HOME; sleep 2     # Contacts (row 1, col 4)
+adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 72 135; sleep 4; adb shell input keyevent KEYCODE_HOME; sleep 2      # Calendar (row 1, col 1)
+adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; shot 31-recents-only-target; adb shell input keyevent KEYCODE_HOME; sleep 1
+check "recents: the target app (Calendar) is in Recents" grep -qi 'calendar' "$OUT/recents-policy.txt"
+check "recents: an ordinary app launched from the launcher (Contacts) is NOT in Recents" bash -c "! grep -qi 'com.android.contacts' $OUT/recents-policy.txt"
+
 # ---- RESET2: accessibility helper ON, notification access OFF (like the Go tablet): double Home presses "Clear all" in the real shade and Recents, closes apps, then opens the app
 info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
 setfeat; setmode quickstep; rebind

@@ -52,6 +52,9 @@ public class ControlActivity extends Activity {
         root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
             Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
         }}));
+        root.addView(button("Recents shows only Solitaire: ON / OFF (tap to toggle)", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, RecentsPolicy.KEY, !RecentsPolicy.enabled(ControlActivity.this)); refresh();
+        }}));
         root.addView(button("Restore everything", new Runnable() { public void run() {
             RestoreStore.restoreAll(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
@@ -73,6 +76,7 @@ public class ControlActivity extends Activity {
     private void refresh() {
         String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
         s += "\nPower menu: " + Features.powerMode(this);
+        s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
         String app = ReturnReset.findAppLabel(this);
         s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")
                 + " - will open: " + (app == null ? "(no app matching '" + ReturnReset.appLabel(this) + "' found)" : app)
