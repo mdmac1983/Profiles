@@ -1,22 +1,24 @@
-# CHECKPOINT 62 — read me first, then TASKS.md
+# CHECKPOINT 63 — read me first, then TASKS.md
 
-**Written:** 2026-11-02T18:17:26Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `1085495` (this checkpoint is the commit after it)
+**Written:** 2026-11-02T18:24:38Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-4ff66321-chzhhg` · **builds on:** `69a5177` (this checkpoint is the commit after it)
 
 ## Just done
-Power-menu cover widened to the panel column + colour tuned; scenario reordered: safety checks first, power-menu phase 2 on a fresh install with home-preference diagnostics (prefhome.txt).
+pre-ship: v0.2.1: Go icon size, 5-col grid/drawer, 50% drawer scrim (measured), power-menu helper (opt-in accessibility: hide Screenshot / block menu)
 
 ## Do this next
-Dispatch emulator.yml; read results.txt (safety must be all PASS again), prefhome.txt (which step loses the Home preference -> chooser 'Select a Home app'), a11y-diag.txt, 11-13 screenshots, 01/03 look vs STOCK. Then v0.2.1 release.
+ship.sh gates and releases this
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+     M app/build.gradle.kts
+     M research/FIRST_INSTALL.md
 
 ## Last ten checkpoints
 ```
+  69a5177 ckpt 62: Power-menu cover widened to the panel column + colour tuned; scenario reordered
   3f157bf ckpt 60: Look fixes from measurement (icon 60dp, text 14sp, drawer scrim 50% white); ser
   ac02e74 ckpt 58: Fixed power-menu service feedback loop (ignore own events, debounce, no re-layo
   1f2e3e9 ckpt 55: Power-menu helper: TjAccessibilityService (cover Screenshot entry / block menu,
@@ -26,8 +28,4 @@ Dispatch emulator.yml; read results.txt (safety must be all PASS again), prefhom
   0efe959 ckpt 45: gated v0.2.0 (code 2) and pushed it: the handoff self-test, the full unit suite
   921312e ckpt 44: Emulator safety scenario fully green. Prepared v0.2.0 (code 2): R8 off, FIRST_I
   54a4b86 ckpt 43: Emulator scenario harness fixes (force-stop after editing prefs; home between c
-  eff4fa4 ckpt 41: Emulator scenario now asserts safety: manifest has no admin/overlay/keyguard/bo
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)

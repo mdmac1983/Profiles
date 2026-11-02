@@ -16,3 +16,10 @@ Before installing: have a PC with `adb` ready if you can (not required): `bash t
 4. If anything is wrong: Launcher control > **Restore everything** > or Settings > Apps > Default apps > Home app > Quickstep > or uninstall Launcher.
    Safe mode (hold power, long-press "Power off", OK) disables all user-installed apps and shows the stock launcher.
 5. Tell Claude what you see (screenshots help): the home layout, the drawer, and whether Recents works.
+
+## v0.2.1 additions (2026-11-02)
+- Look: 5-column grid + 5-column drawer, Go icon size (60 dp), drawer scrim = 50% white (measured from your stock photos). Row pitch is ~7% taller than stock (needs your answer: does the stock home have a dock?).
+- **Power-menu helper (optional, OFF by default).** Open the "Launcher control" app icon > choose "Power menu: hide Screenshot button" (or "block it completely") > "Open Accessibility settings"
+  > find "Launcher power-menu helper" > turn it on. It only acts while the custom launcher is active and never on the lock screen; switch back to Quickstep (or choose "leave alone") and the normal power menu returns.
+  Proven on an Android 10 emulator (Screenshot entry fully hidden). Your tablet's panel colour may differ a little: send a photo if you can see a patch.
+- If Android ever shows "Select a Home app": choose Launcher > Always (or Quickstep to go back). It is only a chooser.
