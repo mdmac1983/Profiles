@@ -3,15 +3,15 @@ package com.tj.launcher;
 /**
  * Detects a two-finger rotation from successive (x0,y0,x1,y1) samples. Pure Java (JVM-testable).
  * Screen coordinates (y down): an INCREASING angle of atan2(dy, dx) is a clockwise turn on screen.
- * Fires once per gesture after >= 30 degrees accumulated, and only if the finger distance stays within +-35% of its
+ * Fires once per gesture after >= 18 degrees accumulated, and only if the finger distance stays within +-50% of its
  * starting value (so a pinch/zoom is not a rotation). Call reset() when fewer than two fingers are down.
  */
 public final class TwoFingerRotation {
     public static final int NONE = 0, CLOCKWISE = 1, COUNTER_CLOCKWISE = 2;
-    private static final double THRESHOLD_RAD = Math.toRadians(30);
-    private static final double MAX_DISTANCE_CHANGE = 0.35;
+    private static final double THRESHOLD_RAD = Math.toRadians(18);
+    private static final double MAX_DISTANCE_CHANGE = 0.5;
     /** Two fingers closer than this (px) are treated as one touching finger pair/noise, not a twist. */
-    private static final double MIN_DISTANCE_PX = 100;
+    private static final double MIN_DISTANCE_PX = 80;
 
     private boolean active, fired;
     private double lastAngle, accumulated, startDistance;

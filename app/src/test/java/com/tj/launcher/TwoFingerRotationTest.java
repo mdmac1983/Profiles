@@ -29,7 +29,7 @@ public class TwoFingerRotationTest {
     }
 
     @Test public void smallTwistIsIgnored() {
-        assertEquals(TwoFingerRotation.NONE, rotate(new TwoFingerRotation(), 0, 20, 100, 100));
+        assertEquals(TwoFingerRotation.NONE, rotate(new TwoFingerRotation(), 0, 12, 100, 100));
     }
 
     @Test public void pinchIsNotARotation() {
@@ -49,8 +49,8 @@ public class TwoFingerRotationTest {
         assertEquals(TwoFingerRotation.CLOCKWISE, rotate(new TwoFingerRotation(), 150, 230, 100, 100));
     }
 
-    @Test public void thirtyFiveDegreesNowFires() {
-        assertEquals(TwoFingerRotation.CLOCKWISE, rotate(new TwoFingerRotation(), 0, 35, 100, 100));
+    @Test public void twentyDegreesNowFires() {
+        assertEquals(TwoFingerRotation.CLOCKWISE, rotate(new TwoFingerRotation(), 0, 22, 100, 100));
     }
 
     @Test public void fingersTooCloseTogetherAreIgnored() {

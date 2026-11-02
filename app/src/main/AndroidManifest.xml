@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Tj: return reset (all normal, install-time permissions; they work for targetSdk 28 on Android 10) -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- Tj (V2): lets the launcher switch the keyboard. Cannot be granted from Settings: only `adb shell pm grant` (tools/adb-grant.sh keyboard). Without it the keyboard feature just reports "needs adb grant". -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -164,6 +166,7 @@
         <!-- Main launcher activity (unchanged from AOSP). -->
         <activity
             android:name="com.android.launcher3.Launcher"
+            android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
             android:stateNotNeeded="true"
@@ -206,6 +209,7 @@
         <!-- Tj: chooser for the apps shown in the custom launcher (opens only in Quickstep mode; no launcher icon of its own). -->
         <activity
             android:name="com.tj.launcher.HiddenAppsActivity"
+            android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="Apps shown in the custom launcher" />
@@ -213,6 +217,7 @@
         <!-- Tj: "Launcher control" icon; reachable from the stock launcher too (switch back, restore everything). -->
         <activity
             android:name="com.tj.launcher.ControlActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="Launcher control">

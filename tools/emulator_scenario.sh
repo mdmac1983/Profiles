@@ -49,7 +49,7 @@ check "switching back to custom works" grep -q 'com.tj.launcher/com.android.laun
 
 # ---- double-press Home in Quickstep mode returns to the custom launcher (BACK1)
 setmode quickstep; home; sleep 2
-adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
+adb shell input keyevent KEYCODE_HOME KEYCODE_HOME; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
 check "double Home in Quickstep mode returns to the custom launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
 setmode custom; home
 
@@ -65,7 +65,7 @@ adb shell cmd notification post -S bigtext -t TjTest tjtag1 "hello from the test
 sleep 2
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag1 > "$OUT/notif-before.txt" 2>&1
 home; sleep 2
-adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 7
+adb shell input keyevent KEYCODE_HOME KEYCODE_HOME; sleep 7
 resumed > "$OUT/resumed-reset.txt"
 for APP in com.android.contacts com.android.gallery3d com.android.email; do echo "$APP $(adb shell pidof $APP | tr -d '\r\n')" >> "$OUT/apps-after.txt"; done
 adb shell dumpsys activity processes | grep -E 'Proc #|oom:' | grep -iE 'contacts|gallery3d|email' > "$OUT/oom-after.txt" 2>&1
@@ -178,7 +178,7 @@ adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-before.
 adb shell cmd notification post -S bigtext -t TjTest tjtag2 "second test" >/dev/null 2>&1; sleep 2
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-before.txt" 2>&1
 home; sleep 1
-adb shell "input keyevent KEYCODE_HOME; sleep 0.3; input keyevent KEYCODE_HOME"; sleep 14
+adb shell input keyevent KEYCODE_HOME KEYCODE_HOME; sleep 14
 shot 30-after-reset2; resumed > "$OUT/resumed-reset2.txt"
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-after.txt" 2>&1
 adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-after.txt" 2>&1
