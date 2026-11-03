@@ -22,3 +22,4 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
 - `Launcher.dispatchTouchEvent`: `TjHooks.onTouch` may cancel + swallow touches while two fingers are down (two-finger twist must not scroll the home pages).
 - Hidden apps (Tj, 2026-11-02): `AppFilter.shouldShowApp` -> `com.tj.launcher.HiddenApps.isShown`; `SessionCommitReceiver.queueAppIconAddition` and `AllAppsList.addPromiseApp` skip not-allowed packages; `PackageUpdatedTask` OP_REMOVE forgets the package (reinstall = new = hidden until allowed).
 - `BaseDraggingActivity.startActivitySafely`: `RecentsPolicy.apply` adds FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS to every launch except the target app (Solitaire), so Recents shows only Solitaire.
+- `WallpaperOffsetInterpolator.setOffsetSafely`: calls `TjHooks.onWallpaperOffset` (W3b: the wallpaper patch over the power-menu area needs the current wallpaper x offset).

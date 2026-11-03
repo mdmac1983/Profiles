@@ -15,7 +15,7 @@ public final class PowerMenuRule {
     public static int decide(String powerMode, boolean customMode, boolean keyguardLocked, boolean menuOpen, boolean screenshotFound) {
         if (!customMode || keyguardLocked || !menuOpen) return NOTHING;
         if (Features.POWER_BLOCK.equals(powerMode)) return CLOSE_MENU;
-        if (Features.POWER_HIDE_SCREENSHOT.equals(powerMode)) return screenshotFound ? COVER_SCREENSHOT : NOTHING;
+        if (Features.isCover(powerMode)) return screenshotFound ? COVER_SCREENSHOT : NOTHING;
         return NOTHING;
     }
 }

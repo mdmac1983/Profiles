@@ -9,7 +9,10 @@ public final class Features {
 
     /** Power menu: OFF | HIDE_SCREENSHOT | BLOCK (close the whole menu). Default OFF. */
     public static final String POWER_MODE = "power_mode";
-    public static final String POWER_OFF = "off", POWER_HIDE_SCREENSHOT = "hide_screenshot", POWER_BLOCK = "block";
+    public static final String POWER_OFF = "off", POWER_HIDE_SCREENSHOT = "hide_screenshot", POWER_BLOCK = "block", POWER_WALLPAPER = "wallpaper";
+
+    /** Modes that put our replacement card over the system card (W3b adds the wallpaper patch under it). */
+    public static boolean isCover(String m) { return POWER_HIDE_SCREENSHOT.equals(m) || POWER_WALLPAPER.equals(m); }
 
     private Features() {}
 
@@ -23,6 +26,6 @@ public final class Features {
 
     public static String powerMode(Context c) {
         String m = getString(c, POWER_MODE, POWER_OFF);
-        return POWER_HIDE_SCREENSHOT.equals(m) || POWER_BLOCK.equals(m) ? m : POWER_OFF;
+        return POWER_HIDE_SCREENSHOT.equals(m) || POWER_BLOCK.equals(m) || POWER_WALLPAPER.equals(m) ? m : POWER_OFF;
     }
 }

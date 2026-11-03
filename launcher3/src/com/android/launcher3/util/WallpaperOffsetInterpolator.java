@@ -266,6 +266,7 @@ public class WallpaperOffsetInterpolator extends BroadcastReceiver {
         private void setOffsetSafely(IBinder token) {
             try {
                 mWM.setWallpaperOffsets(token, mCurrentOffset, 0.5f);
+                com.tj.launcher.TjHooks.onWallpaperOffset(mCurrentOffset);   // Tj: the power-menu wallpaper patch must show the same slice of the wallpaper
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Error updating wallpaper offset: " + e);
             }

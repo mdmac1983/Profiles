@@ -265,7 +265,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Side key just went down: put the replacement card in place now, before the (long-press) system power menu exists. */
     private void earlyCover() {
-        if (!Mode.isCustom(this) || !Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this))) return;
+        if (!Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (km != null && km.isKeyguardLocked()) return;
         Rect cached = cachedCard();
@@ -290,7 +290,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean menuOpen = false, found = false;
         if (custom && !locked && !Features.POWER_OFF.equals(mode)) {
             List<AccessibilityWindowInfo> windows = getWindows();
-            if (!overlayShown && Features.POWER_HIDE_SCREENSHOT.equals(mode)) {
+            if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
                 if (cached != null && dialogWindowPresent(windows)) showOverlay(cached);   // instant: no node scan yet
             }
@@ -330,7 +330,7 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
-            if (custom && !locked && Features.POWER_HIDE_SCREENSHOT.equals(mode)) hideOverlay(); else removeOverlay();
+            if (custom && !locked && Features.isCover(mode)) hideOverlay(); else removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
         }
     }
@@ -588,7 +588,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
     private void warmUp() {
-        if (overlay != null || !Mode.isCustom(this) || !Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this))) return;
+        if (overlay != null || !Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
         Rect cached = cachedCard();
         if (cached == null) return;
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);

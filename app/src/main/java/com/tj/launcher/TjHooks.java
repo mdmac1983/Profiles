@@ -32,6 +32,14 @@ public final class TjHooks {
         } catch (Throwable t) { android.util.Log.e("TjHooks", "startup hook failed", t); }
     }
 
+    /** Current wallpaper x offset (0..1) as the launcher last set it; 0.5 until the launcher says otherwise. */
+    public static volatile float wallpaperX = 0.5f;
+
+    public static void onWallpaperOffset(float x) {
+        wallpaperX = x;
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
+    }
+
     public static void onLauncherPaused() {
         launcherResumed = false;
         lastLauncherPauseMs = System.currentTimeMillis();
