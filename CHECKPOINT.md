@@ -1,13 +1,13 @@
-# CHECKPOINT 148 — read me first, then TASKS.md
+# CHECKPOINT 149 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T04:39:06Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `209c142` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T04:56:14Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `7fe6321` (this checkpoint is the commit after it)
 
 ## Just done
-Run 26 (382895b): emulator device vanished after reset2 (adb: device not found), so reset2/startup/X1/restart checks are void, not proven failures. Scenario now streams logcat to the runner + heartbeat file.
+Run 27 (54a3b53): emulator dies in reset2 again (same spot as run 26, so reproducible, not a one-off); logcat stream had died at 60s because of my adb timeout wrapper. Now: real adb binary for the stream, heartbeat with mem/qemu/oom info and +3/+7/+14s beats inside reset2.
 
 ## Do this next
-Dispatch emulator.yml run 27 on claude/install-hooks-script-chvlig; read heartbeat.txt + logcat-stream.txt first if the device dies again; ship v0.3.2 only when green (Tj: ship it when green)
+Dispatch emulator.yml run 28; if the emulator dies again read heartbeat.txt (mem/qemu/oom) + logcat-stream.txt end; hypotheses: OOM on runner, or Recents Clear all now succeeding kills the emulator. Ship v0.3.2 only when green.
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Dispatch emulator.yml run 27 on claude/install-hooks-script-chvlig; read heartbe
 
 ## Last ten checkpoints
 ```
+  54a3b53 ckpt 148: Run 26 (382895b): emulator device vanished after reset2 (adb: device not found
   382895b ckpt 147: Run 25: V4 PASS, W5 3/3 PASS, W2 PASS; reset2 Recents still TIMEOUT. Suspect: 
   bf3405d ckpt 146: Emulator scenario: X1 lock-screen number checks (PIN set/cleared)
   33b0b04 ckpt 145: X1 built: LockNumber overlay (a11y, NOT_TOUCHABLE) shows 71125011907547 at mea
@@ -26,7 +27,6 @@ Dispatch emulator.yml run 27 on claude/install-hooks-script-chvlig; read heartbe
   03ac2f6 ckpt 141: X2 branches audited: closed 5 unmergeable dependabot PRs, resume.sh ignores de
   ac9b2c1 ckpt 140: Bumped to 0.3.2/code 8, FIRST_INSTALL notes
   6686f1b ckpt 139: Emulator scenario: W5 stray-home redirect + quickstep-mode negative, W2 runtim
-  5d9b02a ckpt 138: Built W1-W5 in code, unit tests+debug build green: StrayHomeGuard (a11y presse
 ```
 
 (2 automatic checkpoint(s) since the last deliberate one — the

@@ -21,8 +21,8 @@ getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | gr
 home(){ adb shell input keyevent KEYCODE_HOME; sleep 4; }
 
 # stream a filtered logcat to the RUNNER (survives an emulator crash, which has cost us the evidence before) + a heartbeat after each phase
-( adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I > "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null
-beat(){ echo "$(date +%T) $1 :: $(adb get-state 2>&1 | tr -d '\r')" >> "$OUT/heartbeat.txt"; }
+( command adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I > "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null   # `command adb`: the real binary, NOT our 60 s timeout wrapper
+beat(){ echo "$(date +%T) $1 :: $(adb get-state 2>&1 | tr -d '\r') | mem: $(free -m | awk 'NR==2{print "used="$3" free="$4" avail="$7}') | qemu procs: $(pgrep -fc qemu-system 2>/dev/null) | oom: $(sudo dmesg 2>/dev/null | grep -ciE 'out of memory|killed process')" >> "$OUT/heartbeat.txt"; }
 beat start
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
@@ -190,7 +190,8 @@ adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-before.
 adb shell cmd notification post -S bigtext -t TjTest tjtag2 "second test" >/dev/null 2>&1; sleep 2
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-before.txt" 2>&1
 home; sleep 1
-adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 14
+beat "reset2: before double Home"
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 3; beat "reset2: +3s"; sleep 4; beat "reset2: +7s"; sleep 7; beat "reset2: +14s"
 shot 30-after-reset2; resumed > "$OUT/resumed-reset2.txt"
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-after.txt" 2>&1
 adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-after.txt" 2>&1
