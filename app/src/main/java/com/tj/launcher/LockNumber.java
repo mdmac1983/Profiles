@@ -22,8 +22,8 @@ public final class LockNumber {
     public static final float BASELINE_PER_HEIGHT = 0.9033f;   // v0.3.3: 7.png: the real digits end at y=925 of 1024 (ours ended at 927)
     /** Light weight: the photo's strokes carry 19 % less ink than Regular at the same size (alpha-mass measurement of 5.png vs 6.png). */
     public static final int WEIGHT = 300;
-    /** 7.png: the real number is white at ~71 % opacity (brightest pixels 184,203,182 over a 23,69,6 background => alpha 0.69-0.72); thin strokes (bar ink 1.2 px-equivalent = Light x 0.71) */
-    public static final int ALPHA = 181;
+    /** 7.png, per-pixel solve against the wallpaper just above the text: peak alpha 0.72 on unobstructed stroke pixels; top-bar ink 1.2 px-equivalent = a 1.6 px Light bar (0.062 em x 25.7) at ~0.73 opacity => 186/255 */
+    public static final int ALPHA = 186;
     /** +1 px to the right (6.png centre 299.5 vs 300.6 in the photo), as a fraction of the screen width */
     public static final float X_NUDGE_PER_WIDTH = 0.0017f;
 
