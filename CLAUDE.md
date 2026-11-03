@@ -66,6 +66,10 @@ Rules that make the ladder work:
 - **Push failure is never silent.** Autosave warns when commits exist only in this container (they are lost when
   the session ends). Fix the connection and `git push origin HEAD` at once.
 
+## Messages from Tj (standing rule, 2026-11-03, permanent)
+
+If Tj sends several messages while a task is running: **keep doing what you are already doing**, add each new message as the next step (write it into `TASKS.md` in his words, `ckpt`), **never drop or forget one**, and **answer every one of them**, including ones from earlier in the conversation that are still open (re-list them at the end of a reply until they are done). Before ending a turn, scan `INBOX.md`/`TASKS.md` for any message of his that has no answer yet.
+
 ## Branches
 
 Claude Code gives every session its own branch, so work can strand on a branch nobody opens. Rules:

@@ -172,3 +172,12 @@ Attached: "5.png" = the wallpaper photo with the old number (research/uploads/20
 "See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai"
 - [ ] Z1 (lead: Huawei P10 stock lock screen "leaves macro" on peakpx.com; host blocked by the session network policy, Tj must allow it) find the original high-quality version of the green-leaf wallpaper (reference: research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png) and send it to Tj; if found, it can replace the inpainted lock wallpaper in the APK
 - [ ] Y3b (Tj sent 7.png: the CORRECT number drawn under ours on the tablet) measured ground truth: bbox x205-396, y907-924 (192x18), white at ~71 % opacity, Light strokes; v0.3.3 changed to size 0.0429, Light, alpha 181, baseline 925/1024, x +1 px. Verify with a new tablet screenshot (research/uploads/2026-11-03/7-two-numbers-overlap-tablet.png is the reference)
+
+## Tj, 2026-11-03 (three messages in one), verbatim
+"If i use adb later, can i keep the launcher installed as is and simply add the adb permissions later for the more advanced features
+I think the correct font is a little translucent. Measure it
+If i send multiple messages interrupting you, always continue what you are already working on and simply add my new message as the next step. Don't ever forget messages. Respond to all of them. Such as this one i sent earlier: 'See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai'"
+- [ ] A1 answer: can the adb permissions be added later without reinstalling? (yes: see answer; explain which persist)
+- [ ] A2 measure the translucency of the correct number precisely (7.png) and set it; report the number
+- [ ] Z1 STILL OPEN (Tj re-asked): original high-quality leaf wallpaper. Blocked: peakpx.com not allowed in the session network; ask Tj to allow it or send the file. Lead: Huawei P10 stock lockscreen leaf (peakpx.com/en/hd-wallpaper-desktop-keigo)
+- [x] STANDING RULE (CLAUDE.md "Messages from Tj"): when Tj interrupts, keep doing the current work, queue his new message as the next step, never drop one, answer every one of them
