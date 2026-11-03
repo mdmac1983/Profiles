@@ -35,6 +35,8 @@ jobs:
           SDKM="$(command -v sdkmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager")"
           yes | "$SDKM" --licenses >/dev/null 2>&1 || true
           "$SDKM" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: ImageMagick (the scenario compares screenshots with it)
+        run: sudo apt-get install -y --no-install-recommends imagemagick >/dev/null
       - name: Build the debug APK
         run: ./gradlew :app:assembleDebug --console=plain
       - name: Boot Android 10, run the scenario
