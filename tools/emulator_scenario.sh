@@ -15,6 +15,7 @@ check(){ # check "<name>" <command...>
   local name="$1"; shift
   if "$@" >/dev/null 2>&1; then echo "PASS  $name" | tee -a "$OUT/results.txt"; else echo "FAIL  $name" | tee -a "$OUT/results.txt"; FAILS=$((FAILS+1)); fi
 }
+info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
 setmode(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">$1</string></map>\" > shared_prefs/tj_mode.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
 getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | grep -o 'mode">[a-z]*' | cut -d'>' -f2; }
 home(){ adb shell input keyevent KEYCODE_HOME; sleep 4; }
@@ -159,7 +160,7 @@ rebind; setmode custom; home
 adb shell input keyevent KEYCODE_VOLUME_UP; sleep 1
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2
-adb logcat -d -s TjA11y:I | grep -E 'KEY code' > "$OUT/key-diag.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep -E 'POWER key down' > "$OUT/key-diag.txt" 2>&1
 # ---- REC1: apps launched from the custom launcher stay out of Recents; the target app (Clock here) stays in.
 #      Uses apps NOT launched earlier in this run (a task that already exists keeps its old Recents entry: the flag only applies when a task is created).
 setlabel(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; }
