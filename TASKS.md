@@ -141,3 +141,8 @@ Findings: killBackgroundProcesses did not close his apps on the tablet; Go devic
 - [ ] W3 consider: always-present accessibility overlay of the wallpaper over the power-menu area, so the side-key menu is hidden under it
 - [ ] W4 consider: faster modified power menu (e.g. show the replacement card the instant the side key is pressed, before the long-press menu) — think outside the box
 - [ ] W5 Quickstep/stock home must NEVER appear except via the gesture (stray fall-backs to Quickstep while using Android / closing apps must stop)
+
+## Tj, 2026-11-03 (after the W1-W5 message), verbatim
+"Is it possible to add a serial number to the bottom of the lock screen that disappears when I swipe up to enter the pin? I'm having github actions build the apks and sign the releases. Figure out what the branches in the repo are for and fix it"
+- [ ] X1 research/answer: serial number text at the bottom of the lock screen that disappears when swiping up to the PIN (conflicts with L10 "never touch the lock screen": needs Tj's decision, do not build unasked)
+- [ ] X2 figure out what every branch in the repo is for and fix the mess (dependabot branches, session branches, main mirror); report what was done
