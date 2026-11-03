@@ -315,8 +315,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private View buildLockView(final String text, final float em, final float baselineInView) {
         return new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.SUBPIXEL_TEXT_FLAG);
-            { p.setColor(Color.WHITE); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.DEFAULT); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
-            @Override protected void onDraw(android.graphics.Canvas c) { c.drawText(text, getWidth() / 2f, baselineInView, p); }
+            { p.setColor(Color.WHITE); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, LockNumber.WEIGHT, false)); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
+            @Override protected void onDraw(android.graphics.Canvas c) { c.drawText(text, getWidth() / 2f + getWidth() * LockNumber.X_NUDGE_PER_WIDTH, baselineInView, p); }
         };
     }
 
@@ -410,8 +410,6 @@ public class TjAccessibilityService extends AccessibilityService {
     /** Side key just went down: put the replacement card in place now, before the (long-press) system power menu exists. */
     private void earlyCover() {
         if (!Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
-        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        if (km != null && km.isKeyguardLocked()) return;
         Rect cached = cachedCard();
         if (cached == null) return;   // never learned where the menu sits yet: the first real menu teaches it
         showOverlay(cached);
@@ -432,7 +430,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean locked = km != null && km.isKeyguardLocked();
         Rect shot = new Rect();
         boolean menuOpen = false, found = false;
-        if (custom && !locked && !Features.POWER_OFF.equals(mode)) {
+        if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
             List<AccessibilityWindowInfo> windows = getWindows();
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
@@ -475,7 +473,7 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
-            if (custom && !locked && Features.isCover(mode)) hideOverlay(); else removeOverlay();
+            if (custom && Features.isCover(mode)) hideOverlay(); else removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
         }
     }
