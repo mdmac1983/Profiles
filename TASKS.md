@@ -146,3 +146,10 @@ Findings: killBackgroundProcesses did not close his apps on the tablet; Go devic
 "Is it possible to add a serial number to the bottom of the lock screen that disappears when I swipe up to enter the pin? I'm having github actions build the apks and sign the releases. Figure out what the branches in the repo are for and fix it"
 - [ ] X1 research/answer: serial number text at the bottom of the lock screen that disappears when swiping up to the PIN (conflicts with L10 "never touch the lock screen": needs Tj's decision, do not build unasked)
 - [ ] X2 figure out what every branch in the repo is for and fix the mess (dependabot branches, session branches, main mirror); report what was done
+
+## Tj, 2026-11-03 (answer to X1), verbatim
+"Relax the lock screen rule, allow accessibility service to alter the lock screen. The lock screen should have the exact attached wallpaper, with the number on the bottom in identical font, size, placement, and color as the attached photo, but with this number: 71125011907547. When I pull up to enter the pin number, the number on the lock screen should disappear"
+Photo saved: research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png (old number 71125123100728 baked in at the bottom). L10 lock-screen rule is RELAXED by Tj for this feature ONLY (accessibility overlay on the lock screen; never touchable, never blocks the PIN pad).
+- [ ] X1a clean lock-screen wallpaper: the attached photo with the old number removed (so the number can disappear), shipped in the APK; set as lock wallpaper by an explicit button in Launcher control (never automatic)
+- [ ] X1b accessibility overlay draws 71125011907547 at the bottom of the lock screen, same font/size/placement/colour as the photo; visible only on the lock screen, hidden as soon as the PIN/pattern/password bouncer appears and when unlocked / screen off
+- [ ] X1c safety: overlay is NOT_TOUCHABLE + NOT_FOCUSABLE, any error removes it, switch in Launcher control, "Restore everything" turns it off; unit-tested rule + emulator check

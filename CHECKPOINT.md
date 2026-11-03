@@ -1,22 +1,24 @@
-# CHECKPOINT 143 — read me first, then TASKS.md
+# CHECKPOINT 144 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T04:12:28Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `82896a4` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T04:17:59Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `68ea6ca` (this checkpoint is the commit after it)
 
 ## Just done
-Scenario V4 check now tests the exclude flag instead of grepping the raw dump
+Recorded X1 (lock-screen number) with Tj's explicit L10 relaxation; photo saved in research/uploads/2026-11-03
 
 ## Do this next
-Dispatch emulator.yml (branch claude/install-hooks-script-chvlig), read results, then ship
+Measure the number in the photo (python PIL: bbox, colour), inpaint it out for a clean wallpaper, then build LockNumber overlay in TjAccessibilityService; also finish reading emulator run 25 results
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M tools/emulator_scenario.sh
+     M TASKS.md
+    ?? research/uploads/2026-11-03/
 
 ## Last ten checkpoints
 ```
+  7844fd6 ckpt 143: Scenario V4 check now tests the exclude flag instead of grepping the raw dump
   82896a4 ckpt 142: Emulator run 1 (6686f1b): W5 3/3 PASS, W2 flag PASS; reset2 Recents Clear all 
   03ac2f6 ckpt 141: X2 branches audited: closed 5 unmergeable dependabot PRs, resume.sh ignores de
   ac9b2c1 ckpt 140: Bumped to 0.3.2/code 8, FIRST_INSTALL notes
@@ -26,5 +28,7 @@ Dispatch emulator.yml (branch claude/install-hooks-script-chvlig), read results,
   2d4e527 ckpt 136: HANDOFF: TASKS.md STATUS SNAPSHOT (stale boxes closed, 6 real open items), res
   b9faf25 ckpt 133: Released v0.3.1 (V1-V5). Emulator 26/27 before release; the 27th (launcher not
   b8682ed ckpt 131: gated v0.3.1 (code 7) and pushed it: the handoff self-test, the full unit suit
-  9892812 ckpt 130: pre-ship: v0.3.1: more responsive twist, keyboard switch (adb grant), faster r
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
