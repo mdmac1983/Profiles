@@ -56,7 +56,10 @@ public class ControlActivity extends Activity {
         root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
             Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
         }}));
-        root.addView(label("Keyboard (needs a one-time adb grant)"));
+        root.addView(button("Reset speed-up: animations off during the reset (needs the adb grant below): ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, AnimationSpeedup.KEY, !AnimationSpeedup.enabled(ControlActivity.this)); refresh();
+        }}));
+        root.addView(label("Keyboard + reset speed-up (one-time adb grant: adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS)"));
         root.addView(button("Keyboard: stock in custom launcher, SwiftKey in Quickstep: ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, KeyboardSwitch.KEY, !KeyboardSwitch.enabled(ControlActivity.this));
             KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this)); refresh();
@@ -115,6 +118,7 @@ public class ControlActivity extends Activity {
         s += "\nQuickstep lock-out: " + (Features.get(this, StrayHomeGuard.KEY, true) ? "ON" : "OFF")
                 + " | stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")";
         s += "\nSide key seen by the helper: " + Features.getString(this, TjAccessibilityService.PWR_COUNT_KEY, "0") + " times (last " + Features.getString(this, TjAccessibilityService.PWR_LAST_KEY, "never") + ")";
+        s += "\nReset speed-up (animations off during the reset): " + (AnimationSpeedup.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (AnimationSpeedup.permitted(this) ? "yes" : "NO (it does nothing until you run the adb grant)");
         s += "\nSolitaire at launcher start: " + (Features.get(this, TjHooks.STARTUP_KEY, true) ? "ON" : "OFF");
         String app = ReturnReset.findAppLabel(this);
         s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")

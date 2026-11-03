@@ -502,16 +502,48 @@ public class TjAccessibilityService extends AccessibilityService {
             afterShade.run();
             return;
         }
+        // Y2a: look at the status bar first. No notification icons there = nothing to clear = the whole shade step is skipped. Unknown (bar hidden / not found) = do the step as before.
+        Boolean any = notificationIconsPresent();
+        if (any != null && !any) {
+            resetReport.append("notifications: none in the status bar, step skipped (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
+            Log.i(TAG, "RESET notifications skipped: status bar shows none");
+            afterShade.run();
+            return;
+        }
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
-        pollPress("clear all", new String[] {"no notifications"}, new String[] {"com.android.systemui"}, 1500, false, new PollResult() {
+        pollPress("clear all", new String[] {"no notifications"}, new String[] {"com.android.systemui"}, 1000, false, new PollResult() {
             @Override public void done(int result) {
                 resetReport.append("notifications: ").append(result == PRESSED ? "cleared" : result == EMPTY ? "none to clear" : "no Clear all button found")
                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET notifications result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
                 performGlobalAction(GLOBAL_ACTION_BACK);
-                handler.postDelayed(afterShade, 90);   // 30 ms was too short: Recents opened while the shade was still collapsing timed out on the emulator
+                handler.postDelayed(afterShade, ReturnReset.fastActive ? 40 : 90);   // 30 ms was too short on the emulator (Recents opened while the shade was still collapsing); with animations off 40 ms is enough
             }
         });
+    }
+
+    /** TRUE = the status bar shows at least one notification icon, FALSE = it shows none, null = cannot tell (then the shade step runs as before). */
+    private Boolean notificationIconsPresent() {
+        try {
+            List<AccessibilityWindowInfo> windows = getWindows();
+            if (windows == null) return null;
+            for (AccessibilityWindowInfo w : windows) {
+                AccessibilityNodeInfo root = w.getRoot();
+                if (root == null) continue;
+                try {
+                    CharSequence pkg = root.getPackageName();
+                    if (pkg == null || !"com.android.systemui".contentEquals(pkg)) continue;
+                    List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/notificationIcons");
+                    if (hit == null || hit.isEmpty()) continue;
+                    AccessibilityNodeInfo box = hit.get(0);
+                    if (!box.isVisibleToUser()) return null;   // status bar hidden (full-screen app): the empty list means nothing
+                    int n = 0;
+                    for (int i = 0; i < box.getChildCount(); i++) { AccessibilityNodeInfo ch = box.getChild(i); if (ch != null) { n++; ch.recycle(); } }
+                    return n > 0;
+                } finally { root.recycle(); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "notification icon scan failed", t); }
+        return null;
     }
 
     private static final int PRESSED = 1, EMPTY = 2, TIMEOUT = 3;
@@ -574,7 +606,7 @@ public class TjAccessibilityService extends AccessibilityService {
             resetReport.append("took ").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms\n");
             Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
             try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
-        } }, 40);
+        } }, ReturnReset.fastActive ? 15 : 40);
     }
 
     /** True if a window of this package is the active (front) one. */
