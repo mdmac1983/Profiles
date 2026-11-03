@@ -250,3 +250,12 @@ See if you can find a high quality version of the same exact Android leaf wallpa
 ```
 Attached is a screenshot of the two numbers on the screen at the same time, the smaller number is the one you made, the larger background number is the correct font and transparency
 ```
+
+## 2026-11-03T20:18:02Z
+```
+If i use adb later, can i keep the launcher installed as is and simply add the adb permissions later for the more advanced features
+I think the correct font is a little translucent. Measure it
+If i send multiple messages interrupting you, always continue what you are already working on and simply add my new message as the next step.  Don't ever forget messages. Respond to all of them.  Such as this one i sent earlier:
+
+See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai
+```
