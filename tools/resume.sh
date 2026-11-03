@@ -58,6 +58,10 @@ BRIEF="$(
     for RB in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | grep -v -e '^origin$' -e '^origin/HEAD$' -e "^origin/${CURBR}$" | head -12); do
       N="$(git rev-list --count "HEAD..$RB" 2>/dev/null || echo 0)"
       [ "$N" -gt 0 ] || continue
+      # Dependabot branches and orphan histories (no common ancestor with this branch: the repo was re-rooted on 2026-11-02) are not stranded
+      # session work, and merging them would drag in an unrelated root commit. Say so once, quietly, instead of a false alarm every session.
+      case "$RB" in origin/dependabot/*) continue ;; esac
+      if ! git merge-base HEAD "$RB" >/dev/null 2>&1; then echo "  note  ${RB#origin/} shares no history with this branch (orphan): ignored."; continue; fi
       echo "  !!    ${RB#origin/} has $N commit(s) this branch lacks (last: $(git log -1 --format='%s' "$RB" | cut -c1-70))."
       echo "        Look first:  git log --oneline HEAD..$RB | head   — then:  git merge $RB   (tell Tj if it contradicts this branch)"
     done
