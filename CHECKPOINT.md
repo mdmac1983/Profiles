@@ -1,21 +1,23 @@
-# CHECKPOINT 159 — read me first, then TASKS.md
+# CHECKPOINT 160 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T20:07:25Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `9c70709` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T20:08:51Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `842bea1` (this checkpoint is the commit after it)
 
 ## Just done
-CORRECTION: the previous ckpt claimed Y1/Y2/Y3 emulator checks that had NOT been written (python quoting error). They are in the scenario now (Y1 lock-screen cover, Y2b animations off/restored + reset, Y3 number box info), syntax ok. Y1 cover on lock screen, Y2 AnimationSpeedup + status-bar notification skip, Y3 number size/weight are coded, unit tests+build green.
+Run 29: W3b patch window present at the learned rect, pixel diff vs wallpaper-only = 0.0 (local PIL compare of 50-patch-on vs 51-patch-off; shifting by 2px gives 0.07, so alignment is proven for y/scale; x offset not exercised by a vertical-gradient wallpaper). Scenario: fixed the compare command (-extract), added control (patch gone when mode off).
 
 ## Do this next
-Read run 29 artifact (W3b patch diff) then dispatch the next emulator run; fix; bump 0.3.3 (code 9); FIRST_INSTALL; tick TASKS; ship
+Dispatch emulator.yml (Y1 lock cover, Y2 anim/reset, Y3 info, W3b control); then bump 0.3.3 (code 9), FIRST_INSTALL, TASKS ticks, ship.sh, android.yml full_build=true, record-release
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  842bea1 ckpt 159: CORRECTION: the previous ckpt claimed Y1/Y2/Y3 emulator checks that had NOT be
   1306cf7 ckpt 158: Y2 built: AnimationSpeedup (animations off during reset, 4 restore failsafes),
   4305b7b ckpt 157: Y3 (number: size x1.063, Light weight 300, +1px x/y) and Y1 (cover on lock scr
   283857f ckpt 156: Recorded Y1 (cover on lock screen), Y2 (faster reset, skip empty shade), Y3 (n
@@ -25,8 +27,4 @@ Read run 29 artifact (W3b patch diff) then dispatch the next emulator run; fix; 
   d936fd2 ckpt 152: RELEASED v0.3.2 (run 41582445432 green, Release published, signed, 8.96 MB). E
   975b225 ckpt 151: gated v0.3.2 (code 8) and pushed it: the handoff self-test, the full unit suit
   52cd2ad ckpt 150: pre-ship: v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faste
-  7dfa7d6 ckpt 149: Run 27 (54a3b53): emulator dies in reset2 again (same spot as run 26, so repro
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)

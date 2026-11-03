@@ -254,12 +254,15 @@ shot 50-patch-on
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/patch-windows.txt" 2>&1
 adb logcat -d -s TjA11y:I | grep PATCH > "$OUT/patch-log.txt" 2>&1
 setpower off; rebind; home; sleep 2; shot 51-patch-off
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/patch-windows-off.txt" 2>&1
 set -- $PRECT
 if [ "$#" -ge 4 ]; then
   GEOM="$(( $3 - $1 ))x$(( $4 - $2 ))+$1+$2"
-  MAE="$(compare -metric MAE "$OUT/50-patch-on.png[$GEOM]" "$OUT/51-patch-off.png[$GEOM]" null: 2>&1 | grep -o '([0-9.e-]*)' | tr -d '()')"
+  MAE="$(compare -metric MAE -extract "$GEOM" "$OUT/50-patch-on.png" "$OUT/51-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+  info "W3b raw compare output: $(compare -metric MAE -extract "$GEOM" "$OUT/50-patch-on.png" "$OUT/51-patch-off.png" null: 2>&1 | head -c 120)"
   echo "patch region $GEOM normalised MAE vs wallpaper-only: $MAE" | tee "$OUT/patch-diff.txt"
   check "W3b: a wallpaper patch window exists while the menu is closed" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/patch-windows.txt)\" -ge 1 ]"
+  check "W3b control: the patch window is gone when the mode is off (so the comparison is patch vs no patch)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/patch-windows-off.txt)\" = 0 ]"
   check "W3b: the patch is identical to the wallpaper underneath (region MAE < 0.5 %)" awk -v m="$MAE" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
 else
   info "W3b: the menu rectangle was not learned (no bounds in the log); patch not compared"
