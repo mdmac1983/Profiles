@@ -184,6 +184,14 @@
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
             </intent-filter>
+            <!-- B1 (Tj: "Launcher must never be listed in Recents"): Android treats an activity started from an implicit MAIN + SECONDARY_HOME intent as a HOME-type task,
+                 and HOME-type tasks are never listed in Recents (RecentTasks.isVisibleRecentTask), not even as the most recent task (excluded tasks still are).
+                 SECONDARY_HOME is NOT the HOME category the system resolves the default home with, so the preferred-home set (our router) does not change. Same filter AOSP's SecondaryDisplayLauncher has. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
                 android:value="${packageName}.grid_control" />
