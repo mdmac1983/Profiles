@@ -175,3 +175,10 @@ bash tools/install-hooks.sh
 4) consider if the accessibility modified power menu that hides the screenshot button can be any faster.  Think outside the box like i did in number 3 above.  Maybe as soon as I press the side key the modified power menu shows up immediately while waiting for the long side key press for the normal power menu
 5) every once in a while if I'm messing around in android or close apps, it goes back to the quickstep launcher.  I don't want this.  the ONLY way that I should see the quickstep launcher and its home screen is by using the gesture. Otherwise, it should be permanently locked out from quickstep or its home screen at all times until I do the gesture
 ```
+
+## 2026-11-03T03:58:54Z
+```
+Is it possible to add a serial number to the bottom of the lock screen that disappears when I swipe up to enter the pin?
+I'm having github actions build the apks and sign the releases
+Figure out what the branches in the repo are for and fix it
+```
