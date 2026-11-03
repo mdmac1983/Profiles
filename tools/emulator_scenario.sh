@@ -249,7 +249,7 @@ adb logcat -d -s TjA11y:I | grep LOCKNUM > "$OUT/locknum-log.txt" 2>&1
 adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 3
 adb shell locksettings clear --old 1234 > "$OUT/clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
-check "X1: the PIN used for the test was cleared again" bash -c "! adb shell locksettings get-disabled 2>&1 | grep -qi error"
+check "X1: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/clearpin.txt"
 check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-shown.txt)\" -ge 1 ]"
 check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
 home
