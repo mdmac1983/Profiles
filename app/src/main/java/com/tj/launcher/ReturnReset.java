@@ -44,10 +44,12 @@ public final class ReturnReset {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
         } }, "tj-reset-bg").start();
         final boolean notif = clearNotifications(app), recents = clearRecents(app);
+        final boolean fast = AnimationSpeedup.begin(app);   // Y2b: no animations while the reset runs (restored below, and by three failsafes)
+        fastActive = fast;
         TjAccessibilityService svc = TjAccessibilityService.get();
         if (svc != null && (notif || recents)) {
             // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents (each switchable), THEN open the app.
-            try { svc.runReset(notif, recents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } } }); return; }
+            try { svc.runReset(notif, recents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); }
         } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
@@ -56,7 +58,11 @@ public final class ReturnReset {
         }
         if (notif) { try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); } }
         try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+        AnimationSpeedup.restoreLater(app, fast ? 700 : 0);
     }
+
+    /** True while this reset runs with the animations off: the waits can be shorter. */
+    public static volatile boolean fastActive = false;
 
     private static void killApps(Context c) {
         PackageManager pm = c.getPackageManager();
@@ -157,7 +163,7 @@ public final class ReturnReset {
                 launchOnce(c, ri, attempt);                 // not in front yet (e.g. the home screen came up late): bring it forward again
                 scheduleVerify(c, ri, label, attempt + 1);
             } catch (Throwable t) { Log.e(TAG, "verify failed", t); }
-        } }, attempt == 1 ? 450 : 500);
+        } }, attempt == 1 ? (fastActive ? 300 : 450) : 500);
     }
 
     private static void report(Context c, String line) {

@@ -40,6 +40,7 @@ public final class RestoreStore {
                 android.util.Log.e("TjRestore", "could not restore " + k, t); // no permission: nothing was changed by us either
             }
         }
+        try { AnimationSpeedup.restoreIfPending(c); } catch (Throwable ignored) { }
         sp.edit().clear().commit();
         Features.allOff(c);
         Features.set(c, LockNumber.KEY, false);   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
