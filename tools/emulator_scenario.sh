@@ -234,6 +234,26 @@ OURS="$(grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/[A-Za-z.0-9]*' "$OUT/r
 BAD=0; for f in $(echo "$OURS" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2); do [ $(( f & 0x800000 )) -eq 0 ] && BAD=$((BAD+1)); done
 if [ -n "$OURS" ]; then check "W2: every task of ours in the Recents dump carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS" test "$BAD" -eq 0; else info "W2: no task of ours listed in the Recents dump (fine: excluded)"; fi
 
+# ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/setpin.txt" 2>&1
+adb shell input keyevent KEYCODE_POWER; sleep 2
+adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+shot 41-lockscreen
+adb shell dumpsys window windows | grep -c TjLockNumber > "$OUT/lock-shown.txt" 2>&1
+adb shell input swipe 300 900 300 300 300; sleep 2
+shot 42-lockscreen-pinpad
+adb shell dumpsys window windows | grep -c TjLockNumber > "$OUT/lock-pad.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep LOCKNUM > "$OUT/locknum-log.txt" 2>&1
+adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 3
+adb shell locksettings clear --old 1234 > "$OUT/clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "X1: the PIN used for the test was cleared again" bash -c "! adb shell locksettings get-disabled 2>&1 | grep -qi error"
+check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-shown.txt)\" -ge 1 ]"
+check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
+home
+
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart
