@@ -196,3 +196,8 @@ When I pull up to enter the pin number, the number on the lock screen should dis
 ```
 ship v0.3.2 once the emulator run is green
 ```
+
+## 2026-11-03T04:32:02Z
+```
+ship it when green
+```
