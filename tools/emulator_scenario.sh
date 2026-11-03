@@ -268,12 +268,19 @@ fi
 setpower off; setmode custom
 
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
-adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/setpin.txt" 2>&1
 adb shell input keyevent KEYCODE_POWER; sleep 2
 adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 shot 41-lockscreen
+convert "$OUT/41-lockscreen.png" -crop 420x70+90+880 +repage -channel RGB -separate -evaluate-sequence min -threshold 80% -trim -format '%wx%h%O' info: > "$OUT/lock-number-bbox.txt" 2>&1
+info "Y3: lock-screen number white-pixel box on the emulator (WxH+x+y of the crop): $(cat $OUT/lock-number-bbox.txt)"
+adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 43-lock-power-menu
+adb logcat -d -s TjA11y:I > "$OUT/lock-menu-log.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 2
+check "Y1: the power-menu cover also works on the lock screen" grep -q 'action=1' "$OUT/lock-menu-log.txt"
 adb shell dumpsys window windows | grep -c TjLockNumber > "$OUT/lock-shown.txt" 2>&1
 adb shell input swipe 300 900 300 300 300; sleep 2
 shot 42-lockscreen-pinpad
@@ -286,6 +293,26 @@ check "X1: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fa
 check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-shown.txt)\" -ge 1 ]"
 check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
 home
+
+# ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
+beat "before Y2"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/grant-secure2.txt" 2>&1
+for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n 1.0; done
+setcal(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+setcal
+setmode quickstep; rebind; home; sleep 1
+adb logcat -c
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 12
+adb logcat -d -s TjA11y:I TjAnim:I TjReset:I > "$OUT/y2-log.txt" 2>&1
+adb shell settings get global window_animation_scale > "$OUT/anim-after.txt" 2>&1
+adb shell settings get global animator_duration_scale >> "$OUT/anim-after.txt" 2>&1
+resumed > "$OUT/resumed-y2.txt"
+check "Y2b: animations were turned off for the reset" grep -q 'animations off for the reset' "$OUT/y2-log.txt"
+check "Y2b: animation scales are back to 1.0 afterwards" bash -c "[ \"\$(sed -n 1p $OUT/anim-after.txt | tr -d ' \r\n')\" = 1.0 ] && [ \"\$(sed -n 2p $OUT/anim-after.txt | tr -d ' \r\n')\" = 1.0 ]"
+check "Y2: the app (Calendar) was opened by the faster reset" grep -qi 'calendar' "$OUT/resumed-y2.txt"
+info "Y2: $(grep -E 'RESET (recents|notifications)' "$OUT/y2-log.txt" | cut -c1-120 | tr '\n' ';' | cut -c1-320)"
+for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n 0; done
+setmode custom; home
 
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
