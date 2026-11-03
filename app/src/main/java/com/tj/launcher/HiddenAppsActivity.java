@@ -33,7 +33,7 @@ public class HiddenAppsActivity extends Activity {
     private final List<Row> rows = new ArrayList<>();
     private Set<String> shown = new HashSet<>();
 
-    @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); }
+    @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); RecentsGuard.describeAsTarget(this); }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);

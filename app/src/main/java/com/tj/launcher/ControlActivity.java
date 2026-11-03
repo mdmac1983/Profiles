@@ -102,7 +102,7 @@ public class ControlActivity extends Activity {
         setContentView(sv);
     }
 
-    @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); if (Mode.isCustom(this)) { finish(); return; } refresh(); }
+    @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); RecentsGuard.describeAsTarget(this); if (Mode.isCustom(this)) { finish(); return; } refresh(); }
 
     private void setPower(String m) { Features.setString(this, Features.POWER_MODE, m); refresh(); }
 
