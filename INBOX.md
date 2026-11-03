@@ -201,3 +201,8 @@ ship v0.3.2 once the emulator run is green
 ```
 ship it when green
 ```
+
+## 2026-11-03T04:40:55Z
+```
+Check it every now and then before 10 minutes
+```
