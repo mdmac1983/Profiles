@@ -1,13 +1,13 @@
-# CHECKPOINT 169 — read me first, then TASKS.md
+# CHECKPOINT 170 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T20:35:42Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `60c81ad` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T20:40:46Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `44d3876` (this checkpoint is the commit after it)
 
 ## Just done
-v0.3.3 gated (code 9) and pushed (60c81ad on main); android.yml full_build dispatched on main. Emulator run 31: 40 PASS, 1 FAIL = runner lacked ImageMagick (W3b compare); local PIL compare of the same screenshots = 0.0 diff; workflow now installs ImageMagick.
+RELEASED v0.3.3 (run 41713996222 green, Release published, signed, 9.16 MB)
 
 ## Do this next
-Wait ~4 min, then get_release_by_tag v0.3.3; when the Build APK run is green run: bash tools/record-release.sh v0.3.3 "<note>"; give Tj the Release link as plain text; remind: grant adb (optional), toggle helper off/on, tap Allow wallpaper access + open power menu once for wallpaper mode, send a new lock-screen screenshot for the number
+Wait for Tj's v0.3.3 tablet report: new lock-screen screenshot (number look), Launcher control lines (Last reset ms, side key seen, stray home counter, wallpaper patch status), whether the Emergency card shows on the tablet menu, wallpaper-cover alignment (screenshot mode on/off). Optional for Tj: adb grant WRITE_SECURE_SETTINGS. SET1 Settings front door only on his go
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Wait ~4 min, then get_release_by_tag v0.3.3; when the Build APK run is green run
 
 ## Last ten checkpoints
 ```
+  5e3501b ckpt 169: v0.3.3 gated (code 9) and pushed (60c81ad on main); android.yml full_build dis
   60c81ad ckpt 168: pre-ship: v0.3.3: power-menu cover on the lock screen (Y1), faster double-Home
   66aa558 ckpt 167: Z1b: Tj's ORIGINAL leaf wallpaper (960x853, no number) replaces the AI-edited 
   46b7aa0 ckpt 166: Z1 closed: Tj found the original wallpaper himself
@@ -25,5 +26,7 @@ Wait ~4 min, then get_release_by_tag v0.3.3; when the Build APK run is green run
   62e14a1 ckpt 162: Recorded Z1 (find original leaf wallpaper)
   13bf78d ckpt 161: Bumped to 0.3.3 (code 9) + FIRST_INSTALL notes; emulator run dispatched with Y
   053ec79 ckpt 160: Run 29: W3b patch window present at the learned rect, pixel diff vs wallpaper-
-  842bea1 ckpt 159: CORRECTION: the previous ckpt claimed Y1/Y2/Y3 emulator checks that had NOT be
 ```
+
+(2 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
