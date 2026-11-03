@@ -141,6 +141,7 @@ adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower hide_screenshot; prefhome after-setpower; rebind; prefhome after-rebind; home; prefhome after-home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 0.3; shot 15-card-immediately; sleep 2.7; shot 11-power-menu-hide-screenshot; a11ydump hide
 adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 1; adb shell dumpsys window windows | grep -c 'type=2032' > "$OUT/warm-overlay-count.txt" 2>&1; info "W3/W4: accessibility-overlay windows still attached after the power menu closed (pre-built card): $(tr -d ' \r\n' < $OUT/warm-overlay-count.txt)"
 adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower block; rebind; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 12-power-menu-block; a11ydump block
@@ -203,6 +204,31 @@ check "startup: the target app (Clock) is in front when the custom launcher star
 adb logcat -d -s TjKeyboard:I > "$OUT/keyboard-log.txt" 2>&1
 info "keyboard: before=$(tr -d '\r\n' < $OUT/ime-before.txt) afterCustom=$(tr -d '\r\n' < $OUT/ime-after-custom.txt); $(tail -1 $OUT/keyboard-log.txt | cut -c1-160)"
 setlabel Clock; home
+
+# ---- W5: the stock launcher's home screen must never appear in custom mode unless Tj did the gesture (the helper presses Home); W2: our tasks carry the exclude flag at runtime
+STOCK="$(adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tr -d '\r' | grep '/' | grep -v com.tj.launcher | head -1)"
+echo "stock home component: $STOCK" | tee "$OUT/stock-component.txt"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
+setmode custom; rebind; home
+adb logcat -c
+adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -n "$STOCK" >/dev/null 2>&1; sleep 5
+resumed > "$OUT/resumed-stray.txt"; shot 40-stray-stock-home
+adb logcat -d -s TjA11y:I | grep STRAY > "$OUT/stray-log.txt" 2>&1
+if [ -n "$STOCK" ]; then
+  check "W5: stock home started without the gesture (custom mode) is sent back to our launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-stray.txt"
+  check "W5: the helper logged the redirect" grep -q STRAY "$OUT/stray-log.txt"
+  setmode quickstep; rebind; home
+  adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -n "$STOCK" >/dev/null 2>&1; sleep 4
+  resumed > "$OUT/resumed-quickstep-guard.txt"
+  check "W5: in Quickstep mode (after the gesture) the stock home is left alone" bash -c "! grep -q 'com.tj.launcher/com.android.launcher3.Launcher' $OUT/resumed-quickstep-guard.txt"
+  setmode custom; home
+else
+  info "W5: no separate stock home component on this emulator image; guard not exercised"
+fi
+adb shell dumpsys activity recents > "$OUT/recents-flags.txt" 2>&1
+OURS="$(grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/[A-Za-z.0-9]*' "$OUT/recents-flags.txt" | head -5)"
+BAD=0; for f in $(echo "$OURS" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2); do [ $(( f & 0x800000 )) -eq 0 ] && BAD=$((BAD+1)); done
+if [ -n "$OURS" ]; then check "W2: every task of ours in the Recents dump carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS" test "$BAD" -eq 0; else info "W2: no task of ours listed in the Recents dump (fine: excluded)"; fi
 
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
