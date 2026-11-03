@@ -274,3 +274,8 @@ Attached is the original wallpaper
 ```
 Did you try the permanent wallpaper overlay to hide the power menu?
 ```
+
+## 2026-11-03T20:39:31Z
+```
+send me the v0.3.3 release link when it's built
+```
