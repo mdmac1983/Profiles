@@ -26,6 +26,7 @@ public final class ReturnReset {
     public static final String DEFAULT_APP = "solitaire";
     public static final String CLEAR_NOTIF_KEY = "reset_clear_notifications";   // default ON
     public static final String CLEAR_RECENTS_KEY = "reset_clear_recents";       // default ON
+    public static final String COVER_KEY = "reset_black_cover";                  // default ON: black cover while the reset drives the shade / Recents
 
     public static boolean clearNotifications(Context c) { return Features.get(c, CLEAR_NOTIF_KEY, true); }
     public static boolean clearRecents(Context c) { return Features.get(c, CLEAR_RECENTS_KEY, true); }
@@ -44,13 +45,25 @@ public final class ReturnReset {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
         } }, "tj-reset-bg").start();
         final boolean notif = clearNotifications(app), recents = clearRecents(app);
-        final boolean fast = AnimationSpeedup.begin(app);   // Y2b: no animations while the reset runs (restored below, and by three failsafes)
-        fastActive = fast;
         TjAccessibilityService svc = TjAccessibilityService.get();
         if (svc != null && (notif || recents)) {
-            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents (each switchable), THEN open the app.
-            try { svc.runReset(notif, recents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
-            catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); }
+            // B4: look first. Nothing in the status bar = no shade step; Recents untouched since the last clear = no Recents step. Both skipped = Solitaire at once, nothing else on screen.
+            Boolean icons = notif ? svc.hasNotificationIcons() : Boolean.FALSE;
+            final boolean doShade = notif && (icons == null || icons.booleanValue());
+            final boolean doRecents = recents && RecentsDirty.isDirty(app);
+            if (!doShade && !doRecents) {
+                fastActive = false;
+                svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no other app opened since Recents was last cleared" : "") + "): Solitaire at once");
+                Log.i(TAG, "RESET nothing to clear: Solitaire at once");
+                try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+                return;
+            }
+            final boolean fast = AnimationSpeedup.begin(app);   // Y2b: no animations while the reset runs (restored below, and by three failsafes)
+            fastActive = fast;
+            if (Features.get(app, COVER_KEY, true)) svc.showResetCover();   // the shade / Recents are driven behind a black cover: you never see them flicker
+            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app.
+            try { svc.runReset(doShade, doRecents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
+            catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
         } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
         } else {
@@ -58,7 +71,7 @@ public final class ReturnReset {
         }
         if (notif) { try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); } }
         try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
-        AnimationSpeedup.restoreLater(app, fast ? 700 : 0);
+        AnimationSpeedup.restoreLater(app, 0);
     }
 
     /** True while this reset runs with the animations off: the waits can be shorter. */
@@ -158,8 +171,8 @@ public final class ReturnReset {
             try {
                 TjAccessibilityService svc = TjAccessibilityService.get();
                 boolean front = svc != null && svc.isForeground(ri.activityInfo.packageName);
-                if (front) { report(c, "app: " + label + " is on screen" + (attempt > 1 ? " (needed " + attempt + " starts)" : "")); return; }
-                if (attempt >= 5) { report(c, "app: " + label + " was started " + attempt + " times but could not be confirmed on screen" + (svc == null ? " (accessibility helper off, cannot check)" : "")); return; }
+                if (front) { report(c, "app: " + label + " is on screen" + (attempt > 1 ? " (needed " + attempt + " starts)" : "")); if (svc != null) svc.hideResetCover(); return; }
+                if (attempt >= 5) { if (svc != null) svc.hideResetCover(); report(c, "app: " + label + " was started " + attempt + " times but could not be confirmed on screen" + (svc == null ? " (accessibility helper off, cannot check)" : "")); return; }
                 launchOnce(c, ri, attempt);                 // not in front yet (e.g. the home screen came up late): bring it forward again
                 scheduleVerify(c, ri, label, attempt + 1);
             } catch (Throwable t) { Log.e(TAG, "verify failed", t); }

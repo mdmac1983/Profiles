@@ -59,6 +59,9 @@ public class ControlActivity extends Activity {
         root.addView(button("Reset speed-up: animations off during the reset (needs the adb grant below): ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, AnimationSpeedup.KEY, !AnimationSpeedup.enabled(ControlActivity.this)); refresh();
         }}));
+        root.addView(button("Black cover while the reset clears the shade / Recents: ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, ReturnReset.COVER_KEY, !Features.get(ControlActivity.this, ReturnReset.COVER_KEY, true)); refresh();
+        }}));
         root.addView(label("Keyboard + reset speed-up (one-time adb grant: adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS)"));
         root.addView(button("Keyboard: stock in custom launcher, SwiftKey in Quickstep: ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, KeyboardSwitch.KEY, !KeyboardSwitch.enabled(ControlActivity.this));
