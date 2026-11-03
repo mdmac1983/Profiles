@@ -71,7 +71,7 @@ public class ControlActivity extends Activity {
         root.addView(button("Lock-screen number: ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, LockNumber.KEY, !LockNumber.enabled(ControlActivity.this)); refresh();
         }}));
-        root.addView(button("Set the lock-screen wallpaper to the clean photo (replaces your lock wallpaper)", new Runnable() { public void run() {
+        root.addView(button("Set the lock-screen wallpaper to the ORIGINAL leaf photo (replaces your lock wallpaper)", new Runnable() { public void run() {
             Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); refresh();
         }}));
         root.addView(label("Quickstep lock-out"));

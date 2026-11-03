@@ -40,7 +40,7 @@ public final class LockNumber {
         return enabled && screenOn && keyguardLocked && !bouncerShown;
     }
 
-    /** Sets the CLEAN photo (old number removed) as the LOCK-screen wallpaper. Only ever called from an explicit button. Returns a status line. */
+    /** Sets the ORIGINAL leaf photo (Tj sent it 2026-11-03; no number in it) as the LOCK-screen wallpaper. Only ever called from an explicit button. Returns a status line. */
     public static String setLockWallpaper(Context c) {
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
@@ -48,7 +48,7 @@ public final class LockNumber {
             Bitmap b = BitmapFactory.decodeResource(c.getResources(), R.drawable.tj_lock_wallpaper, o);
             if (b == null) return "could not read the bundled photo";
             WallpaperManager.getInstance(c).setBitmap(b, null, true, WallpaperManager.FLAG_LOCK);
-            return "lock-screen wallpaper set (clean photo, no number baked in)";
+            return "lock-screen wallpaper set (original leaf photo, no number)";
         } catch (Throwable t) {
             return "could not set the lock-screen wallpaper: " + t.getClass().getSimpleName();
         }
