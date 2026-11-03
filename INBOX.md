@@ -182,3 +182,12 @@ Is it possible to add a serial number to the bottom of the lock screen that disa
 I'm having github actions build the apks and sign the releases
 Figure out what the branches in the repo are for and fix it
 ```
+
+## 2026-11-03T04:16:50Z
+```
+Relax the lock screen rule, allow accessibility service to alter the lock screen.  The lock screen should have the exact attached wallpaper, with the number on the bottom in identical font, size, placement, and color as the attached photo,  but with this number:
+
+71125011907547
+
+When I pull up to enter the pin number, the number on the lock screen should disappear
+```
