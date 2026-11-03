@@ -38,8 +38,11 @@ public final class ReturnReset {
     public static void run(final Context c) {
         if (!enabled(c)) return;
         final Context app = c.getApplicationContext();
-        try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
-        try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+        // W1: the slow, blocking parts (a binder call per app, Wi-Fi/Bluetooth) run on their own thread, so the main thread starts pressing "Clear all" at once.
+        new Thread(new Runnable() { @Override public void run() {
+            try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
+            try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+        } }, "tj-reset-bg").start();
         final boolean notif = clearNotifications(app), recents = clearRecents(app);
         TjAccessibilityService svc = TjAccessibilityService.get();
         if (svc != null && (notif || recents)) {
@@ -150,11 +153,11 @@ public final class ReturnReset {
                 TjAccessibilityService svc = TjAccessibilityService.get();
                 boolean front = svc != null && svc.isForeground(ri.activityInfo.packageName);
                 if (front) { report(c, "app: " + label + " is on screen" + (attempt > 1 ? " (needed " + attempt + " starts)" : "")); return; }
-                if (attempt >= 4) { report(c, "app: " + label + " was started " + attempt + " times but could not be confirmed on screen" + (svc == null ? " (accessibility helper off, cannot check)" : "")); return; }
+                if (attempt >= 5) { report(c, "app: " + label + " was started " + attempt + " times but could not be confirmed on screen" + (svc == null ? " (accessibility helper off, cannot check)" : "")); return; }
                 launchOnce(c, ri, attempt);                 // not in front yet (e.g. the home screen came up late): bring it forward again
                 scheduleVerify(c, ri, label, attempt + 1);
             } catch (Throwable t) { Log.e(TAG, "verify failed", t); }
-        } }, attempt == 1 ? 900 : 800);
+        } }, attempt == 1 ? 450 : 500);
     }
 
     private static void report(Context c, String line) {

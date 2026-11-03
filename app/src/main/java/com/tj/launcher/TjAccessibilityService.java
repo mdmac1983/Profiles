@@ -247,10 +247,11 @@ public class TjAccessibilityService extends AccessibilityService {
         performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
         pollPress("clear all", new String[] {"no notifications"}, new String[] {"com.android.systemui"}, 1500, false, new PollResult() {
             @Override public void done(int result) {
-                resetReport.append("notifications: ").append(result == PRESSED ? "cleared" : result == EMPTY ? "none to clear" : "no Clear all button found").append("\n");
+                resetReport.append("notifications: ").append(result == PRESSED ? "cleared" : result == EMPTY ? "none to clear" : "no Clear all button found")
+                        .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET notifications result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
                 performGlobalAction(GLOBAL_ACTION_BACK);
-                handler.postDelayed(afterShade, 90);
+                handler.postDelayed(afterShade, 30);
             }
         });
     }
@@ -258,7 +259,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private static final int PRESSED = 1, EMPTY = 2, TIMEOUT = 3;
     private interface PollResult { void done(int result); }
 
-    /** Polls every 40 ms: press {@code label} if it is there; end with EMPTY if one of {@code emptyTexts} is visible instead; scroll now and then if asked; TIMEOUT after maxMs. */
+    /** Polls every 20 ms (first look immediately): press {@code label} if it is there; end with EMPTY if one of {@code emptyTexts} is visible instead; scroll now and then if asked; TIMEOUT after maxMs. */
     private void pollPress(final String label, final String[] emptyTexts, final String[] packages, final long maxMs, final boolean scroll, final PollResult cb) {
         final long deadline = android.os.SystemClock.uptimeMillis() + maxMs;
         final int[] tick = {0};
@@ -270,8 +271,8 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (scroll && tick[0] % 5 == 0) scrollSomething(packages);
             } catch (Throwable t) { Log.e(TAG, "poll failed", t); }
             if (android.os.SystemClock.uptimeMillis() >= deadline) { cb.done(TIMEOUT); return; }
-            handler.postDelayed(this, 40);
-        } }, 60);
+            handler.postDelayed(this, 20);
+        } });
     }
 
     private boolean anyTextPresent(String[] texts, String[] packages) {
@@ -301,7 +302,8 @@ public class TjAccessibilityService extends AccessibilityService {
         performGlobalAction(GLOBAL_ACTION_RECENTS);
         pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 1800, true, new PollResult() {
             @Override public void done(int result) {
-                resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found").append("\n");
+                resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found")
+                        .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
                 finishReset(t0, done);
             }
@@ -314,7 +316,7 @@ public class TjAccessibilityService extends AccessibilityService {
             resetReport.append("took ").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms\n");
             Features.setString(TjAccessibilityService.this, RESET_REPORT_KEY, resetReport.toString());
             try { done.run(); } catch (Throwable t) { Log.e(TAG, "reset done failed", t); }
-        } }, 90);
+        } }, 40);
     }
 
     /** True if a window of this package is the active (front) one. */
