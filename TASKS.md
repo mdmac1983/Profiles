@@ -167,3 +167,7 @@ Attached: "5.png" = the wallpaper photo with the old number (research/uploads/20
 - [ ] Y2a double-Home reset: auto-detect whether there are notifications and skip the shade step when there are none
 - [ ] Y2b double-Home reset: faster way to close apps / instant: research options (kill command at launcher start, animations off during the reset, etc.), build what is safe
 - [ ] Y3 lock-screen number must look identical to 5.png (font, size, transparency): measure both screenshots, find every difference, fix
+
+## Tj, 2026-11-03, verbatim
+"See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai"
+- [ ] Z1 find the original high-quality version of the green-leaf wallpaper (reference: research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png) and send it to Tj; if found, it can replace the inpainted lock wallpaper in the APK
