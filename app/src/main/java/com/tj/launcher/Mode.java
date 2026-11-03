@@ -20,6 +20,9 @@ public final class Mode {
     /** apply(): called on every Home press, must stay cheap. */
     public static void recordHomePress(Context c, long now) { prefs(c).edit().putLong("lastHome", now).apply(); }
 
+    /** When the mode last changed (ms): the stray-Quickstep guard waits a moment after a deliberate change (late window events from the screen we just left). */
+    public static long changedAt(Context c) { return prefs(c).getLong("changedAt", 0); }
+
     /** W5: while a fail-open window is active (the router had to fall back to the stock launcher because ours would not start) the stray-Quickstep guard stands down. */
     public static long failOpenUntil(Context c) { return prefs(c).getLong("failOpenUntil", 0); }
     public static void markFailOpen(Context c, long untilMs) { prefs(c).edit().putLong("failOpenUntil", untilMs).commit(); }
@@ -38,7 +41,7 @@ public final class Mode {
     /** commit() (not apply): the router reads this a moment later, possibly after our process is killed. */
     public static void set(Context c, String mode) {
         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
-        prefs(c).edit().putString(KEY, m).commit();
+        prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
         KeyboardSwitch.apply(c, m);   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }

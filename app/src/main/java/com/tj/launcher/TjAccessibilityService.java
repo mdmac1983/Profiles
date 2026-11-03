@@ -209,7 +209,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private long stockCacheAt = 0;
     private final long[] guardHist = new long[StrayHomeGuard.MAX];
     private int guardIdx = 0;
-    private long standDownUntil = 0, lastGuardMs = 0;
+    private long standDownUntil = 0, lastGuardMs = 0, guardPausedUntil = 0;
 
     private void guardStrayHome(AccessibilityEvent e) {
         if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
@@ -217,6 +217,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (pk == null || cl == null) return;
         if (!Mode.isCustom(this) || !Features.get(this, StrayHomeGuard.KEY, true)) return;
         long now = System.currentTimeMillis();
+        if (now < guardPausedUntil || now - Mode.changedAt(this) < 2500) return;   // a deliberate mode change or the return reset is running: never fight it
         if (stockCache == null || now - stockCacheAt > 60_000) { stockCache = StockLauncher.find(this); stockCacheAt = now; }
         if (stockCache == null) return;
         if (!StrayHomeGuard.isStockHome(pk.toString(), cl.toString(), stockCache.getPackageName(), stockCache.getClassName())) return;
@@ -346,6 +347,7 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) {
         resetReport.setLength(0);
+        guardPausedUntil = System.currentTimeMillis() + 10_000;   // Recents / the shade are opened on purpose during the reset
         removeOverlay();
         final long t0 = android.os.SystemClock.uptimeMillis();
         Log.i(TAG, "RESET start notifications=" + clearNotifications + " recents=" + clearRecents);

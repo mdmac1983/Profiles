@@ -190,7 +190,7 @@ shot 30-after-reset2; resumed > "$OUT/resumed-reset2.txt"
 adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-after.txt" 2>&1
 adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-after.txt" 2>&1
 for APP in com.android.contacts com.android.gallery3d; do echo "$APP $(adb shell pidof $APP | tr -d '\r\n')" >> "$OUT/apps2-after.txt"; done
-adb logcat -d -s TjA11y:I | grep RESET > "$OUT/reset2-log.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep -E 'RESET|STRAY|LOCKNUM' > "$OUT/reset2-log.txt" 2>&1
 check "reset2: the chosen app (Calendar) was opened after the accessibility reset" grep -qi 'calendar' "$OUT/resumed-reset2.txt"
 check "reset2: the notification was cleared through the real shade (no notification access)" bash -c "[ \"$(tr -d ' \r\n' < $OUT/notif2-before.txt)\" != 0 ] && [ \"$(tr -d ' \r\n' < $OUT/notif2-after.txt)\" = 0 ]"
 info "recents entries before=$(tr -d ' \r\n' < $OUT/recents-before.txt) after=$(tr -d ' \r\n' < $OUT/recents-after.txt); apps still running: $(cat $OUT/apps2-after.txt | tr '\n' ';')"
