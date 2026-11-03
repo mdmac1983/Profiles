@@ -53,6 +53,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
         scheduleLockUpdate();
         scheduleLayerRefresh();
+        schedulePencil(event);
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -236,6 +237,83 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "PATCH removed");
     }
 
+    // ---------------------------------------------------------------- B6: the "pencil" (Edit order of settings) in the quick-settings panel
+    public static final String PEN_KEY = "hide_qs_pencil";   // switch, default ON
+    private View penView;
+    private final Rect penAt = new Rect();
+    private long lastPenMs = 0;
+    private boolean penPending = false;
+    private final Runnable penEval = new Runnable() { @Override public void run() { penPending = false; updatePencil(); } };
+
+    /** Look at SystemUI events only (and keep checking while a cover is up, so it follows the panel and goes with it). Throttled. */
+    private void schedulePencil(AccessibilityEvent e) {
+        if (!Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }
+        boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
+        if (!sysui && penView == null) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastPenMs >= 40) { lastPenMs = now; updatePencil(); }
+        if (!penPending) { penPending = true; handler.postDelayed(penEval, 90); }
+    }
+
+    private void updatePencil() {
+        try {
+            Rect r = findPencil();
+            if (r == null) { removePencil(); return; }
+            showPencil(r);
+        } catch (Throwable t) { Log.e(TAG, "pencil update failed", t); removePencil(); }
+    }
+
+    /** Bounds of the visible Edit pencil (framework id android:id/edit, description "Edit order of settings."), or null. */
+    private Rect findPencil() {
+        List<AccessibilityWindowInfo> windows = getWindows();
+        if (windows == null) return null;
+        for (AccessibilityWindowInfo w : windows) {
+            AccessibilityNodeInfo root = w.getRoot();
+            if (root == null) continue;
+            try {
+                CharSequence pkg = root.getPackageName();
+                if (pkg == null || !"com.android.systemui".contentEquals(pkg)) continue;
+                List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByViewId("android:id/edit");
+                if (hit == null) continue;
+                for (AccessibilityNodeInfo n : hit) {
+                    CharSequence cd = n.getContentDescription();
+                    if (!n.isVisibleToUser() || cd == null || !cd.toString().toLowerCase(java.util.Locale.ROOT).contains("edit")) continue;
+                    Rect b = new Rect(); n.getBoundsInScreen(b);
+                    if (b.width() > 0 && b.height() > 0 && b.width() < 400 && b.height() < 400) return b;
+                }
+            } finally { root.recycle(); }
+        }
+        return null;
+    }
+
+    private void showPencil(Rect r) {
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(r.width(), r.height(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,   // touchable on purpose: it swallows taps meant for the pencil
+                PixelFormat.OPAQUE);
+        lp.gravity = Gravity.TOP | Gravity.START;
+        lp.x = r.left; lp.y = r.top;
+        lp.setTitle("TjPencilCover");
+        if (penView == null) {
+            View v = new View(this);
+            v.setBackgroundColor(Color.WHITE);   // the stock panel is pure white (255,255,255) in Tj's photo
+            v.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View view, android.view.MotionEvent ev) { return true; } });
+            wm.addView(v, lp);
+            penView = v; penAt.set(r);
+            Log.i(TAG, "PENCIL cover shown " + r.toShortString());
+        } else if (!penAt.equals(r)) {
+            wm.updateViewLayout(penView, lp);
+            penAt.set(r);
+        }
+    }
+
+    private void removePencil() {
+        if (penView == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(penView); } catch (Throwable ignored) { }
+        penView = null; penAt.setEmpty();
+        Log.i(TAG, "PENCIL cover removed");
+    }
+
     // ---------------------------------------------------------------- X1: the number on the lock screen (Tj relaxed the lock-screen rule for this)
     private View lockView;
     private boolean lockReceiverOn = false;
@@ -417,11 +495,11 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
     }
 
-    @Override public void onInterrupt() { removeOverlay(); removePatch(); removeLockNumber(); }
+    @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);

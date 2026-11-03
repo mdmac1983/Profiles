@@ -74,6 +74,9 @@ public class ControlActivity extends Activity {
         root.addView(button("Set the lock-screen wallpaper to the ORIGINAL leaf photo (replaces your lock wallpaper)", new Runnable() { public void run() {
             Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); refresh();
         }}));
+        root.addView(button("Hide + disable the pencil (Edit) in the quick-settings panel: ON / OFF", new Runnable() { public void run() {
+            Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, !Features.get(ControlActivity.this, TjAccessibilityService.PEN_KEY, true)); refresh();
+        }}));
         root.addView(label("Quickstep lock-out"));
         root.addView(button("Keep the stock home screen away unless I do the gesture: ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, StrayHomeGuard.KEY, !Features.get(ControlActivity.this, StrayHomeGuard.KEY, true)); refresh();
@@ -120,6 +123,7 @@ public class ControlActivity extends Activity {
         s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
         s += "\nKeyboard switch: " + (KeyboardSwitch.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (KeyboardSwitch.permitted(this) ? "yes" : "NO") + " | " + KeyboardSwitch.status(this);
         s += "\nLock-screen number: " + (LockNumber.enabled(this) ? "ON (" + LockNumber.text(this) + ")" : "OFF") + " | " + Features.getString(this, "lock_wallpaper_result", "wallpaper not changed by the launcher");
+        s += "\nQuick-settings pencil hidden: " + (Features.get(this, TjAccessibilityService.PEN_KEY, true) ? "ON" : "OFF");
         s += "\nQuickstep lock-out: " + (Features.get(this, StrayHomeGuard.KEY, true) ? "ON" : "OFF")
                 + " | stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")";
         s += "\nSide key seen by the helper: " + Features.getString(this, TjAccessibilityService.PWR_COUNT_KEY, "0") + " times (last " + Features.getString(this, TjAccessibilityService.PWR_LAST_KEY, "never") + ")";
