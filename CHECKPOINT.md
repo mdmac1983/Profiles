@@ -1,13 +1,13 @@
-# CHECKPOINT 157 — read me first, then TASKS.md
+# CHECKPOINT 158 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T20:02:15Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `3f8d847` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T20:05:13Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `810b13f` (this checkpoint is the commit after it)
 
 ## Just done
-Y3 (number: size x1.063, Light weight 300, +1px x/y) and Y1 (cover on lock screen; BLOCK stays off it) coded; tests+build green. W3b emulator run 29 pending.
+Y2 built: AnimationSpeedup (animations off during reset, 4 restore failsafes), status-bar notification skip, shorter polls/waits; emulator scenario has Y1 (cover on lock screen), Y2 (anim off/restore, reset), Y3 (number box info) checks. Unit tests + build green.
 
 ## Do this next
-Y2: write AnimationSpeedup (animations off during reset, needs WRITE_SECURE_SETTINGS, restore failsafes), status-bar notification detection to skip the shade, shorter Clear-all timeout; then read run 29 artifact (patch-diff.txt); then emulator run with Y1/Y3 checks; ship v0.3.3
+Read run 29 artifact (W3b patch-diff), then dispatch a new emulator run with Y1/Y2/Y3 checks, fix, bump to 0.3.3 (versionCode 9) + FIRST_INSTALL notes, tick TASKS Y1-Y3/W3b, ship.sh, android.yml full_build=true, record-release
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Y2: write AnimationSpeedup (animations off during reset, needs WRITE_SECURE_SETT
 
 ## Last ten checkpoints
 ```
+  4305b7b ckpt 157: Y3 (number: size x1.063, Light weight 300, +1px x/y) and Y1 (cover on lock scr
   283857f ckpt 156: Recorded Y1 (cover on lock screen), Y2 (faster reset, skip empty shade), Y3 (n
   244acdd ckpt 155: W3b built: power mode 'wallpaper' = permanent wallpaper patch (WallpaperManage
   bfaf6a4 ckpt 154: Recorded W3b (permanent wallpaper-patch overlay over the power-menu area in cu
@@ -25,7 +26,6 @@ Y2: write AnimationSpeedup (animations off during reset, needs WRITE_SECURE_SETT
   52cd2ad ckpt 150: pre-ship: v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faste
   7dfa7d6 ckpt 149: Run 27 (54a3b53): emulator dies in reset2 again (same spot as run 26, so repro
   54a3b53 ckpt 148: Run 26 (382895b): emulator device vanished after reset2 (adb: device not found
-  382895b ckpt 147: Run 25: V4 PASS, W5 3/3 PASS, W2 PASS; reset2 Recents still TIMEOUT. Suspect: 
 ```
 
 (2 automatic checkpoint(s) since the last deliberate one — the
