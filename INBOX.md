@@ -226,3 +226,10 @@ It doesn't show default branch
 ```
 I updated the default branch
 ```
+
+## 2026-11-03T19:43:09Z
+```
+A permanent wallpaper overlay won't work, because it would sit on top of every app.
+
+This is ok because i don't use the custom launcher much.  See if you can make a permanent overlay only on the custom launcher that looks identical to the same area of the wallpaper underneath so that it completely hides the power menu.  Then when the side key is long pressed, the custom power menu shows on top
+```
