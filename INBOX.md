@@ -233,3 +233,10 @@ A permanent wallpaper overlay won't work, because it would sit on top of every a
 
 This is ok because i don't use the custom launcher much.  See if you can make a permanent overlay only on the custom launcher that looks identical to the same area of the wallpaper underneath so that it completely hides the power menu.  Then when the side key is long pressed, the custom power menu shows on top
 ```
+
+## 2026-11-03T19:55:58Z
+```
+1) the accessibility service to hide the screenshot button must also work on the lock screen. Right now it isn't turned on for the lock screen. 
+2) make the double home tap to close apps/ notifications etc. as fast as possible, instant if possible. See if it can auto detect if there are notifications to close, and if there aren't, it can skip that step. Is there a faster way to close apps than the close recents? Maybe a command to immediately close all apps before opening solitaire as soon as the custom launcher opens?
+3) the text for the serial number on the lock screen is very close but not perfect. The font size/type and transparency of the numbers are slightly different. It must look completely identical to the attached screenshot labeled 5.png (except the number is different, and ignore the clock and lock screen message). the current lock screen serial is labeled 6.png. find the differences and fix it
+```
