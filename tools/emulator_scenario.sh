@@ -180,6 +180,14 @@ check "recents: an ordinary app launched from the launcher (Messaging) is NOT in
 ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/' "$1" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2; }
 V4BAD=0; for f in $(ourflags "$OUT/recents-policy.txt"); do [ $(( f & 0x800000 )) -eq 0 ] && V4BAD=$((V4BAD+1)); done
 check "recents: every task of our launcher carries the exclude-from-Recents flag (V4)" test "$V4BAD" -eq 0
+# ---- B1: our Launcher is a HOME-type task (never listed in Recents, not even as the most recent task)
+setmode custom; home; sleep 2
+adb shell dumpsys activity activities > "$OUT/activities-home.txt" 2>&1
+check "B1: our Launcher task is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-home.txt | grep -q 'com.tj.launcher/com.android.launcher3.Launcher'"
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3
+adb shell dumpsys activity recents > "$OUT/recents-from-home.txt" 2>&1; shot 52-recents-from-custom-home
+check "B1: Recents opened from the custom home does not list com.tj.launcher among the visible tasks" bash -c "! sed -n '/Visible recent tasks/,\$p' $OUT/recents-from-home.txt | grep -q com.tj.launcher"
+adb shell input keyevent KEYCODE_HOME; sleep 2
 
 beat "before RESET2"
 # ---- RESET2: accessibility helper ON, notification access OFF (like the Go tablet): double Home presses "Clear all" in the real shade and Recents, closes apps, then opens the app
@@ -315,6 +323,29 @@ check "Y2b: animation scales are back to 1.0 afterwards" bash -c "[ \"\$(sed -n 
 check "Y2: the app (Calendar) was opened by the faster reset" grep -qi 'calendar' "$OUT/resumed-y2.txt"
 info "Y2: $(grep -E 'RESET (recents|notifications)' "$OUT/y2-log.txt" | cut -c1-120 | tr '\n' ';' | cut -c1-320)"
 for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n 0; done
+setmode custom; home
+
+# ---- B6: the quick-settings pencil is covered (and uncovered when the panel closes)
+beat "before B6"
+setpower off; setmode custom; rebind; home
+adb logcat -c
+adb shell cmd statusbar expand-settings; sleep 3; shot 53-qs-panel
+adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log.txt" 2>&1
+adb shell cmd statusbar collapse; sleep 2
+adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows-after.txt" 2>&1
+check "B6: a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows.txt)\" -ge 1 ]"
+check "B6: the cover is gone when the panel closes" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows-after.txt)\" = 0 ]"
+# ---- B4: nothing to clear in Recents -> that step is skipped; cover shown and removed in the normal run
+check "B4: the black cover was shown and removed during the reset" bash -c "grep -q 'RESET cover shown' $OUT/y2-log.txt && grep -q 'RESET cover removed' $OUT/y2-log.txt"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"dirty\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_dirty.xml'"
+setcal; setmode quickstep; rebind; home; sleep 1
+adb logcat -c
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 9
+adb logcat -d -s TjA11y:I TjReset:I > "$OUT/b4-log.txt" 2>&1
+resumed > "$OUT/resumed-b4.txt"
+check "B4: with Recents untouched the reset skips the Recents step" grep -q 'recents=false' "$OUT/b4-log.txt"
+check "B4: the app (Calendar) is in front after the shorter reset" grep -qi 'calendar' "$OUT/resumed-b4.txt"
 setmode custom; home
 
 beat "before LAST STEP"
