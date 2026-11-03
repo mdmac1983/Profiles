@@ -51,6 +51,7 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
+        scheduleLockUpdate();
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -90,7 +91,117 @@ public class TjAccessibilityService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
+        try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
+    }
+
+    // ---------------------------------------------------------------- X1: the number on the lock screen (Tj relaxed the lock-screen rule for this)
+    private View lockView;
+    private boolean lockReceiverOn = false;
+    private long lastLockEvalMs = 0;
+    private boolean lockEvalPending = false;
+    private final Runnable lockEval = new Runnable() { @Override public void run() { lockEvalPending = false; updateLockNumber(); } };
+    private final android.content.BroadcastReceiver lockReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { handler.post(lockEval); handler.postDelayed(lockEval, 400); }
+    };
+
+    private void startLockNumber() {
+        if (!lockReceiverOn) {
+            android.content.IntentFilter f = new android.content.IntentFilter();
+            f.addAction(android.content.Intent.ACTION_SCREEN_ON);
+            f.addAction(android.content.Intent.ACTION_SCREEN_OFF);
+            f.addAction(android.content.Intent.ACTION_USER_PRESENT);
+            registerReceiver(lockReceiver, f);
+            lockReceiverOn = true;
+        }
+        updateLockNumber();
+    }
+
+    private void stopLockNumber() {
+        if (lockReceiverOn) { try { unregisterReceiver(lockReceiver); } catch (Throwable ignored) { } lockReceiverOn = false; }
+        removeLockNumber();
+    }
+
+    /** Called on every accessibility event: leading edge at once (the number must go the moment the PIN pad appears), plus one trailing check. */
+    private void scheduleLockUpdate() {
+        if (!LockNumber.enabled(this) && lockView == null) return;   // feature off and nothing on screen: zero cost
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastLockEvalMs >= 60) { lastLockEvalMs = now; updateLockNumber(); }
+        if (!lockEvalPending) { lockEvalPending = true; handler.postDelayed(lockEval, 120); }
+    }
+
+    private void updateLockNumber() {
+        try {
+            boolean enabled = LockNumber.enabled(this);
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            boolean on = pm != null && pm.isInteractive();
+            boolean locked = km != null && km.isKeyguardLocked();
+            boolean bouncer = enabled && on && locked && bouncerShown();
+            if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
+        } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
+    }
+
+    private static final String[] BOUNCER_IDS = {"keyguard_pin_view", "keyguard_password_view", "keyguard_pattern_view", "pinEntry", "passwordEntry", "lockPatternView"};
+    private static final String[] BOUNCER_TEXTS = {"enter your pin", "enter your password", "draw your pattern", "enter pin", "enter password"};
+
+    /** True when the PIN / password / pattern pad of the lock screen is visible (read-only look at SystemUI's windows). */
+    private boolean bouncerShown() {
+        List<AccessibilityWindowInfo> windows = getWindows();
+        if (windows == null) return false;
+        for (AccessibilityWindowInfo w : windows) {
+            AccessibilityNodeInfo root = w.getRoot();
+            if (root == null) continue;
+            try {
+                CharSequence pkg = root.getPackageName();
+                if (pkg == null || !"com.android.systemui".contentEquals(pkg)) continue;
+                for (String id : BOUNCER_IDS) {
+                    List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/" + id);
+                    if (hit != null) for (AccessibilityNodeInfo n : hit) if (n.isVisibleToUser()) return true;
+                }
+                for (String t : BOUNCER_TEXTS) {
+                    List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(t);
+                    if (hit != null) for (AccessibilityNodeInfo n : hit) if (n.isVisibleToUser()) return true;
+                }
+            } finally { root.recycle(); }
+        }
+        return false;
+    }
+
+    private View buildLockView(final String text, final float em, final float baselineInView) {
+        return new View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.SUBPIXEL_TEXT_FLAG);
+            { p.setColor(Color.WHITE); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.DEFAULT); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
+            @Override protected void onDraw(android.graphics.Canvas c) { c.drawText(text, getWidth() / 2f, baselineInView, p); }
+        };
+    }
+
+    private void showLockNumber() {
+        if (lockView != null) return;
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        float em = dm.widthPixels * LockNumber.EM_PER_WIDTH;
+        float baselineY = dm.heightPixels * LockNumber.BASELINE_PER_HEIGHT;
+        int h = (int) Math.ceil(em * 2f);
+        float baselineInView = em * 1.3f;
+        lockView = buildLockView(LockNumber.text(this), em, baselineInView);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                dm.widthPixels, h, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.START;
+        lp.x = 0; lp.y = Math.round(baselineY - baselineInView);
+        lp.setTitle("TjLockNumber");
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(lockView, lp);
+        Log.i(TAG, "LOCKNUM shown");
+    }
+
+    private void removeLockNumber() {
+        if (lockView == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(lockView); } catch (Throwable ignored) { }
+        lockView = null;
+        Log.i(TAG, "LOCKNUM removed");
     }
 
     // ---------------------------------------------------------------- W5: keep the stock launcher's home screen away unless Tj did the gesture
@@ -163,11 +274,11 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
     }
 
-    @Override public void onInterrupt() { removeOverlay(); }
+    @Override public void onInterrupt() { removeOverlay(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);

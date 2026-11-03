@@ -9,7 +9,7 @@ import java.util.Map;
  * Every system setting this app ever changes is recorded here FIRST (its previous value), so one call puts Android back exactly as it was.
  * Today nothing writes to system settings (the permission-based features arrive later, each default OFF), so restoreAll() mainly turns the
  * launcher's own switches off. The secure-setting restore is real and unit-tested-by-design: it only writes values we snapshotted, only when
- * the permission was granted, and never touches anything lock-screen related.
+ * the permission was granted, and never writes any lock-screen SETTING (the lock-screen number overlay is the helper's own switch and is turned off here).
  */
 public final class RestoreStore {
     private static final String PREFS = "tj_restore";
@@ -42,5 +42,6 @@ public final class RestoreStore {
         }
         sp.edit().clear().commit();
         Features.allOff(c);
+        Features.set(c, LockNumber.KEY, false);   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }
