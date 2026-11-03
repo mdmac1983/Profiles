@@ -116,11 +116,17 @@ public class TjAccessibilityService extends AccessibilityService {
             return;
         }
         guardHist[guardIdx++ % guardHist.length] = now;
-        int n = Features.getString(this, StrayHomeGuard.COUNT_KEY, "0").length() > 0 ? Integer.parseInt(Features.getString(this, StrayHomeGuard.COUNT_KEY, "0")) + 1 : 1;
-        Features.setString(this, StrayHomeGuard.COUNT_KEY, String.valueOf(n));
+        int n = bump(StrayHomeGuard.COUNT_KEY);
         Features.setString(this, StrayHomeGuard.LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(now)));
         Log.i(TAG, "STRAY stock home shown in custom mode -> pressing Home (#" + n + ")");
         performGlobalAction(GLOBAL_ACTION_HOME);   // the router answers with our Launcher
+    }
+
+    private int bump(String key) {
+        int n = 1;
+        try { n = Integer.parseInt(Features.getString(this, key, "0")) + 1; } catch (NumberFormatException ignored) { }
+        Features.setString(this, key, String.valueOf(n));
+        return n;
     }
 
     // ---------------------------------------------------------------- W4: the side key reaches the helper before the long-press power menu exists
@@ -131,9 +137,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             if (event.getKeyCode() != android.view.KeyEvent.KEYCODE_POWER) return false;
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                int n = 1;
-                try { n = Integer.parseInt(Features.getString(this, PWR_COUNT_KEY, "0")) + 1; } catch (NumberFormatException ignored) { }
-                Features.setString(this, PWR_COUNT_KEY, String.valueOf(n));
+                int n = bump(PWR_COUNT_KEY);
                 Features.setString(this, PWR_LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()));
                 Log.i(TAG, "POWER key down seen by the helper (#" + n + ")");
                 earlyCover();
@@ -172,7 +176,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean menuOpen = false, found = false;
         if (custom && !locked && !Features.POWER_OFF.equals(mode)) {
             List<AccessibilityWindowInfo> windows = getWindows();
-            if (overlay == null && Features.POWER_HIDE_SCREENSHOT.equals(mode)) {
+            if (!overlayShown && Features.POWER_HIDE_SCREENSHOT.equals(mode)) {
                 Rect cached = cachedCard();
                 if (cached != null && dialogWindowPresent(windows)) showOverlay(cached);   // instant: no node scan yet
             }
@@ -211,7 +215,8 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.removeCallbacks(recheck);
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
-            removeOverlay();
+            // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
+            if (custom && !locked && Features.POWER_HIDE_SCREENSHOT.equals(mode)) hideOverlay(); else removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
         }
     }
@@ -450,23 +455,60 @@ public class TjAccessibilityService extends AccessibilityService {
         return card;
     }
 
-    private void showOverlay(Rect r) {
-        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+    private boolean overlayShown = false, overlayTouchable = false;
+
+    private WindowManager.LayoutParams overlayParams(Rect r, boolean touchable) {
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 r.width(), r.height(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.OPAQUE);
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        | (touchable ? 0 : WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE),
+                PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.START;
         lp.x = r.left; lp.y = r.top;
+        return lp;
+    }
+
+    /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
+    private void warmUp() {
+        if (overlay != null || !Mode.isCustom(this) || !Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this))) return;
+        Rect cached = cachedCard();
+        if (cached == null) return;
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        overlay = buildCard();
+        overlay.setAlpha(0f);
+        wm.addView(overlay, overlayParams(cached, false));
+        shownAt.set(cached);
+        overlayShown = false; overlayTouchable = false;
+    }
+
+    private void showOverlay(Rect r) {
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (overlay == null) {
             overlay = buildCard();
-            wm.addView(overlay, lp);
+            wm.addView(overlay, overlayParams(r, true));
             shownAt.set(r);
-        } else if (!shownAt.equals(r)) {
-            wm.updateViewLayout(overlay, lp);
-            shownAt.set(r);
+            overlayShown = true; overlayTouchable = true;
+            return;
         }
+        if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; }          // visible first (one redraw) ...
+        if (!overlayTouchable || !shownAt.equals(r)) {                              // ... then touchable / moved
+            wm.updateViewLayout(overlay, overlayParams(r, true));
+            shownAt.set(r); overlayTouchable = true;
+        }
+    }
+
+    /** Back to the warm state: still attached, invisible, untouchable. */
+    private void hideOverlay() {
+        handler.removeCallbacks(recheck);
+        if (overlay == null) { warmUp(); return; }
+        if (!overlayShown) return;
+        overlay.setAlpha(0f);
+        overlayShown = false;
+        try {
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).updateViewLayout(overlay, overlayParams(shownAt, false));
+            overlayTouchable = false;
+        } catch (Throwable t) { removeOverlay(); }
     }
 
     private void removeOverlay() {
@@ -474,6 +516,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlay == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(overlay); } catch (Throwable ignored) { }
         overlay = null;
+        overlayShown = false; overlayTouchable = false;
         shownAt.setEmpty();
     }
 }
