@@ -1,13 +1,13 @@
-# CHECKPOINT 158 — read me first, then TASKS.md
+# CHECKPOINT 159 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T20:05:13Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `810b13f` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T20:07:25Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `9c70709` (this checkpoint is the commit after it)
 
 ## Just done
-Y2 built: AnimationSpeedup (animations off during reset, 4 restore failsafes), status-bar notification skip, shorter polls/waits; emulator scenario has Y1 (cover on lock screen), Y2 (anim off/restore, reset), Y3 (number box info) checks. Unit tests + build green.
+CORRECTION: the previous ckpt claimed Y1/Y2/Y3 emulator checks that had NOT been written (python quoting error). They are in the scenario now (Y1 lock-screen cover, Y2b animations off/restored + reset, Y3 number box info), syntax ok. Y1 cover on lock screen, Y2 AnimationSpeedup + status-bar notification skip, Y3 number size/weight are coded, unit tests+build green.
 
 ## Do this next
-Read run 29 artifact (W3b patch-diff), then dispatch a new emulator run with Y1/Y2/Y3 checks, fix, bump to 0.3.3 (versionCode 9) + FIRST_INSTALL notes, tick TASKS Y1-Y3/W3b, ship.sh, android.yml full_build=true, record-release
+Read run 29 artifact (W3b patch diff) then dispatch the next emulator run; fix; bump 0.3.3 (code 9); FIRST_INSTALL; tick TASKS; ship
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Read run 29 artifact (W3b patch-diff), then dispatch a new emulator run with Y1/
 
 ## Last ten checkpoints
 ```
+  1306cf7 ckpt 158: Y2 built: AnimationSpeedup (animations off during reset, 4 restore failsafes),
   4305b7b ckpt 157: Y3 (number: size x1.063, Light weight 300, +1px x/y) and Y1 (cover on lock scr
   283857f ckpt 156: Recorded Y1 (cover on lock screen), Y2 (faster reset, skip empty shade), Y3 (n
   244acdd ckpt 155: W3b built: power mode 'wallpaper' = permanent wallpaper patch (WallpaperManage
@@ -25,8 +26,7 @@ Read run 29 artifact (W3b patch-diff), then dispatch a new emulator run with Y1/
   975b225 ckpt 151: gated v0.3.2 (code 8) and pushed it: the handoff self-test, the full unit suit
   52cd2ad ckpt 150: pre-ship: v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faste
   7dfa7d6 ckpt 149: Run 27 (54a3b53): emulator dies in reset2 again (same spot as run 26, so repro
-  54a3b53 ckpt 148: Run 26 (382895b): emulator device vanished after reset2 (adb: device not found
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
