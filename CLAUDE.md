@@ -75,6 +75,14 @@ Claude Code gives every session its own branch, so work can strand on a branch n
   GitHub can only dispatch workflows that exist on the default branch.
 - `resume.sh` names every other remote branch with unmerged commits; merge deliberately, not blindly.
 
+**What each branch is (audited 2026-11-03):**
+| Branch | Purpose | Status |
+| :- | :- | :- |
+| `main` | the mirror (`MIRROR_MAIN`): fast-forwarded by every push; what a fresh session and the release workflow see | the real, current state |
+| `claude/...` / `ccr-...` | one per Claude session; the session's working branch | `ccr-4ff66321-chzhhg` is an OLD session branch, fully contained in `main` (frozen at ckpt 136); it is still GitHub's **default branch** (Tj: change it to `main` in Settings > Branches) |
+| `dependabot/*` | bot branches, one per update PR | were rooted on a pre-2026-11-02 history that shares no ancestor with `main`/`ccr` (the repo was re-rooted that day), so their PRs could never merge; PRs #1,#2,#3,#5,#6 closed 2026-11-03; do NOT merge such a branch; let Dependabot recreate it |
+`resume.sh` no longer raises a false alarm for `dependabot/*` or for a branch with no common history.
+
 ## GitHub Actions does the building (Tj's rule on all repos)
 
 `.github/workflows/android.yml` builds the APK; `ci.yml` runs tests + lint on pull requests; Dependabot proposes
