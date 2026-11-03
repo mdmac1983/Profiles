@@ -182,3 +182,17 @@ If i send multiple messages interrupting you, always continue what you are alrea
 - [x] Z1 CLOSED by Tj 2026-11-03 ("Forget the original wallpaper source. I found it"; if he sends the file, swap it in for res/drawable-nodpi/tj_lock_wallpaper.jpg) (was: Tj re-asked): original high-quality leaf wallpaper. Blocked: peakpx.com not allowed in the session network; ask Tj to allow it or send the file. Lead: Huawei P10 stock lockscreen leaf (peakpx.com/en/hd-wallpaper-desktop-keigo)
 - [x] STANDING RULE (CLAUDE.md "Messages from Tj"): when Tj interrupts, keep doing the current work, queue his new message as the next step, never drop one, answer every one of them
 - [x] Z1b (Tj sent the ORIGINAL leaf wallpaper 2026-11-03, 960x853, no number): it replaces the AI-edited/inpainted photo as app/src/main/res/drawable-nodpi/tj_lock_wallpaper.jpg; the Control button sets it as the LOCK wallpaper (Android centre-crops it to the screen). Original kept in research/uploads/2026-11-03/ORIGINAL-leaf-wallpaper-960x853.jpg
+
+## Tj, 2026-11-03 (after v0.3.3), verbatim
+"1) the "launcher" app still shows up as a recent app. It should never be listed as a recent app at any time. Maybe the launcher app should be renamed solitaire with the solitaire icon, unless you can figure out how to make it never show up in recents. Figure out the best way to hide or completely ban launcher from the recents list.
+2) when I open the launcher settings menu, the settings are too long and there is no scroll feature so I can't access the launcher settings.
+3) research if there is a way to keep apps open but they only appear at all if I do the gesture to return to quickstep. The only app the custom launcher should ever have open is solitaire, including in the foreground and recents. If this is impractical or can't be done, ignore this step.
+4) make the double tap home to go to the custom launcher as fast as possible : 0 animation, only close apps if there are apps to close, only clear animations if there are animations to close, do as much of this in the background as possible behind solitaire. If the double press home could immediately show solitaire, and everything else happens invisibly in the background, that would be ideal. The faster the solitaire shows up and everything else hides, the better.
+5) I sent the incorrect original wallpaper. Replace it with the attached wallpaper which is the original leaf wallpaper
+6) is there a way to hide the "pencil" edit icon or disable it in the notification panel? If so, add it to the app."
+- [ ] B1 launcher must NEVER be listed in Recents: find the best way (hide/ban, or rename "solitaire" + Solitaire icon as fallback)
+- [ ] B2 Launcher control menu is too long and does not scroll: make it scroll
+- [ ] B3 research (ignore if impractical): keep apps open but invisible (foreground and Recents) unless Tj does the Quickstep gesture; custom launcher only ever has Solitaire open
+- [ ] B4 double-Home as fast as possible: 0 animation, only close apps if there are apps, only clear notifications if there are notifications, Solitaire shows IMMEDIATELY and the rest happens invisibly behind it
+- [ ] B5 replace the wallpaper with the NEW attached original leaf wallpaper. BLOCKED: no image arrived with the message (newest upload is the 960x853 one Tj now says is wrong); ask Tj to resend
+- [ ] B6 hide or disable the pencil (edit) icon in the notification panel (quick settings)
