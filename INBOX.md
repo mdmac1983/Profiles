@@ -279,3 +279,13 @@ Did you try the permanent wallpaper overlay to hide the power menu?
 ```
 send me the v0.3.3 release link when it's built
 ```
+
+## 2026-11-03T22:58:35Z
+```
+1) the "launcher" app still shows up as a recent app. It should never be listed as a recent app at any time. Maybe the launcher app should be renamed solitaire with the solitaire icon, unless you can figure out how to make it never show up in recents. Figure out the best way to hide or completely ban launcher from the recents list. 
+2) when I open the launcher settings menu, the settings are too long and there is no scroll feature so I can't access the launcher settings.
+3) research if there is a way to keep apps open but they only appear at all if I do the gesture to return to quickstep. The only app the custom launcher should ever have open is solitaire, including in the foreground and recents. If this is impractical or can't be done, ignore this step. 
+4) make the double tap home to go to the custom launcher as fast as possible : 0 animation, only close apps if there are apps to close, only clear animations if there are animations to close, do as much of this in the background as possible behind solitaire. If the double press home could immediately show solitaire, and everything else happens invisibly in the background, that would be ideal. The faster the solitaire shows up and everything else hides, the better. 
+5) I sent the incorrect original wallpaper. Replace it with the attached wallpaper which is the original leaf wallpaper
+6) is there a way to hide the "pencil" edit icon or disable it in the notification panel? If so, add it to the app.
+```
