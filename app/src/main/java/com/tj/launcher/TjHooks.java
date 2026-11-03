@@ -18,6 +18,8 @@ public final class TjHooks {
     /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
     public static void onLauncherResumed(final Context c) {
         launcherResumed = true;
+        RecentsGuard.excludeOurTasks(c);                       // W2: also fixes a Launcher task created before the exclude flags existed
+        if (c instanceof android.app.Activity) RecentsGuard.describeAsTarget((android.app.Activity) c);
         try {
             if (!startedOnce) {
                 startedOnce = true;

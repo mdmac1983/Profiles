@@ -63,6 +63,7 @@ public class RouterActivity extends Activity {
                 return;
             } catch (Throwable t) {
                 Log.e(TAG, "custom launcher failed to start", t);
+                Mode.markFailOpen(this, System.currentTimeMillis() + 20_000);   // the stray-Quickstep guard must not fight this fallback
             }
         }
         startStock();

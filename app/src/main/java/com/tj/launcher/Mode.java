@@ -20,6 +20,10 @@ public final class Mode {
     /** apply(): called on every Home press, must stay cheap. */
     public static void recordHomePress(Context c, long now) { prefs(c).edit().putLong("lastHome", now).apply(); }
 
+    /** W5: while a fail-open window is active (the router had to fall back to the stock launcher because ours would not start) the stray-Quickstep guard stands down. */
+    public static long failOpenUntil(Context c) { return prefs(c).getLong("failOpenUntil", 0); }
+    public static void markFailOpen(Context c, long untilMs) { prefs(c).edit().putLong("failOpenUntil", untilMs).commit(); }
+
     private static SharedPreferences prefs(Context c) {
         return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
