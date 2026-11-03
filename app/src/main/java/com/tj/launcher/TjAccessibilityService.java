@@ -54,6 +54,7 @@ public class TjAccessibilityService extends AccessibilityService {
         scheduleLockUpdate();
         scheduleLayerRefresh();
         schedulePencil(event);
+        trackDirty(event);
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -236,6 +237,56 @@ public class TjAccessibilityService extends AccessibilityService {
         patchView = null; patchAt.setEmpty(); patchRot = -1;
         Log.i(TAG, "PATCH removed");
     }
+
+    // ---------------------------------------------------------------- B4: has another app been opened since Recents was last cleared?
+    private void trackDirty(AccessibilityEvent e) {
+        try {
+            if (e == null || e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || e.getPackageName() == null) return;
+            boolean other = !Mode.isCustom(this) || !RecentsPolicy.enabled(this);   // only then do other apps end up in Recents
+            if (!other) return;
+            String ime = null;
+            String cur = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
+            ComponentName stock = StockLauncher.find(this);
+            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) RecentsDirty.mark(this);
+        } catch (Throwable t) { Log.e(TAG, "dirty tracking failed", t); }
+    }
+
+    // ---------------------------------------------------------------- B4: black cover while the reset drives the shade / Recents (never touchable, always removed)
+    private View resetCover;
+    private final Runnable coverFailsafe = new Runnable() { @Override public void run() { hideResetCover(); } };
+
+    /** Full-screen black, untouchable window: hides the shade / Recents flicker. Removed when Solitaire is verified in front, and by a 4.5 s failsafe. */
+    public void showResetCover() {
+        try {
+            if (resetCover != null) return;
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+            View v = new View(this);
+            v.setBackgroundColor(Color.BLACK);
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(dm.widthPixels, dm.heightPixels, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.OPAQUE);
+            lp.gravity = Gravity.TOP | Gravity.START;
+            lp.setTitle("TjResetCover");
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
+            resetCover = v;
+            handler.removeCallbacks(coverFailsafe);
+            handler.postDelayed(coverFailsafe, 4500);
+            Log.i(TAG, "RESET cover shown");
+        } catch (Throwable t) { Log.e(TAG, "cover failed", t); resetCover = null; }
+    }
+
+    public void hideResetCover() {
+        handler.removeCallbacks(coverFailsafe);
+        if (resetCover == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(resetCover); } catch (Throwable ignored) { }
+        resetCover = null;
+        Log.i(TAG, "RESET cover removed");
+    }
+
+    /** Public wrapper for the reset: TRUE = notification icons in the status bar, FALSE = none, null = cannot tell. */
+    public Boolean hasNotificationIcons() { return notificationIconsPresent(); }
 
     // ---------------------------------------------------------------- B6: the "pencil" (Edit order of settings) in the quick-settings panel
     public static final String PEN_KEY = "hide_qs_pencil";   // switch, default ON
@@ -495,11 +546,11 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
     }
 
-    @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); removeLockNumber(); }
+    @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
@@ -670,6 +721,7 @@ public class TjAccessibilityService extends AccessibilityService {
         performGlobalAction(GLOBAL_ACTION_RECENTS);
         pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 1800, true, new PollResult() {
             @Override public void done(int result) {
+                if (result == PRESSED || result == EMPTY) RecentsDirty.clear(TjAccessibilityService.this);   // Recents is clean again: the next reset can skip this step
                 resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found")
                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
