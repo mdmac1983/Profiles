@@ -269,3 +269,8 @@ Forget the original wallpaper source. I found it
 ```
 Attached is the original wallpaper
 ```
+
+## 2026-11-03T20:36:59Z
+```
+Did you try the permanent wallpaper overlay to hide the power menu?
+```
