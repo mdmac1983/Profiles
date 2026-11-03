@@ -17,3 +17,4 @@ No releases yet.
 | v0.3.0 | code 6 | 2026-11-02T20:56Z | hide apps + hidden new installs, settings locked to Quickstep mode, Recents-only-Solitaire (launch flag), Clear-all switches via accessibility, Solitaire glitch fix
 | v0.3.1 | code 7 | 2026-11-02T23:33Z | more responsive twist, keyboard switch (adb grant), faster reset, launcher out of Recents, Solitaire at launcher start
 | v0.3.2 | code 8 | 2026-11-03T05:14Z | v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faster reset (W1), pre-built power card + side-key early show (W3/W4), lock-screen number (X1), branch cleanup (X2)
+| v0.3.3 | code 9 | 2026-11-03T20:40Z | v0.3.3: power-menu cover on the lock screen, faster double-Home reset (skip empty shade, animations off), lock-screen number matched to Tj's measurements, wallpaper-cover power mode, original leaf wallpaper
