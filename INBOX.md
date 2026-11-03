@@ -166,3 +166,12 @@ Checkpoint here so I can start a fresh session with no context
 ```
 bash tools/install-hooks.sh
 ```
+
+## 2026-11-03T03:46:08Z
+```
+1) make the double home button press to clear apps and notifications and open solitaire as fast as possible
+2) Launcher still shows in the recent apps menu.  I want it to only show solitaire and nothing else.  If this can't be done, maybe a workaround by renaming the launcher solitaire and giving it the solitaire icon, but only if you can't keep launcher out of the recent apps list.
+3) consider if it is possible to always have an accessibility overlay of the wallpaper over where the power menu is, so that if I press the side key the power menu is hidden under the overlay and just looks like the wallpaper. 
+4) consider if the accessibility modified power menu that hides the screenshot button can be any faster.  Think outside the box like i did in number 3 above.  Maybe as soon as I press the side key the modified power menu shows up immediately while waiting for the long side key press for the normal power menu
+5) every once in a while if I'm messing around in android or close apps, it goes back to the quickstep launcher.  I don't want this.  the ONLY way that I should see the quickstep launcher and its home screen is by using the gesture. Otherwise, it should be permanently locked out from quickstep or its home screen at all times until I do the gesture
+```
