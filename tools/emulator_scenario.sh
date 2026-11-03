@@ -180,7 +180,8 @@ check "recents: an ordinary app launched from the launcher (Messaging) is NOT in
 ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/' "$1" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2; }
 V4BAD=0; for f in $(ourflags "$OUT/recents-policy.txt"); do [ $(( f & 0x800000 )) -eq 0 ] && V4BAD=$((V4BAD+1)); done
 check "recents: every task of our launcher carries the exclude-from-Recents flag (V4)" test "$V4BAD" -eq 0
-# ---- B1: our Launcher is a HOME-type task (never listed in Recents, not even as the most recent task)
+# ---- B1: our Launcher is a HOME-type task (never listed in Recents, not even as the most recent task). The switch is OFF by default (a crash then clears the default home), so turn it on here.
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"home_type_launcher\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; home; sleep 2
 adb shell dumpsys activity activities > "$OUT/activities-home.txt" 2>&1
 check "B1: our Launcher task is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-home.txt | grep -q 'com.tj.launcher/com.android.launcher3.Launcher'"
