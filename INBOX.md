@@ -161,3 +161,8 @@ So far it works well but :
 ```
 Checkpoint here so I can start a fresh session with no context
 ```
+
+## 2026-11-03T03:41:28Z
+```
+bash tools/install-hooks.sh
+```
