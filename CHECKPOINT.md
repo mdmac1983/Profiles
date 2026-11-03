@@ -1,17 +1,13 @@
-# CHECKPOINT 151 — read me first, then TASKS.md
+# CHECKPOINT 152 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T05:11:25Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `52cd2ad` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T05:14:56Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `212a648` (this checkpoint is the commit after it)
 
 ## Just done
-gated v0.3.2 (code 8) and pushed it: the handoff self-test, the full unit suite + lint
-and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
+RELEASED v0.3.2 (run 41582445432 green, Release published, signed, 8.96 MB). Emulator run 28 was 34 PASS / 0 FAIL.
 
 ## Do this next
-TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
-android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
-confirm the Release is published (get_release_by_tag is enough) and then run:
-  bash tools/record-release.sh v0.3.2 "v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faster reset (W1), pre-built power card + side-key early show (W3/W4), lock-screen number (X1), branch cleanup (X2)"
+Wait for Tj's v0.3.2 tablet report. Open: Tj to set default branch to main (GitHub Settings); tell Tj to toggle the accessibility helper off/on once; check Launcher control 'Side key seen' counter and 'stray stock home screens sent back' counter; SET1 Settings front door on his go; lock-number may overlap the system 'Charging' text on the real tablet
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -20,6 +16,7 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
 
 ## Last ten checkpoints
 ```
+  975b225 ckpt 151: gated v0.3.2 (code 8) and pushed it: the handoff self-test, the full unit suit
   52cd2ad ckpt 150: pre-ship: v0.3.2: Quickstep lock-out (W5), Recents runtime exclude (W2), faste
   7dfa7d6 ckpt 149: Run 27 (54a3b53): emulator dies in reset2 again (same spot as run 26, so repro
   54a3b53 ckpt 148: Run 26 (382895b): emulator device vanished after reset2 (adb: device not found
@@ -29,5 +26,4 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
   9ff7be8 ckpt 144: Recorded X1 (lock-screen number) with Tj's explicit L10 relaxation; photo save
   7844fd6 ckpt 143: Scenario V4 check now tests the exclude flag instead of grepping the raw dump
   82896a4 ckpt 142: Emulator run 1 (6686f1b): W5 3/3 PASS, W2 flag PASS; reset2 Recents Clear all 
-  03ac2f6 ckpt 141: X2 branches audited: closed 5 unmergeable dependabot PRs, resume.sh ignores de
 ```
