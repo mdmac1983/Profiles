@@ -1,21 +1,24 @@
-# CHECKPOINT 139 — read me first, then TASKS.md
+# CHECKPOINT 140 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T03:58:16Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `0b27ee1` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T03:58:39Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `6686f1b` (this checkpoint is the commit after it)
 
 ## Just done
-Emulator scenario: W5 stray-home redirect + quickstep-mode negative, W2 runtime exclude flag, warm overlay info
+Bumped to 0.3.2/code 8, FIRST_INSTALL notes
 
 ## Do this next
-Dispatch emulator.yml on branch claude/install-hooks-script-chvlig, download artifact, read results.txt; fix any FAIL; then bump 0.3.2/versionCode 8 and ship
+Wait for emulator run on claude/install-hooks-script-chvlig (actions_list runs emulator.yml), read results.txt, fix FAILs, tick TASKS W1-W5 with test names, ship.sh
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+    M  app/build.gradle.kts
+    M  research/FIRST_INSTALL.md
 
 ## Last ten checkpoints
 ```
+  6686f1b ckpt 139: Emulator scenario: W5 stray-home redirect + quickstep-mode negative, W2 runtim
   5d9b02a ckpt 138: Built W1-W5 in code, unit tests+debug build green: StrayHomeGuard (a11y presse
   90c18f8 ckpt 137: Wrote Tj's v0.3.1 feedback W1-W5 into TASKS.md
   2d4e527 ckpt 136: HANDOFF: TASKS.md STATUS SNAPSHOT (stale boxes closed, 6 real open items), res
@@ -25,8 +28,4 @@ Dispatch emulator.yml on branch claude/install-hooks-script-chvlig, download art
   bb1a50c ckpt 129: Fixes: double-Home window 0.9 s, router sets EXCLUDE_FROM_RECENTS on our Launc
   09e27d4 ckpt 128: V1-V5 built: gesture 18 deg/looser pinch/min 80px; keyboard switch (KeyboardPo
   0bdbd14 ckpt 122: Wrote Tj's v0.3.0 feedback V1-V5.
-  81dda79 ckpt 120: Released v0.3.0. Emulator 25/26 before release (only the Recents check, whose 
 ```
-
-(2 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
