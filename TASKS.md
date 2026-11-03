@@ -145,7 +145,7 @@ Findings: killBackgroundProcesses did not close his apps on the tablet; Go devic
 ## Tj, 2026-11-03 (after the W1-W5 message), verbatim
 "Is it possible to add a serial number to the bottom of the lock screen that disappears when I swipe up to enter the pin? I'm having github actions build the apks and sign the releases. Figure out what the branches in the repo are for and fix it"
 - [x] X1 research/answer (answered; Tj then authorised it: see X1a-c): serial number text at the bottom of the lock screen that disappears when swiping up to the PIN (conflicts with L10 "never touch the lock screen": needs Tj's decision, do not build unasked)
-- [x] X2 (closed 5 unmergeable dependabot PRs, resume.sh fix, CLAUDE.md branch table; default branch still ccr-4ff66321-chzhhg: Tj to switch to main) figure out what every branch in the repo is for and fix the mess (dependabot branches, session branches, main mirror); report what was done
+- [x] X2 (closed 5 unmergeable dependabot PRs, resume.sh fix, CLAUDE.md branch table; Tj switched the default branch to main 2026-11-03, confirmed) figure out what every branch in the repo is for and fix the mess (dependabot branches, session branches, main mirror); report what was done
 
 ## Tj, 2026-11-03 (answer to X1), verbatim
 "Relax the lock screen rule, allow accessibility service to alter the lock screen. The lock screen should have the exact attached wallpaper, with the number on the bottom in identical font, size, placement, and color as the attached photo, but with this number: 71125011907547. When I pull up to enter the pin number, the number on the lock screen should disappear"

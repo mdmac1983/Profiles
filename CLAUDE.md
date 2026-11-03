@@ -72,14 +72,14 @@ Claude Code gives every session its own branch, so work can strand on a branch n
 - Develop and push on **the branch the session was assigned**; `push.sh` pushes it after every checkpoint.
 - `tools/MIRROR_MAIN` (`on`/`off`, committed) makes every push also fast-forward `origin/main` (plain push, never
   forced). **On** since 2026-11-02 (Tj approved), so a fresh session that just opens the repo sees the real state;
-  GitHub can only dispatch workflows that exist on the default branch.
+  GitHub can only dispatch workflows that exist on the default branch, which is now `main` itself.
 - `resume.sh` names every other remote branch with unmerged commits; merge deliberately, not blindly.
 
 **What each branch is (audited 2026-11-03):**
 | Branch | Purpose | Status |
 | :- | :- | :- |
 | `main` | the mirror (`MIRROR_MAIN`): fast-forwarded by every push; what a fresh session and the release workflow see | the real, current state |
-| `claude/...` / `ccr-...` | one per Claude session; the session's working branch | `ccr-4ff66321-chzhhg` is an OLD session branch, fully contained in `main` (frozen at ckpt 136); it is still GitHub's **default branch** (Tj: change it to `main` in Settings > Branches) |
+| `claude/...` / `ccr-...` | one per Claude session; the session's working branch | `ccr-4ff66321-chzhhg` is an OLD session branch, fully contained in `main` (frozen at ckpt 136); it was GitHub's default branch until Tj switched the default to `main` (2026-11-03, confirmed `HEAD branch: main`); now just a leftover, safe to delete |
 | `dependabot/*` | bot branches, one per update PR | were rooted on a pre-2026-11-02 history that shares no ancestor with `main`/`ccr` (the repo was re-rooted that day), so their PRs could never merge; PRs #1,#2,#3,#5,#6 closed 2026-11-03; do NOT merge such a branch; let Dependabot recreate it |
 `resume.sh` no longer raises a false alarm for `dependabot/*` or for a branch with no common history.
 
