@@ -245,3 +245,8 @@ This is ok because i don't use the custom launcher much.  See if you can make a 
 ```
 See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai
 ```
+
+## 2026-11-03T20:12:56Z
+```
+Attached is a screenshot of the two numbers on the screen at the same time, the smaller number is the one you made, the larger background number is the correct font and transparency
+```
