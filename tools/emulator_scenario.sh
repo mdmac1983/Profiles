@@ -172,7 +172,10 @@ adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1     # taken 
 adb shell input keyevent KEYCODE_HOME; sleep 1
 check "recents: the target app (Clock) is in Recents" grep -qiE 'clock' "$OUT/recents-policy.txt"
 check "recents: an ordinary app launched from the launcher (Messaging) is NOT in Recents" bash -c "! grep -qi 'messaging' $OUT/recents-policy.txt"
-check "recents: our own launcher is NOT in Recents (V4)" bash -c "! grep -q 'com.tj.launcher' $OUT/recents-policy.txt"
+# The raw dump always lists the current top task even when it is excluded, so test the thing that matters: every task of ours carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS (0x800000).
+ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/' "$1" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2; }
+V4BAD=0; for f in $(ourflags "$OUT/recents-policy.txt"); do [ $(( f & 0x800000 )) -eq 0 ] && V4BAD=$((V4BAD+1)); done
+check "recents: every task of our launcher carries the exclude-from-Recents flag (V4)" test "$V4BAD" -eq 0
 
 # ---- RESET2: accessibility helper ON, notification access OFF (like the Go tablet): double Home presses "Clear all" in the real shade and Recents, closes apps, then opens the app
 info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
