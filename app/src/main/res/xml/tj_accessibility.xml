@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Power-menu helper: reads window contents only to find the system power menu (text "Power off" + "Screenshot"). No gestures, no key events, no network. -->
+<!-- Helper: reads window contents only to find the system power menu (text "Power off" + "Screenshot"), to press "Clear all" on return, and to notice the stock launcher's home window.
+     Key events: only so it can see the side (power) key go down; every key is passed on untouched and nothing but the power key is ever looked at. No gestures, no network. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagRequestFilterKeyEvents"
     android:canRetrieveWindowContent="true"
+    android:canRequestFilterKeyEvents="true"
     android:notificationTimeout="0"
     android:description="@string/tj_accessibility_description" />
