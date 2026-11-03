@@ -170,5 +170,5 @@ Attached: "5.png" = the wallpaper photo with the old number (research/uploads/20
 
 ## Tj, 2026-11-03, verbatim
 "See if you can find a high quality version of the same exact Android leaf wallpaper and send it to me because the reference I'm sending was modified by ai"
-- [ ] Z1 find the original high-quality version of the green-leaf wallpaper (reference: research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png) and send it to Tj; if found, it can replace the inpainted lock wallpaper in the APK
+- [ ] Z1 (lead: Huawei P10 stock lock screen "leaves macro" on peakpx.com; host blocked by the session network policy, Tj must allow it) find the original high-quality version of the green-leaf wallpaper (reference: research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png) and send it to Tj; if found, it can replace the inpainted lock wallpaper in the APK
 - [ ] Y3b (Tj sent 7.png: the CORRECT number drawn under ours on the tablet) measured ground truth: bbox x205-396, y907-924 (192x18), white at ~71 % opacity, Light strokes; v0.3.3 changed to size 0.0429, Light, alpha 181, baseline 925/1024, x +1 px. Verify with a new tablet screenshot (research/uploads/2026-11-03/7-two-numbers-overlap-tablet.png is the reference)
