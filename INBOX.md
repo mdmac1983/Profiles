@@ -156,3 +156,8 @@ So far it works well but :
 4) sometimes the launcher app itself shows up in recent apps. I want the recent apps to only show solitaire
 5) the default should be solitaire in the foreground when the custom launcher opens
 ```
+
+## 2026-11-03T03:33:39Z
+```
+Checkpoint here so I can start a fresh session with no context
+```
