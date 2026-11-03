@@ -1,24 +1,23 @@
-# CHECKPOINT 174 — read me first, then TASKS.md
+# CHECKPOINT 175 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T23:08:26Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `b0f2bcf` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T23:30:56Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `eda1603` (this checkpoint is the commit after it)
 
 ## Just done
-B4 coded (RecentsDirty tracking, status-bar skip, black cover, instant Solitaire when nothing to clear), emulator checks for B1/B4/B6 added, version 0.3.4 (code 10), FIRST_INSTALL notes. B3 = research answer only; B5 blocked (no image).
+Run 32 (eda1603): the emulator died at 23:11 right after the first reset step (qemu procs 0), so B1/B4/B6 checks never ran: flaky-emulator again (runs 26/27/32 died, 25/28/29/31 survived with the same step). Un-ticked B1/B4/B6 in TASKS (they were ticked before proof). Re-dispatched the emulator run.
 
 ## Do this next
-Dispatch emulator.yml (branch claude/install-hooks-script-chvlig), read results (B1 stack type, Recents list, B6 pencil windows, B4 logs), fix FAILs; then ship v0.3.4 (ship.sh, android.yml full_build=true on main, record-release); reply to Tj: B3 answer, B5 resend request
+Read the new emulator run: B1 (HOME-type stack, Recents list), B6 (TjPencilCover windows), B4 (recents=false, cover shown/removed), Y1/Y2; fix FAILs; re-tick B1/B4/B6 with the proving checks; ship v0.3.4; B5 still needs Tj to resend the wallpaper
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-    M  TASKS.md
-    M  app/build.gradle.kts
-    M  research/FIRST_INSTALL.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  eda1603 ckpt 174: B4 coded (RecentsDirty tracking, status-bar skip, black cover, instant Solitai
   02d9241 ckpt 173: B6 coded: a11y finds the QS pencil (android:id/edit, 'Edit order of settings.'
   528c5ae ckpt 172: B1 coded: Launcher has a MAIN+SECONDARY_HOME filter; RouterActivity starts it 
   98f544a ckpt 171: Recorded B1-B6 (Tj's six requests after v0.3.3). B5 blocked: wallpaper image d
@@ -28,8 +27,4 @@ Dispatch emulator.yml (branch claude/install-hooks-script-chvlig), read results 
   66aa558 ckpt 167: Z1b: Tj's ORIGINAL leaf wallpaper (960x853, no number) replaces the AI-edited 
   46b7aa0 ckpt 166: Z1 closed: Tj found the original wallpaper himself
   0b3fc64 ckpt 165: A2: measured the correct number's opacity per pixel against the wallpaper abov
-  f65af65 ckpt 164: Z1: WebSearch found no exact match; lead = Huawei P10 stock lockscreen leaf wa
 ```
-
-(3 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
