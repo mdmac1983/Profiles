@@ -44,6 +44,10 @@ public class ControlActivity extends Activity {
         root.addView(label("Power menu (needs the helper turned on in Accessibility)"));
         root.addView(button("Power menu: leave alone (default)", new Runnable() { public void run() { setPower(Features.POWER_OFF); }}));
         root.addView(button("Power menu: remove Screenshot (two-button menu)", new Runnable() { public void run() { setPower(Features.POWER_HIDE_SCREENSHOT); }}));
+        root.addView(button("Power menu: hide it under a permanent wallpaper patch, custom menu on top (custom launcher only)", new Runnable() { public void run() { setPower(Features.POWER_WALLPAPER); }}));
+        root.addView(button("Allow wallpaper access (needed by the wallpaper patch)", new Runnable() { public void run() {
+            requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7);
+        }}));
         root.addView(button("Power menu: block it completely", new Runnable() { public void run() { setPower(Features.POWER_BLOCK); }}));
         root.addView(button("Open Accessibility settings", new Runnable() { public void run() {
             startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
@@ -103,6 +107,7 @@ public class ControlActivity extends Activity {
     private void refresh() {
         String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
         s += "\nPower menu: " + Features.powerMode(this);
+        if (Features.POWER_WALLPAPER.equals(Features.powerMode(this))) s += "\nWallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(helper has not reported yet)");
         s += "\nA (launch flag) " + (RecentsPolicy.enabled(this) ? "ON" : "OFF") + " | B1 notifications " + (ReturnReset.clearNotifications(this) ? "ON" : "OFF") + " | B2 recents " + (ReturnReset.clearRecents(this) ? "ON" : "OFF");
         s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
         s += "\nKeyboard switch: " + (KeyboardSwitch.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (KeyboardSwitch.permitted(this) ? "yes" : "NO") + " | " + KeyboardSwitch.status(this);

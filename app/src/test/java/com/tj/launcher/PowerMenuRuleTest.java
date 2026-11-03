@@ -13,4 +13,7 @@ public class PowerMenuRuleTest {
     @Test public void hideCoversTheScreenshotEntry() { assertEquals(PowerMenuRule.COVER_SCREENSHOT, PowerMenuRule.decide(H, true, false, true, true)); }
     @Test public void hideFailsOpenWhenEntryNotFound() { assertEquals(PowerMenuRule.NOTHING, PowerMenuRule.decide(H, true, false, true, false)); }
     @Test public void blockClosesTheMenu() { assertEquals(PowerMenuRule.CLOSE_MENU, PowerMenuRule.decide(B, true, false, true, false)); }
+    @Test public void wallpaperModeCoversLikeHideMode() { assertEquals(PowerMenuRule.COVER_SCREENSHOT, PowerMenuRule.decide(Features.POWER_WALLPAPER, true, false, true, true)); }
+    @Test public void wallpaperModeNeverOnTheLockScreen() { assertEquals(PowerMenuRule.NOTHING, PowerMenuRule.decide(Features.POWER_WALLPAPER, true, true, true, true)); }
+    @Test public void isCoverKnowsBothModes() { assertEquals(true, Features.isCover(Features.POWER_HIDE_SCREENSHOT) && Features.isCover(Features.POWER_WALLPAPER) && !Features.isCover(Features.POWER_BLOCK) && !Features.isCover(Features.POWER_OFF)); }
 }

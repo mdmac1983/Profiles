@@ -52,6 +52,7 @@ public class TjAccessibilityService extends AccessibilityService {
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
         scheduleLockUpdate();
+        scheduleLayerRefresh();
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -70,8 +71,11 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private static final String CARD_KEY = "power_card_rect";
 
+    private int rotation() { return ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRotation(); }
+    private String cardKey() { return CARD_KEY + "_r" + rotation(); }   // the menu sits somewhere else in landscape
+
     private Rect cachedCard() {
-        String v = Features.getString(this, CARD_KEY, "");
+        String v = Features.getString(this, cardKey(), "");
         String[] p = v.split(",");
         if (p.length != 4) return null;
         try { return new Rect(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]), Integer.parseInt(p[3])); }
@@ -92,7 +96,144 @@ public class TjAccessibilityService extends AccessibilityService {
         instance = this;
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
+        try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
+    }
+
+    // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
+    public static final String PATCH_STATUS_KEY = "wallpaper_patch_status";
+    private View patchView;
+    private android.graphics.Bitmap wallpaperBmp;
+    private final Rect patchAt = new Rect();
+    private int patchRot = -1;
+    private boolean patchWatching = false;
+    private final Runnable layerRefresh = new Runnable() { @Override public void run() { layerRefreshPending = false; refreshLayers(); } };
+    private boolean layerRefreshPending = false;
+    private long lastLayerMs = 0;
+    private final Runnable patchRedraw = new Runnable() { @Override public void run() { if (patchView != null) patchView.invalidate(); } };
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+        @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
+            if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+        }
+    };
+    private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
+    };
+
+    private void startPatchWatch() {
+        if (patchWatching) return;
+        getSharedPreferences("tj_mode", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefWatch);
+        getSharedPreferences("tj_features", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefWatch);
+        registerReceiver(wallpaperReceiver, new android.content.IntentFilter(android.content.Intent.ACTION_WALLPAPER_CHANGED));
+        patchWatching = true;
+        refreshLayers();
+    }
+
+    private void stopPatchWatch() {
+        if (!patchWatching) return;
+        try { getSharedPreferences("tj_mode", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefWatch); } catch (Throwable ignored) { }
+        try { getSharedPreferences("tj_features", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefWatch); } catch (Throwable ignored) { }
+        try { unregisterReceiver(wallpaperReceiver); } catch (Throwable ignored) { }
+        patchWatching = false;
+    }
+
+    /** Called by the launcher (same process) whenever it moves the wallpaper: redraw the patch with the new slice (debounced). */
+    public void onWallpaperOffset() { handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40); }
+
+    private void scheduleLayerRefresh() {
+        if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this)) && patchView == null) return;   // not in this mode and nothing to clean up: free
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastLayerMs >= 150) { lastLayerMs = now; refreshLayers(); }
+        if (!layerRefreshPending) { layerRefreshPending = true; handler.postDelayed(layerRefresh, 250); }
+    }
+
+    private void patchStatus(String s) {
+        if (!s.equals(Features.getString(this, PATCH_STATUS_KEY, ""))) Features.setString(this, PATCH_STATUS_KEY, s);
+    }
+
+    /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Launcher control. */
+    private Rect patchTarget() {
+        if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
+        if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
+        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        if (km != null && km.isKeyguardLocked()) { patchStatus("off: lock screen"); return null; }
+        Rect r = cachedCard();
+        if (r == null) { patchStatus("waiting: open the power menu once so the helper learns where it sits (this screen orientation)"); return null; }
+        if (loadWallpaper() == null) return null;
+        return r;
+    }
+
+    private android.graphics.Bitmap loadWallpaper() {
+        if (wallpaperBmp != null) return wallpaperBmp;
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            patchStatus("needs permission: Launcher control > Allow wallpaper access"); return null;
+        }
+        try {
+            android.graphics.drawable.Drawable d = android.app.WallpaperManager.getInstance(this).getDrawable();
+            if (d instanceof android.graphics.drawable.BitmapDrawable) wallpaperBmp = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
+            else if (d != null && d.getIntrinsicWidth() > 0) {
+                android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+                d.setBounds(0, 0, b.getWidth(), b.getHeight()); d.draw(new android.graphics.Canvas(b)); wallpaperBmp = b;
+            }
+        } catch (Throwable t) { Log.e(TAG, "wallpaper read failed", t); }
+        if (wallpaperBmp == null) patchStatus("off: the wallpaper could not be read");
+        return wallpaperBmp;
+    }
+
+    /** Brings the patch (and, above it, the card) in line with the current mode / lock state / rotation. Cheap when nothing changed. */
+    private void refreshLayers() {
+        try {
+            Rect want = patchTarget();
+            if (want == null) {
+                if (patchView != null) { removeOverlay(); removePatch(); }
+                if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) wallpaperBmp = null;
+                if (Features.isCover(Features.powerMode(this)) && Mode.isCustom(this)) warmUp();   // plain cover mode keeps its pre-built card
+                return;
+            }
+            if (patchView != null && (!patchAt.equals(want) || patchRot != rotation())) { removeOverlay(); removePatch(); }
+            if (patchView == null) { removeOverlay(); addPatch(want); warmUp(); }
+        } catch (Throwable t) { Log.e(TAG, "layer refresh failed", t); removeOverlay(); removePatch(); }
+    }
+
+    /** Used by the card creation paths: guarantees the patch exists BEFORE the card is added (later windows sit on top). */
+    private void ensurePatch() {
+        if (patchView != null) return;
+        Rect want = patchTarget();
+        if (want != null) addPatch(want);
+    }
+
+    private void addPatch(final Rect r) {
+        final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        final Rect rect = new Rect(r);
+        View v = new View(this) {
+            private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+            private final android.graphics.Matrix m = new android.graphics.Matrix();
+            @Override protected void onDraw(android.graphics.Canvas c) {
+                android.graphics.Bitmap b = wallpaperBmp;
+                if (b == null) return;
+                // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
+                float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
+                float dw = b.getWidth() * s, dh = b.getHeight() * s;
+                m.setScale(s, s);
+                m.postTranslate(-(dw - dm.widthPixels) * TjHooks.wallpaperX - rect.left, -(dh - dm.heightPixels) * 0.5f - rect.top);
+                c.drawBitmap(b, m, p);
+            }
+        };
+        WindowManager.LayoutParams lp = overlayParams(r, false);
+        lp.format = PixelFormat.OPAQUE;
+        lp.setTitle("TjWallpaperPatch");
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
+        patchView = v; patchAt.set(r); patchRot = rotation();
+        patchStatus("active over " + r.toShortString());
+        Log.i(TAG, "PATCH shown " + r.toShortString());
+    }
+
+    private void removePatch() {
+        if (patchView == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
+        patchView = null; patchAt.setEmpty(); patchRot = -1;
+        Log.i(TAG, "PATCH removed");
     }
 
     // ---------------------------------------------------------------- X1: the number on the lock screen (Tj relaxed the lock-screen rule for this)
@@ -102,7 +243,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean lockEvalPending = false;
     private final Runnable lockEval = new Runnable() { @Override public void run() { lockEvalPending = false; updateLockNumber(); } };
     private final android.content.BroadcastReceiver lockReceiver = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) { handler.post(lockEval); handler.postDelayed(lockEval, 400); }
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            handler.post(lockEval); handler.postDelayed(lockEval, 400);
+            handler.post(layerRefresh);
+        }
     };
 
     private void startLockNumber() {
@@ -275,11 +419,11 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
     }
 
-    @Override public void onInterrupt() { removeOverlay(); removeLockNumber(); }
+    @Override public void onInterrupt() { removeOverlay(); removePatch(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
@@ -325,8 +469,9 @@ public class TjAccessibilityService extends AccessibilityService {
         if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
-            Features.setString(this, CARD_KEY, shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
+            Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
             handler.removeCallbacks(recheck);
+            if (Features.POWER_WALLPAPER.equals(mode) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
@@ -591,6 +736,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlay != null || !Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
         Rect cached = cachedCard();
         if (cached == null) return;
+        ensurePatch();   // the wallpaper patch must be added BEFORE the card so the card is on top
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         overlay = buildCard();
         overlay.setAlpha(0f);
@@ -602,6 +748,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void showOverlay(Rect r) {
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (overlay == null) {
+            ensurePatch();
             overlay = buildCard();
             wm.addView(overlay, overlayParams(r, true));
             shownAt.set(r);
