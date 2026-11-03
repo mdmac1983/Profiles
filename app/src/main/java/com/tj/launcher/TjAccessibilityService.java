@@ -2,6 +2,7 @@ package com.tj.launcher;
 
 import android.accessibilityservice.AccessibilityService;
 import android.app.KeyguardManager;
+import android.content.ComponentName;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
@@ -50,6 +51,7 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
+        if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
@@ -87,13 +89,72 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
 
-    /** Research only (debug builds declare the capability): logs which hardware keys reach an accessibility service. Never consumes a key. */
+    // ---------------------------------------------------------------- W5: keep the stock launcher's home screen away unless Tj did the gesture
+    private ComponentName stockCache;
+    private long stockCacheAt = 0;
+    private final long[] guardHist = new long[StrayHomeGuard.MAX];
+    private int guardIdx = 0;
+    private long standDownUntil = 0;
+
+    private void guardStrayHome(AccessibilityEvent e) {
+        if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        CharSequence pk = e.getPackageName(), cl = e.getClassName();
+        if (pk == null || cl == null) return;
+        if (!Mode.isCustom(this) || !Features.get(this, StrayHomeGuard.KEY, true)) return;
+        long now = System.currentTimeMillis();
+        if (stockCache == null || now - stockCacheAt > 60_000) { stockCache = StockLauncher.find(this); stockCacheAt = now; }
+        if (stockCache == null) return;
+        if (!StrayHomeGuard.isStockHome(pk.toString(), cl.toString(), stockCache.getPackageName(), stockCache.getClassName())) return;
+        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        boolean locked = km != null && km.isKeyguardLocked();
+        if (!StrayHomeGuard.shouldRedirect(true, true, locked, true, now, Mode.failOpenUntil(this), standDownUntil, guardHist)) {
+            if (StrayHomeGuard.countInWindow(guardHist, now) >= StrayHomeGuard.MAX) standDownUntil = now + StrayHomeGuard.COOLDOWN_MS;
+            return;
+        }
+        guardHist[guardIdx++ % guardHist.length] = now;
+        int n = Features.getString(this, StrayHomeGuard.COUNT_KEY, "0").length() > 0 ? Integer.parseInt(Features.getString(this, StrayHomeGuard.COUNT_KEY, "0")) + 1 : 1;
+        Features.setString(this, StrayHomeGuard.COUNT_KEY, String.valueOf(n));
+        Features.setString(this, StrayHomeGuard.LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(now)));
+        Log.i(TAG, "STRAY stock home shown in custom mode -> pressing Home (#" + n + ")");
+        performGlobalAction(GLOBAL_ACTION_HOME);   // the router answers with our Launcher
+    }
+
+    // ---------------------------------------------------------------- W4: the side key reaches the helper before the long-press power menu exists
+    public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";
+
+    /** Never consumes a key (always returns false). Only the POWER key is looked at; nothing else is logged or stored. */
     @Override protected boolean onKeyEvent(android.view.KeyEvent event) {
-        Log.i(TAG, "KEY code=" + event.getKeyCode() + " (" + android.view.KeyEvent.keyCodeToString(event.getKeyCode()) + ") action=" + event.getAction() + " t=" + event.getEventTime());
+        try {
+            if (event.getKeyCode() != android.view.KeyEvent.KEYCODE_POWER) return false;
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                int n = 1;
+                try { n = Integer.parseInt(Features.getString(this, PWR_COUNT_KEY, "0")) + 1; } catch (NumberFormatException ignored) { }
+                Features.setString(this, PWR_COUNT_KEY, String.valueOf(n));
+                Features.setString(this, PWR_LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()));
+                Log.i(TAG, "POWER key down seen by the helper (#" + n + ")");
+                earlyCover();
+            } else if (event.getAction() == android.view.KeyEvent.ACTION_UP) {
+                handler.removeCallbacks(recheck);
+                handler.postDelayed(recheck, 150);   // evaluate(): keeps the cover if the power menu opened, drops it after a short press
+            }
+        } catch (Throwable t) { Log.e(TAG, "key hook failed", t); }
         return false;
+    }
+
+    /** Side key just went down: put the replacement card in place now, before the (long-press) system power menu exists. */
+    private void earlyCover() {
+        if (!Mode.isCustom(this) || !Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this))) return;
+        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        if (km != null && km.isKeyguardLocked()) return;
+        Rect cached = cachedCard();
+        if (cached == null) return;   // never learned where the menu sits yet: the first real menu teaches it
+        showOverlay(cached);
+        handler.removeCallbacks(recheck);
+        handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
     }
 
     @Override public void onInterrupt() { removeOverlay(); }
