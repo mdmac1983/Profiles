@@ -1,23 +1,22 @@
-# CHECKPOINT 144 — read me first, then TASKS.md
+# CHECKPOINT 145 — read me first, then TASKS.md
 
-**Written:** 2026-11-03T04:17:59Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `68ea6ca` (this checkpoint is the commit after it)
+**Written:** 2026-11-03T04:20:43Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `667d9fd` (this checkpoint is the commit after it)
 
 ## Just done
-Recorded X1 (lock-screen number) with Tj's explicit L10 relaxation; photo saved in research/uploads/2026-11-03
+X1 built: LockNumber overlay (a11y, NOT_TOUCHABLE) shows 71125011907547 at measured size/position, hidden when PIN pad visible/unlocked/screen off; clean inpainted wallpaper in res/drawable-nodpi + Control button; restore turns it off. Unit tests + debug build green.
 
 ## Do this next
-Measure the number in the photo (python PIL: bbox, colour), inpaint it out for a clean wallpaper, then build LockNumber overlay in TjAccessibilityService; also finish reading emulator run 25 results
+Read emulator run 25 results (results.txt) and fix FAILs; add emulator lock-screen check (locksettings set-pin 1234, power off/on, screenshot, swipe up, overlay window TjLockNumber gone, ALWAYS clear the pin); then ship v0.3.2
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
-    ?? research/uploads/2026-11-03/
 
 ## Last ten checkpoints
 ```
+  9ff7be8 ckpt 144: Recorded X1 (lock-screen number) with Tj's explicit L10 relaxation; photo save
   7844fd6 ckpt 143: Scenario V4 check now tests the exclude flag instead of grepping the raw dump
   82896a4 ckpt 142: Emulator run 1 (6686f1b): W5 3/3 PASS, W2 flag PASS; reset2 Recents Clear all 
   03ac2f6 ckpt 141: X2 branches audited: closed 5 unmergeable dependabot PRs, resume.sh ignores de
@@ -27,8 +26,7 @@ Measure the number in the photo (python PIL: bbox, colour), inpaint it out for a
   90c18f8 ckpt 137: Wrote Tj's v0.3.1 feedback W1-W5 into TASKS.md
   2d4e527 ckpt 136: HANDOFF: TASKS.md STATUS SNAPSHOT (stale boxes closed, 6 real open items), res
   b9faf25 ckpt 133: Released v0.3.1 (V1-V5). Emulator 26/27 before release; the 27th (launcher not
-  b8682ed ckpt 131: gated v0.3.1 (code 7) and pushed it: the handoff self-test, the full unit suit
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(3 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
