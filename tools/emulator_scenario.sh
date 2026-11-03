@@ -243,6 +243,30 @@ BAD=0; for f in $(echo "$OURS" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2); do [ 
 if [ -n "$OURS" ]; then check "W2: every task of ours in the Recents dump carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS" test "$BAD" -eq 0; else info "W2: no task of ours listed in the Recents dump (fine: excluded)"; fi
 
 beat "before X1: the numbe"
+# ---- W3b: wallpaper patch. With power mode "wallpaper" a permanent patch sits over the power-menu card area and must look IDENTICAL to the wallpaper there (compare with the same screen, patch off).
+beat "before W3b"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/grant-storage.txt" 2>&1
+setmode custom; setpower wallpaper; rebind; home
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 49-wallpaper-mode-menu-open
+adb shell input keyevent KEYCODE_BACK; sleep 3
+PRECT="$(adb logcat -d -s TjA11y:I | grep -o 'bounds=Rect([0-9, -]*)' | tail -1 | grep -o '[0-9]*' | tr '\n' ' ')"
+shot 50-patch-on
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/patch-windows.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep PATCH > "$OUT/patch-log.txt" 2>&1
+setpower off; rebind; home; sleep 2; shot 51-patch-off
+set -- $PRECT
+if [ "$#" -ge 4 ]; then
+  GEOM="$(( $3 - $1 ))x$(( $4 - $2 ))+$1+$2"
+  MAE="$(compare -metric MAE "$OUT/50-patch-on.png[$GEOM]" "$OUT/51-patch-off.png[$GEOM]" null: 2>&1 | grep -o '([0-9.e-]*)' | tr -d '()')"
+  echo "patch region $GEOM normalised MAE vs wallpaper-only: $MAE" | tee "$OUT/patch-diff.txt"
+  check "W3b: a wallpaper patch window exists while the menu is closed" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/patch-windows.txt)\" -ge 1 ]"
+  check "W3b: the patch is identical to the wallpaper underneath (region MAE < 0.5 %)" awk -v m="$MAE" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+else
+  info "W3b: the menu rectangle was not learned (no bounds in the log); patch not compared"
+  check "W3b: the menu rectangle was learned" false
+fi
+setpower off; setmode custom
+
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
