@@ -20,6 +20,10 @@ setmode(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml v
 getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | grep -o 'mode">[a-z]*' | cut -d'>' -f2; }
 home(){ adb shell input keyevent KEYCODE_HOME; sleep 4; }
 
+# stream a filtered logcat to the RUNNER (survives an emulator crash, which has cost us the evidence before) + a heartbeat after each phase
+( adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I > "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null
+beat(){ echo "$(date +%T) $1 :: $(adb get-state 2>&1 | tr -d '\r')" >> "$OUT/heartbeat.txt"; }
+beat start
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
 adb shell dumpsys package "$PKG" > "$OUT/package-dump.txt" 2>&1
@@ -177,6 +181,7 @@ ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/' "$1" | grep -o '
 V4BAD=0; for f in $(ourflags "$OUT/recents-policy.txt"); do [ $(( f & 0x800000 )) -eq 0 ] && V4BAD=$((V4BAD+1)); done
 check "recents: every task of our launcher carries the exclude-from-Recents flag (V4)" test "$V4BAD" -eq 0
 
+beat "before RESET2"
 # ---- RESET2: accessibility helper ON, notification access OFF (like the Go tablet): double Home presses "Clear all" in the real shade and Recents, closes apps, then opens the app
 info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
 setfeat; setmode quickstep; rebind
@@ -196,6 +201,7 @@ check "reset2: the notification was cleared through the real shade (no notificat
 info "recents entries before=$(tr -d ' \r\n' < $OUT/recents-before.txt) after=$(tr -d ' \r\n' < $OUT/recents-after.txt); apps still running: $(cat $OUT/apps2-after.txt | tr '\n' ';')"
 adb shell svc wifi enable >/dev/null 2>&1
 
+beat "before V5 + V2"
 # ---- V5 + V2: Solitaire (Clock here) opens when the custom launcher STARTS; keyboard switch applies without error once granted
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/grant-secure.txt" 2>&1
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"true\\\" /><boolean name=\\\"keyboard_switch\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Clock</string></map>\" > shared_prefs/tj_features.xml'"
@@ -209,6 +215,7 @@ adb logcat -d -s TjKeyboard:I > "$OUT/keyboard-log.txt" 2>&1
 info "keyboard: before=$(tr -d '\r\n' < $OUT/ime-before.txt) afterCustom=$(tr -d '\r\n' < $OUT/ime-after-custom.txt); $(tail -1 $OUT/keyboard-log.txt | cut -c1-160)"
 setlabel Clock; home
 
+beat "before W5: the stock"
 # ---- W5: the stock launcher's home screen must never appear in custom mode unless Tj did the gesture (the helper presses Home); W2: our tasks carry the exclude flag at runtime
 STOCK="$(adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tr -d '\r' | grep '/' | grep -v com.tj.launcher | head -1)"
 echo "stock home component: $STOCK" | tee "$OUT/stock-component.txt"
@@ -234,6 +241,7 @@ OURS="$(grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/[A-Za-z.0-9]*' "$OUT/r
 BAD=0; for f in $(echo "$OURS" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2); do [ $(( f & 0x800000 )) -eq 0 ] && BAD=$((BAD+1)); done
 if [ -n "$OURS" ]; then check "W2: every task of ours in the Recents dump carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS" test "$BAD" -eq 0; else info "W2: no task of ours listed in the Recents dump (fine: excluded)"; fi
 
+beat "before X1: the numbe"
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
@@ -254,6 +262,7 @@ check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\
 check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
 home
 
+beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart
