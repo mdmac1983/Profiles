@@ -263,7 +263,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void pollPress(final String label, final String[] emptyTexts, final String[] packages, final long maxMs, final boolean scroll, final PollResult cb) {
         final long deadline = android.os.SystemClock.uptimeMillis() + maxMs;
         final int[] tick = {0};
-        handler.postDelayed(new Runnable() { @Override public void run() {
+        handler.post(new Runnable() { @Override public void run() {
             try {
                 if (pressInSystemUi(label, packages)) { cb.done(PRESSED); return; }
                 if (anyTextPresent(emptyTexts, packages)) { cb.done(EMPTY); return; }
