@@ -23,7 +23,7 @@ public class ControlActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(48, 96, 48, 48);
+        root.setPadding(48, 96, 48, 160);
         root.setBackgroundColor(Color.WHITE);
         status = new TextView(this);
         status.setTextSize(18);
@@ -94,7 +94,12 @@ public class ControlActivity extends Activity {
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
             refresh();
         }}));
-        setContentView(root);
+        // B2: the menu is longer than the screen: scroll it (ScrollView + padding for the nav bar)
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.setBackgroundColor(Color.WHITE);
+        sv.setFillViewport(true);
+        sv.addView(root, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+        setContentView(sv);
     }
 
     @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); if (Mode.isCustom(this)) { finish(); return; } refresh(); }
