@@ -98,7 +98,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private long stockCacheAt = 0;
     private final long[] guardHist = new long[StrayHomeGuard.MAX];
     private int guardIdx = 0;
-    private long standDownUntil = 0;
+    private long standDownUntil = 0, lastGuardMs = 0;
 
     private void guardStrayHome(AccessibilityEvent e) {
         if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
@@ -115,6 +115,8 @@ public class TjAccessibilityService extends AccessibilityService {
             if (StrayHomeGuard.countInWindow(guardHist, now) >= StrayHomeGuard.MAX) standDownUntil = now + StrayHomeGuard.COOLDOWN_MS;
             return;
         }
+        if (now - lastGuardMs < 700) return;   // one stock-home appearance can raise two events
+        lastGuardMs = now;
         guardHist[guardIdx++ % guardHist.length] = now;
         int n = bump(StrayHomeGuard.COUNT_KEY);
         Features.setString(this, StrayHomeGuard.LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(now)));
@@ -251,7 +253,7 @@ public class TjAccessibilityService extends AccessibilityService {
                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET notifications result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
                 performGlobalAction(GLOBAL_ACTION_BACK);
-                handler.postDelayed(afterShade, 30);
+                handler.postDelayed(afterShade, 90);   // 30 ms was too short: Recents opened while the shade was still collapsing timed out on the emulator
             }
         });
     }
