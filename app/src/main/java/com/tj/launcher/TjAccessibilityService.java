@@ -315,7 +315,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private View buildLockView(final String text, final float em, final float baselineInView) {
         return new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.SUBPIXEL_TEXT_FLAG);
-            { p.setColor(Color.WHITE); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, LockNumber.WEIGHT, false)); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
+            { p.setColor(Color.argb(LockNumber.ALPHA, 255, 255, 255)); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, LockNumber.WEIGHT, false)); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
             @Override protected void onDraw(android.graphics.Canvas c) { c.drawText(text, getWidth() / 2f + getWidth() * LockNumber.X_NUDGE_PER_WIDTH, baselineInView, p); }
         };
     }

@@ -17,11 +17,13 @@ public final class LockNumber {
     public static final String TEXT_KEY = "lock_number_text";
     public static final String DEFAULT_TEXT = "71125011907547";
     /** text size (em) as a fraction of the screen width: 38.7 px em on a 957 px photo = 0.04045 */
-    public static final float EM_PER_WIDTH = 0.0430f;   // v0.3.3: measured on Tj's tablet screenshot (6.png): 180 px wide vs 190.6 px for the photo (5.png) => x1.063
+    public static final float EM_PER_WIDTH = 0.0429f;   // v0.3.3: ground truth = 7.png (the real number overlapping ours on the tablet): 192 px wide x 18 px high; ours at 0.04045 was 180 x 17
     /** baseline as a fraction of the real display height: (1483.5 px * 600/957 - 3 px crop) / 1024 */
-    public static final float BASELINE_PER_HEIGHT = 0.9063f;   // v0.3.3: +1 px (6.png sat 1 px high)
+    public static final float BASELINE_PER_HEIGHT = 0.9033f;   // v0.3.3: 7.png: the real digits end at y=925 of 1024 (ours ended at 927)
     /** Light weight: the photo's strokes carry 19 % less ink than Regular at the same size (alpha-mass measurement of 5.png vs 6.png). */
     public static final int WEIGHT = 300;
+    /** 7.png: the real number is white at ~71 % opacity (brightest pixels 184,203,182 over a 23,69,6 background => alpha 0.69-0.72); thin strokes (bar ink 1.2 px-equivalent = Light x 0.71) */
+    public static final int ALPHA = 181;
     /** +1 px to the right (6.png centre 299.5 vs 300.6 in the photo), as a fraction of the screen width */
     public static final float X_NUDGE_PER_WIDTH = 0.0017f;
 

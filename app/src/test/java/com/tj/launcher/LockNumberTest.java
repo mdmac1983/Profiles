@@ -14,7 +14,9 @@ public class LockNumberTest {
         // 6.png (tablet, v0.3.2, em 0.04045 x 600 px): bbox 180 px wide; 5.png scaled: 190.6 px => em must grow by 1.059..1.07
         assertTrue(LockNumber.EM_PER_WIDTH > 0.04045f * 1.05f && LockNumber.EM_PER_WIDTH < 0.04045f * 1.08f);
         assertTrue(LockNumber.BASELINE_PER_HEIGHT > 0.85 && LockNumber.BASELINE_PER_HEIGHT < 0.95);
-        assertTrue(LockNumber.WEIGHT == 300);   // Light: the photo carries ~19 % less ink than Regular
+        assertTrue(LockNumber.WEIGHT == 300);   // Light
+        assertTrue(LockNumber.ALPHA > 170 && LockNumber.ALPHA < 190);   // ~71 % white (7.png)
+        assertTrue(Math.abs(LockNumber.BASELINE_PER_HEIGHT * 1024 - 925.0) < 1.5);   // 7.png: digits end at y=925
         assertTrue(LockNumber.DEFAULT_TEXT.equals("71125011907547"));
     }
 }
