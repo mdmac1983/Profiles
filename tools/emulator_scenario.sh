@@ -755,7 +755,7 @@ check "T1: the device-shell helper line (phone adb app, no adb shell prefix) sta
 # S2: take three things away, then let the app put them back through the helper
 adb shell pm revoke "$PKG" android.permission.DUMP >/dev/null 2>&1; adb shell pm revoke "$PKG" android.permission.CHANGE_CONFIGURATION >/dev/null 2>&1; adb shell cmd appops set "$PKG" RUN_IN_BACKGROUND default >/dev/null 2>&1
 sleep 2
-vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
 vfeat true
 setmode quickstep; rebind; home
 adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez autorun true >/dev/null 2>&1
