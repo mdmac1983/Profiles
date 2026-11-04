@@ -210,10 +210,10 @@ If i send multiple messages interrupting you, always continue what you are alrea
 5) make both "launcher" and "quickstep" never appear in the recents list at any time in any launcher. use adb if needed
 6) research if it is possible to have separate notification panels and quick settings tiles depending on the active launcher
 7) tell me the adb command to uninstall or disable the "browser" app (com.android.browser) from lineageos. i cant uninstall or disable it without adb. would it break anything if i disable or uninstall it?"
-- [ ] C1 setting in Launcher control to change the lock-screen number (same font/colour/position/behaviour)
-- [ ] C2 easy adb setup: in-app step-by-step guide (+ copy button + grant status) AND a line-by-line txt file in this session; as many safe permissions as current + later features need
-- [ ] C3 find the LineageOS / Android 4 ICS "leaf / macro leaf" wallpaper as shipped on this tablet (Tj's copy is brighter/sharper; maybe scaling); B5 (his earlier resend request) is folded into this
-- [ ] C4 research: can the notification-panel settings (gear) button, on the lock screen and in Android, open the cloned Settings?
-- [ ] C5 "Launcher" AND "Quickstep" never in Recents in any launcher (use adb if needed)
-- [ ] C6 research: separate notification panel / quick-settings tiles per active launcher
-- [ ] C7 answer: adb command to disable/uninstall com.android.browser on LineageOS and what it would break
+- [x] C1 (v0.3.5; LockNumberSanitizeTest; the EditText UI itself is untested on the emulator) setting in Launcher control to change the lock-screen number (same font/colour/position/behaviour)
+- [x] C2 (v0.3.5; emulator run 36: manifest declares DUMP/CHANGE_CONFIGURATION/PACKAGE_USAGE_STATS, pm grant DUMP works; research/ADB_COMMANDS.txt sent to Tj; AdbGuideActivity UI untested on the emulator) easy adb setup: in-app step-by-step guide (+ copy button + grant status) AND a line-by-line txt file in this session; as many safe permissions as current + later features need
+- [~] C3 (ICS originals found + sent; WAITING for Tj to say which one matches his lock screen) find the LineageOS / Android 4 ICS "leaf / macro leaf" wallpaper as shipped on this tablet (Tj's copy is brighter/sharper; maybe scaling); B5 (his earlier resend request) is folded into this
+- [x] C4 (answered in research/NOTES_2026-11-04.md; building it waits for SET1 and Tj's go) research: can the notification-panel settings (gear) button, on the lock screen and in Android, open the cloned Settings?
+- [x] C5 (v0.3.5; emulator run 36: 'the stock launcher task started by the router is in the HOME-type stack') "Launcher" AND "Quickstep" never in Recents in any launcher (use adb if needed)
+- [x] C6 (answered; tiles-per-mode needs the adb grant + Tj's go) research: separate notification panel / quick-settings tiles per active launcher
+- [x] C7 (answered + research/ADB_COMMANDS.txt section 10) answer: adb command to disable/uninstall com.android.browser on LineageOS and what it would break
