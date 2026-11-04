@@ -1,0 +1,72 @@
+ADB FROM A PHONE (an "ADB OTG" style app)  -  Tj, 2026-11-04: "I have adb with another android phone to the tablet."
+===============================================================================================================
+An adb app on a phone (ADB OTG, Bugjaeger, ...) gives you a SHELL ON THE TABLET. In that shell you type commands WITHOUT the "adb shell" prefix.
+You need only ONE thing from here: the helper line. Everything else happens inside the launcher on the tablet (Launcher control > Tablet setup & report).
+
+STEP 1  On the tablet: Settings > About tablet > tap Build number 7 times; Settings > System > Developer options > USB debugging ON.
+        Plug the phone into the tablet with the OTG cable, open the adb app on the phone, and tap ALLOW on the tablet when it asks to allow the phone.
+STEP 2  In the adb app's shell/terminal, paste this ONE line and press Enter (it starts the helper; it does not print anything):
+
+CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &
+
+        (The launcher also shows this line: Launcher control > Tablet setup & report > "Copy the helper line for a PHONE / adb app". Copy it on the tablet, but you type into the PHONE, so paste from this file or type it.)
+        If the app says the line is not a command, or does nothing, use the wrapped form:
+
+sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+
+        If the app cannot do $( ... ) at all, two steps:  (a) type   pm path com.tj.launcher   -> it prints  package:/data/app/.../base.apk   (b) type this with that path (without "package:") instead of PATH:
+
+sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+
+STEP 3  On the TABLET open the launcher's Launcher control (in Quickstep mode) > "Tablet setup & report". It must say "Shell helper: RUNNING".
+        Tap "Do everything that is missing": it grants the permissions, the background settings, the battery setting and turns the accessibility helper on.
+        Tap "Collect EVERYTHING": it writes the tablet report (build, encryption, users, profiles, adb-over-network, setting names, overlays, power-menu settings, keyboards, the Settings app's pages),
+        photographs the stock Settings pages, and copies the tablet's own Settings / SystemUI / stock launcher / framework apps.
+STEP 4  Everything is in the tablet folder   Downloads / launcher-probe   (report, shots/, apk/). Open it with any file manager on the tablet (or the phone's adb app: pull the folder), zip it, and send it to me.
+STEP 5  After every tablet RESTART, do STEP 2 again (the helper does not survive a restart). Nothing else needs repeating.
+
+WHAT THE HELPER LINE IS SAFE TO DO: it starts a small program as the shell user that only answers the launcher app (checked by user id) and only runs a fixed list of jobs
+(grant this app its own permissions, read-only looks, force-stop the apps Quickstep opened, copy files to Downloads/launcher-probe). Stop it any time with:   pkill -f com.tj.launcher.ShellServer
+
+-----------------------------------------------------------------------------------------------------------------------------------
+THE SAME COMMANDS BY HAND (only if you prefer typing them in the phone's adb shell; each line stands alone; no "adb shell" prefix)
+-----------------------------------------------------------------------------------------------------------------------------------
+# permissions (once; they survive updates)
+pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+pm grant com.tj.launcher android.permission.DUMP
+pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION
+pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+cmd appops set com.tj.launcher GET_USAGE_STATS allow
+cmd appops set com.tj.launcher WRITE_SETTINGS allow
+cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow
+cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow
+dumpsys deviceidle whitelist +com.tj.launcher
+# turn the accessibility helper on (first read what is on):
+settings get secure enabled_accessibility_services
+# if it printed null:
+settings put secure enabled_accessibility_services com.tj.launcher/com.tj.launcher.TjAccessibilityService
+settings put secure accessibility_enabled 1
+# if it printed something else, join with a colon:  settings put secure enabled_accessibility_services THAT_VALUE:com.tj.launcher/com.tj.launcher.TjAccessibilityService
+# the old Browser app (optional)
+pm disable-user --user 0 com.android.browser
+# user profiles (send me the output)
+pm get-max-users
+pm list users
+# the read-only probe, the important facts only
+getprop ro.build.fingerprint
+getprop ro.lineage.version
+getprop ro.crypto.type
+getprop service.adb.tcp.port
+getprop persist.adb.tcp.port
+settings get secure power_menu_actions
+pm path com.android.settings
+cmd overlay list
+ime list -s
+# experiment E1 (pencil + gear hidden natively; undo at once if anything looks odd):
+settings put global device_demo_mode 1
+settings put global device_demo_mode 0
+# undo everything
+pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+cmd appops set com.tj.launcher GET_USAGE_STATS default
+dumpsys deviceidle whitelist -com.tj.launcher
+pkill -f com.tj.launcher.ShellServer

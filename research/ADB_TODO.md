@@ -11,6 +11,8 @@
 5. After every tablet RESTART run it again (or only the helper line, section C): the helper does not survive a restart.
 6. Later, with the helper running, the same things (and a fresh report) are one tap away inside the launcher: **Launcher control > Tablet setup & report**.
 
+**With a PHONE running an adb app (ADB OTG etc.) instead of a computer:** see `research/ADB_PHONE.txt`. You paste ONE line (the helper line, no "adb shell" prefix); everything else is done by the launcher itself in Launcher control > Tablet setup & report, and the results are published to the tablet's Downloads / launcher-probe folder.
+
 Optional experiment E1 (do it after the fast path; 1 minute): the notification panel's **pencil and gear** can be hidden by Android itself with no delay.
 - [ ] `adb shell settings put global device_demo_mode 1` then pull down the notification panel twice: the pencil and gear should be gone. Look for anything odd (lock screen, power menu, Settings).
 - [ ] Undo at once if anything is odd: `adb shell settings put global device_demo_mode 0`

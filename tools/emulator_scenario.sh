@@ -720,6 +720,11 @@ check "S1: it started the helper (a ShellServer process exists)" bash -c "grep -
 check "S1: the probe report has the user / profile facts" bash -c "grep -q 'Maximum supported users' probe-out/launcher-probe.txt && grep -q 'pm list users' probe-out/launcher-probe.txt"
 check "S1: the probe report has the Settings app facts" bash -c "grep -q 'dumpsys package com.android.settings' probe-out/launcher-probe.txt"
 info "S1: probe report $(wc -l < probe-out/launcher-probe.txt) lines; status table: $(grep -c 'granted=' probe-out/status.txt) permission rows"
+# T1: the DEVICE-shell helper line (what a phone running an adb app types, no "adb shell" prefix) starts the helper too
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
+echo 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &' | adb shell >/dev/null 2>&1; sleep 4
+adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/x-devline-ps.txt" 2>&1
+check "T1: the device-shell helper line (phone adb app, no adb shell prefix) starts the helper" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/x-devline-ps.txt)\" -ge 1 ]"
 # S2: take three things away, then let the app put them back through the helper
 adb shell pm revoke "$PKG" android.permission.DUMP >/dev/null 2>&1; adb shell pm revoke "$PKG" android.permission.CHANGE_CONFIGURATION >/dev/null 2>&1; adb shell cmd appops set "$PKG" RUN_IN_BACKGROUND default >/dev/null 2>&1
 sleep 2
@@ -736,7 +741,10 @@ info "S2: autorun summary: $(tr '\n' '|' < $OUT/x-autorun-done.txt | head -c 700
 check "S2: the in-app Do-everything put the permissions back through the helper (DUMP + CHANGE_CONFIGURATION states: done)" bash -c "grep -q 'state Permission: read what is running (DUMP): done' $OUT/x-autorun-done.txt && grep -q 'state Permission: change configuration: done' $OUT/x-autorun-done.txt"
 check "S2: the background app-op was put back too" grep -q 'state Allowed to run in the background: done' "$OUT/x-autorun-done.txt"
 check "S2: the tablet report was written (app side + shell probe)" bash -c "grep -q 'TABLET REPORT' $OUT/x-report-head.txt && grep -q 'report [0-9][0-9][0-9][0-9]' $OUT/x-autorun-done.txt"
-check "S2: the tablet's own Settings app was copied into the share folder" grep -q 'com.android.settings.apk' "$OUT/x-share-ls.txt"
+adb shell ls /sdcard/Download/launcher-probe /sdcard/Download/launcher-probe/shots /sdcard/Download/launcher-probe/apk > "$OUT/x-publish-ls.txt" 2>&1
+check "T1: everything was published to Downloads/launcher-probe (report)" grep -q 'tablet-report.txt' "$OUT/x-publish-ls.txt"
+check "T1: the Settings screenshots + screen dumps were taken (at least 10 png)" bash -c "[ \$(grep -c '\.png' $OUT/x-publish-ls.txt) -ge 10 ]"
+check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/apk" grep -q 'com.android.settings.apk' "$OUT/x-publish-ls.txt"
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 setfeat; setmode custom; home
 fi # section x
