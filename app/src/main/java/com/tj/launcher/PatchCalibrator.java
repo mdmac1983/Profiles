@@ -66,13 +66,16 @@ public final class PatchCalibrator {
                     double e = error(wall, bw, bh, shot, W, H, l, t, r, b, xOff, m, dx, dy, coarse);
                     if (e < best) { best = e; bm = m; bx = dx; by = dy; }
                 }
-        float cm = bm; int cx = bx, cy = by;
-        for (float m = cm - 0.02f; m <= cm + 0.02001f; m += 0.004f)
-            for (int dx = cx - 8; dx <= cx + 8; dx += 1)
-                for (int dy = cy - 8; dy <= cy + 8; dy += 1) {
-                    double e = error(wall, bw, bh, shot, W, H, l, t, r, b, xOff, m, dx, dy, 2);
-                    if (e < best) { best = e; bm = m; bx = dx; by = dy; }
-                }
+        for (int pass = 0; pass < 6; pass++) {            // scale and shift trade off against each other: walk downhill until nothing improves
+            float cm = bm; int cx = bx, cy = by; double before = best;
+            for (float m = cm - 0.02f; m <= cm + 0.02001f; m += 0.004f)
+                for (int dx = cx - 8; dx <= cx + 8; dx += 1)
+                    for (int dy = cy - 8; dy <= cy + 8; dy += 1) {
+                        double e = error(wall, bw, bh, shot, W, H, l, t, r, b, xOff, m, dx, dy, 2);
+                        if (e < best) { best = e; bm = m; bx = dx; by = dy; }
+                    }
+            if (best >= before - 1e-9) break;
+        }
         if (best > 0.08) return null;                      // nothing matches well (lock-screen text over the patch, a different picture): do not guess
         if (base <= best + 0.004) return new Result(1f, 0, 0, base, base);   // the default model is already as good as anything: keep it
         return new Result(bm, bx, by, best, base);
