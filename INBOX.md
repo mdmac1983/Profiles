@@ -490,3 +490,9 @@ The probe
 ```
 ?
 ```
+
+## 2026-11-04T21:59:48Z
+```
+1) there is a significant delay when loading either launcher from the lock screen. see if there is any way to speed it up, especially when unlocking via regular pin to the custom launcher. this may "prep" for faster speeds from the lock screen invisibly, or from pressing the side key to lock the screen from either launcher, if this would speed it up.
+2) if it is viable, make a permanent accessibility overlay of the exact patch of wallpaper on the lock screen which sits directly below the power menunto hide the power menu when the side key is long pressed, and replace it with a power off and restart only power menu, but make the custom power menu the same size as the original power menu minus the screenshot button. in other words, it should look identical to the stock power menu but hiding the screenshot button. this should only be on the lock screen. I am using a different wallpaper than the leaf
+```
