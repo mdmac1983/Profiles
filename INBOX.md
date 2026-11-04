@@ -436,3 +436,9 @@ I need the custom launcher to open as quickly as possible from the lock screen, 
 
 How confident are you that i can choose different quick settings tiles depending on the launcher? Because before, if i put more than one tile in the quickstep launcher, i could only put it back down to one tile using adb, because it has a minimum tile requirement.  I want one tile permanently in the custom launcher, and three or more in quickstep
 ```
+
+## 2026-11-04T18:24:57Z
+```
+If the two launchers can be completely separate just like two different profiles or android users, then i want each launcher to keep its own apps open and in the recents list,  their own notifications,  etc. Quickstep no longer would need to close apps automatically if it could keep the apps open but completely hidden if i lock the screen and log into the custom launcher or if i go to the custom launcher from quickstep. Only make this change if you are confident it can be done seamlessly 
+Always keep the goal in mind: the two launchers should act like separate profiles which don't know each other
+```
