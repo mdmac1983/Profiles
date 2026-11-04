@@ -1,13 +1,13 @@
-# CHECKPOINT 191 — read me first, then TASKS.md
+# CHECKPOINT 192 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T01:04:20Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `d917f52` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T01:08:18Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `e449c12` (this checkpoint is the commit after it)
 
 ## Just done
-v0.3.5 gated (code 11) and pushed (d917f52 on main); android.yml full_build dispatched. Emulator run 36 = 53 PASS / 0 FAIL.
+RELEASED v0.3.5 (Build APK green, Release published, signed, 9.18 MB; emulator run 36 = 53 PASS / 0 FAIL); BUILDLOG recorded with code 11
 
 ## Do this next
-Wait ~4 min: get_release_by_tag v0.3.5, then record-release v0.3.5 BEFORE any version bump; send Tj the link; remind: C3 wallpaper answer, optional C4/C6 go
+Wait for Tj: (C3) which ICS leaf wallpaper matches his lock screen; tablet report for v0.3.4/v0.3.5 (Launcher hidden from Recents? pencil cover white-on-white? double-Home speed, 'Last reset' line; 'Choose a Home app' dialog if a crash happens: adb line in ADB_COMMANDS.txt section 7); his go for C4 (gear -> cloned Settings, needs SET1) and C6 (tiles per launcher, needs adb grant)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Wait ~4 min: get_release_by_tag v0.3.5, then record-release v0.3.5 BEFORE any ve
 
 ## Last ten checkpoints
 ```
+  1c28d66 ckpt 191: v0.3.5 gated (code 11) and pushed (d917f52 on main); android.yml full_build di
   d917f52 ckpt 190: gated v0.3.5 (code 11) and pushed it: the handoff self-test, the full unit sui
   fb9c70d ckpt 189: pre-ship: v0.3.5: editable lock-screen number, in-app adb setup guide + permis
   711e74a ckpt 188: record-release.sh now refuses when build.gradle versionName != the tag (preven
@@ -25,5 +26,4 @@ Wait ~4 min: get_release_by_tag v0.3.5, then record-release v0.3.5 BEFORE any ve
   9af18f5 ckpt 184: v0.3.4 gated (code 10) and pushed; android.yml full_build dispatched on main. 
   fce25f5 ckpt 183: gated v0.3.4 (code 10) and pushed it: the handoff self-test, the full unit sui
   35c97ca ckpt 182: Research notes for C4/C5/C6/C7 in research/NOTES_2026-11-04.md
-  94c2ea0 ckpt 181: C3: found the AOSP ICS leaf wallpapers (phone 960x800, tablet 1920x1280, andro
 ```
