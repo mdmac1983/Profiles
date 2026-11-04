@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- No permissions: it only shows text and puts a line on the clipboard when a Copy button is pressed. -->
+    <application
+        android:allowBackup="false"
+        android:label="Tablet adb guide"
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+        <activity android:name=".GuideActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
