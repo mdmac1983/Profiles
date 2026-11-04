@@ -46,7 +46,8 @@ public final class UnlockMethods {
     // ---- pad session: what was tapped since this PIN pad appeared. 'N' = digit, 'D' = delete.
     private final StringBuilder pad = new StringBuilder();
     // ---- free detectors
-    private final long[] vol = new long[4];                 // last 4 volume events: +time for Up, -time for Down
+    private final long[] vol = new long[4];                 // last 4 volume events: time
+    private final boolean[] volUp = new boolean[4];         // ... and whether each was Up
     private int volN = 0;
     private final ArrayDeque<Long> screenChanges = new ArrayDeque<>();
     private final ArrayDeque<Long> peeks = new ArrayDeque<>();
@@ -118,13 +119,15 @@ public final class UnlockMethods {
     // ------------------------------------------------------------------ volume keys (lock screen only: the service checks)
     public void onVolume(boolean up, long now) {
         if (up) lastVolUpAt = now;
-        // shift in
-        if (volN == vol.length) { System.arraycopy(vol, 1, vol, 0, vol.length - 1); volN--; }
-        vol[volN++] = up ? now : -now;
+        if (volN == vol.length) {
+            System.arraycopy(vol, 1, vol, 0, vol.length - 1);
+            System.arraycopy(volUp, 1, volUp, 0, volUp.length - 1);
+            volN--;
+        }
+        vol[volN] = now; volUp[volN] = up; volN++;
         if (volN == 4 && enabled.on(Method.VOLUME)) {
-            boolean shape = vol[0] > 0 && vol[1] > 0 && vol[2] < 0 && vol[3] < 0;
-            long first = Math.abs(vol[0]), last = Math.abs(vol[3]);
-            if (shape && last - first <= VOLUME_WINDOW_MS) { volN = 0; arm(Method.VOLUME, now, false); }
+            boolean shape = volUp[0] && volUp[1] && !volUp[2] && !volUp[3];
+            if (shape && vol[3] - vol[0] <= VOLUME_WINDOW_MS) { volN = 0; arm(Method.VOLUME, now, false); }
         }
     }
 
