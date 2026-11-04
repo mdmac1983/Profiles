@@ -5,6 +5,7 @@ the Play Store). GitHub Actions builds the APK; Claude writes the code. Worked o
 sessions — a new one may start on another account or device, or right after a usage cap killed the last one
 mid-step. **Everything below exists to make that handoff lossless.** What is decided about the platform and what
 is still open: `BRIEF.md`. The job list: `TASKS.md`. Where the last session stopped: `CHECKPOINT.md`.
+**A session with NO prior context (new account/device): read `HANDOFF.md` first** — one page: what this is, first 10 minutes, release routine, test system, architecture map, decisions already made, what waits on Tj.
 
 Sibling repos in this container (`novig`, `Mirage`) are the origin of this system; they are **read only** for
 Launcher's work. Never commit, push or run their scripts from here.

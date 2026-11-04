@@ -1,7 +1,7 @@
 # Launcher
 
 Android 10 (API 29) Go-edition home-screen launcher (`com.tj.launcher`). Built by GitHub Actions; developed across
-Claude Code sessions with a lossless checkpoint/handoff system. Start with `CLAUDE.md`, `BRIEF.md`, `TASKS.md`,
+Claude Code sessions with a lossless checkpoint/handoff system. Start with **`HANDOFF.md`** (new session, no context), then `CLAUDE.md`, `BRIEF.md`, `TASKS.md`,
 `CHECKPOINT.md`.
 
 ```bash
