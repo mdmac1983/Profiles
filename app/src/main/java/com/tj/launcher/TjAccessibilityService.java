@@ -49,6 +49,7 @@ public class TjAccessibilityService extends AccessibilityService {
     };
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
+        try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
         scheduleLockUpdate();
@@ -56,6 +57,7 @@ public class TjAccessibilityService extends AccessibilityService {
         schedulePencil(event);
         trackDirty(event);
         trackUnlockKey(event);
+        try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -120,7 +122,9 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
-            if (key != null && key.startsWith("unlock_m_")) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
+            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
+            if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
+            if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
@@ -302,15 +306,42 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
     }
 
-    /** Hardware keys: only the volume keys, only on the lock screen, only to feed the volume handshakes. Never consumed. */
+    private final KeySeq returnVolCode = new KeySeq(ReturnMethods.SEQ_WINDOW_MS, ReturnMethods.VOLCODE);
+    private final KeySeq returnBacks = new KeySeq(ReturnMethods.SEQ_WINDOW_MS, ReturnMethods.BACKS);
+    private final KeySeq konami = new KeySeq(FailsafeKeys.WINDOW_MS, FailsafeKeys.KONAMI);
+    private long lastVolUpKeyAt = 0, lastVolDownKeyAt = 0;
+
+    /**
+     * Hardware keys, never consumed. On the lock screen: the volume keys feed the unlock handshakes. Unlocked in QUICKSTEP: the "back to custom" key methods (N4).
+     * Unlocked in CUSTOM: the Konami master failsafe (N5). Only key-down, only Back and the volume keys are looked at; nothing is stored.
+     */
     @Override protected boolean onKeyEvent(android.view.KeyEvent ev) {
         try {
             if (ev == null || ev.getAction() != android.view.KeyEvent.ACTION_DOWN || ev.getRepeatCount() != 0) return false;
             int code = ev.getKeyCode();
-            if (code != android.view.KeyEvent.KEYCODE_VOLUME_UP && code != android.view.KeyEvent.KEYCODE_VOLUME_DOWN) return false;
-            if (!(methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE)) || !keyguardLocked()) return false;
-            ensureUnlockListener();
-            unlock.onVolume(code == android.view.KeyEvent.KEYCODE_VOLUME_UP, System.currentTimeMillis());
+            boolean vol = code == android.view.KeyEvent.KEYCODE_VOLUME_UP || code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN;
+            if (!vol && code != android.view.KeyEvent.KEYCODE_BACK) return false;
+            long now = System.currentTimeMillis();
+            android.content.Context app = getApplicationContext();
+            if (keyguardLocked()) {
+                if (vol && (methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE))) {
+                    ensureUnlockListener();
+                    unlock.onVolume(code == android.view.KeyEvent.KEYCODE_VOLUME_UP, now);
+                }
+                return false;
+            }
+            if (Mode.isCustom(app)) {
+                if (FailsafeKeys.konami(app) && konami.onKey(code, now)) { buzz(); ProfileSession.goToQuickstep(app, "Konami key code"); }
+            } else {
+                boolean hit = false;
+                if (ReturnMethods.on(app, ReturnMethods.Method.VOLCODE) && returnVolCode.onKey(code, now)) hit = true;
+                if (ReturnMethods.on(app, ReturnMethods.Method.BACKS) && returnBacks.onKey(code, now)) hit = true;
+                if (vol) {
+                    if (code == android.view.KeyEvent.KEYCODE_VOLUME_UP) lastVolUpKeyAt = now; else lastVolDownKeyAt = now;
+                    if (ReturnMethods.on(app, ReturnMethods.Method.VOLBOTH) && ReturnMethods.bothVolume(lastVolUpKeyAt, lastVolDownKeyAt, now)) { hit = true; lastVolUpKeyAt = lastVolDownKeyAt = 0; }
+                }
+                if (hit) { buzz(); ProfileSession.returnToCustom(app, "key code"); }
+            }
         } catch (Throwable t) { Log.e(TAG, "key event failed", t); }
         return false;
     }
@@ -320,7 +351,9 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
             if (info == null) return;
-            boolean want = methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE);
+            android.content.Context app = getApplicationContext();
+            boolean want = methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE)
+                    || (Mode.isCustom(app) ? FailsafeKeys.konami(app) : ReturnMethods.needsKeys(app));
             boolean has = (info.flags & android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) != 0;
             if (want == has) return;
             if (want) info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
@@ -393,6 +426,17 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, unlock.armedMethod() != null, preArmedThisLock, CrashGuard.wasTripped(app))) return;
             prearmCustom("woke locked");
         } catch (Throwable t) { Log.e(TAG, "locked wake failed", t); }
+    }
+
+    private final ReturnMethods.Flurry returnFlurry = new ReturnMethods.Flurry();
+
+    /** N4: side-key flurry while Quickstep is active = back to custom. (On a locked screen the lock-screen rules already end the session.) */
+    private void flurryChange(boolean on, long t) {
+        try {
+            android.content.Context app = getApplicationContext();
+            if (Mode.isCustom(app) || !ReturnMethods.on(app, ReturnMethods.Method.FLURRY)) { returnFlurry.reset(); return; }
+            if (returnFlurry.onChange(on, t)) { buzz(); ProfileSession.returnToCustom(app, "side-key flurry"); }
+        } catch (Throwable e) { Log.e(TAG, "flurry failed", e); }
     }
 
     private final Runnable coverCheck = new Runnable() { @Override public void run() {
@@ -617,8 +661,8 @@ public class TjAccessibilityService extends AccessibilityService {
             String act = i == null ? null : i.getAction();
             long t = System.currentTimeMillis();
             ensureUnlockListener();
-            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; }
-            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); }
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; flurryChange(false, t); }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); flurryChange(true, t); }
             if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) handler.post(unlockApply);
         }
     };
@@ -780,6 +824,129 @@ public class TjAccessibilityService extends AccessibilityService {
 
     public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";   // kept so old settings files stay readable; the side key never reaches a service
 
+    // ---------------------------------------------------------------- N5: which app is in front (for the hidden hotspot and the probe)
+    private String fgPkg = "";
+
+    private void trackForeground(AccessibilityEvent e) {
+        if (e == null || e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || e.getPackageName() == null || e.getClassName() == null) return;
+        String pk = e.getPackageName().toString();
+        if ("com.android.systemui".equals(pk) || pk.startsWith("com.google.android.inputmethod") || pk.contains("inputmethod") || pk.contains("keyboard") || pk.contains("swiftkey")) return;
+        if (pk.equals(fgPkg)) return;
+        fgPkg = pk;
+        updateHotspot();
+    }
+
+    // ---------------------------------------------------------------- N5: hidden hotspot in Solitaire: 5 quick taps then a hold = master failsafe into Quickstep
+    private View hotView;
+    private final TapCode tapCode = new TapCode();
+    private final Runnable hotHold = new Runnable() { @Override public void run() {
+        try { tapCode.reset(); buzz(); removeHotspot(); ProfileSession.goToQuickstep(getApplicationContext(), "Solitaire hotspot"); } catch (Throwable t) { Log.e(TAG, "hotspot failsafe failed", t); }
+    } };
+
+    private void updateHotspot() {
+        try {
+            android.content.Context app = getApplicationContext();
+            String target = ReturnReset.targetPackage(app);
+            boolean want = FailsafeKeys.hotspot(app) && Mode.isCustom(app) && target != null && target.equals(fgPkg) && !keyguardLocked();
+            if (want && hotView == null) showHotspot(); else if (!want && hotView != null) removeHotspot();
+        } catch (Throwable t) { Log.e(TAG, "hotspot update failed", t); removeHotspot(); }
+    }
+
+    private void showHotspot() {
+        float dp = getResources().getDisplayMetrics().density;
+        int size = Math.round(56 * dp);
+        View v = new View(this) {
+            @Override public boolean onTouchEvent(android.view.MotionEvent m) {
+                long t = android.os.SystemClock.uptimeMillis();
+                switch (m.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        if (tapCode.onDown(t)) handler.postDelayed(hotHold, TapCode.HOLD_MS);
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        handler.removeCallbacks(hotHold);
+                        tapCode.onUp(t);
+                        return true;
+                    default: return true;
+                }
+            }
+        };
+        int corner = FailsafeKeys.corner(this);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(size, size, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+        lp.gravity = (corner < 2 ? Gravity.TOP : Gravity.BOTTOM) | (corner % 2 == 0 ? Gravity.START : Gravity.END);
+        lp.setTitle("TjHotspot");
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
+        hotView = v;
+        tapCode.reset();
+        Log.i(TAG, "HOTSPOT shown corner=" + FailsafeKeys.CORNERS[corner]);
+    }
+
+    private void removeHotspot() {
+        handler.removeCallbacks(hotHold);
+        if (hotView == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(hotView); } catch (Throwable ignored) { }
+        hotView = null;
+        Log.i(TAG, "HOTSPOT removed");
+    }
+
+    // ---------------------------------------------------------------- N5 research: what can the helper READ inside Solitaire? (decides whether a card-move code is possible)
+    private final java.util.LinkedHashSet<String> probeSamples = new java.util.LinkedHashSet<>();
+    private int probeEvents = 0, probeClicks = 0, probeNodes = 0, probeReadable = 0;
+    private long probeLastWalk = 0, probeLastWrite = 0;
+
+    private void probeEvent(AccessibilityEvent e) {
+        if (e == null) return;
+        long wall = System.currentTimeMillis();
+        long until = Long.parseLong(Features.getString(this, FailsafeKeys.PROBE_UNTIL_KEY, "0"));
+        if (wall > until) { if (until != 0) { Features.setString(this, FailsafeKeys.PROBE_UNTIL_KEY, "0"); probeFlush(true); } return; }
+        CharSequence pk = e.getPackageName();
+        String target = ReturnReset.targetPackage(this);
+        if (pk == null || target == null || !target.contentEquals(pk)) return;
+        probeEvents++;
+        if (e.getEventType() == AccessibilityEvent.TYPE_VIEW_CLICKED) probeClicks++;
+        AccessibilityNodeInfo src = e.getSource();
+        if (src != null) probeSample(src);
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - probeLastWalk > 1500) {
+            probeLastWalk = now;
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root != null) { try { probeNodes = 0; probeReadable = 0; probeWalk(root, 0); } finally { root.recycle(); } }
+        }
+        probeFlush(false);
+    }
+
+    private void probeSample(AccessibilityNodeInfo n) {
+        CharSequence d = n.getContentDescription(), t = n.getText();
+        String id = n.getViewIdResourceName();
+        if ((d == null || d.length() == 0) && (t == null || t.length() == 0) && id == null) return;
+        if (probeSamples.size() >= 25) return;
+        String x = String.valueOf(n.getClassName()).replace("android.widget.", "").replace("android.view.", "") + "|" + (id == null ? "-" : id.substring(id.indexOf('/') + 1)) + "|"
+                + (d == null ? "" : cut(d)) + "|" + (t == null ? "" : cut(t));
+        probeSamples.add(x);
+    }
+
+    private static String cut(CharSequence c) { String s = c.toString(); return s.length() > 24 ? s.substring(0, 24) : s; }
+
+    private void probeWalk(AccessibilityNodeInfo n, int depth) {
+        if (n == null || depth > 14 || probeNodes > 400) return;
+        probeNodes++;
+        CharSequence d = n.getContentDescription(), t = n.getText();
+        if ((d != null && d.length() > 0) || (t != null && t.length() > 0)) { probeReadable++; probeSample(n); }
+        for (int i = 0; i < n.getChildCount(); i++) {
+            AccessibilityNodeInfo c = n.getChild(i);
+            if (c != null) { try { probeWalk(c, depth + 1); } finally { c.recycle(); } }
+        }
+    }
+
+    private void probeFlush(boolean force) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (!force && now - probeLastWrite < 2000) return;
+        probeLastWrite = now;
+        Features.setString(this, FailsafeKeys.PROBE_REPORT_KEY, "events=" + probeEvents + ", clicks seen=" + probeClicks + ", nodes in window=" + probeNodes + ", nodes with text/description=" + probeReadable
+                + (probeSamples.isEmpty() ? "\nNOTHING readable: the game draws its cards itself, so a card-move code cannot be read (use the hotspot or the key code)." : "\nreadable samples (class|id|description|text):\n" + android.text.TextUtils.join("\n", probeSamples)));
+    }
+
     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
     private final long[] radioHist = new long[3];
     private int radioIdx = 0;
@@ -822,11 +989,11 @@ public class TjAccessibilityService extends AccessibilityService {
         radioGuardOn = false;
     }
 
-    @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
+    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
