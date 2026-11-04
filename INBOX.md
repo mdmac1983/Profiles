@@ -451,3 +451,12 @@ Keeping the goal in mind of these launchers,  deep research and think outside th
 3) remove the pencil icon from the notification panel without delay, or so fast it isn't noticeable
 4) soon i will send screenshots of what i want the new,  fake/cloned settings app to look like for the custom launcher. I want it to be functional and look stock.  Can i send anything to help with this? The code for the original settings app somehow extracted from the tablet? Source online somewhere? Start planning how to implement this
 ```
+
+## 2026-11-04T18:30:43Z
+```
+Also, can the accelerometer be used to go from quickstep to the custom launcher?
+I need a to do list for when i have time to do adb commands. 
+
+Tell me every command to do with adb now, including the browser uninstall,  the permissions for the launcher including for future possible upgrades, the check of user profiles,  etc.
+Also,  see if adb can help fix the power menu and the pencil icon
+```
