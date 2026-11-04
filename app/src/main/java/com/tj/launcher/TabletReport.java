@@ -68,7 +68,7 @@ public final class TabletReport {
         line(b, "display id", Build.DISPLAY);
         for (String k : new String[] { "ro.lineage.version", "ro.modversion", "ro.crypto.state", "ro.crypto.type", "ro.boot.flash.locked", "ro.boot.verifiedbootstate", "ro.config.low_ram", "fw.max_users", "fw.show_multiuserui", "persist.adb.tcp.port", "service.adb.tcp.port", "ro.sf.lcd_density" })
             line(b, k, prop(k));
-        try { line(b, "UserManager.getMaxSupportedUsers", UserManager.getMaxSupportedUsers()); } catch (Throwable t) { line(b, "getMaxSupportedUsers", t); }
+        try { line(b, "UserManager.getMaxSupportedUsers (hidden API)", UserManager.class.getMethod("getMaxSupportedUsers").invoke(null)); } catch (Throwable t) { line(b, "getMaxSupportedUsers", t); }
         try { line(b, "UserManager.supportsMultipleUsers", UserManager.supportsMultipleUsers()); } catch (Throwable t) { line(b, "supportsMultipleUsers", t); }
         ActivityManager am = (ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
         line(b, "low-RAM (Go) device", am != null && am.isLowRamDevice());
