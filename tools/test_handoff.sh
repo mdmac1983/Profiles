@@ -112,6 +112,11 @@ check "resume briefing fits the 10,000-char hook cap (with a long INBOX + TASKS)
   head -c 6000 /dev/zero | tr "\0" "x" >> INBOX.md
   [ "$(bash tools/resume.sh --text | wc -c)" -lt 10000 ]'
 
+# ---------------------------------------------------------------- the phone guide list has ONE source (the app's asset); the research copy must be identical
+check "phone-guide steps.txt equals research/ADB_PHONE_COMMANDS.txt (edit the asset, then cp it)" 'cmp -s "$D/phoneguide/src/main/assets/steps.txt" "$D/research/ADB_PHONE_COMMANDS.txt"'
+check "no phone-guide command starts with adb (the OTG shell takes the bare command)" '! grep -E "^(cmd|alt):[[:space:]]*adb( |$)" "$D/phoneguide/src/main/assets/steps.txt"'
+check "no phone-guide command is destructive" '! grep -E "^(cmd|alt):.*(pm uninstall|pm clear|wipe|factory|rm -|reboot|setprop|locksettings|pm hide|pm suspend|svc wifi|svc data|settings put global (airplane|adb_enabled|development))" "$D/phoneguide/src/main/assets/steps.txt"'
+
 # ---------------------------------------------------------------- inbox capture
 printf '{"prompt":"please build X, my key is ghp_%s ok"}' "$(printf 'c%.0s' $(seq 1 36))" | bash tools/capture_inbox.sh
 check "inbox captures the message, redacts the key, and commits it" 'grep -q "please build X" INBOX.md && grep -q "REDACTED-KEY" INBOX.md && ! grep -q "ghp_c" INBOX.md && [ "$(bash tools/unpushed.sh)" = 0 ]'
