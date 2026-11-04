@@ -396,27 +396,36 @@ setmode custom; home
 
 # ---- N4 / N5: ways back to custom, the master failsafe, and the lock-screen profile switch (v0.4.0)
 beat "before N"
+# `adb shell input keyevent` is INJECTED and bypasses the accessibility key filter, so hardware keys are sent through the emulator console (a real input device) instead.
+ekey(){ for c in "$@"; do adb emu event send "EV_KEY:$c:1" "EV_SYN:SYN_REPORT:0" "EV_KEY:$c:0" "EV_SYN:SYN_REPORT:0" >> "$OUT/n-emu-keys.txt" 2>&1; sleep 0.45; done; }
+setfeat2(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 setfeat; setmode quickstep; rebind; home; sleep 2
 adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" > "$OUT/n4-icon-start.txt" 2>&1; sleep 5
 getmode > "$OUT/n4-icon-mode.txt"
 check "N4: the Back-to-custom icon switches Quickstep to custom" grep -q custom "$OUT/n4-icon-mode.txt"
-setfeat; setmode quickstep; rebind; home; sleep 2
-for k in 25 25 24 24; do adb shell input keyevent $k; sleep 0.4; done; sleep 5
-getmode > "$OUT/n4-volcode-mode.txt"
-check "N4: the volume code (Down, Down, Up, Up) switches Quickstep to custom" grep -q custom "$OUT/n4-volcode-mode.txt"
-setfeat; setmode custom; rebind; home; sleep 2
-for k in 24 24 25 25 4 4 24 25; do adb shell input keyevent $k; sleep 0.4; done; sleep 4
-getmode > "$OUT/n5-konami-mode.txt"; resumed > "$OUT/n5-konami-resumed.txt"
-check "N5: the Konami key code switches the custom launcher to Quickstep (master failsafe)" grep -q quickstep "$OUT/n5-konami-mode.txt"
-check "N5: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n5-konami-resumed.txt"
-setfeat; setmode custom; rebind; home; sleep 2
-# the same Up/Down presses on a half code must NOT switch
-for k in 24 24 25 25; do adb shell input keyevent $k; sleep 0.4; done; sleep 2
-getmode > "$OUT/n5-half-mode.txt"
-check "N5: half of the key code does nothing" grep -q custom "$OUT/n5-half-mode.txt"
+adb logcat -d -s TjA11y:I | grep "key filter" > "$OUT/n5-keyfilter-log.txt" 2>&1
+check "N5: the helper switched its key filter ON (capability accepted)" grep -q "key filter ON" "$OUT/n5-keyfilter-log.txt"
+ekey KEY_VOLUMEUP > /dev/null; sleep 1
+if grep -qiE '^KO|error|unknown' "$OUT/n-emu-keys.txt" 2>/dev/null; then
+  info "N4/N5: the emulator console could not send hardware key events ($(head -c 120 $OUT/n-emu-keys.txt | tr '\n' ' ')); key-code checks skipped"
+else
+  setfeat; setmode quickstep; rebind; home; sleep 2
+  ekey KEY_VOLUMEDOWN KEY_VOLUMEDOWN KEY_VOLUMEUP KEY_VOLUMEUP; sleep 5
+  getmode > "$OUT/n4-volcode-mode.txt"
+  check "N4: the volume code (Down, Down, Up, Up) switches Quickstep to custom" grep -q custom "$OUT/n4-volcode-mode.txt"
+  setfeat; setmode custom; rebind; home; sleep 2
+  ekey KEY_VOLUMEUP KEY_VOLUMEUP KEY_VOLUMEDOWN KEY_VOLUMEDOWN KEY_BACK KEY_BACK KEY_VOLUMEUP KEY_VOLUMEDOWN; sleep 4
+  getmode > "$OUT/n5-konami-mode.txt"; resumed > "$OUT/n5-konami-resumed.txt"
+  check "N5: the Konami key code switches the custom launcher to Quickstep (master failsafe)" grep -q quickstep "$OUT/n5-konami-mode.txt"
+  check "N5: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n5-konami-resumed.txt"
+  setfeat; setmode custom; rebind; home; sleep 2
+  ekey KEY_VOLUMEUP KEY_VOLUMEUP KEY_VOLUMEDOWN KEY_VOLUMEDOWN; sleep 2
+  getmode > "$OUT/n5-half-mode.txt"
+  check "N5: half of the key code does nothing" grep -q custom "$OUT/n5-half-mode.txt"
+fi
 
 # N2/N3 on the lock screen: tap-and-erase handshake = Quickstep, the screen wake puts the custom stack behind the keyguard, a plain PIN = custom
-setfeat; setmode custom; rebind; home
+setfeat2; setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/n2-setpin.txt" 2>&1
 adb logcat -c
 lockpad; shot 46-n2-pinpad
@@ -426,6 +435,7 @@ check "N3: waking to the lock screen put the custom stack in front behind the ke
 check "N3: Android did not block the helper's start behind the keyguard" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n3-bal.txt)\" = 0 ]"
 pad 1 d 1 d 1 d 1 2 3 4 e; sleep 6
 getmode > "$OUT/n2-taperase-mode.txt"; resumed > "$OUT/n2-taperase-resumed.txt"
+adb logcat -d -s TjA11y:I | grep -E "UNLOCKPICK|PROFILE" > "$OUT/n2-taperase-log.txt" 2>&1
 check "N2: tap-and-erase x3 before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/n2-taperase-mode.txt"
 check "N2: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n2-taperase-resumed.txt"
 lockpad
