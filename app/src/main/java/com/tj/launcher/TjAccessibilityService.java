@@ -294,12 +294,17 @@ public class TjAccessibilityService extends AccessibilityService {
         return km != null && km.isKeyguardLocked();
     }
 
+    private long lastPadKeyAt = 0;
+
     private void trackUnlockKey(AccessibilityEvent e) {
         try {
             if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
             CharSequence pkg = e.getPackageName();
             if (pkg == null || !"com.android.systemui".contentEquals(pkg)) return;
-            if (!keyguardLocked()) return;
+            // The Enter tap unlocks the tablet, and its click event can be delivered AFTER the keyguard already reports "unlocked" (race seen in emulator runs 63/64: ten pad taps
+            // reached us, the final Enter did not, so the handshake was never completed). A click of the PIN pad within 3 s of the previous pad tap still counts.
+            long nowMs = System.currentTimeMillis();
+            if (!keyguardLocked() && nowMs - lastPadKeyAt > 3000) return;
             ensureUnlockListener();
             AccessibilityNodeInfo n = e.getSource();
             UnlockPick.Key k = null;
@@ -307,6 +312,7 @@ public class TjAccessibilityService extends AccessibilityService {
             Log.i(TAG, "UNLOCKCLICK class=" + (k == null ? "none" : k.name()));   // diagnostics (full emulator runs 59-61): the KIND of key only, never which digit
             if (k == null) return;
             long now = System.currentTimeMillis();
+            lastPadKeyAt = now;
             if (k == UnlockPick.Key.ENTER) {
                 UnlockMethods.Method m = unlock.onEnter(now);
                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
