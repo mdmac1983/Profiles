@@ -102,3 +102,21 @@ adb shell "CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.S
 # Check it: Launcher control > Invisible clean-up shows "RUNNING".
 # Stop it (it also ends by itself at the next restart):
 adb shell pkill -f com.tj.launcher.ShellServer
+
+SECTION 12 - READ-ONLY PROBE OF THE TABLET (for planning; changes nothing)  [any version]
+# Mac/Linux: bash tools/adb-probe.sh     (add --pull to copy the tablet's own Settings app for the Settings clone)
+# Windows: paste these one at a time and send me the output.
+adb shell getprop ro.build.fingerprint
+adb shell getprop ro.lineage.version
+adb shell getprop ro.crypto.state
+adb shell getprop ro.crypto.type
+adb shell pm get-max-users
+adb shell pm list users
+adb shell getprop service.adb.tcp.port
+adb shell getprop persist.adb.tcp.port
+adb shell settings get secure power_menu_actions
+adb shell pm path com.android.settings
+adb shell "dumpsys package com.android.settings | grep -E 'versionName|versionCode|sharedUser'"
+adb shell cmd overlay list
+# To copy the tablet's own Settings app (replace the path with the line printed by "pm path com.android.settings", without "package:"):
+adb pull /system/priv-app/Settings/Settings.apk
