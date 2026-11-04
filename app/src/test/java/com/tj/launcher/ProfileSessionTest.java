@@ -52,4 +52,15 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false, true));     // crash breaker tripped: stay stock
         assertFalse(ProfileSession.bootEndsQuickstep(41, -1, true, false, false));    // counter unreadable
     }
+    @Test public void preCleanAtLockNeedsEverythingToLineUp() {
+        assertTrue(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, false));
+        assertFalse(ProfileSession.preCleanAtLock(false, true, false, false, true, false, true, false));   // switched off
+        assertFalse(ProfileSession.preCleanAtLock(true, false, false, false, true, false, true, false));    // locking does not end the session
+        assertFalse(ProfileSession.preCleanAtLock(true, true, true, false, true, false, true, false));      // already custom: nothing of Quickstep to clean
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, true, true, false, true, false));      // crash breaker tripped: stay on the stock launcher
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, false, false, true, false));    // not locked: a plain wake must keep Quickstep's apps
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, true));      // done already this lock
+    }
 }

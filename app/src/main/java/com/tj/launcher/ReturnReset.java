@@ -90,6 +90,27 @@ public final class ReturnReset {
         try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
     }
 
+    /**
+     * O4: the clean-up WITHOUT opening anything: force-stop Quickstep's apps (their notifications go with them), remove their Recents cards, radios off. Used at LOCK, so the unlock has nothing left to do.
+     * Only with the shell helper (nothing here touches the screen). Returns false (and does nothing) when the helper is not reachable.
+     */
+    public static boolean cleanAtLock(final Context c) {
+        final Context app = c.getApplicationContext();
+        if (!enabled(app) || !invisibleReady(app)) return false;
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        final java.util.List<String> pkgs = invisibleTargets(app);
+        final boolean first = !AppOrigin.tracked(app);
+        new Thread(new Runnable() { @Override public void run() {
+            try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+            int n = ShellHelper.forceStop(pkgs);
+            if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
+            invisAt = 0;
+            report(app, "AT LOCK: " + (n < 0 ? "the shell helper stopped answering, " + pkgs.size() + " apps NOT stopped" : "force-stopped " + n + " of " + pkgs.size() + " apps" + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms")
+                    + "; the unlock has nothing left to close");
+        } }, "tj-lock-clean").start();
+        return true;
+    }
+
     public static void run(final Context c) {
         if (!enabled(c)) return;
         final Context app = c.getApplicationContext();

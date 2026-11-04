@@ -47,6 +47,7 @@ public final class RestoreStore {
         Features.set(c, ProfileSession.END_ON_LOCK_KEY, false);   // N3: restore = nothing of ours switches launchers for you (these default to ON)
         Features.set(c, ProfileSession.PREARM_KEY, false);
         Features.set(c, ProfileSession.RADIOS_KEY, false);
+        Features.set(c, ProfileSession.PRECLEAN_KEY, false);   // O4: restore = nothing of ours closes apps for you
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }

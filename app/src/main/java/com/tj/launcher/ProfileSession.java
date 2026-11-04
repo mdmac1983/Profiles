@@ -16,6 +16,7 @@ public final class ProfileSession {
     public static final String END_ON_LOCK_KEY = "profile_end_on_lock";      // locking ends a Quickstep session, default ON
     public static final String PREARM_KEY = "profile_prearm";                // lock screen: put Solitaire (custom) / the stock home (handshake) in front behind the keyguard, default ON
     public static final String RADIOS_KEY = "profile_radios_off";            // custom account: Wi-Fi and Bluetooth are switched off again if something turns them on, default ON
+    public static final String PRECLEAN_KEY = "profile_preclean";            // O4: closing/locking from Quickstep closes its apps + notifications AT LOCK (needs the adb helper), default ON
     public static final String BUZZ_KEY = "unlock_buzz";                     // a short buzz when a handshake is accepted, default ON
     public static final String PREARM_REPORT_KEY = "profile_last";           // what the last lock-screen switch did (shown in Launcher control)
 
@@ -24,11 +25,21 @@ public final class ProfileSession {
     public static boolean endOnLock(Context c) { return Features.get(c, END_ON_LOCK_KEY, true); }
     public static boolean prearm(Context c) { return Features.get(c, PREARM_KEY, true); }
     public static boolean radiosOff(Context c) { return Features.get(c, RADIOS_KEY, true); }
+    public static boolean preClean(Context c) { return Features.get(c, PRECLEAN_KEY, true); }
     public static boolean buzz(Context c) { return Features.get(c, BUZZ_KEY, true); }
 
     /** Pure: wake-up on the LOCK screen (keyguard locked, screen on). Put the custom stack in front behind the keyguard? Never while a handshake is armed (the target is Quickstep then). */
     public static boolean prearmCustomStackOnLockedWake(boolean prearmEnabled, boolean keyguardLocked, boolean handshakeArmed, boolean alreadyDoneThisLock, boolean crashTripped) {
         return prearmEnabled && keyguardLocked && !handshakeArmed && !alreadyDoneThisLock && !crashTripped;
+    }
+
+    /**
+     * O4 (Tj, 2026-11-04: "when I am closing or locking the screen from the quickstep launcher, close all apps and notifications so that everything is already ready"):
+     * the tablet is LOCKED while a Quickstep session is current, nobody has given a handshake, and the shell helper can do the clean-up with no screen at all
+     * (force-stop + removing the Recents cards; the shade and Recents cannot be driven with the screen off) -> clean up NOW and switch to the custom account behind the lock screen.
+     */
+    public static boolean preCleanAtLock(boolean preCleanEnabled, boolean endOnLock, boolean customMode, boolean crashTripped, boolean keyguardLocked, boolean handshakeArmed, boolean helperReady, boolean alreadyDone) {
+        return preCleanEnabled && endOnLock && !customMode && !crashTripped && keyguardLocked && !handshakeArmed && helperReady && !alreadyDone;
     }
 
     /** Pure: a plain unlock (USER_PRESENT, no handshake): is the Quickstep session over, so the custom account takes the tablet? */

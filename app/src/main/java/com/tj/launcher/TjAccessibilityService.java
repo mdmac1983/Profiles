@@ -428,15 +428,33 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable t) { Log.e(TAG, "prearm failed", t); }
     }
 
-    /** SCREEN_ON: the lock screen is what the screen shows. Put the custom stack behind it (never when it is NOT locked: that is a plain wake, nothing to switch). */
-    private void handleLockedWake() {
+    private boolean preCleanedThisLock = false;       // O4: Quickstep's apps were closed at lock during this lock
+    private final Runnable lockPrepareLater = new Runnable() { @Override public void run() { lockPrepare("screen off, locked"); } };
+
+    /**
+     * The tablet is LOCKED (at screen-off if it locks at once, or at the next wake). Do everything that does not need the screen NOW, so the unlock has nothing left to do:
+     *  - O4: with the shell helper, a Quickstep session is closed here (apps + notifications + Recents cards) and Mode flips to custom behind the lock screen (tiles / keyboard follow),
+     *  - O3: the custom home + Solitaire are put in front, behind the keyguard.
+     * Never when the tablet is NOT locked (a plain wake must keep Quickstep's apps) and never while a handshake is armed.
+     */
+    private void lockPrepare(String why) {
         try {
             android.content.Context app = getApplicationContext();
             boolean locked = keyguardLocked();
-            if (!ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, unlock.armedMethod() != null, preArmedThisLock, CrashGuard.wasTripped(app))) return;
-            prearmCustom("woke locked");
-        } catch (Throwable t) { Log.e(TAG, "locked wake failed", t); }
+            boolean armed = unlock.armedMethod() != null;
+            if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
+                if (ReturnReset.cleanAtLock(app)) {
+                    preCleanedThisLock = true;
+                    Mode.set(app, Mode.CUSTOM);
+                    profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
+                }
+            }
+            if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, CrashGuard.wasTripped(app))) prearmCustom(why);
+        } catch (Throwable t) { Log.e(TAG, "lock prepare failed", t); }
     }
+
+    /** SCREEN_ON: the lock screen is what the screen shows (if it was not locked at screen-off, this is the first chance). */
+    private void handleLockedWake() { lockPrepare("woke locked"); }
 
     private final ReturnMethods.Flurry returnFlurry = new ReturnMethods.Flurry();
 
@@ -471,7 +489,7 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.removeCallbacks(coverCheck);
             ensureUnlockListener();
             UnlockMethods.Method m = unlock.consume(System.currentTimeMillis());
-            preArmedThisLock = false;
+            preArmedThisLock = false; preCleanedThisLock = false;
             boolean wasFlipped = flippedByHandshake;
             flippedByHandshake = false;
             unlock.reset();
@@ -671,9 +689,14 @@ public class TjAccessibilityService extends AccessibilityService {
             String act = i == null ? null : i.getAction();
             long t = System.currentTimeMillis();
             ensureUnlockListener();
-            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion(); }
-            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); flurryChange(true, t); updateMotion(); }
-            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.post(unlockApply); updateMotion(); }
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
+                unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
+                handler.removeCallbacks(lockPrepareLater);
+                handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark
+                handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
+            }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); flurryChange(true, t); updateMotion(); }
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); handler.post(unlockApply); updateMotion(); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
             }
