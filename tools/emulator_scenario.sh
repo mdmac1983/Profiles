@@ -798,6 +798,11 @@ adb shell input keyevent KEYCODE_BACK; sleep 14      # the patch is built now; t
 adb logcat -d -s TjA11y:I | grep "CAL lock patch" > "$OUT/v-cal.txt" 2>&1
 adb pull /sdcard/Download/launcher-probe/cal.png "$OUT/v-cal-screenshot.png" >/dev/null 2>&1
 info "V4: $(tail -1 $OUT/v-cal.txt | cut -c1-240)"
+CW="$(identify -format '%w' "$OUT/v-cal-screenshot.png" 2>/dev/null)"; CH="$(identify -format '%h' "$OUT/v-cal-screenshot.png" 2>/dev/null)"
+for PT in "300 300" "300 700" "540 490"; do set -- $PT
+  GOT="$(convert "$OUT/v-cal-screenshot.png" -crop 1x1+$1+$2 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)')"
+  [ -n "$CW" ] && info "V4: calibration screenshot ${CW}x${CH} at $1,$2 = $GOT; the test wallpaper there is ($(( $1 * 255 / CW )),$(( $2 * 255 / CH )),$(( 255 - $1 * 255 / CW )))"
+done
 check "V4: the calibration measured the (deliberately skewed) model and corrected it" grep -q "CAL lock patch calibrated" "$OUT/v-cal.txt"
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows.txt" 2>&1
 shot 81-lock-closed-patch-on
@@ -861,11 +866,18 @@ shot 90-phoneguide-top
 adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-top.xml" 2>/dev/null
 check "Y2: the phone guide installs" grep -qi success "$OUT/g-install.txt"
 check "Y2: the phone guide opens and shows its title" grep -q "Tablet adb guide" "$OUT/g-ui-top.xml"
-check "Y2: the first screen has Copy buttons" bash -c "[ \"\$(grep -o 'Copy this line' $OUT/g-ui-top.xml | wc -l)\" -ge 1 ]"
-for i in 1 2 3 4 5 6; do adb shell input swipe 300 800 300 200 300; sleep 1; done
-shot 91-phoneguide-middle
-adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-mid.xml" 2>/dev/null
-check "Y2: further down the list there are commands with Copy buttons (permissions section)" bash -c "grep -q 'pm grant' $OUT/g-ui-mid.xml || grep -q 'appops' $OUT/g-ui-mid.xml"
+# uiautomator only lists what is on screen, so scroll one page at a time (up to 14 pages) and keep every dump; the Copy buttons / first command may sit below the first screen
+cp "$OUT/g-ui-top.xml" "$OUT/g-ui-p0.xml"
+for i in $(seq 1 14); do
+  adb shell input swipe 300 850 300 250 400; sleep 1
+  adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-p$i.xml" 2>/dev/null
+  [ "$i" = 5 ] && shot 91-phoneguide-middle
+  grep -q 'pm grant' "$OUT/g-ui-p$i.xml" && grep -q 'Copy this line' "$OUT/g-ui-p$i.xml" && break
+done
+cat "$OUT"/g-ui-p*.xml > "$OUT/g-ui-all.xml"
+info "Y2: scrolled $i page(s); 'Copy this line' seen $(grep -o 'Copy this line' "$OUT/g-ui-all.xml" | wc -l) time(s); 'pm grant' seen $(grep -o 'pm grant' "$OUT/g-ui-all.xml" | wc -l) time(s); sample texts: $(grep -o 'text="[^"]\{4,50\}"' "$OUT/g-ui-p1.xml" | head -8 | tr '\n' ' ')"
+check "Y2: the list has Copy buttons (labelled 'Copy this line')" grep -q 'Copy this line' "$OUT/g-ui-all.xml"
+check "Y2: the permissions section with its pm grant commands is reachable by scrolling" grep -q 'pm grant' "$OUT/g-ui-all.xml"
 adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell am force-stop com.tj.phoneguide; home
 fi # section g
