@@ -176,7 +176,7 @@ public class SetupActivity extends Activity {
             String out = job.equals("A11YON") ? ShellHelper.a11yOn() : ShellHelper.run(job);
             say(job + ": " + (out == null ? "FAILED (is the helper running?)" : (out.trim().isEmpty() ? "done" : out.trim())));
             ui.post(new Runnable() { public void run() { build(); } });
-        }, "tj-setup-job").start();
+        } }, "tj-setup-job").start();
     }
 
     private void doEverything() {
@@ -189,7 +189,7 @@ public class SetupActivity extends Activity {
             }
             say("finished: " + todo.size() + " item(s) applied. The list above refreshes.");
             ui.post(new Runnable() { public void run() { build(); } });
-        }, "tj-setup-all").start();
+        } }, "tj-setup-all").start();
     }
 
     private void collect() {
@@ -199,7 +199,7 @@ public class SetupActivity extends Activity {
             File f = TabletReport.write(SetupActivity.this);
             say(apks.trim());
             say("report written: " + f + " (" + (f.length() / 1024) + " KB)");
-        }, "tj-setup-report").start();
+        } }, "tj-setup-report").start();
     }
 
     /** Emulator test: everything, then the report, then a marker file the test reads. */
@@ -216,6 +216,6 @@ public class SetupActivity extends Activity {
             for (Item it : items) b.append("state ").append(it.title).append(": ").append(done(it) ? "done" : "TODO").append('\n');
             try (java.io.FileOutputStream os = new java.io.FileOutputStream(new File(TabletReport.shareDir(SetupActivity.this), "autorun-done.txt"))) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
             ui.post(new Runnable() { public void run() { build(); } });
-        }, "tj-setup-autorun").start();
+        } }, "tj-setup-autorun").start();
     }
 }
