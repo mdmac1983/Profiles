@@ -264,7 +264,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     Features.setString(TjAccessibilityService.this, LOCK_CAL_KEY, sig + "#" + m + "#" + dx + "#" + dy);
                     if (patchView != null) patchView.invalidate();
                 } });
-                Log.i(TAG, "CAL lock patch " + result);
+                Log.i(TAG, "CAL lock patch " + result + " [" + PatchCalibrator.lastNote + "]");
             } catch (Throwable t) { result = "failed: " + t; Log.e(TAG, "lock patch calibration failed", t); }
             finally { calBusy = false; calStatus(now() + "  " + result); }
         } }, "tj-patch-cal").start();

@@ -11,6 +11,9 @@ package com.tj.launcher;
 public final class PatchCalibrator {
     private PatchCalibrator() {}
 
+    /** Why the last solve() answered as it did (spread of the photographed area, best / default error): written to the log so a "kept" answer on a device can be understood without the picture. */
+    public static volatile String lastNote = "";
+
     public static final class Result {
         public final float scale; public final int dx, dy; public final double error, baselineError;
         Result(float scale, int dx, int dy, double error, double baselineError) { this.scale = scale; this.dx = dx; this.dy = dy; this.error = error; this.baselineError = baselineError; }
@@ -58,8 +61,9 @@ public final class PatchCalibrator {
     /** @param skew multiplier on the model's base scale (1 normally; the emulator test sets a wrong one on purpose to prove the calibration corrects it) */
     public static Result solve(int[] wall, int bw, int bh, int[] shot, int W, int H, int l, int t, int r, int b, float xOff, float skew) {
         l = Math.max(0, l); t = Math.max(0, t); r = Math.min(W, r); b = Math.min(H, b);
-        if (r - l < 12 || b - t < 12 || wall == null || shot == null) return null;
-        if (spread(shot, W, l, t, r, b) < 0.015) return null;
+        if (r - l < 12 || b - t < 12 || wall == null || shot == null) { lastNote = "region too small or no picture"; return null; }
+        double sp = spread(shot, W, l, t, r, b);
+        if (sp < 0.015) { lastNote = String.format(java.util.Locale.US, "spread %.4f < 0.015 (flat area)", sp); return null; }
         double base = error(wall, bw, bh, shot, W, H, l, t, r, b, xOff, 1f, 0, 0, 2, skew);
         double best = Double.MAX_VALUE; float bm = 1f; int bx = 0, by = 0;
         int coarse = 6;
@@ -79,6 +83,7 @@ public final class PatchCalibrator {
                     }
             if (best >= before - 1e-9) break;
         }
+        lastNote = String.format(java.util.Locale.US, "spread %.4f, best error %.4f at m=%.3f dx=%d dy=%d, default model %.4f, region %dx%d at %d,%d on %dx%d, picture %dx%d", sp, best, bm, bx, by, base, r - l, b - t, l, t, W, H, bw, bh);
         if (best > 0.08) return null;                      // nothing matches well (lock-screen text over the patch, a different picture): do not guess
         if (base <= best + 0.004) return new Result(1f, 0, 0, base, base);   // the default model is already as good as anything: keep it
         return new Result(bm, bx, by, best, base);
