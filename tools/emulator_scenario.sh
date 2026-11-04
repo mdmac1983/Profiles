@@ -60,6 +60,8 @@ tapapp(){ local l="$1" fx="$2" fy="$3" b; adb shell uiautomator dump /sdcard/tju
   set -- $b
   if [ "$#" -ge 4 ]; then adb shell input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 )); else adb shell input tap "$fx" "$fy"; fi; }
 setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+# vfeat <lock_patch true|false> [skew]: feature file for the lock-patch emulator tests (sections v and x; defined up here so a section-only run has it)
+vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"${2:-0}\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
 pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
   for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
 lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
@@ -755,7 +757,6 @@ check "T1: the device-shell helper line (phone adb app, no adb shell prefix) sta
 # S2: take three things away, then let the app put them back through the helper
 adb shell pm revoke "$PKG" android.permission.DUMP >/dev/null 2>&1; adb shell pm revoke "$PKG" android.permission.CHANGE_CONFIGURATION >/dev/null 2>&1; adb shell cmd appops set "$PKG" RUN_IN_BACKGROUND default >/dev/null 2>&1
 sleep 2
-vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"${2:-0}\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
 vfeat true 12
 setmode quickstep; rebind; home
 adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez autorun true >/dev/null 2>&1
@@ -810,7 +811,7 @@ shot 83-lock-closed-patch-off
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows-off.txt" 2>&1
 CARDLINE="$(grep 'CARD area' "$OUT/v-log.txt" | tail -1)"
 info "V1: $CARDLINE"
-FULL="$(echo "$CARDLINE" | grep -o 'full=Rect([0-9, -]*)' | grep -o '[0-9]*' | tr '\n' ' ')"
+FULL="$(echo "$CARDLINE" | grep -o 'full=[^ ]*' | grep -o '[0-9]*' | tr '\n' ' ')"
 AREA="$(echo "$CARDLINE" | grep -o 'area=[^ ]*' | head -1)"
 check "V1: a lock-screen wallpaper patch window exists once the menu rectangle is known" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/v-patch-windows.txt)\" -ge 1 ]"
 check "V1: the patch is gone when the lock-screen switch is off (control)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/v-patch-windows-off.txt)\" = 0 ]"
@@ -820,7 +821,7 @@ if [ "$#" -ge 4 ]; then
   MAEC="$(compare -metric MAE -extract "$GEOM" "$OUT/81-lock-closed-patch-on.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
   echo "closed, patch on vs off, region $GEOM: MAE $MAEC" | tee "$OUT/v-diff-closed.txt"
   check "V2: with the menu closed the patch is invisible (lock screen looks the same with it on or off)" awk -v m="$MAEC" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
-  CARDH="$(echo "$CARDLINE" | grep -o 'area=Rect([0-9, -]*)' | grep -o '[0-9]*' | tr '\n' ' ')"
+  CARDH="$(echo "$CARDLINE" | grep -o 'area=[^ ]*' | head -1 | grep -o '[0-9]*' | tr '\n' ' ')"
   set -- $CARDH
   if [ "$#" -ge 4 ]; then
     FREE="$(( $3 - $1 ))x$(( $(echo $FULL | cut -d' ' -f4) - $4 - 2 ))+$1+$(( $4 + 2 ))"
