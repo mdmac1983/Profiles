@@ -14,6 +14,8 @@ import android.util.Log;
  */
 public class RouterActivity extends Activity {
     private static final String TAG = "TjRouter";
+    /** N3: the accessibility helper starts the router while the lock screen covers everything, to put a stack in front BEFORE the unlock. Not a Home press: never counted, never a double-Home. */
+    public static final String EXTRA_PREARM = "tj_prearm";           // "custom" | "stock"
     public static final String HOME_TYPE_KEY = "home_type_launcher";   // B1 switch, default ON (Tj chose full hiding, 2026-11-04, knowing the crash cost)
 
     @Override
@@ -26,12 +28,13 @@ public class RouterActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
         handleHome();
     }
 
     private void handleHome() {
         try {
-            route();
+            route(getIntent());
         } catch (Throwable t) {
             Log.e(TAG, "route failed, falling back to stock launcher", t);
             try { startStock(); } catch (Throwable ignored) { }
@@ -40,19 +43,27 @@ public class RouterActivity extends Activity {
         overridePendingTransition(0, 0);
     }
 
-    private void route() {
+    private void route(Intent in) {
+        String pre = in == null ? null : in.getStringExtra(EXTRA_PREARM);
+        if ("stock".equals(pre)) { startStock(); return; }
+        boolean prearm = "custom".equals(pre);
         // Double-press Home while the stock launcher is active = back to the custom launcher (Tj: "a quick way to go back").
         // This router answers every Home press, so no permission or accessibility is needed for it.
         long now = System.currentTimeMillis();
-        long last = Mode.lastHomePressMs(this);
-        Mode.recordHomePress(this, now);
+        long last = Mode.lastHomePressMs(this), last2 = Mode.homePressBeforeLastMs(this);
+        if (!prearm) Mode.recordHomePress(this, now);
         boolean returnedByDoubleHome = false;
-        if (!Mode.isCustom(this) && HomeDoublePress.isDouble(last, now)) {
+        // L10 failsafe: with the accessibility helper OFF no unlock handshake can work, so three quick Home presses let Tj out to Quickstep. Helper ON: ignored.
+        if (!prearm && ProfileSession.homeFailsafe(TjAccessibilityService.get() != null, Mode.isCustom(this), now, last2, last)) {
+            Mode.set(this, Mode.QUICKSTEP);
+            android.widget.Toast.makeText(getApplicationContext(), "Accessibility helper is off: switched to Quickstep", android.widget.Toast.LENGTH_LONG).show();
+        }
+        if (!prearm && !Mode.isCustom(this) && HomeDoublePress.isDouble(last, now)) {
             CrashGuard.clearTripped(this);
             Mode.set(this, Mode.CUSTOM);
             returnedByDoubleHome = true;
         }
-        if (Mode.isCustom(this)) {
+        if (prearm || Mode.isCustom(this)) {
             int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS;   // V4: also excluded (belt and braces)
             // B1 (switch, default ON: Tj's decision, 2026-11-04): an IMPLICIT MAIN + SECONDARY_HOME intent (no component) makes Android create a HOME-type task, which is never listed in Recents (not even as the
             // most recent task). COST (found by the crash-breaker emulator test): if the launcher process ever crashes, Android clears our default-home setting
@@ -72,7 +83,7 @@ public class RouterActivity extends Activity {
                     startActivity(e);
                 }
                 // Tj: coming back by double Home also closes apps, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire (ReturnReset).
-                if (returnedByDoubleHome) ReturnReset.run(this);
+                if (returnedByDoubleHome && !prearm) ReturnReset.run(this);
                 return;
             } catch (Throwable t) {
                 Log.e(TAG, "custom launcher failed to start", t);

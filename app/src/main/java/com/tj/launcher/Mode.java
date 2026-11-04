@@ -18,7 +18,13 @@ public final class Mode {
     public static long lastHomePressMs(Context c) { return prefs(c).getLong("lastHome", 0); }
 
     /** apply(): called on every Home press, must stay cheap. */
-    public static void recordHomePress(Context c, long now) { prefs(c).edit().putLong("lastHome", now).apply(); }
+    public static void recordHomePress(Context c, long now) {
+        SharedPreferences p = prefs(c);
+        p.edit().putLong("lastHome2", p.getLong("lastHome", 0)).putLong("lastHome", now).apply();
+    }
+
+    /** The Home press before the last one (the L10 failsafe needs three in a row). */
+    public static long homePressBeforeLastMs(Context c) { return prefs(c).getLong("lastHome2", 0); }
 
     /** When the mode last changed (ms): the stray-Quickstep guard waits a moment after a deliberate change (late window events from the screen we just left). */
     public static long changedAt(Context c) { return prefs(c).getLong("changedAt", 0); }
