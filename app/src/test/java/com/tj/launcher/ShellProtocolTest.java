@@ -58,4 +58,23 @@ public class ShellProtocolTest {
         assertEquals(-1, ShellProtocol.uidForPorts("garbage", 1, 2));
     }
     @Test public void tcpPortRangeIsSmall() { assertTrue(ShellProtocol.TCP_PORT_LAST - ShellProtocol.TCP_PORT_FIRST <= 5); }
+    private static final String DUMP =
+            "ACTIVITY MANAGER RECENT TASKS (dumpsys activity recents)\n"
+          + "  mRecentsUid=-1\n  Recent tasks:\n"
+          + "  * Recent #0: TaskRecord{4e6fbae #17 A=com.android.contacts U=0 StackId=1 sz=1}\n"
+          + "    userId=0 effectiveUid=u0a15 mCallingUid=u0a1\n"
+          + "    affinity=com.android.contacts\n"
+          + "    intent={act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.android.contacts/.activities.PeopleActivity}\n"
+          + "    realActivity=com.android.contacts/.activities.PeopleActivity\n"
+          + "  * Recent #1: TaskRecord{9f1c2aa #18 A=com.android.calendar U=0 StackId=1 sz=1}\n"
+          + "    realActivity=com.android.calendar/.AllInOneActivity\n"
+          + "  * Recent #2: TaskRecord{77ab11c #19 A=com.android.email U=0 StackId=1 sz=1}\n"
+          + "    realActivity=com.android.email/.activity.Welcome\n";
+    @Test public void findsTheRecentTasksOfThePackages() {
+        assertEquals(Arrays.asList(17, 19), ShellProtocol.recentTaskIds(DUMP, Arrays.asList("com.android.contacts", "com.android.email")));
+        assertEquals(Arrays.asList(18), ShellProtocol.recentTaskIds(DUMP, Arrays.asList("com.android.calendar")));
+        assertTrue(ShellProtocol.recentTaskIds(DUMP, Arrays.asList("com.nothing.here")).isEmpty());
+        assertTrue(ShellProtocol.recentTaskIds(null, Arrays.asList("a.b")).isEmpty());
+        assertTrue(ShellProtocol.recentTaskIds(DUMP, Arrays.<String>asList()).isEmpty());
+    }
 }

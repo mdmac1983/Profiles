@@ -1,6 +1,8 @@
 package com.tj.launcher;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.regex.Matcher;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -77,6 +79,34 @@ public final class ShellProtocol {
         int i = addr == null ? -1 : addr.lastIndexOf(':');
         if (i < 0) return -1;
         try { return Integer.parseInt(addr.substring(i + 1), 16); } catch (NumberFormatException e) { return -1; }
+    }
+
+    private static final Pattern TASK_HEADER = Pattern.compile("Recent #\\d+:.*?\\{[0-9a-fA-F]+ #(\\d+) ");
+    private static final Pattern COMPONENT_PKG = Pattern.compile("(?:realActivity=|cmp=|affinity=|A=)([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)");
+
+    /**
+     * The ids of the Recents tasks that belong to the given packages, read from the text of `dumpsys activity recents`
+     * (blocks start with "Recent #n: TaskRecord{hash #id ..."; the package shows in realActivity= / cmp= / affinity= / A=). Force-stop kills an app but Android 10 leaves its Recents card,
+     * so the helper removes these tasks too.
+     */
+    public static List<Integer> recentTaskIds(String dump, Collection<String> pkgs) {
+        List<Integer> out = new ArrayList<>();
+        if (dump == null || pkgs == null || pkgs.isEmpty()) return out;
+        int id = -1;
+        boolean match = false;
+        for (String line : dump.split("\\n")) {
+            Matcher h = TASK_HEADER.matcher(line);
+            if (h.find()) {
+                if (id >= 0 && match && !out.contains(id)) out.add(id);
+                try { id = Integer.parseInt(h.group(1)); } catch (NumberFormatException e) { id = -1; }
+                match = false;
+            }
+            if (id < 0) continue;
+            Matcher c = COMPONENT_PKG.matcher(line);
+            while (c.find()) if (pkgs.contains(c.group(1))) match = true;
+        }
+        if (id >= 0 && match && !out.contains(id)) out.add(id);
+        return out;
     }
 
     /** The one adb line that starts the helper (single quotes: the DEVICE shell expands the $(...)). */

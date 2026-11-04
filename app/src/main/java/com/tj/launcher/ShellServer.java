@@ -90,7 +90,45 @@ public final class ShellServer {
         if (ShellProtocol.isQuit(line)) { out.println("OK"); out.flush(); System.exit(0); return; }
         List<String> pkgs = ShellProtocol.forceStopTargets(line);
         if (pkgs == null) { out.println("ERR unknown command"); return; }
-        out.println("OK " + forceStop(pkgs));
+        int stopped = forceStop(pkgs);
+        int removed = removeRecentTasks(pkgs);
+        out.println("OK " + stopped + " " + removed);
+    }
+
+    private static Object atmService;
+    private static boolean atmFailedOnce = false;
+
+    /** Removes the Recents cards of these packages: ids from `dumpsys activity recents` (the shell user may run it), removed through IActivityTaskManager.removeTask (the shell holds REMOVE_TASKS). */
+    private static synchronized int removeRecentTasks(List<String> pkgs) {
+        int n = 0;
+        try {
+            Process pr = new ProcessBuilder("dumpsys", "activity", "recents").redirectErrorStream(true).start();
+            StringBuilder sb = new StringBuilder();
+            BufferedReader r = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            String l;
+            while ((l = r.readLine()) != null) sb.append(l).append('\n');
+            pr.waitFor();
+            for (int id : ShellProtocol.recentTaskIds(sb.toString(), pkgs)) if (removeTask(id)) n++;
+        } catch (Throwable t) { System.out.println("tj-shell: removing recents failed: " + t); }
+        return n;
+    }
+
+    private static boolean removeTask(int id) {
+        if (atmFailedOnce) return false;
+        try {
+            if (atmService == null) {
+                Class<?> sm = Class.forName("android.os.ServiceManager");
+                android.os.IBinder b = (android.os.IBinder) sm.getMethod("getService", String.class).invoke(null, "activity_task");
+                Class<?> stub = Class.forName("android.app.IActivityTaskManager$Stub");
+                atmService = stub.getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+            }
+            Object ok = atmService.getClass().getMethod("removeTask", int.class).invoke(atmService, id);
+            return !(ok instanceof Boolean) || ((Boolean) ok).booleanValue();
+        } catch (Throwable t) {
+            atmFailedOnce = true;
+            System.out.println("tj-shell: removeTask unavailable (" + t + ")");
+            return false;
+        }
     }
 
     private static Object amService;

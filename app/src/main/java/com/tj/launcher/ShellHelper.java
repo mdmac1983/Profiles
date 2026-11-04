@@ -82,6 +82,6 @@ public final class ShellHelper {
         if (pkgs == null || pkgs.isEmpty()) return 0;
         String r = ask("FORCESTOP " + android.text.TextUtils.join(" ", pkgs), 25_000);
         if (r == null || !r.startsWith("OK")) return -1;
-        try { return Integer.parseInt(r.substring(2).trim()); } catch (NumberFormatException e) { return 0; }
+        try { return Integer.parseInt(r.substring(2).trim().split("\\s+")[0]); } catch (NumberFormatException e) { return 0; }
     }
 }
