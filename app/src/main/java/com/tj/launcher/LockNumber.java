@@ -29,6 +29,18 @@ public final class LockNumber {
 
     private LockNumber() {}
 
+    /** What Tj may type as the lock-screen text: letters, digits, space - : . / _ ; at most 24 characters; empty = the default number. */
+    public static String sanitize(String in) {
+        if (in == null) return DEFAULT_TEXT;
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < in.length() && b.length() < 24; i++) {
+            char ch = in.charAt(i);
+            if (Character.isLetterOrDigit(ch) || ch == ' ' || ch == '-' || ch == ':' || ch == '.' || ch == '/' || ch == '_') b.append(ch);
+        }
+        String t = b.toString().trim();
+        return t.isEmpty() ? DEFAULT_TEXT : t;
+    }
+
     public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
     public static String text(Context c) {
         String t = Features.getString(c, TEXT_KEY, DEFAULT_TEXT);

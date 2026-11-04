@@ -74,6 +74,21 @@ public class ControlActivity extends Activity {
         root.addView(button("Lock-screen number: ON / OFF", new Runnable() { public void run() {
             Features.set(ControlActivity.this, LockNumber.KEY, !LockNumber.enabled(ControlActivity.this)); refresh();
         }}));
+        final android.widget.EditText numberBox = new android.widget.EditText(this);
+        numberBox.setSingleLine(true);
+        numberBox.setText(LockNumber.text(this));
+        numberBox.setHint("lock-screen number");
+        root.addView(label("Lock-screen number (same font, colour and position; up to 24 characters)"));
+        root.addView(numberBox);
+        root.addView(button("Save this number", new Runnable() { public void run() {
+            String t = LockNumber.sanitize(numberBox.getText().toString());
+            Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, t);
+            numberBox.setText(t); refresh();
+        }}));
+        root.addView(button("Use the original number again", new Runnable() { public void run() {
+            Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.DEFAULT_TEXT);
+            numberBox.setText(LockNumber.DEFAULT_TEXT); refresh();
+        }}));
         root.addView(button("Set the lock-screen wallpaper to the ORIGINAL leaf photo (replaces your lock wallpaper)", new Runnable() { public void run() {
             Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); refresh();
         }}));
@@ -83,6 +98,9 @@ public class ControlActivity extends Activity {
         root.addView(label("Recents"));
         root.addView(button("Hide the Launcher from Recents COMPLETELY (home-type task): ON / OFF  [if the launcher ever crashes, Android asks you to choose the Home app again]", new Runnable() { public void run() {
             Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, !Features.get(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, true)); refresh();
+        }}));
+        root.addView(button("adb setup guide: every command, step by step (copy button, shows what is already granted)", new Runnable() { public void run() {
+            startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class));
         }}));
         root.addView(label("Quickstep lock-out"));
         root.addView(button("Keep the stock home screen away unless I do the gesture: ON / OFF", new Runnable() { public void run() {

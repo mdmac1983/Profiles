@@ -85,7 +85,14 @@ public class RouterActivity extends Activity {
     private void startStock() {
         ComponentName stock = StockLauncher.find(this);
         if (stock == null) { Log.e(TAG, "no stock launcher found"); return; }
-        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setComponent(stock)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
+        int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED;
+        // C5 (Tj: "Quickstep must never appear in Recents"): an EXPLICIT component makes Android create an ordinary task for it, which Recents lists as "Quickstep".
+        // An implicit HOME intent restricted to the stock package (no component) is a HOME-type task, which is never listed.
+        try {
+            startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(stock.getPackageName()).addFlags(flags));
+        } catch (android.content.ActivityNotFoundException nf) {
+            Log.e(TAG, "implicit stock HOME launch failed, explicit launch", nf);
+            startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setComponent(stock).addFlags(flags));
+        }
     }
 }
