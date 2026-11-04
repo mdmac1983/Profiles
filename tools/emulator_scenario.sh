@@ -35,6 +35,18 @@ adb shell pm grant "$PKG" android.permission.DUMP > "$OUT/grant-dump.txt" 2>&1
 adb shell dumpsys package "$PKG" | grep -E "android.permission.DUMP" > "$OUT/dump-granted.txt" 2>&1
 check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi 'exception\|error' $OUT/grant-dump.txt && grep -q 'granted=true' $OUT/dump-granted.txt"
 
+# ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
+#      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 last. Setup, the install and the helper functions below always run.
+SECTIONS="${SECTIONS:-}"
+want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
+info "sections: ${SECTIONS:-ALL}"
+# helpers that more than one section uses (hoisted here so a section-only run has them)
+setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
+  for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
+lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+if want base; then # section base
 # ---- the manifest must not contain anything that can touch the lock screen / device policy (L10 rule 1)
 for bad in BIND_DEVICE_ADMIN SYSTEM_ALERT_WINDOW DISABLE_KEYGUARD RECEIVE_BOOT_COMPLETED; do
   check "manifest has no $bad" bash -c "! grep -q $bad $OUT/package-dump.txt"
@@ -141,6 +153,7 @@ adb uninstall "$PKG" > "$OUT/uninstall.txt" 2>&1; sleep 2; home; resumed > "$OUT
 check "after uninstall, stock launcher is Home" grep -q 'com.android.launcher3/' "$OUT/resumed-uninstalled.txt"
 
 
+fi # section base
 # ---- PHASE 2 (after the safety checks, so it cannot disturb them): power-menu helper on a fresh install
 adb install -r "$APK" >/dev/null 2>&1
 adb shell cmd package set-home-activity "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1
@@ -152,6 +165,7 @@ rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep
 a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
 rebind
 prefhome start
+if want legacy; then # section legacy
 setmode custom; home; prefhome after-setmode-home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-plain-mode-off; prefhome after-menu
 adb shell input keyevent KEYCODE_BACK; sleep 1
@@ -294,6 +308,8 @@ else
 fi
 setpower off; setmode custom
 
+if want x1; then # section x1
+fi # section legacy
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
@@ -320,6 +336,8 @@ check "X1: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fa
 check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-shown.txt)\" -ge 1 ]"
 check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
 home
+if want e1; then # section e1
+fi # section x1
 # ---- E1: unlock-time launcher choice (opt-in). Tap Delete twice on the empty PIN pad before the PIN = Quickstep; a plain PIN = custom launcher. The test PIN is ALWAYS cleared at the end.
 beat "before E1"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
@@ -348,6 +366,8 @@ check "E1: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exce
 home
 
 
+if want y2; then # section y2
+fi # section e1
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
 beat "before Y2"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/grant-secure2.txt" 2>&1
@@ -370,6 +390,8 @@ info "Y2: $(grep -E 'RESET (recents|notifications)' "$OUT/y2-log.txt" | cut -c1-
 for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n 0; done
 setmode custom; home
 
+if want b6; then # section b6
+fi # section y2
 # ---- B6: the quick-settings pencil is covered (and uncovered when the panel closes)
 beat "before B6"
 setpower off; setmode custom; rebind; home
@@ -382,6 +404,8 @@ adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows-
 adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log2.txt" 2>&1
 check "B6: a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows.txt)\" -ge 1 ]"
 check "B6/D4: when the panel closes the cover is hidden (the window is kept warm for an instant next time)" grep -qE 'PENCIL cover (hidden|removed)' "$OUT/pencil-log2.txt"
+if want b4; then # section b4
+fi # section b6
 # ---- B4: nothing to clear in Recents -> that step is skipped; cover shown and removed in the normal run
 check "B4: the black cover was shown and removed during the reset" bash -c "grep -q 'RESET cover shown' $OUT/y2-log.txt && grep -q 'RESET cover removed' $OUT/y2-log.txt"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
@@ -394,6 +418,8 @@ check "B4: with Recents untouched the reset skips the Recents step" grep -q 'rec
 check "B4: the app (Calendar) is in front after the shorter reset" grep -qi 'calendar' "$OUT/resumed-b4.txt"
 setmode custom; home
 
+if want n; then # section n
+fi # section b4
 # ---- N4 / N5: ways back to custom, the master failsafe, and the lock-screen profile switch (v0.4.0)
 beat "before N"
 # `adb shell input keyevent` is INJECTED and bypasses the accessibility key filter, so hardware keys are sent through the emulator console (a real input device) instead.
@@ -455,6 +481,8 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "N2: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/n2-clearpin.txt"
 setfeat; setmode custom; home
 
+if want n6; then # section n6
+fi # section n
 # ---- N6: the invisible clean-up helper (shell-uid process started by one adb line): Quickstep's apps are force-stopped with no cover, their Recents cards vanish
 beat "before N6"
 setfeat; setmode quickstep; rebind; home; sleep 2
@@ -483,6 +511,8 @@ adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/n6-ps2.txt" 2>&1
 check "N6: the helper stops with the documented line" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n6-ps2.txt)\" = 0 ]"
 setfeat; setmode custom; home
 
+if want last; then # section last
+fi # section n6
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"guard_stock_home\\\" value=\\\"false\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1
@@ -502,6 +532,7 @@ else
   echo "no card rect found in log" | tee -a "$OUT/press-restart.txt"
 fi
 check "card's Restart pressed the real Restart button" grep -q "press 'Restart' -> true" "$OUT/press-restart.txt"
+fi # section last
 echo "failed checks: $FAILS" | tee -a "$OUT/results.txt"
 ls -la "$OUT"
 exit "$FAILS"
