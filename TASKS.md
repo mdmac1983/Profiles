@@ -217,3 +217,17 @@ If i send multiple messages interrupting you, always continue what you are alrea
 - [x] C5 (v0.3.5; emulator run 36: 'the stock launcher task started by the router is in the HOME-type stack') "Launcher" AND "Quickstep" never in Recents in any launcher (use adb if needed)
 - [x] C6 (answered; tiles-per-mode needs the adb grant + Tj's go) research: separate notification panel / quick-settings tiles per active launcher
 - [x] C7 (answered + research/ADB_COMMANDS.txt section 10) answer: adb command to disable/uninstall com.android.browser on LineageOS and what it would break
+
+## Tj, 2026-11-04 (after v0.3.5), verbatim
+"the permanent wallpaper overlay hiding the power menu worked, but it currently is overlaying the wrong section of the wallpaper, and it is also covering other apps.
+1) figure out if there is a way to always have a permanent overlay of what is already showing on the screen at all times except the stock power menu, so the stock power menu is always hidden behind a clone of what is already on the screen at that time, whether wallpaper or an app. the wallpaper clone wont work if im in solitaire because it shows a patch of wallpaper over the solitaire app, plus any movement on the screen such as the app drawer animation reveals the wallpaper patch, the overlay must be a live copy of the screen below
+2) improve and organize the ui of the launcher settings. right now i cant tell what is on or off. make toggles and improve the overall settings ui intuitively
+3) think of any other ways accessibility service can be used to hide the power menu without the short delay, or if there is a way to make the delay so fast that i cant see the stock power menu
+4) the disappearing pencil works, but is there a way to make it permanent or faster so the pencil never shows?
+5) if possible, make it so any apps i open using the custom launcher can stay in the recents list as normal and disappear when closed(normal behavior), but any app that i open using quickstep launcher never shows up at any time in the custom launcher's recents list (they may stay in the recents list for quickstep). Basically, keep the two launchers' recents lists functional but separate"
+- [ ] D0 wallpaper-patch mode problems Tj reported: wrong section of the wallpaper + covers other apps (fix or retire; see D1)
+- [ ] D1 research/answer: a permanent LIVE COPY of the screen under the stock power menu (wallpaper or app, follows animations)
+- [ ] D2 settings UI redesign: real toggles, sections, clear on/off state
+- [ ] D3 research + build: faster / invisible-delay hiding of the stock power menu via accessibility (anything that beats the flash)
+- [ ] D4 pencil: permanent or faster so it never shows
+- [ ] D5 separate Recents per launcher: apps opened from the custom launcher stay in Recents normally; apps opened via Quickstep never show in the custom launcher's Recents (may stay for Quickstep)
