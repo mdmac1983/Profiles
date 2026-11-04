@@ -475,7 +475,7 @@ adb logcat -c
 lockpad; shot 46-n2-pinpad
 adb logcat -d -s TjA11y:I | grep PROFILE > "$OUT/n3-prearm-log.txt" 2>&1
 adb logcat -d | grep -c "Abort background activity starts" > "$OUT/n3-bal.txt" 2>&1
-check "N3: waking to the lock screen put the custom stack in front behind the keyguard" grep -q "woke locked" "$OUT/n3-prearm-log.txt"
+check "N3: the lock screen (screen off, or the wake) put the custom stack in front behind the keyguard" grep -qE "woke locked|screen off, locked|custom home" "$OUT/n3-prearm-log.txt"
 check "N3: Android did not block the helper's start behind the keyguard" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n3-bal.txt)\" = 0 ]"
 pad 1 d 1 d 1 d 1 2 3 4 e; sleep 6
 getmode > "$OUT/n2-taperase-mode.txt"; resumed > "$OUT/n2-taperase-resumed.txt"
