@@ -31,6 +31,21 @@ import java.util.List;
 public class SetupActivity extends Activity {
     public static final String EXTRA_AUTORUN = "autorun";          // emulator test: do everything + collect, then write probe/autorun-done.txt (only if the pref below is set)
     public static final String PREF_ALLOW_AUTORUN = "allow_setup_autorun";
+    /** Emulator test only (same guard as the autorun): sets a recognisable picture as the LOCK-screen wallpaper so the lock-screen patch can be compared against it. */
+    public static final String EXTRA_TEST_LOCK_WALLPAPER = "test_lock_wallpaper";
+
+    private void setTestLockWallpaper() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int w = dm.widthPixels, h = dm.heightPixels;
+            android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+            int[] px = new int[w * h];
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[y * w + x] = 0xFF000000 | ((x * 255 / w) << 16) | ((y * 255 / h) << 8) | (255 - x * 255 / w);
+            b.setPixels(px, 0, w, 0, 0, w, h);
+            android.app.WallpaperManager.getInstance(this).setBitmap(b, null, true, android.app.WallpaperManager.FLAG_LOCK);
+            Features.setString(this, "test_lock_wallpaper_done", "yes " + w + "x" + h);
+        } catch (Throwable t) { Features.setString(this, "test_lock_wallpaper_done", "FAILED " + t); }
+    }
     private static final int ACCENT = Color.parseColor("#00796B"), INK = Color.parseColor("#202124"), MUTED = Color.parseColor("#5F6368"), BAD = Color.parseColor("#B3261E");
 
     private LinearLayout page;
@@ -78,6 +93,10 @@ public class SetupActivity extends Activity {
         RecentsGuard.describeAsTarget(this);
         if (Mode.isCustom(this)) { finish(); return; }
         build();
+        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_TEST_LOCK_WALLPAPER, false) && Features.get(this, PREF_ALLOW_AUTORUN, false)) {
+            getIntent().removeExtra(EXTRA_TEST_LOCK_WALLPAPER);
+            setTestLockWallpaper();
+        }
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_AUTORUN, false) && Features.get(this, PREF_ALLOW_AUTORUN, false)) {
             getIntent().removeExtra(EXTRA_AUTORUN);
             autorun();

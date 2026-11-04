@@ -1644,6 +1644,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlay == null) {
             ensurePatch();
             Rect r0 = cardArea(full);
+            Log.i(TAG, "CARD area=" + r0.toShortString() + " full=" + full.toShortString() + " lockPatch=" + patchLockMode);
             patchShow(true);
             overlay = buildCard();
             wm.addView(overlay, overlayParams(r0, true));

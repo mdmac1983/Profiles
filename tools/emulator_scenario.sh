@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -775,6 +775,74 @@ check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 setfeat; setmode custom; home
 fi # section x
+if want v; then # section v
+ensurehome
+# ---- V1/V2 (Tj, 2026-11-04): on the LOCK screen a patch of the lock wallpaper hides the real power menu and our Power off / Restart menu has the stock item size (stock minus Screenshot).
+#      U1/U2: the launcher compiled ahead of time starts faster; the unlock stopwatch logs how long the first window takes.
+beat "before V"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/v-grant.txt" 2>&1
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"true\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell "run-as $PKG cat shared_prefs/tj_features.xml" | grep -o 'test_lock_wallpaper_done">[^<]*' > "$OUT/v-lockwp.txt" 2>&1
+info "V2: test lock wallpaper: $(cat $OUT/v-lockwp.txt)"
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/v-setpin.txt" 2>&1
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 80-lock-menu-first      # first time: the helper learns the rectangle and the item size
+adb shell input keyevent KEYCODE_BACK; sleep 3
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows.txt" 2>&1
+shot 81-lock-closed-patch-on
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 82-lock-menu-open
+adb logcat -d -s TjA11y:I | grep -E "CARD area|PATCH|bounds=" > "$OUT/v-log.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 3
+adb shell "run-as $PKG sh -c 'sed -i \"s/name=.lock_patch. value=.true./name=\\\"lock_patch\\\" value=\\\"false\\\"/\" shared_prefs/tj_features.xml'" >/dev/null 2>&1
+rebind; adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+shot 83-lock-closed-patch-off
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows-off.txt" 2>&1
+CARDLINE="$(grep 'CARD area' "$OUT/v-log.txt" | tail -1)"
+info "V1: $CARDLINE"
+FULL="$(echo "$CARDLINE" | grep -o 'full=Rect([0-9, -]*)' | grep -o '[0-9]*' | tr '\n' ' ')"
+AREA="$(echo "$CARDLINE" | grep -o 'area=[^ ]*' | head -1)"
+check "V1: a lock-screen wallpaper patch window exists once the menu rectangle is known" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/v-patch-windows.txt)\" -ge 1 ]"
+check "V1: the patch is gone when the lock-screen switch is off (control)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/v-patch-windows-off.txt)\" = 0 ]"
+set -- $FULL
+if [ "$#" -ge 4 ]; then
+  GEOM="$(( $3 - $1 ))x$(( $4 - $2 ))+$1+$2"
+  MAEC="$(compare -metric MAE -extract "$GEOM" "$OUT/81-lock-closed-patch-on.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+  echo "closed, patch on vs off, region $GEOM: MAE $MAEC" | tee "$OUT/v-diff-closed.txt"
+  check "V2: with the menu closed the patch is invisible (lock screen looks the same with it on or off)" awk -v m="$MAEC" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+  CARDH="$(echo "$CARDLINE" | grep -o 'area=Rect([0-9, -]*)' | grep -o '[0-9]*' | tr '\n' ' ')"
+  set -- $CARDH
+  if [ "$#" -ge 4 ]; then
+    FREE="$(( $3 - $1 ))x$(( $(echo $FULL | cut -d' ' -f4) - $4 - 2 ))+$1+$(( $4 + 2 ))"
+    MAEF="$(compare -metric MAE -extract "$FREE" "$OUT/82-lock-menu-open.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+    echo "menu open: the freed slot $FREE vs the bare lock wallpaper: MAE $MAEF" | tee "$OUT/v-diff-open.txt"
+    check "V2: the part of the old menu below our short card shows exactly the lock wallpaper (MAE < 0.5 %)" awk -v m="$MAEF" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+    check "V1: our card is shorter than the stock menu rectangle (stock item size, no Screenshot slot)" bash -c "[ $(( $4 - $2 )) -lt $(( $(echo $FULL | cut -d' ' -f4) - $(echo $FULL | cut -d' ' -f2) )) ]"
+  else info "V1: no card area in the log"; check "V1: the short card area was logged" false; fi
+else info "V1: no CARD line in the log"; check "V1: the card was shown on the lock screen" false; fi
+adb shell input swipe 300 900 300 300 300; sleep 2
+adb logcat -c
+adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 4
+adb logcat -d -s TjA11y:I | grep UNLOCKSPEED > "$OUT/v-unlockspeed.txt" 2>&1
+info "U1: $(cat $OUT/v-unlockspeed.txt | cut -c1-200)"
+check "U1: the unlock stopwatch measured the launcher after a PIN unlock" grep -q UNLOCKSPEED "$OUT/v-unlockspeed.txt"
+adb shell locksettings clear --old 1234 > "$OUT/v-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+# U2: compile ahead of time: cold start of our launcher before / after (informational numbers; the compile itself must succeed)
+adb shell am force-stop "$PKG"; sleep 1
+adb shell cmd package compile -m verify -f "$PKG" > /dev/null 2>&1
+adb shell am force-stop "$PKG"; sleep 1
+adb shell am start -W -n "$PKG/com.android.launcher3.Launcher" 2>&1 | grep -E "TotalTime|WaitTime" | tr '\n' ' ' > "$OUT/v-start-before.txt"
+adb shell cmd package compile -m speed -f "$PKG" > "$OUT/v-compile.txt" 2>&1
+adb shell am force-stop "$PKG"; sleep 1
+adb shell am start -W -n "$PKG/com.android.launcher3.Launcher" 2>&1 | grep -E "TotalTime|WaitTime" | tr '\n' ' ' > "$OUT/v-start-after.txt"
+info "U2: cold start with verify-only: $(cat $OUT/v-start-before.txt)   after 'compile -m speed': $(cat $OUT/v-start-after.txt)"
+check "U2: 'cmd package compile -m speed -f' succeeds as the shell user" grep -qi success "$OUT/v-compile.txt"
+setmode custom; home
+fi # section v
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
