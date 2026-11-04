@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tj_accessibility_description">Launcher helper: hides the Screenshot button (or the whole power menu) while the custom launcher is active, presses Clear all when you return, and sends you back to the custom launcher if the stock home screen appears without your gesture. It sees the side (power) key only to be ready sooner; no other key is read. Turn it off here at any time.</string>
+    <string name="tj_accessibility_description">Launcher helper: hides the Screenshot button (or the whole power menu) while the custom launcher is active, presses Clear all when you return, and sends you back to the custom launcher if the stock home screen appears without your gesture. It never reads typed digits or hardware keys. Turn it off here at any time.</string>
     <string name="tj_accessibility_label">Launcher power-menu helper</string>
 </resources>

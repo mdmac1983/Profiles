@@ -568,35 +568,7 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "POWERLAT " + line);
     }
 
-    // ---------------------------------------------------------------- W4: the side key reaches the helper before the long-press power menu exists
-    public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";
-
-    /** Never consumes a key (always returns false). Only the POWER key is looked at; nothing else is logged or stored. */
-    @Override protected boolean onKeyEvent(android.view.KeyEvent event) {
-        try {
-            if (event.getKeyCode() != android.view.KeyEvent.KEYCODE_POWER) return false;
-            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                int n = bump(PWR_COUNT_KEY);
-                Features.setString(this, PWR_LAST_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()));
-                Log.i(TAG, "POWER key down seen by the helper (#" + n + ")");
-                earlyCover();
-            } else if (event.getAction() == android.view.KeyEvent.ACTION_UP) {
-                handler.removeCallbacks(recheck);
-                handler.postDelayed(recheck, 150);   // evaluate(): keeps the cover if the power menu opened, drops it after a short press
-            }
-        } catch (Throwable t) { Log.e(TAG, "key hook failed", t); }
-        return false;
-    }
-
-    /** Side key just went down: put the replacement card in place now, before the (long-press) system power menu exists. */
-    private void earlyCover() {
-        if (!Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
-        Rect cached = cachedCard();
-        if (cached == null) return;   // never learned where the menu sits yet: the first real menu teaches it
-        showOverlay(cached);
-        handler.removeCallbacks(recheck);
-        handler.postDelayed(recheck, 900);   // no menu by then (it was a short press) -> evaluate() takes the card away
-    }
+    public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";   // kept so old settings files stay readable; the side key never reaches a service
 
     @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
