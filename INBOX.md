@@ -501,3 +501,10 @@ The probe
 ```
 The probe just means the adb commands to show Claude everything about the tablet to optimize the launcher and speed and also see if users can be set up but also to pull the code for the ui, settings app, and any other code that can help this project
 ```
+
+## 2026-11-04T22:19:35Z
+```
+Now build and release the remaining items, only do as much of the test run as necessary before shipping because it takes a long time.
+
+When you are done, prepare this project to be handed off to another Claude account which doesn't have context.
+```
