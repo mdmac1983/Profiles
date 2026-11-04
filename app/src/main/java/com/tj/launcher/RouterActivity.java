@@ -85,6 +85,8 @@ public class RouterActivity extends Activity {
                 }
                 // Tj: coming back by double Home also closes apps, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire (ReturnReset).
                 if (returnedByDoubleHome && !prearm) ReturnReset.run(this);
+                // O3: the lock-screen pre-arm needs the target app (Solitaire) started AFTER the custom home, from this same activity, so the order cannot flip (starting both from the helper raced: the home won).
+                if (prearm && ProfileSession.prearm(this)) ReturnReset.startTargetBehindLock(this);
                 return;
             } catch (Throwable t) {
                 Log.e(TAG, "custom launcher failed to start", t);

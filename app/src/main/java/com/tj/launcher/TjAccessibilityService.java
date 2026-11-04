@@ -422,8 +422,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void prearmCustom(String why) {
         try {
             android.content.Context app = getApplicationContext();
-            startRouter("custom");
-            ReturnReset.startTargetBehindLock(app);
+            startRouter("custom");            // the router starts the custom home and THEN the target app (same activity, fixed order)
             preArmedThisLock = true;
             profileNote("lock screen (" + why + "): custom home + " + ReturnReset.appLabel(app) + " put in front behind the keyguard");
         } catch (Throwable t) { Log.e(TAG, "prearm failed", t); }
