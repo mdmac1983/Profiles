@@ -152,6 +152,27 @@ public class ControlActivity extends Activity {
         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
+        section("Back to the custom launcher (from Quickstep)");
+        note("Any one of these ends the Quickstep session: it switches to the custom launcher, closes what Quickstep opened, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire. They only work while Quickstep is active. Locking the tablet also ends it.");
+        for (final ReturnMethods.Method m : ReturnMethods.Method.values()) {
+            if (m == ReturnMethods.Method.HOME2) continue;   // the router reads Home presses itself: shown below
+            toggle(m.title, m.how, ReturnMethods.on(this, m), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
+        }
+        toggle(ReturnMethods.Method.HOME2.title, ReturnMethods.Method.HOME2.how + "  (This one is always on.)", true, new Chg() { public void on(boolean v) { rebuild(); } });
+        note("The \"Back to custom\" icon is in Quickstep's app drawer (arrow icon). Put it on the home screen if you like. The tile is added from the tile editor (pencil) - or tick it under Quick settings below.");
+
+        section("Master failsafe: always reach Quickstep");
+        note("Ladder, easiest first: 1) the lock-screen handshakes above; 2) the key code below; 3) the hidden Solitaire hotspot below; 4) if the Accessibility helper is OFF: press Home three times quickly; 5) Android itself: Settings > Apps > Default apps > Home app, or Safe mode (hold Power off), or adb (see the adb guide).");
+        toggle("Key code anywhere in the custom launcher", "Volume Up, Up, Down, Down, Back, Back, Up, Down within 20 seconds, screen unlocked. Needs the helper's key access.", FailsafeKeys.konami(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.KONAMI_KEY, v); } });
+        toggle("Hidden Solitaire hotspot", "An invisible 56 dp square in a corner of Solitaire: tap it 5 times quickly, then touch and HOLD it for a second. The game cannot use that corner while this is on.", FailsafeKeys.hotspot(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.HOTSPOT_KEY, v); } });
+        radio("Hotspot corner", FailsafeKeys.CORNERS, new String[] { "0", "1", "2", "3" }, String.valueOf(FailsafeKeys.corner(this)), new Str() { public void on(String v) { Features.setInt(ControlActivity.this, FailsafeKeys.CORNER_KEY, Integer.parseInt(v)); } });
+        action("Probe Solitaire: what can the helper read?", "Starts a 10-minute probe. Open Solitaire, move a few cards, come back here. Tells us whether a CARD-MOVE code is possible.", new Runnable() { public void run() {
+            Features.setString(ControlActivity.this, FailsafeKeys.PROBE_UNTIL_KEY, String.valueOf(System.currentTimeMillis() + 600_000));
+            Features.setString(ControlActivity.this, FailsafeKeys.PROBE_REPORT_KEY, "(probe running: open Solitaire and move some cards)");
+            rebuild();
+        }});
+        note("Probe result: " + Features.getString(this, FailsafeKeys.PROBE_REPORT_KEY, "(not run)") + "\nLast failsafe / return: " + Features.getString(this, FailsafeKeys.LAST_KEY, "(none yet)"));
+
         section("Quick settings");
         toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
