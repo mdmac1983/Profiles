@@ -1,24 +1,23 @@
-# CHECKPOINT 181 — read me first, then TASKS.md
+# CHECKPOINT 182 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T00:38:11Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `9feddd9` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T00:38:35Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `94c2ea0` (this checkpoint is the commit after it)
 
 ## Just done
-C3: found the AOSP ICS leaf wallpapers (phone 960x800, tablet 1920x1280, android-4.0.4_r2.1 Launcher2) and saved them in research/reference/ics-leaf; Tj's file is a different (edited) version; LineageOS copy not reachable (github blocked); stock-photo match inconclusive
+Research notes for C4/C5/C6/C7 in research/NOTES_2026-11-04.md
 
 ## Do this next
-Send both ICS originals to Tj, ask which one looks like the lock screen on the tablet (or let him pick); then wait for run 35 and ship v0.3.4
+Wait for run 35 (00:46), ship v0.3.4; then v0.3.5: C1 lock-number EditText, C2 in-app adb guide + manifest permission declarations, C5 startStock implicit HOME (setPackage), tiles-per-mode only after Tj's go
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-    A  research/reference/ics-leaf/AOSP-ICS-4.0.4-wallpaper_leaf-phone-960x800.jpg
-    A  research/reference/ics-leaf/AOSP-ICS-4.0.4-wallpaper_leaf-tablet-1920x1280.jpg
-    A  research/reference/ics-leaf/README.txt
+    A  research/NOTES_2026-11-04.md
 
 ## Last ten checkpoints
 ```
+  94c2ea0 ckpt 181: C3: found the AOSP ICS leaf wallpapers (phone 960x800, tablet 1920x1280, andro
   9feddd9 ckpt 180: C2 docs: research/ADB_COMMANDS.txt (line by line, sections 0-10 incl. C7 brows
   5658cd2 ckpt 179: Recorded C1-C7 (Tj's seven requests of 2026-11-04). v0.3.4 still gating: emula
   10f0af9 ckpt 178: Run 34 (179cd9e, switch-off build): 48 PASS / 0 FAIL incl. B1 HOME-type stack 
@@ -28,5 +27,4 @@ Send both ICS originals to Tj, ask which one looks like the lock screen on the t
   eda1603 ckpt 174: B4 coded (RecentsDirty tracking, status-bar skip, black cover, instant Solitai
   02d9241 ckpt 173: B6 coded: a11y finds the QS pencil (android:id/edit, 'Edit order of settings.'
   528c5ae ckpt 172: B1 coded: Launcher has a MAIN+SECONDARY_HOME filter; RouterActivity starts it 
-  98f544a ckpt 171: Recorded B1-B6 (Tj's six requests after v0.3.3). B5 blocked: wallpaper image d
 ```
