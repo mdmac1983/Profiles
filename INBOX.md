@@ -417,3 +417,8 @@ So make an option in the launcher settings to make it totally invisible once i h
 ```
 Why in this project are there so many lengthy test runs but in other large projects the apks build and test pretty fast
 ```
+
+## 2026-11-04T08:09:31Z
+```
+yes do that after v0.4.0
+```
