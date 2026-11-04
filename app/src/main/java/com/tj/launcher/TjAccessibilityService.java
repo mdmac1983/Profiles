@@ -125,7 +125,7 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
-            if (key != null && key.startsWith("unlock_m_")) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
+            if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
             if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
         }
@@ -1007,8 +1007,14 @@ public class TjAccessibilityService extends AccessibilityService {
             try {
                 MotionDetector.Kind k = motion.onSample(e.values[0], e.values[1], e.values[2], e.timestamp / 1_000_000L);
                 if (k == MotionDetector.Kind.NONE) return;
-                ensureUnlockListener();
-                unlock.onMotion(k == MotionDetector.Kind.SHAKE ? UnlockMethods.Method.SHAKE : UnlockMethods.Method.KNOCK, System.currentTimeMillis());
+                android.content.Context app = getApplicationContext();
+                if (keyguardLocked()) {
+                    ensureUnlockListener();
+                    unlock.onMotion(k == MotionDetector.Kind.SHAKE ? UnlockMethods.Method.SHAKE : UnlockMethods.Method.KNOCK, System.currentTimeMillis());
+                } else if (!Mode.isCustom(app) && ReturnMethods.on(app, k == MotionDetector.Kind.SHAKE ? ReturnMethods.Method.SHAKE : ReturnMethods.Method.KNOCK)) {
+                    buzz();
+                    ProfileSession.returnToCustom(app, k == MotionDetector.Kind.SHAKE ? "shake" : "double knock");   // R1: the accelerometer way back to the custom launcher
+                }
             } catch (Throwable t) { Log.e(TAG, "motion sample failed", t); }
         }
         @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) { }
@@ -1018,7 +1024,11 @@ public class TjAccessibilityService extends AccessibilityService {
     private void updateMotion() {
         try {
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
-            boolean want = UnlockMethods.needsMotion(storedEnabled) && keyguardLocked() && pm != null && pm.isInteractive();
+            android.content.Context app = getApplicationContext();
+            boolean interactive = pm != null && pm.isInteractive();
+            boolean lockWant = UnlockMethods.needsMotion(storedEnabled) && keyguardLocked();
+            boolean returnWant = !Mode.isCustom(app) && ReturnMethods.needsMotion(app) && !keyguardLocked();     // R1: only while Quickstep is active
+            boolean want = interactive && (lockWant || returnWant);
             android.hardware.SensorManager sm = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE);
             if (sm == null) return;
             if (want && !motionOn) {

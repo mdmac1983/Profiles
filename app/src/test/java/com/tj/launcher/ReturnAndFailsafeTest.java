@@ -88,4 +88,10 @@ public class ReturnAndFailsafeTest {
         t.onDown(now); t.onUp(now + 500);                                   // held, but let go before the timer: the caller never fired
         assertEquals(0, t.taps());
     }
+
+    @Test public void everyReturnMethodHasAUniqueIdAndKey() {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (ReturnMethods.Method m : ReturnMethods.Method.values()) { assertTrue(ids.add(m.id)); assertTrue(m.prefKey().startsWith("return_m_")); }
+        assertEquals(9, ids.size());
+    }
 }

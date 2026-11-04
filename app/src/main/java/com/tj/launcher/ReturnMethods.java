@@ -23,7 +23,10 @@ public final class ReturnMethods {
         VOLCODE("volcode", "Volume code", "Volume Down, Down, Up, Up within 6 seconds.", true),
         BACKS("backs", "Three Backs + Volume Down", "Press Back three times, then Volume Down, within 6 seconds.", false),
         VOLBOTH("volboth", "Both volume keys together", "Press Volume Up and Volume Down at the same moment.", false),
-        FLURRY("flurry", "Side-key flurry", "Press the side key 4 times quickly (screen off, on, off, on).", false);
+        FLURRY("flurry", "Side-key flurry", "Press the side key 4 times quickly (screen off, on, off, on).", false),
+        // R1 (Tj, 2026-11-04: "can the accelerometer be used to go from quickstep to the custom launcher?"): yes, with the same detector as the lock-screen shake / knock
+        SHAKE("rshake", "Triple shake (experimental)", "Shake the tablet firmly three times while Quickstep is active. The accelerometer is read only while Quickstep is on and the screen is on.", false),
+        KNOCK("rknock", "Double knock (experimental)", "Knock twice on the back of the tablet with your knuckle, about half a second apart, while Quickstep is active. Thresholds are a first guess.", false);
 
         public final String id, title, how;
         public final boolean defaultOn;
@@ -38,6 +41,9 @@ public final class ReturnMethods {
     private ReturnMethods() {}
 
     public static boolean on(Context c, Method m) { return Features.get(c, m.prefKey(), m.defaultOn); }
+
+    /** True if a motion method (shake / knock) is switched on: the accelerometer is read only then, and only while Quickstep is active. */
+    public static boolean needsMotion(Context c) { return on(c, Method.SHAKE) || on(c, Method.KNOCK); }
 
     /** True if any method that needs the key-event access is switched on. */
     public static boolean needsKeys(Context c) { return on(c, Method.VOLCODE) || on(c, Method.BACKS) || on(c, Method.VOLBOTH); }
