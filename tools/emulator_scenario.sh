@@ -27,6 +27,13 @@ beat start
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
 adb shell dumpsys package "$PKG" > "$OUT/package-dump.txt" 2>&1
+# C2: the permissions for later features are DECLARED (so pm grant works without a reinstall) and nothing risky is declared
+for perm in DUMP CHANGE_CONFIGURATION PACKAGE_USAGE_STATS; do
+  check "C2: manifest declares android.permission.$perm in advance" grep -q "android.permission.$perm" "$OUT/package-dump.txt"
+done
+adb shell pm grant "$PKG" android.permission.DUMP > "$OUT/grant-dump.txt" 2>&1
+adb shell dumpsys package "$PKG" | grep -E "android.permission.DUMP" > "$OUT/dump-granted.txt" 2>&1
+check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi 'exception\|error' $OUT/grant-dump.txt && grep -q 'granted=true' $OUT/dump-granted.txt"
 
 # ---- the manifest must not contain anything that can touch the lock screen / device policy (L10 rule 1)
 for bad in BIND_DEVICE_ADMIN SYSTEM_ALERT_WINDOW DISABLE_KEYGUARD RECEIVE_BOOT_COMPLETED; do
@@ -49,6 +56,9 @@ adb shell input keyevent KEYCODE_HOME; sleep 3
 # ---- QUICKSTEP mode: Home goes to the stock launcher, and back
 setmode quickstep; home; shot 05-quickstep-mode; resumed | tee "$OUT/resumed-quickstep.txt"
 check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.android.launcher3/' $OUT/resumed-quickstep.txt && ! grep -q 'com.tj.launcher' $OUT/resumed-quickstep.txt"
+# C5: the STOCK launcher started by our router is a HOME-type task too (an explicit component made it an ordinary task that Recents listed as "Quickstep")
+adb shell dumpsys activity activities > "$OUT/activities-quickstep.txt" 2>&1
+check "C5: the stock launcher task started by the router is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-quickstep.txt | grep -q 'com.android.launcher3/'"
 setmode custom; home; resumed > "$OUT/resumed-custom2.txt"
 check "switching back to custom works" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
 
