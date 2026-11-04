@@ -102,6 +102,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { updateKeyFilter(); } catch (Throwable t) { Log.e(TAG, "key filter failed", t); }
+        try { updateMotion(); } catch (Throwable t) { Log.e(TAG, "motion failed", t); }
         try { startRadioGuard(); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); }
         try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
@@ -123,6 +124,7 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
+            if (key != null && key.startsWith("unlock_m_")) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
             if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
         }
@@ -273,6 +275,11 @@ public class TjAccessibilityService extends AccessibilityService {
         return Features.get(this, m.prefKey(), m.defaultOn);
     }
 
+    /** The stored switches (no fallback): the fallback to double erase lives in {@link UnlockMethods#selected}. */
+    private final UnlockMethods.Enabled storedEnabled = new UnlockMethods.Enabled() {
+        @Override public boolean on(UnlockMethods.Method m) { return Features.get(TjAccessibilityService.this, m.prefKey(), m.defaultOn); }
+    };
+
     private void ensureUnlockListener() {
         if (!listenerSet.compareAndSet(false, true)) return;
         unlock.setListener(new UnlockMethods.Listener() {
@@ -317,20 +324,21 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     @Override protected boolean onKeyEvent(android.view.KeyEvent ev) {
         try {
-            if (ev == null || ev.getAction() != android.view.KeyEvent.ACTION_DOWN || ev.getRepeatCount() != 0) return false;
+            if (ev == null || ev.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
+            int rc = ev.getRepeatCount();
             int code = ev.getKeyCode();
             boolean vol = code == android.view.KeyEvent.KEYCODE_VOLUME_UP || code == android.view.KeyEvent.KEYCODE_VOLUME_DOWN;
             if (!vol && code != android.view.KeyEvent.KEYCODE_BACK) return false;
             long now = System.currentTimeMillis();
             android.content.Context app = getApplicationContext();
-            Log.i(TAG, "KEY " + (code == android.view.KeyEvent.KEYCODE_BACK ? "back" : code == android.view.KeyEvent.KEYCODE_VOLUME_UP ? "vol-up" : "vol-down") + " locked=" + keyguardLocked() + " custom=" + Mode.isCustom(app));   // only Back / volume keys are ever looked at
+            if (rc == 0) Log.i(TAG, "KEY " + (code == android.view.KeyEvent.KEYCODE_BACK ? "back" : code == android.view.KeyEvent.KEYCODE_VOLUME_UP ? "vol-up" : "vol-down") + " locked=" + keyguardLocked() + " custom=" + Mode.isCustom(app));   // only Back / volume keys are ever looked at
             if (keyguardLocked()) {
-                if (vol && (methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE))) {
-                    ensureUnlockListener();
-                    unlock.onVolume(code == android.view.KeyEvent.KEYCODE_VOLUME_UP, now);
-                }
+                ensureUnlockListener();
+                if (rc == 0 && vol && (methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE))) unlock.onVolume(code == android.view.KeyEvent.KEYCODE_VOLUME_UP, now);
+                unlock.onHwKey(code, rc, now);      // O1: both-volume, ping-pong, hold-then-tap, three Backs + Volume Up
                 return false;
             }
+            if (rc != 0) return false;
             if (Mode.isCustom(app)) {
                 if (FailsafeKeys.konami(app) && konami.onKey(code, now)) { buzz(); ProfileSession.goToQuickstep(app, "Konami key code"); }
             } else {
@@ -353,7 +361,7 @@ public class TjAccessibilityService extends AccessibilityService {
             android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
             if (info == null) return;
             android.content.Context app = getApplicationContext();
-            boolean want = methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE)
+            boolean want = UnlockMethods.needsKeys(storedEnabled)
                     || (Mode.isCustom(app) ? FailsafeKeys.konami(app) : ReturnMethods.needsKeys(app));
             boolean has = (info.flags & android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) != 0;
             Log.i(TAG, "key filter want=" + want + " has=" + has + " custom=" + Mode.isCustom(app));
@@ -663,9 +671,12 @@ public class TjAccessibilityService extends AccessibilityService {
             String act = i == null ? null : i.getAction();
             long t = System.currentTimeMillis();
             ensureUnlockListener();
-            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; flurryChange(false, t); }
-            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); flurryChange(true, t); }
-            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) handler.post(unlockApply);
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion(); }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); flurryChange(true, t); updateMotion(); }
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.post(unlockApply); updateMotion(); }
+            if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
+                try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
+            }
         }
     };
 
@@ -675,6 +686,8 @@ public class TjAccessibilityService extends AccessibilityService {
             f.addAction(android.content.Intent.ACTION_SCREEN_ON);
             f.addAction(android.content.Intent.ACTION_SCREEN_OFF);
             f.addAction(android.content.Intent.ACTION_USER_PRESENT);
+            f.addAction(android.content.Intent.ACTION_POWER_CONNECTED);
+            f.addAction(android.content.Intent.ACTION_POWER_DISCONNECTED);
             registerReceiver(lockReceiver, f);
             lockReceiverOn = true;
         }
@@ -949,6 +962,51 @@ public class TjAccessibilityService extends AccessibilityService {
                 + (probeSamples.isEmpty() ? "\nNOTHING readable: the game draws its cards itself, so a card-move code cannot be read (use the hotspot or the key code)." : "\nreadable samples (class|id|description|text):\n" + android.text.TextUtils.join("\n", probeSamples)));
     }
 
+    // ---------------------------------------------------------------- O1: rotation twirl + shake / knock (accelerometer, only while the lock screen is up and one of them is selected)
+    private int lastOrientation = -1;
+
+    @Override public void onConfigurationChanged(android.content.res.Configuration c) {
+        super.onConfigurationChanged(c);
+        try {
+            int o = c == null ? -1 : c.orientation;
+            boolean first = lastOrientation == -1;
+            if (o != lastOrientation) {
+                lastOrientation = o;
+                if (!first && keyguardLocked()) { ensureUnlockListener(); unlock.onRotation(System.currentTimeMillis()); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "rotation event failed", t); }
+    }
+
+    private final MotionDetector motion = new MotionDetector();
+    private boolean motionOn = false;
+    private final android.hardware.SensorEventListener sensorListener = new android.hardware.SensorEventListener() {
+        @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+            try {
+                MotionDetector.Kind k = motion.onSample(e.values[0], e.values[1], e.values[2], e.timestamp / 1_000_000L);
+                if (k == MotionDetector.Kind.NONE) return;
+                ensureUnlockListener();
+                unlock.onMotion(k == MotionDetector.Kind.SHAKE ? UnlockMethods.Method.SHAKE : UnlockMethods.Method.KNOCK, System.currentTimeMillis());
+            } catch (Throwable t) { Log.e(TAG, "motion sample failed", t); }
+        }
+        @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) { }
+    };
+
+    /** The accelerometer is read ONLY while the lock screen is showing with the screen on and Triple shake / Double knock is selected; unregistered otherwise (no battery cost). */
+    private void updateMotion() {
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            boolean want = UnlockMethods.needsMotion(storedEnabled) && keyguardLocked() && pm != null && pm.isInteractive();
+            android.hardware.SensorManager sm = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE);
+            if (sm == null) return;
+            if (want && !motionOn) {
+                android.hardware.Sensor a = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER);
+                if (a != null) { motion.reset(); sm.registerListener(sensorListener, a, android.hardware.SensorManager.SENSOR_DELAY_GAME); motionOn = true; Log.i(TAG, "MOTION sensor on"); }
+            } else if (!want && motionOn) {
+                sm.unregisterListener(sensorListener); motionOn = false; Log.i(TAG, "MOTION sensor off");
+            }
+        } catch (Throwable t) { Log.e(TAG, "motion sensor update failed", t); }
+    }
+
     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
     private final long[] radioHist = new long[3];
     private int radioIdx = 0;
@@ -993,7 +1051,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
     @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); super.onDestroy(); }
 
