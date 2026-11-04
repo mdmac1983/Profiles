@@ -832,8 +832,8 @@ if [ "$#" -ge 4 ]; then
     FREE="$(( $3 - $1 ))x$(( $(echo $FULL | cut -d' ' -f4) - $4 - 2 ))+$1+$(( $4 + 2 ))"
     MAEF="$(compare -metric MAE -extract "$FREE" "$OUT/82-lock-menu-open.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
     echo "menu open: the freed slot $FREE vs the bare lock wallpaper: MAE $MAEF" | tee "$OUT/v-diff-open.txt"
-    set -- $FULL
-    RING="30x$(( $4 - $2 ))+$(( $1 - 32 ))+$2"
+    FL=$(echo $FULL | cut -d' ' -f1); FT=$(echo $FULL | cut -d' ' -f2); FB=$(echo $FULL | cut -d' ' -f4)    # (not "set --": the checks below still need the card's numbers in $1..$4)
+    RING="30x$(( FB - FT ))+$(( FL - 32 ))+$FT"
     MAER="$(compare -metric MAE -extract "$RING" "$OUT/82-lock-menu-open.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
     info "V2: next to the patch (strip $RING, outside it) the screen with the menu open differs from the closed lock screen by MAE $MAER (0 = the menu does not dim the surroundings)"
     check "V2: the part of the old menu below our short card shows exactly the lock wallpaper (MAE < 0.5 %)" awk -v m="$MAEF" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
