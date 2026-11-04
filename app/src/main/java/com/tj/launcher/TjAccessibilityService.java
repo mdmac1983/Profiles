@@ -55,6 +55,7 @@ public class TjAccessibilityService extends AccessibilityService {
         scheduleLayerRefresh();
         schedulePencil(event);
         trackDirty(event);
+        trackUnlockKey(event);
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -246,6 +247,53 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "PATCH removed");
     }
 
+    // ---------------------------------------------------------------- E1: unlock-time launcher choice (opt-in). Watches WHICH TYPE of PIN-pad key is tapped (by view id), never which digit.
+    private final UnlockPick.Token unlockToken = new UnlockPick.Token();
+    private final Runnable unlockApply = new Runnable() { @Override public void run() { applyUnlockChoice(); } };
+
+    private void trackUnlockKey(AccessibilityEvent e) {
+        try {
+            if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
+            if (!Features.get(this, UnlockPick.KEY, false)) return;
+            CharSequence pkg = e.getPackageName();
+            if (pkg == null || !"com.android.systemui".contentEquals(pkg)) return;
+            KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            if (km == null || !km.isKeyguardLocked()) return;
+            AccessibilityNodeInfo n = e.getSource();
+            UnlockPick.Key k = null;
+            for (int i = 0; i < 3 && n != null && k == null; i++) { k = UnlockPick.classify(n.getViewIdResourceName()); n = n.getParent(); }   // ids only: nothing else of the key is read
+            if (k == null) return;
+            if (k == UnlockPick.Key.ENTER) { unlockToken.onEnter(System.currentTimeMillis()); Log.i(TAG, "UNLOCKPICK enter tapped"); }
+            else unlockToken.onKey(k);
+        } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
+    }
+
+    /** The unlock succeeded (USER_PRESENT): token given = Quickstep, otherwise the custom launcher. Only acts after the lock screen is already gone. */
+    private void applyUnlockChoice() {
+        try {
+            if (!Features.get(this, UnlockPick.KEY, false)) return;
+            boolean quickstep = unlockToken.consume(System.currentTimeMillis());
+            unlockToken.reset();
+            android.content.Context app = getApplicationContext();
+            String when = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
+            if (quickstep) {
+                if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
+                performGlobalAction(GLOBAL_ACTION_HOME);   // the router answers with the stock launcher
+                Features.setString(this, UnlockPick.LAST_KEY, when + "  Quickstep (token given)");
+                Log.i(TAG, "UNLOCKPICK quickstep");
+            } else {
+                if (!Mode.isCustom(app)) {
+                    CrashGuard.clearTripped(app);
+                    Mode.set(app, Mode.CUSTOM);
+                    performGlobalAction(GLOBAL_ACTION_HOME);
+                    ReturnReset.run(app);   // coming back to the custom launcher closes what Quickstep opened (D5)
+                }
+                Features.setString(this, UnlockPick.LAST_KEY, when + "  custom launcher (plain unlock)");
+                Log.i(TAG, "UNLOCKPICK custom");
+            }
+        } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
+    }
+
     // ---------------------------------------------------------------- B4: has another app been opened since Recents was last cleared?
     private void trackDirty(AccessibilityEvent e) {
         try {
@@ -411,6 +459,9 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
             handler.post(lockEval); handler.postDelayed(lockEval, 400);
             handler.post(layerRefresh);
+            String act = i == null ? null : i.getAction();
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) unlockToken.reset();
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) handler.post(unlockApply);
         }
     };
 

@@ -142,6 +142,9 @@ public class ControlActivity extends Activity {
             Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); rebuild();
         }});
 
+        toggle("Choose the launcher when I unlock", "Tap DELETE TWICE on the empty PIN pad, then type your normal PIN = Quickstep. A plain PIN = custom launcher. Never reads your digits (it only sees which TYPE of key was tapped).", Features.get(this, UnlockPick.KEY, false), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, UnlockPick.KEY, v); } });
+        if (Features.get(this, UnlockPick.KEY, false)) note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
+
         section("Quick settings");
         toggle("Hide and disable the pencil (Edit)", "A white cover over the pencil while the panel is open.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
@@ -165,7 +168,7 @@ public class ControlActivity extends Activity {
                     } }).setNegativeButton("Cancel", null).show();
         }});
         note("Stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")"
-                + "\nSide key seen by the helper: " + Features.getString(this, TjAccessibilityService.PWR_COUNT_KEY, "0") + " times (Android normally never passes it on)"
+
                 + "\nWill open: " + describeTarget());
         if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
     }
