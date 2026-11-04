@@ -37,7 +37,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -670,6 +670,27 @@ info "S8 settings that mention power / tiles / zen / policy: $(cat $OUT/s-secure
 adb shell getprop ro.build.fingerprint > "$OUT/s-build.txt" 2>&1; adb shell getprop ro.lineage.version >> "$OUT/s-build.txt" 2>&1
 setfeat; setmode custom; home
 fi # section s
+if want p; then # section p
+# ---- R3 RESEARCH (informational only): can adb alone hide the quick-settings pencil (and gear) with NO delay? Android's own QS footer hides them when the device is in "demo mode" (Settings.Global device_demo_mode).
+beat "before P"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+setfeat; setmode quickstep; home; sleep 2
+pdump(){ adb shell uiautomator dump /sdcard/tjp.xml >/dev/null 2>&1; adb shell cat /sdcard/tjp.xml 2>/dev/null | tr '>' '\n' > "$OUT/p-$1.xml"; echo "edit(pencil) nodes: $(grep -c 'resource-id="android:id/edit"' $OUT/p-$1.xml) visible-bounds: $(grep 'resource-id="android:id/edit"' $OUT/p-$1.xml | grep -o 'bounds="[^"]*"' | head -1); settings_button nodes: $(grep -c 'settings_button' $OUT/p-$1.xml); user switch nodes: $(grep -c 'multi_user' $OUT/p-$1.xml)"; }
+adb shell cmd statusbar expand-settings; sleep 3
+info "P1 baseline (device_demo_mode=$(adb shell settings get global device_demo_mode | tr -d '\r\n')): $(pdump base)"; shot 73-qs-baseline
+adb shell cmd statusbar collapse; sleep 1.5
+adb shell settings put global device_demo_mode 1 > "$OUT/p-demo-put.txt" 2>&1; sleep 2
+adb shell cmd statusbar expand-settings; sleep 3
+info "P2 with device_demo_mode=1 -> [$(tr '\n' ' ' < $OUT/p-demo-put.txt)]: $(pdump demo)"; shot 74-qs-demomode
+adb shell cmd statusbar collapse; sleep 1.5
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 75-power-menu-demomode
+adb shell uiautomator dump /sdcard/tjp2.xml >/dev/null 2>&1; info "P3 power menu in demo mode: $(adb shell cat /sdcard/tjp2.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot|Emergency|Lockdown)"' | tr '\n' ' ')"
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell settings put global device_demo_mode 0 >/dev/null 2>&1; sleep 1
+info "P4 statusbar commands on this Android: $(adb shell cmd statusbar help 2>&1 | grep -oE '^  [a-z-]+' | tr -d ' ' | tr '\n' ' ' | head -c 300)"
+info "P5 system services the shell user can see: $(adb shell service list 2>/dev/null | grep -oE '(statusbar|activity_task|input|window|overlay|notification|user)[^ :]*' | sort -u | tr '\n' ' ' | head -c 300)"
+setfeat; setmode custom; home
+fi # section p
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
