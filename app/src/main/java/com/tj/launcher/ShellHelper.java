@@ -15,26 +15,54 @@ public final class ShellHelper {
 
     public static boolean enabled(android.content.Context c) { return Features.get(c, KEY, true); }
 
+    /** Why the last attempt failed (shown in the log / Control), e.g. "unix: Permission denied; tcp: Connection refused". */
+    public static volatile String lastError = "";
+
+    private static String talk(java.io.InputStream is, java.io.OutputStream os, String line) throws java.io.IOException {
+        PrintWriter w = new PrintWriter(new OutputStreamWriter(os), true);
+        w.println(line);
+        return new BufferedReader(new InputStreamReader(is)).readLine();
+    }
+
     private static String ask(String line, int timeoutMs) {
+        StringBuilder err = new StringBuilder();
         LocalSocket s = new LocalSocket();
         try {
             s.connect(new LocalSocketAddress(ShellProtocol.SOCKET, LocalSocketAddress.Namespace.ABSTRACT));
             s.setSoTimeout(timeoutMs);
-            PrintWriter w = new PrintWriter(new OutputStreamWriter(s.getOutputStream()), true);
-            w.println(line);
-            BufferedReader r = new BufferedReader(new InputStreamReader(s.getInputStream()));
-            return r.readLine();
+            String r = talk(s.getInputStream(), s.getOutputStream(), line);
+            if (r != null) { lastError = ""; return r; }
+            err.append("unix: no answer; ");
         } catch (Throwable t) {
-            return null;
+            err.append("unix: ").append(t.getMessage()).append("; ");
         } finally {
             try { s.close(); } catch (Throwable ignored) { }
         }
+        for (int port = ShellProtocol.TCP_PORT_FIRST; port <= ShellProtocol.TCP_PORT_LAST; port++) {
+            java.net.Socket t = new java.net.Socket();
+            try {
+                t.connect(new java.net.InetSocketAddress("127.0.0.1", port), 300);
+                t.setSoTimeout(timeoutMs);
+                String r = talk(t.getInputStream(), t.getOutputStream(), line);
+                if (r != null && r.startsWith("OK")) { lastError = ""; return r; }
+                err.append("tcp ").append(port).append(": ").append(r).append("; ");
+            } catch (Throwable e) {
+                err.append("tcp ").append(port).append(": ").append(e.getMessage()).append("; ");
+                if (e instanceof java.net.ConnectException) break;   // nothing listening on the first port: no helper
+            } finally {
+                try { t.close(); } catch (Throwable ignored) { }
+            }
+        }
+        lastError = err.toString();
+        return null;
     }
 
     /** Is the shell helper running right now? (a refused connection fails at once, so this is cheap) */
     public static boolean running() {
-        String r = ask("PING", 500);
-        return r != null && r.startsWith("OK");
+        String r = ask("PING", 1500);
+        boolean up = r != null && r.startsWith("OK");
+        if (!up) android.util.Log.i("TjReset", "shell helper not reachable: " + lastError);
+        return up;
     }
 
     /** Force-stops the packages (the helper re-checks its deny-list). @return how many it stopped, or -1 if the helper could not be reached. Blocking: call off the main thread. */

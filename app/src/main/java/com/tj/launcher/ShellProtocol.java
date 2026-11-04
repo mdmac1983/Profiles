@@ -16,6 +16,8 @@ public final class ShellProtocol {
     public static final String SOCKET = "tj_shell_helper";
     public static final String SELF = "com.tj.launcher", STOCK = "com.android.launcher3";
     public static final int MAX_PACKAGES = 40;
+    /** Fallback transport: loopback TCP (an app may be refused a shell-owned abstract socket by SELinux; loopback TCP is allowed). First free port of this range wins. */
+    public static final int TCP_PORT_FIRST = 47631, TCP_PORT_LAST = 47635;
     private static final Pattern NAME = Pattern.compile("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$");
 
     private ShellProtocol() {}
@@ -52,6 +54,29 @@ public final class ShellProtocol {
             }
         }
         return -1;
+    }
+
+    /**
+     * The uid that owns the CLIENT end of a loopback TCP connection, read from the text of /proc/net/tcp or /proc/net/tcp6 (only the shell user may read those on Android 10): the row whose
+     * local port is the client's port and whose remote port is the server's port. -1 if there is no such row.
+     */
+    public static int uidForPorts(String procNetTcp, int clientPort, int serverPort) {
+        if (procNetTcp == null) return -1;
+        for (String l : procNetTcp.split("\n")) {
+            String[] f = l.trim().split("\\s+");
+            if (f.length < 8) continue;
+            int lp = portOf(f[1]), rp = portOf(f[2]);
+            if (lp == clientPort && rp == serverPort) {
+                try { return Integer.parseInt(f[7]); } catch (NumberFormatException ignored) { }
+            }
+        }
+        return -1;
+    }
+
+    private static int portOf(String addr) {
+        int i = addr == null ? -1 : addr.lastIndexOf(':');
+        if (i < 0) return -1;
+        try { return Integer.parseInt(addr.substring(i + 1), 16); } catch (NumberFormatException e) { return -1; }
     }
 
     /** The one adb line that starts the helper (single quotes: the DEVICE shell expands the $(...)). */

@@ -397,29 +397,29 @@ setmode custom; home
 # ---- N4 / N5: ways back to custom, the master failsafe, and the lock-screen profile switch (v0.4.0)
 beat "before N"
 # `adb shell input keyevent` is INJECTED and bypasses the accessibility key filter, so hardware keys are sent through the emulator console (a real input device) instead.
-ekey(){ for c in "$@"; do adb emu event send "EV_KEY:$c:1" "EV_SYN:SYN_REPORT:0" "EV_KEY:$c:0" "EV_SYN:SYN_REPORT:0" >> "$OUT/n-emu-keys.txt" 2>&1; sleep 0.45; done; }
+ekey(){ for c in "$@"; do adb emu event send "EV_KEY:$c:1" "EV_SYN:0:0" "EV_KEY:$c:0" "EV_SYN:0:0" >> "$OUT/n-emu-keys.txt" 2>&1; sleep 0.45; done; }
 setfeat2(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 setfeat; setmode quickstep; rebind; home; sleep 2
 adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" > "$OUT/n4-icon-start.txt" 2>&1; sleep 5
 getmode > "$OUT/n4-icon-mode.txt"
 check "N4: the Back-to-custom icon switches Quickstep to custom" grep -q custom "$OUT/n4-icon-mode.txt"
 adb logcat -d -s TjA11y:I | grep "key filter" > "$OUT/n5-keyfilter-log.txt" 2>&1
-check "N5: the helper switched its key filter ON (capability accepted)" grep -q "key filter ON" "$OUT/n5-keyfilter-log.txt"
-ekey KEY_VOLUMEUP > /dev/null; sleep 1
+check "N5: the helper asked for the key filter (want=true in Quickstep with the volume code on)" grep -q "key filter want=true" "$OUT/n5-keyfilter-log.txt"
+ekey 115 > /dev/null; sleep 1
 if grep -qiE '^KO|error|unknown' "$OUT/n-emu-keys.txt" 2>/dev/null; then
   info "N4/N5: the emulator console could not send hardware key events ($(head -c 120 $OUT/n-emu-keys.txt | tr '\n' ' ')); key-code checks skipped"
 else
   setfeat; setmode quickstep; rebind; home; sleep 2
-  ekey KEY_VOLUMEDOWN KEY_VOLUMEDOWN KEY_VOLUMEUP KEY_VOLUMEUP; sleep 5
+  ekey 114 114 115 115; sleep 5
   getmode > "$OUT/n4-volcode-mode.txt"
   check "N4: the volume code (Down, Down, Up, Up) switches Quickstep to custom" grep -q custom "$OUT/n4-volcode-mode.txt"
   setfeat; setmode custom; rebind; home; sleep 2
-  ekey KEY_VOLUMEUP KEY_VOLUMEUP KEY_VOLUMEDOWN KEY_VOLUMEDOWN KEY_BACK KEY_BACK KEY_VOLUMEUP KEY_VOLUMEDOWN; sleep 4
+  ekey 115 115 114 114 158 158 115 114; sleep 4
   getmode > "$OUT/n5-konami-mode.txt"; resumed > "$OUT/n5-konami-resumed.txt"
   check "N5: the Konami key code switches the custom launcher to Quickstep (master failsafe)" grep -q quickstep "$OUT/n5-konami-mode.txt"
   check "N5: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n5-konami-resumed.txt"
   setfeat; setmode custom; rebind; home; sleep 2
-  ekey KEY_VOLUMEUP KEY_VOLUMEUP KEY_VOLUMEDOWN KEY_VOLUMEDOWN; sleep 2
+  ekey 115 115 114 114; sleep 2
   getmode > "$OUT/n5-half-mode.txt"
   check "N5: half of the key code does nothing" grep -q custom "$OUT/n5-half-mode.txt"
 fi
@@ -487,7 +487,7 @@ if [ "$#" -ge 4 ]; then
   X=$(( ($1 + $3) / 2 )); Y=$(( $2 + ($4 - $2) * 3 / 4 ))
   echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
   adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|com.tj.launcher|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
-  adb shell input tap $X $Y; sleep 2
+  adb shell input tap $X $Y; sleep 0.6   # the tap REBOOTS the emulator: read the log before the device goes away
   adb logcat -d -s TjA11y:I > "$OUT/tja11y-full.txt" 2>&1
   grep "press" "$OUT/tja11y-full.txt" >> "$OUT/press-restart.txt"
   adb shell dumpsys input 2>/dev/null | grep -iE 'TjA11y|com.tj.launcher|ActionsDialog' | head -8 >> "$OUT/press-restart.txt"

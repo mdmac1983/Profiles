@@ -47,4 +47,15 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.START_ONE_LINER.contains("adb shell '"));
         assertTrue(ShellProtocol.START_ONE_LINER.contains("com.tj.launcher.ShellServer"));
     }
+    @Test public void readsTheClientUidFromProcNetTcp() {
+        String t = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n"
+                 + "   0: 0100007F:B84F 0100007F:2CCF 01 00000000:00000000 00:00000000 00000000 10123        0 4711 1 0000000000000000 20 4 30 10 -1\n"
+                 + "   1: 0100007F:2CCF 0100007F:B84F 01 00000000:00000000 00:00000000 00000000  2000        0 4712 1 0000000000000000 20 4 30 10 -1\n";
+        // client port 0xB84F = 47183, server port 0x2CCF = 11471
+        assertEquals(10123, ShellProtocol.uidForPorts(t, 0xB84F, 0x2CCF));
+        assertEquals(-1, ShellProtocol.uidForPorts(t, 1234, 0x2CCF));
+        assertEquals(-1, ShellProtocol.uidForPorts(null, 1, 2));
+        assertEquals(-1, ShellProtocol.uidForPorts("garbage", 1, 2));
+    }
+    @Test public void tcpPortRangeIsSmall() { assertTrue(ShellProtocol.TCP_PORT_LAST - ShellProtocol.TCP_PORT_FIRST <= 5); }
 }

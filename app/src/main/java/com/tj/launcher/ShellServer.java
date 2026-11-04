@@ -21,34 +21,76 @@ public final class ShellServer {
     public static void main(String[] args) throws Exception {
         final int appUid = lookupUid();
         if (appUid < 0) { System.out.println("tj-shell: cannot find the uid of " + ShellProtocol.SELF + " (is it installed?)"); return; }
-        LocalServerSocket server;
-        try { server = new LocalServerSocket(ShellProtocol.SOCKET); }
-        catch (java.io.IOException e) { System.out.println("tj-shell: already running (" + e.getMessage() + ")"); return; }
-        System.out.println("tj-shell: up for uid " + appUid);
+        boolean any = false;
+        try {
+            final LocalServerSocket server = new LocalServerSocket(ShellProtocol.SOCKET);
+            any = true;
+            System.out.println("tj-shell: unix socket up for uid " + appUid);
+            new Thread(new Runnable() { @Override public void run() {
+                try { while (true) { final LocalSocket c = server.accept(); new Thread(new Runnable() { @Override public void run() { serveUnix(c, appUid); } }, "tj-shell-conn").start(); } }
+                catch (Throwable t) { System.out.println("tj-shell: unix accept ended: " + t); }
+            } }, "tj-shell-unix").start();
+        } catch (java.io.IOException e) { System.out.println("tj-shell: unix socket not available (" + e.getMessage() + ")"); }
+        java.net.ServerSocket tcp = null;
+        for (int port = ShellProtocol.TCP_PORT_FIRST; port <= ShellProtocol.TCP_PORT_LAST && tcp == null; port++) {
+            try { tcp = new java.net.ServerSocket(port, 4, java.net.InetAddress.getByName("127.0.0.1")); } catch (java.io.IOException ignored) { }
+        }
+        if (tcp != null) { any = true; System.out.println("tj-shell: tcp up on 127.0.0.1:" + tcp.getLocalPort()); }
+        if (!any) { System.out.println("tj-shell: nothing to listen on (already running?)"); return; }
+        if (tcp == null) { Thread.sleep(Long.MAX_VALUE); return; }
         while (true) {
-            final LocalSocket c = server.accept();
-            new Thread(new Runnable() { @Override public void run() { serve(c, appUid); } }, "tj-shell-conn").start();
+            final java.net.Socket c = tcp.accept();
+            final int sport = tcp.getLocalPort();
+            new Thread(new Runnable() { @Override public void run() { serveTcp(c, appUid, sport); } }, "tj-shell-tcp").start();
         }
     }
 
-    private static void serve(LocalSocket c, int appUid) {
+    private static void serveUnix(LocalSocket c, int appUid) {
         try {
             c.setSoTimeout(5000);
             int peer = c.getPeerCredentials().getUid();
-            PrintWriter out = new PrintWriter(new OutputStreamWriter(c.getOutputStream()), true);
-            if (peer != appUid) { out.println("ERR denied"); return; }
-            BufferedReader in = new BufferedReader(new InputStreamReader(c.getInputStream()));
-            String line = in.readLine();
-            if (ShellProtocol.isPing(line)) { out.println("OK tj-shell 1"); return; }
-            if (ShellProtocol.isQuit(line)) { out.println("OK"); out.flush(); System.exit(0); return; }
-            List<String> pkgs = ShellProtocol.forceStopTargets(line);
-            if (pkgs == null) { out.println("ERR unknown command"); return; }
-            out.println("OK " + forceStop(pkgs));
+            handle(c.getInputStream(), c.getOutputStream(), peer == appUid);
         } catch (Throwable t) {
-            System.out.println("tj-shell: connection failed: " + t);
+            System.out.println("tj-shell: unix connection failed: " + t);
         } finally {
             try { c.close(); } catch (Throwable ignored) { }
         }
+    }
+
+    /** Loopback TCP has no peer-credential call; the owner uid of the client socket is read from /proc/net/tcp(6), which only the shell user can read on Android 10. */
+    private static void serveTcp(java.net.Socket c, int appUid, int serverPort) {
+        try {
+            c.setSoTimeout(5000);
+            int uid = ShellProtocol.uidForPorts(readFile("/proc/net/tcp") + "\n" + readFile("/proc/net/tcp6"), c.getPort(), serverPort);
+            handle(c.getInputStream(), c.getOutputStream(), uid == appUid);
+        } catch (Throwable t) {
+            System.out.println("tj-shell: tcp connection failed: " + t);
+        } finally {
+            try { c.close(); } catch (Throwable ignored) { }
+        }
+    }
+
+    private static String readFile(String path) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            BufferedReader r = new BufferedReader(new java.io.FileReader(path));
+            String l;
+            while ((l = r.readLine()) != null) sb.append(l).append('\n');
+            r.close();
+            return sb.toString();
+        } catch (Throwable t) { return ""; }
+    }
+
+    private static void handle(java.io.InputStream is, java.io.OutputStream os, boolean authorised) throws Exception {
+        PrintWriter out = new PrintWriter(new OutputStreamWriter(os), true);
+        if (!authorised) { out.println("ERR denied"); return; }
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+        String line = in.readLine();
+        if (ShellProtocol.isPing(line)) { out.println("OK tj-shell 1"); return; }
+        if (ShellProtocol.isQuit(line)) { out.println("OK"); out.flush(); System.exit(0); return; }
+        List<String> pkgs = ShellProtocol.forceStopTargets(line);
+        if (pkgs == null) { out.println("ERR unknown command"); return; }
+        out.println("OK " + forceStop(pkgs));
     }
 
     /** `am force-stop` for each package, three at a time (each `am` is a small JVM start; the last cost is ~1 s on a slow tablet). */
