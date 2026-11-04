@@ -380,3 +380,15 @@ Also include several different options for going from quickstep to the custom la
 
 I need some master failsafe plan in case the lock screen accessibility method to get into quickstep doesn't work. I need to always be able to get to quickstep no matter what, but in such a way that it is highly unlikely for someone to accidentally access it. What about a certain card move combination in the custom launcher solitaire game? Think of a good creative way or ways to do so, using accessibility service or anything else
 ```
+
+## 2026-11-04T06:09:52Z
+```
+You said
+The first plain unlock after Quickstep still has to close Quickstep's apps and clear notifications. That sits under a black cover that goes up when you tap Enter. It can't be fully invisible without adb, because the Recents screen and the notification shade can't be opened above the lock screen.
+
+So make an option in the launcher settings to make it totally invisible once i have the adb commands entered.
+
+2) does this entire system survive a tablet restart?
+
+3) how plausible is it to make the custom launcher "profile" look and behave like its own profile, with its own functional recents list separate from quickstep, its own settings menu, its own notifications and quick settings tiles, etc? If this can be done, the solitaire on unlock is not necessary, i just want the custom launcher to look stock and plain with minimal features
+```
