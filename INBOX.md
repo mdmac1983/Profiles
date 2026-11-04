@@ -300,3 +300,14 @@ send me the v0.3.3 release link when it's built
 6) research if it is possible to have separate notification panels and quick settings tiles depending on the active launcher
 7) tell me the adb command to uninstall or disable the "browser" app (com.android.browser) from lineageos. i cant uninstall or disable it without adb. would it break anything if i disable or uninstall it?
 ```
+
+## 2026-11-04T01:50:55Z
+```
+the permanent wallpaper overlay hiding the power menu worked, but it currently is overlaying the wrong section of the wallpaper, and it is also covering other apps.
+
+1) figure out if there is a way to always have a permanent overlay of what is already showing on the screen at all times except the stock power menu, so the stock power menu is always hidden behind a clone of what is already on the screen at that time, whether wallpaper or an app. the wallpaper clone wont work if im in solitaire because it shows a patch of wallpaper over the solitaire app, plus any movement on the screen such as the app drawer animation reveals the wallpaper patch, the overlay must be a live copy of the screen below
+2) improve and organize the ui of the launcher settings. right now i cant tell what is on or off. make toggles and improve the overall settings ui intuitively
+3) think of any other ways accessibility service can be used to hide the power menu without the short delay, or if there is a way to make the delay so fast that i cant see the stock power menu
+4) the disappearing pencil works, but is there a way to make it permanent or faster so the pencil never shows?
+5) if possible, make it so any apps i open using the custom launcher can stay in the recents list as normal and disappear when closed(normal behavior), but any app that i open using quickstep launcher never shows up at any time in the custom launcher's recents list (they may stay in the recents list for quickstep). Basically, keep the two launchers' recents lists functional but separate
+```
