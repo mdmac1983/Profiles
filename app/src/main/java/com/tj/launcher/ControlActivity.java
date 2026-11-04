@@ -34,6 +34,7 @@ import java.util.Set;
  */
 public class ControlActivity extends Activity {
     private static final int ACCENT = Color.parseColor("#00796B"), INK = Color.parseColor("#202124"), MUTED = Color.parseColor("#5F6368"), CARD = Color.parseColor("#F1F3F4");
+    private boolean unlockOpen = false;    // the lock-screen method drop-down
     private LinearLayout page;
     private ScrollView scroll;
     private float dp;
@@ -144,15 +145,40 @@ public class ControlActivity extends Activity {
         page.addView(nbtns);
 
         section("Unlock into Quickstep (secret handshakes)");
-        note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of these handshakes, done on the lock screen BEFORE the PIN. Any one that is switched on works. At least one always stays on, so you can never lock yourself out. Which digits you type is never read.");
-        boolean anyOn = false;
-        for (UnlockMethods.Method m : UnlockMethods.Method.values()) if (Features.get(this, m.prefKey(), m.defaultOn)) anyOn = true;
-        for (final UnlockMethods.Method m : UnlockMethods.Method.values()) {
-            boolean shownOn = anyOn ? Features.get(this, m.prefKey(), m.defaultOn) : m == UnlockMethods.Method.ERASE2;
-            toggle(m.title, m.how, shownOn, new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
+        note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of the handshakes you SELECT below, done on the lock screen BEFORE the PIN. Select as many as you like; at least one always stays selected, so you can never lock yourself out. Which digits you type is never read.");
+        final UnlockMethods.Enabled stored = new UnlockMethods.Enabled() { @Override public boolean on(UnlockMethods.Method m) { return Features.get(ControlActivity.this, m.prefKey(), m.defaultOn); } };
+        final java.util.List<UnlockMethods.Method> chosen = UnlockMethods.selected(stored);
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < chosen.size(); i++) { if (i == 2 && chosen.size() > 3) { names.append(", +").append(chosen.size() - 2).append(" more"); break; } if (i > 0) names.append(", "); names.append(chosen.get(i).title); }
+        // the drop-down: a field that opens / closes the list of methods
+        LinearLayout dd = row();
+        dd.setBackground(fieldBackground());
+        LinearLayout ddText = new LinearLayout(this);
+        ddText.setOrientation(LinearLayout.VERTICAL);
+        ddText.addView(text("Lock-screen methods: " + chosen.size() + " of " + UnlockMethods.Method.values().length + " selected", 16, INK, true));
+        ddText.addView(text(names.toString(), 13, MUTED, false));
+        dd.addView(ddText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        dd.addView(text(unlockOpen ? "^" : "v", 22, ACCENT, true));
+        dd.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { unlockOpen = !unlockOpen; rebuild(); } });
+        page.addView(dd);
+        if (unlockOpen) {
+            for (final UnlockMethods.Method m : UnlockMethods.Method.values()) {
+                boolean on = chosen.contains(m);
+                toggle(m.title, m.how, on, new Chg() { public void on(boolean v) {
+                    Features.set(ControlActivity.this, m.prefKey(), v);
+                    if (!v) {
+                        boolean any = false;
+                        for (UnlockMethods.Method x : UnlockMethods.Method.values()) if (stored.on(x)) any = true;
+                        if (!any) {   // the last one was just switched off: put it back
+                            Features.set(ControlActivity.this, m.prefKey(), true);
+                            android.widget.Toast.makeText(ControlActivity.this, "At least one method must stay selected", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                } });
+            }
         }
         toggle("Buzz when a handshake is accepted", "A 40 ms vibration so you know it counted.", ProfileSession.buzz(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.BUZZ_KEY, v); } });
-        note("Volume code and Volume Up + double erase need the helper's key-event access (the helper asks for it only while one of them is on; turn the helper off and on once after switching one on).");
+        note("The volume / Back methods need the helper's key-event access (it asks for it only while one of them is selected; turn the helper off and on once after selecting one). Shake and knock read the accelerometer only while the lock screen is showing.");
         note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)") + "\nLast lock-screen switch: " + Features.getString(this, ProfileSession.PREARM_REPORT_KEY, "(none yet)"));
 
         section("Two profiles (custom launcher / Quickstep)");
@@ -253,6 +279,12 @@ public class ControlActivity extends Activity {
         View line = new View(this);
         line.setBackgroundColor(Color.parseColor("#DADCE0"));
         page.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+    }
+
+    private GradientDrawable fieldBackground() {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(Color.WHITE); g.setStroke(px(2), ACCENT); g.setCornerRadius(px(8));
+        return g;
     }
 
     private LinearLayout card() {
