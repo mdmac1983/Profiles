@@ -88,3 +88,17 @@ adb shell pm install-existing --user 0 com.android.browser
 
 LATER (do not run now)
 # A single command that runs sections 2 to 4 for you: bash tools/adb-setup.sh   (in the Launcher repo)
+
+SECTION 11 - INVISIBLE CLEAN-UP HELPER [v0.4.0+]  *** run again after EVERY tablet restart ***
+# Starts a tiny helper process as the "shell" user (the same powers adb has). The launcher then force-stops the apps Quickstep opened when you return to the custom
+# launcher: their Recents cards, notifications and processes vanish with no black cover, no notification shade, no Recents screen. It only answers the launcher app
+# (checked by uid) and only knows "are you there" and "force-stop these apps" (never the system, the keyboard, the launcher or the stock launcher).
+# Mac / Linux (one line; the single quotes matter):
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+# Windows (two steps): 1) this prints package:/data/app/.../base.apk  - copy the part after "package:"
+adb shell pm path com.tj.launcher
+#   2) paste that path in place of PATH:
+adb shell "CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &"
+# Check it: Launcher control > Invisible clean-up shows "RUNNING".
+# Stop it (it also ends by itself at the next restart):
+adb shell pkill -f com.tj.launcher.ShellServer

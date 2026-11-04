@@ -152,6 +152,18 @@ public class ControlActivity extends Activity {
         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
+        section("Invisible clean-up (needs adb after every restart)");
+        final boolean helperUp = ShellHelper.running();
+        LinearLayout hc = card();
+        hc.addView(chipLine("Shell helper", helperUp ? "RUNNING - the clean-up is invisible" : "not running - the black-cover method is used instead", helperUp ? ACCENT : Color.parseColor("#B26A00")));
+        page.addView(hc);
+        toggle("Use the invisible clean-up when the helper is running", "Quickstep's apps are force-stopped behind Solitaire: their Recents cards, notifications and processes vanish with no black cover, no notification shade and no Recents screen. Off = always the cover method.", ShellHelper.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ShellHelper.KEY, v); } });
+        action("Copy the adb command that starts the helper", "Run it on the computer with the tablet plugged in. It lasts until the tablet restarts, then run it again. (Two-step version for Windows: adb guide, step 10.)", new Runnable() { public void run() {
+            ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("adb", ShellProtocol.START_ONE_LINER));
+            android.widget.Toast.makeText(ControlActivity.this, "Copied", android.widget.Toast.LENGTH_SHORT).show();
+        }});
+        note("The helper is a small process the adb command starts as the shell user. It only answers this app, and only knows two commands: \"are you there\" and \"force-stop these apps\" (never the system, the keyboard, this launcher or the stock launcher). Stop it any time with: " + ShellProtocol.STOP_LINE);
+
         section("Back to the custom launcher (from Quickstep)");
         note("Any one of these ends the Quickstep session: it switches to the custom launcher, closes what Quickstep opened, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire. They only work while Quickstep is active. Locking the tablet also ends it.");
         for (final ReturnMethods.Method m : ReturnMethods.Method.values()) {

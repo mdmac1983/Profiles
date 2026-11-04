@@ -42,6 +42,7 @@ public class AdbGuideActivity extends Activity {
         new Step("6. If Android shows 'Choose a Home app'", "Happens after a launcher crash. Puts the launcher back as the default Home app.", "adb shell cmd package set-home-activity " + PKG + "/com.tj.launcher.RouterActivity"),
         new Step("7. Check what is granted", "Each granted line shows granted=true.", "adb shell dumpsys package " + PKG + " | grep -E \"WRITE_SECURE_SETTINGS|READ_EXTERNAL_STORAGE|DUMP|CHANGE_CONFIGURATION\""),
         new Step("8. Undo (any time)", "Takes a permission away again.", "adb shell pm revoke " + PKG + " android.permission.WRITE_SECURE_SETTINGS", "adb shell pm revoke " + PKG + " android.permission.READ_EXTERNAL_STORAGE", "adb shell pm revoke " + PKG + " android.permission.DUMP", "adb shell pm revoke " + PKG + " android.permission.CHANGE_CONFIGURATION"),
+        new Step("10. Invisible clean-up helper (again after every tablet restart)", "Starts a tiny helper as the shell user so the return to the custom launcher force-stops Quickstep's apps with no black cover. Mac/Linux: the one line. Windows: the two steps (put the path from step 1 into step 2). Stop it with the last line.", ShellProtocol.START_ONE_LINER, ShellProtocol.START_STEP1, ShellProtocol.START_STEP2, ShellProtocol.STOP_LINE),
         new Step("9. Optional: the old Browser app", "Disables com.android.browser (reversible with: adb shell pm enable com.android.browser).", "adb shell pm disable-user --user 0 com.android.browser"),
     };
 
