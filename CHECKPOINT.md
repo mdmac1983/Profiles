@@ -1,13 +1,13 @@
-# CHECKPOINT 218 — read me first, then TASKS.md
+# CHECKPOINT 219 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T05:54:04Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `10a5149` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T05:54:23Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `39eb540` (this checkpoint is the commit after it)
 
 ## Just done
-N1-N5 coded: buttons removed, UnlockMethods x6, gesture removed, ProfileSession (prearm behind keyguard, cover at Enter, radio guard, helper-off triple-Home), ReturnMethods (icon, tile, key codes, flurry), failsafe (Konami, Solitaire hotspot, probe), Control UI, scenario section N; 43 new JVM tests green, handoff test 23/0
+Dispatched emulator.yml on claude/admiring-gates-1ut5m3 (run not yet read)
 
 ## Do this next
-dispatch emulator.yml on this branch (mcp__github__actions_run_trigger), poll ~4 min, read results.txt for the N-section; meanwhile bash tools/gradle.sh lintDebug assembleDebug; then fix; then update PROFILES doc ladder + TASKS ticks + answer Tj
+poll actions_list emulator.yml runs (branch filter) every ~4 min; read results.txt for N-section PASS/FAIL; meanwhile lintDebug running
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ dispatch emulator.yml on this branch (mcp__github__actions_run_trigger), poll ~4
 
 ## Last ten checkpoints
 ```
+  39eb540 ckpt 218: N1-N5 coded: buttons removed, UnlockMethods x6, gesture removed, ProfileSessio
   1b534f7 ckpt 217: Built N1 (buttons removed), N2 (UnlockMethods x6 + tests), N3a (gesture remove
   d29d8c4 ckpt 216: Wrote N1-N3 (Tj's 2026-11-04 3-part request) into TASKS.md; read RouterActivit
   87e5f36 ckpt 215: Handoff written for a new session: research/HANDOFF_2026-11-04.md (v0.3.7 rele
@@ -25,8 +26,4 @@ dispatch emulator.yml on this branch (mcp__github__actions_run_trigger), poll ~4
   3ecc89a ckpt 208: pre-ship: v0.3.7: choose the launcher at unlock (Delete twice before your PIN 
   494614c ckpt 207: Run 39 (1eca5f1): 59 PASS / 1 FAIL. E1 WORKS on the emulator: the helper sees 
   feb3927 ckpt 206: Answered E2 (does the PIN matter): no, any numeric PIN works
-  1eca5f1 ckpt 205: E1 coded (v0.3.7/code 13): UnlockPick token (Delete x2 on the empty PIN pad = 
 ```
-
-(7 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
