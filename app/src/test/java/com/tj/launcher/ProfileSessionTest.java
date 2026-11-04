@@ -1,5 +1,6 @@
 package com.tj.launcher;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -62,5 +63,13 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
         assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
         assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, true));      // done already this lock
+    }
+
+    @Test public void demoFlagRuleCustomOnQuickstepOriginal() {
+        assertEquals("1", DemoModeProfile.valueFor(true, Mode.CUSTOM, "0"));
+        assertEquals("0", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, "0"));
+        assertEquals("0", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, null));
+        assertEquals("2", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, "2"));      // whatever the system had before is put back
+        org.junit.Assert.assertNull(DemoModeProfile.valueFor(false, Mode.CUSTOM, "0")); // switched off: the system is left alone
     }
 }

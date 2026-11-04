@@ -49,6 +49,7 @@ public final class Mode {
         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
         prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
         KeyboardSwitch.apply(c, m);
-        TileProfile.apply(c, m);       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
+        TileProfile.apply(c, m);
+        DemoModeProfile.apply(c, m);   // Q3: pencil + gear hidden natively while custom is active (opt-in)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }

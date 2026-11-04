@@ -25,6 +25,20 @@ public final class RestoreStore {
         sp.edit().putString("secure:" + key, cur == null ? "\u0000null" : cur).commit();
     }
 
+    /** Same as {@link #snapshotSecure} for Settings.Global (the value the system had before we first changed it). */
+    public static void snapshotGlobal(Context c, String key) {
+        SharedPreferences sp = p(c);
+        if (sp.contains("global:" + key)) return;
+        String cur = Settings.Global.getString(c.getContentResolver(), key);
+        sp.edit().putString("global:" + key, cur == null ? "\u0000null" : cur).commit();
+    }
+
+    /** The snapshotted Settings.Global value, or {@code fallback} if none (or it was unset). */
+    public static String globalSnapshot(Context c, String key, String fallback) {
+        String v = p(c).getString("global:" + key, null);
+        return v == null || "\u0000null".equals(v) ? fallback : v;
+    }
+
     public static boolean hasSnapshot(Context c) { return !p(c).getAll().isEmpty(); }
 
     /** Restores every snapshotted secure setting that we can write, forgets the snapshot, and turns every launcher feature switch off. */
@@ -32,10 +46,11 @@ public final class RestoreStore {
         SharedPreferences sp = p(c);
         for (Map.Entry<String, ?> e : sp.getAll().entrySet()) {
             String k = e.getKey();
-            if (!k.startsWith("secure:") || !(e.getValue() instanceof String)) continue;
+            if ((!k.startsWith("secure:") && !k.startsWith("global:")) || !(e.getValue() instanceof String)) continue;
             String v = (String) e.getValue();
             try {
-                Settings.Secure.putString(c.getContentResolver(), k.substring(7), "\u0000null".equals(v) ? null : v);
+                if (k.startsWith("global:")) Settings.Global.putString(c.getContentResolver(), k.substring(7), "\u0000null".equals(v) ? null : v);
+                else Settings.Secure.putString(c.getContentResolver(), k.substring(7), "\u0000null".equals(v) ? null : v);
             } catch (Throwable t) {
                 android.util.Log.e("TjRestore", "could not restore " + k, t); // no permission: nothing was changed by us either
             }
@@ -47,7 +62,8 @@ public final class RestoreStore {
         Features.set(c, ProfileSession.END_ON_LOCK_KEY, false);   // N3: restore = nothing of ours switches launchers for you (these default to ON)
         Features.set(c, ProfileSession.PREARM_KEY, false);
         Features.set(c, ProfileSession.RADIOS_KEY, false);
-        Features.set(c, ProfileSession.PRECLEAN_KEY, false);   // O4: restore = nothing of ours closes apps for you
+        Features.set(c, ProfileSession.PRECLEAN_KEY, false);
+        Features.set(c, DemoModeProfile.KEY, false);   // the pencil/gear flag was put back above (snapshot); the switch itself is off   // O4: restore = nothing of ours closes apps for you
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }

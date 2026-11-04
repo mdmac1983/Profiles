@@ -224,6 +224,10 @@ public class ControlActivity extends Activity {
 
         section("Quick settings");
         toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
+        toggle("Hide the pencil AND the gear natively (experimental)", DemoModeProfile.permitted(this) ? "No cover, no delay: Android's own panel is drawn without them while the custom launcher is active (uses the system's demo-mode flag, put back for Quickstep). Try the single adb line in research/ADB_TODO.md first. Needs the adb permission." : "Needs the adb permission (not granted yet).", DemoModeProfile.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, DemoModeProfile.KEY, v);
+            DemoModeProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+        } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
         tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
         tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
