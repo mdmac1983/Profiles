@@ -334,3 +334,8 @@ Forget the wallpaper.  No longer needed.
 
 1) is it possible to have 2 different login pins which determine which launcher starts? For example,  1000 opens custom launcher,  1001 opens quickstep. Or,  1000 opens custom launcher,  10001 opens quickstep. Consider if this is possible by any means without root. I was thinking an accessibility service overlay which "watches" which numbers are typed, and if the extra number or different number is typed, it automatically loads a certain launcher when unlocking.  For example, regular pin 1000 unlocks the tablet with custom launcher like normal, but if the accessibility service sees 10001, the extra digit triggers quickstep on unlock. If this isn't possible, is there anything else accessibility service can do which has the same effect? Such as typing the pin then doing a gesture before unlocking?
 ```
+
+## 2026-11-04T03:57:35Z
+```
+Does it matter what the pin is? Or does it work regardless of pin
+```
