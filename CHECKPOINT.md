@@ -1,21 +1,23 @@
-# CHECKPOINT 248 — read me first, then TASKS.md
+# CHECKPOINT 249 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T18:36:29Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `fc803ab` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T18:38:00Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `aa01543` (this checkpoint is the commit after it)
 
 ## Just done
-Run 54 (s) read: pm suspend works (Recents card removed, process stays, card NOT restored after unsuspend), pm hide refused (MANAGE_USERS), input monitor refused (MONITOR_INPUT): dead ideas recorded. research/IDEAS_2026-11-04.md written (separation, power menu, pencil, Settings plan, accelerometer). Run 55 (o,t,p) in flight
+Wrote S1-S3 (one-session adb: PC script + in-app Tablet setup & report via the helper) into TASKS
 
 ## Do this next
-read run 55: o (race fix: Calendar in front after unlock), t, p (device_demo_mode vs pencil/gear/power menu); finish the pencil section of IDEAS; then full run + ship v0.5.0; final answer to Tj
+1) read run 55 (o,t,p) when it lands (reminder 18:44 UTC) -> pencil/demo-mode result + o race fix; 2) S1 tools/adb-all.sh + .bat; 3) S2 ShellProtocol RUN allow-list + SetupActivity + TabletReport; 4) section x; 5) full run + ship v0.5.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  3f46b2f ckpt 248: Run 54 (s) read: pm suspend works (Recents card removed, process stays, card N
   75dc67a ckpt 247: R2 done: research/ADB_TODO.md (every adb command in order: setup, permissions 
   5943b62 ckpt 246: Run 52 (o,t) read: 19 PASS / 1 FAIL (emulator has no Bluetooth tile: test fixe
   d4a4b05 ckpt 245: Wrote R1-R3 (accelerometer back to custom, adb to-do list, adb for power menu/
@@ -25,7 +27,6 @@ read run 55: o (race fix: Calendar in front after unlock), t, p (device_demo_mod
   656ee09 ckpt 241: Wrote P1 (separate profiles keeping their own apps open: decide, only build if
   a6fdf8c ckpt 240: O1-O5 coded: 10 more lock-screen methods (UnlockMethods + MotionDetector, serv
   d6e9381 ckpt 239: New session: wrote Tj's O1-O5 (more lock-screen methods + dropdown multi-selec
-  3a268c7 ckpt 238: N9 tick actually applied in TASKS.md (the first attempt failed on a regex; ckp
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
