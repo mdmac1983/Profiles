@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * O1: two motion handshakes on the lock screen, from the accelerometer (no permission needed). Pure (JVM-testable): the service feeds samples while the lock screen is up and one of them is selected.
  *  SHAKE  three firm jolts (peak change in the acceleration magnitude of at least 11 m/s2) within 2 s, each at least 120 ms after the last
- *  KNOCK  two sharp but small jolts (3.5 to 10.5 m/s2 above the running baseline) 150-700 ms apart, with NOTHING similar in the 500 ms before the first
+ *  KNOCK  two sharp but small jolts (3.5 to 10.5 m/s2 above the running baseline) 150-700 ms apart, with NOTHING similar in the 500 ms before the first or after the second
  *         (walking or a bumpy ride makes jolts every ~0.5 s, so it never has that quiet lead-in; a finger tap on a held tablet is under 2 m/s2)
  * The numbers are a first guess from general knowledge of phone sensors; they cannot be tuned without the tablet, so both are labelled experimental and default OFF.
  */
@@ -52,14 +52,16 @@ public final class MotionDetector {
             for (int i = 1; i < firm.size(); i++) if (firm.get(i).t - firm.get(i - 1).t < SHAKE_GAP_MS) spaced = false;
             if (spaced) { peaks.clear(); return Kind.SHAKE; }
         }
-        // KNOCK: the last two finished peaks are small, sharp, 150-700 ms apart, with a quiet lead-in
+        // KNOCK: the last two finished peaks are small, sharp, 150-700 ms apart, quiet BEFORE the first and quiet for 500 ms AFTER the second (so the verdict comes 0.5 s after the knock)
         if (n >= 2) {
             Peak b = done.get(n - 1), a = done.get(n - 2);
             boolean small = a.max >= KNOCK_MIN && a.max <= KNOCK_MAX && b.max >= KNOCK_MIN && b.max <= KNOCK_MAX;
             long gap = b.t - a.t;
-            if (small && gap >= KNOCK_GAP_MIN_MS && gap <= KNOCK_GAP_MAX_MS && now - b.t <= PEAK_MS + 40) {
+            long since = now - b.t;
+            if (small && gap >= KNOCK_GAP_MIN_MS && gap <= KNOCK_GAP_MAX_MS && since >= KNOCK_QUIET_MS && since <= KNOCK_QUIET_MS + 300) {
                 boolean quiet = true;
                 for (int i = 0; i < n - 2; i++) if (a.t - done.get(i).t <= KNOCK_QUIET_MS) quiet = false;
+                for (Peak p : peaks) if (p.t > b.t && p.t - b.t <= KNOCK_QUIET_MS) quiet = false;
                 if (quiet) { peaks.clear(); return Kind.KNOCK; }
             }
         }
