@@ -427,3 +427,12 @@ yes do that after v0.4.0
 ```
 ?
 ```
+
+## 2026-11-04T18:14:27Z
+```
+Add even more options for getting to quickstep from the lock screen. Think of clever ways. Gestures, volume buttons,  key combinations, etc. Put many options in addition to the methods already available into the launcher settings. Make the settings for the method to get to quickstep from the lock screen a drop down box where i can select as many methods as i want,  with a minimum of one method always selected.  For the app drawer hidden apps menu, it is kind of hard to press the check boxes on which apps to hide. Make it so i can select hidden apps with a larger toggle that is easy to press next to each app in the list. 
+
+I need the custom launcher to open as quickly as possible from the lock screen,  immediately if possible.  If possible, when i am closing or locking the screen from the quickstep launcher, close all apps and notifications so that everything is already ready to go if i unlock the screen to the custom launcher, so there is no delay in closing apps and notifications. 
+
+How confident are you that i can choose different quick settings tiles depending on the launcher? Because before, if i put more than one tile in the quickstep launcher, i could only put it back down to one tile using adb, because it has a minimum tile requirement.  I want one tile permanently in the custom launcher, and three or more in quickstep
+```
