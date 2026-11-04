@@ -37,7 +37,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -691,6 +691,39 @@ info "P4 statusbar commands on this Android: $(adb shell cmd statusbar help 2>&1
 info "P5 system services the shell user can see: $(adb shell service list 2>/dev/null | grep -oE '(statusbar|activity_task|input|window|overlay|notification|user)[^ :]*' | sort -u | tr '\n' ' ' | head -c 300)"
 setfeat; setmode custom; home
 fi # section p
+if want x; then # section x
+# ---- S1 / S2 (Tj: "do everything in one session with adb"): the real tools/adb-all.sh against the emulator, then the in-app "Do everything" through the helper
+beat "before X"
+setfeat; setmode quickstep; rebind; home
+rm -rf probe-out
+bash tools/adb-all.sh --no-pull > "$OUT/x-adball-console.txt" 2>&1
+cp -r probe-out "$OUT/x-probe-out" 2>/dev/null
+check "S1: adb-all.sh finished (DONE line)" grep -q "^DONE" "$OUT/x-adball-console.txt"
+check "S1: it granted WRITE_SECURE_SETTINGS (the tablet reports granted=true)" grep -q "WRITE_SECURE_SETTINGS.*granted=true" probe-out/status.txt
+check "S1: it started the helper (a ShellServer process exists)" bash -c "grep -q 'OK    helper running' probe-out/status.txt"
+check "S1: the probe report has the user / profile facts" bash -c "grep -q 'Maximum supported users' probe-out/launcher-probe.txt && grep -q 'pm list users' probe-out/launcher-probe.txt"
+check "S1: the probe report has the Settings app facts" bash -c "grep -q 'dumpsys package com.android.settings' probe-out/launcher-probe.txt"
+info "S1: probe report $(wc -l < probe-out/launcher-probe.txt) lines; status table: $(grep -c 'granted=' probe-out/status.txt) permission rows"
+# S2: take three things away, then let the app put them back through the helper
+adb shell pm revoke "$PKG" android.permission.DUMP >/dev/null 2>&1; adb shell pm revoke "$PKG" android.permission.CHANGE_CONFIGURATION >/dev/null 2>&1; adb shell cmd appops set "$PKG" RUN_IN_BACKGROUND default >/dev/null 2>&1
+sleep 2
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez autorun true >/dev/null 2>&1
+SHARE=/sdcard/Android/data/$PKG/files/probe
+for i in $(seq 1 60); do adb shell "[ -f $SHARE/autorun-done.txt ]" >/dev/null 2>&1 && break; sleep 3; done
+adb shell cat "$SHARE/autorun-done.txt" > "$OUT/x-autorun-done.txt" 2>&1
+adb shell ls -la "$SHARE" "$SHARE/apk" > "$OUT/x-share-ls.txt" 2>&1
+adb shell "head -c 3000 $SHARE/tablet-report.txt" > "$OUT/x-report-head.txt" 2>&1
+shot 76-setup-screen
+info "S2: autorun summary: $(tr '\n' '|' < $OUT/x-autorun-done.txt | head -c 700)"
+check "S2: the in-app Do-everything put the permissions back through the helper (DUMP + CHANGE_CONFIGURATION states: done)" bash -c "grep -q 'state Permission: read what is running (DUMP): done' $OUT/x-autorun-done.txt && grep -q 'state Permission: change configuration: done' $OUT/x-autorun-done.txt"
+check "S2: the background app-op was put back too" grep -q 'state Allowed to run in the background: done' "$OUT/x-autorun-done.txt"
+check "S2: the tablet report was written (app side + shell probe)" bash -c "grep -q 'TABLET REPORT' $OUT/x-report-head.txt && grep -q 'report [0-9][0-9][0-9][0-9]' $OUT/x-autorun-done.txt"
+check "S2: the tablet's own Settings app was copied into the share folder" grep -q 'com.android.settings.apk' "$OUT/x-share-ls.txt"
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+setfeat; setmode custom; home
+fi # section x
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
