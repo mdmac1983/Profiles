@@ -246,6 +246,33 @@
             </intent-filter>
         </activity>
 
+        <!-- N4: "Back to custom": an app icon (the kill switch) for Quickstep's drawer; never shown in the custom drawer (our own icons are hidden there). -->
+        <activity
+            android:name="com.tj.launcher.BackToCustomActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:icon="@android:drawable/ic_menu_revert"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:label="Back to custom">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- N4: quick-settings tile "Back to custom" (add it with the pencil in Quickstep; tiles are listed in sysui_qs_tiles as custom(com.tj.launcher/.ReturnTile)). -->
+        <service
+            android:name="com.tj.launcher.ReturnTile"
+            android:exported="true"
+            android:icon="@android:drawable/ic_menu_revert"
+            android:label="Back to custom"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- C2: the in-app adb setup guide (opens only in Quickstep mode, from Launcher control). -->
         <activity
             android:name="com.tj.launcher.AdbGuideActivity"
