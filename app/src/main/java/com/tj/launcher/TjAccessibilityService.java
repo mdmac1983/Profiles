@@ -1634,15 +1634,6 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         Rect r = cardArea(full);
         patchShow(true);
-        if (false) {
-            ensurePatch();
-            overlay = buildCard();
-            wm.addView(overlay, overlayParams(r, true));
-            shownAt.set(r);
-            overlayShown = true; overlayTouchable = true;
-            cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
-            return;
-        }
         if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency(); }          // visible first (one redraw) ...
         if (!overlayTouchable || !shownAt.equals(r)) {                              // ... then touchable / moved
             wm.updateViewLayout(overlay, overlayParams(r, true));
