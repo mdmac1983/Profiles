@@ -37,7 +37,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -603,6 +603,37 @@ adb shell locksettings clear --old 1234 > "$OUT/t-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; home
 fi # section t
+if want u; then # section u
+# ---- P1 RESEARCH (informational only): would a real SECOND ANDROID USER give two launchers that keep their own apps open, with their own Recents and notifications? How seamless is the switch?
+beat "before U"
+adb shell pm get-max-users > "$OUT/u-maxusers.txt" 2>&1
+info "P1: this emulator image: $(tr '\n' ' ' < $OUT/u-maxusers.txt)"
+adb shell pm create-user TjB > "$OUT/u-create.txt" 2>&1
+UID2="$(grep -oE 'id [0-9]+' "$OUT/u-create.txt" | grep -oE '[0-9]+' | head -1)"
+info "P1: create-user said: $(tr '\n' ' ' < $OUT/u-create.txt) -> user id '${UID2:-none}'"
+if [ -n "$UID2" ]; then
+  # user 0 opens two apps
+  for APP in com.android.contacts com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+  adb shell pidof com.android.contacts > "$OUT/u-pid-before.txt" 2>&1
+  adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|email' > "$OUT/u-recents0-before.txt"
+  # switch to the second user and time it
+  T0=$(date +%s.%N); adb shell am switch-user "$UID2" > "$OUT/u-switch.txt" 2>&1
+  for i in $(seq 1 60); do [ "$(adb shell am get-current-user 2>/dev/null | tr -d '\r\n')" = "$UID2" ] && break; sleep 0.5; done
+  T1=$(date +%s.%N); shot 70-user-switch-first-frame; sleep 3; shot 71-user-switch-after-3s
+  info "P1: switch 0 -> $UID2: current-user flipped after $(echo "$T1 - $T0" | bc -l | cut -c1-5) s (screenshots 70 / 71 show what the screen looks like while it happens)"
+  adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|email' > "$OUT/u-recents1.txt"
+  info "P1: the SECOND user's Recents mention the first user's apps: $(tr -d ' \r\n' < $OUT/u-recents1.txt) time(s) (0 = separate lists)"
+  adb shell dumpsys notification 2>/dev/null | grep -c "NotificationRecord" > "$OUT/u-notif1.txt"
+  # back to user 0
+  T2=$(date +%s.%N); adb shell am switch-user 0 >/dev/null 2>&1
+  for i in $(seq 1 60); do [ "$(adb shell am get-current-user 2>/dev/null | tr -d '\r\n')" = "0" ] && break; sleep 0.5; done
+  T3=$(date +%s.%N); sleep 3
+  adb shell pidof com.android.contacts > "$OUT/u-pid-after.txt" 2>&1
+  adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|email' > "$OUT/u-recents0-after.txt"
+  info "P1: switch $UID2 -> 0: $(echo "$T3 - $T2" | bc -l | cut -c1-5) s; the first user's Contacts process: before '$(tr -d ' \r\n' < $OUT/u-pid-before.txt)' after '$(tr -d ' \r\n' < $OUT/u-pid-after.txt)' (same number = it stayed open); Recents mentions before $(tr -d ' \r\n' < $OUT/u-recents0-before.txt) after $(tr -d ' \r\n' < $OUT/u-recents0-after.txt)"
+  adb shell pm remove-user "$UID2" >/dev/null 2>&1
+fi
+fi # section u
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
