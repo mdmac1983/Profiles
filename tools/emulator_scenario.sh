@@ -795,6 +795,7 @@ adb logcat -c
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 80-lock-menu-first      # first time: the helper learns the rectangle and the item size
 adb shell input keyevent KEYCODE_BACK; sleep 14      # the patch is built now; the helper photographs the lock screen and the app calibrates (about 5-8 s)
 adb logcat -d -s TjA11y:I | grep "CAL lock patch" > "$OUT/v-cal.txt" 2>&1
+adb pull /sdcard/Download/launcher-probe/cal.png "$OUT/v-cal-screenshot.png" >/dev/null 2>&1
 info "V4: $(tail -1 $OUT/v-cal.txt | cut -c1-240)"
 check "V4: the calibration measured the (deliberately skewed) model and corrected it" grep -q "CAL lock patch calibrated" "$OUT/v-cal.txt"
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows.txt" 2>&1

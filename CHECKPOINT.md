@@ -1,22 +1,24 @@
-# CHECKPOINT 275 — read me first, then TASKS.md
+# CHECKPOINT 276 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T22:38:14Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `590d11c` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T22:43:58Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `c0e1b37` (this checkpoint is the commit after it)
 
 ## Just done
-Tj asked for a PHONE-side adb guide app (module phoneguide) with copy buttons, OTG-app command format, comprehensive + safe, plus handoff. Written as Y1-Y5 in TASKS. Run 71 (section v, id 41926664150) still being read at 22:43
+Run 71 (v): card area OK ([485,357][596,511] = 2 stock items vs full rect 303 high), U1 13 ms, compile ok; BUT the lock patch stayed VISIBLE with the menu closed (opaque window ignores alpha 0): it covered notifications and the calibration screenshot photographed the patch itself (error 0.0000). Fix: TRANSLUCENT window for the lock patch + pull cal.png into the artifact. Phone guide app (module phoneguide, steps.txt, android.yml builds+attaches PhoneGuide APK, guide tests + handoff checks, emulator section g)
 
 ## Do this next
-1) research ADB OTG command format (WebSearch); 2) module phoneguide + android.yml builds/attaches it; 3) read run 71 and fix; 4) bump 0.6.0 and ship; 5) final HANDOFF.md + CHECKPOINT; then tell Tj he can switch
+dispatch sections v,g (parallel strings: 'v' and 'g'); read: patch invisible when closed MAE<0.5%, V4 calibrated with skew, freed-slot MAE; guide opens; then bump 0.6.0 (versionCode 16) and ship; HANDOFF final
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  498ad58 ckpt 275: Tj asked for a PHONE-side adb guide app (module phoneguide) with copy buttons,
   2d6e5f9 ckpt 274: V3 (patch = learned rect + 12dp margin, card = top two items), V4 (PatchCalibr
   aa72200 ckpt 273: Tj: patch must cover the whole 3-button menu, card = top two buttons only; pat
   e9b3365 ckpt 272: HANDOFF.md written (single entry point for a no-context Claude account; linked
@@ -26,8 +28,7 @@ Tj asked for a PHONE-side adb guide app (module phoneguide) with copy buttons, O
   19a29e4 ckpt 268: Tj explained 'the probe' = the adb commands that show Claude everything about 
   560038e ckpt 267: Tj sent 2 new requests (lock-screen launcher delay; lock-screen wallpaper-patc
   feaae74 ckpt 266: Final full run 68: 90 PASS / 0 FAIL, no native crash, but the job was CUT by t
-  7b73448 ckpt 265: Run 67 (sections e1,y2,b6,b4,n,n6,o,t with fixes #2/#3 + ensurehome): ALL PASS
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(6 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)

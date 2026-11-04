@@ -362,7 +362,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
         };
         WindowManager.LayoutParams lp = overlayParams(r, false);
-        lp.format = PixelFormat.OPAQUE;
+        lp.format = targetIsLock ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
         patchLockMode = targetIsLock;
