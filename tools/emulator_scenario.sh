@@ -37,7 +37,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -517,6 +517,92 @@ check "N6: the helper stops with the documented line" bash -c "[ \"\$(tr -d ' \r
 setfeat; setmode custom; home
 
 fi # section n6
+if want o; then # section o
+# ---- O1 / O3 / O4 (v0.5.0): more lock-screen methods, closing at lock, instant unlock to custom
+beat "before O"
+setfeat3(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_ladder\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_charger\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_peek5\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+setfeat3; setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/o-setpin.txt" 2>&1
+# O1: erase ladder = Delete, digit, Delete, digit, Delete, digit, then the PIN
+lockpad
+pad d 1 d 1 d 1 1 2 3 4 e; sleep 6
+getmode > "$OUT/o-ladder-mode.txt"; resumed > "$OUT/o-ladder-resumed.txt"
+check "O1: the erase ladder (Delete, digit x3) before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/o-ladder-mode.txt"
+check "O1: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/o-ladder-resumed.txt"
+# O1: charger flick = plug, unplug, plug on the lock screen
+adb shell dumpsys battery set ac 0 >/dev/null 2>&1; adb shell dumpsys battery set usb 0 >/dev/null 2>&1; sleep 1
+lockpad
+adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 1.2; adb shell dumpsys battery set ac 0 >/dev/null 2>&1; sleep 1.2; adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 1.5
+pad 1 2 3 4 e; sleep 6
+getmode > "$OUT/o-charger-mode.txt"
+check "O1: the charger flick (plug, unplug, plug) before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/o-charger-mode.txt"
+adb shell dumpsys battery reset >/dev/null 2>&1
+# O1: peek five times = pull the pad up and away five times
+lockpad
+for i in 1 2 3 4; do adb shell input keyevent KEYCODE_BACK; sleep 1.6; adb shell input swipe 300 900 300 300 300; sleep 1.6; done
+pad 1 2 3 4 e; sleep 6
+getmode > "$OUT/o-peek5-mode.txt"
+check "O1: peeking at the PIN pad five times before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/o-peek5-mode.txt"
+# a plain PIN (no handshake) from here must end up in the custom account
+lockpad; pad 1 2 3 4 e; sleep 6
+getmode > "$OUT/o-plain-mode.txt"
+check "O1: a plain PIN is still the custom launcher (no handshake, no accident)" grep -q custom "$OUT/o-plain-mode.txt"
+
+# O4 + O3: with the shell helper, locking from Quickstep closes its apps BEFORE any wake; the unlock then has nothing left to do
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 4
+setfeat3; setmode quickstep; rebind; home; sleep 2
+for APP in com.android.contacts com.android.gallery3d com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+adb logcat -c
+adb shell input keyevent KEYCODE_POWER; sleep 9          # lock: screen off; nobody wakes it
+adb logcat -d -s TjReset:I TjA11y:I > "$OUT/o4-log-before-wake.txt" 2>&1
+adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|gallery3d|email' > "$OUT/o4-recents.txt"
+getmode > "$OUT/o4-mode.txt"
+check "O4: locking from Quickstep closed its apps AT LOCK (before any wake)" grep -q "AT LOCK: force-stopped" "$OUT/o4-log-before-wake.txt"
+check "O4: their Recents cards were gone before the unlock" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/o4-recents.txt)\" = 0 ]"
+check "O4: the custom account was already active behind the lock screen" grep -q custom "$OUT/o4-mode.txt"
+adb logcat -c
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 1.5
+resumed > "$OUT/o3-resumed-1s5.txt"
+adb logcat -d -s TjA11y:I > "$OUT/o3-log.txt" 2>&1
+info "O3: 1.5 s after the Enter tap: $(cat $OUT/o3-resumed-1s5.txt)"
+check "O3: the custom stack (Calendar / our launcher) is in front 1.5 s after the Enter tap" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/o3-resumed-1s5.txt"
+check "O3: no black cover and no clean-up work was needed at the unlock" bash -c "! grep -q 'RESET cover shown' $OUT/o3-log.txt"
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb shell locksettings clear --old 1234 > "$OUT/o-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "O: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/o-clearpin.txt"
+# O2: the hidden-apps chooser with its big switches (a screenshot to look at)
+setfeat; setmode quickstep; home; adb shell am start -n "$PKG/com.tj.launcher.HiddenAppsActivity" >/dev/null 2>&1; sleep 3; shot 60-hidden-apps-big-switches
+setfeat; setmode custom; home
+fi # section o
+if want t; then # section t
+# ---- O5: different quick-settings tiles per launcher. SystemUI's REAL tile list is read back from its own dump, not just the setting.
+beat "before T"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/t-grant.txt" 2>&1
+tiles_now(){ adb shell dumpsys activity service com.android.systemui/.SystemUIService 2>/dev/null | grep -oE '[A-Za-z]+Tile:' | sort -u | tr '\n' ' '; }
+setfeat; setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/t-setpin.txt" 2>&1
+lockpad; pad d d 1 2 3 4 e; sleep 7                          # the default handshake -> Quickstep (Mode.set applies the Quickstep tiles)
+adb shell settings get secure sysui_qs_tiles > "$OUT/t-quickstep-setting.txt" 2>&1
+tiles_now > "$OUT/t-quickstep-systemui.txt"
+info "O5: Quickstep: setting '$(tr -d '\r\n' < $OUT/t-quickstep-setting.txt)', SystemUI tiles: $(cat $OUT/t-quickstep-systemui.txt)"
+check "O5: in Quickstep the tile setting is wifi,bt,rotation" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/t-quickstep-setting.txt)\" = wifi,bt,rotation ]"
+check "O5: SystemUI really shows the Wi-Fi, Bluetooth and rotation tiles" bash -c "grep -q WifiTile $OUT/t-quickstep-systemui.txt && grep -q BluetoothTile $OUT/t-quickstep-systemui.txt && grep -q RotationLockTile $OUT/t-quickstep-systemui.txt"
+adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" >/dev/null 2>&1; sleep 6    # back to custom: ONE tile
+adb shell settings get secure sysui_qs_tiles > "$OUT/t-custom-setting.txt" 2>&1
+tiles_now > "$OUT/t-custom-systemui.txt"
+info "O5: custom: setting '$(tr -d '\r\n' < $OUT/t-custom-setting.txt)', SystemUI tiles: $(cat $OUT/t-custom-systemui.txt)"
+check "O5: in the custom launcher the tile setting is just rotation" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/t-custom-setting.txt)\" = rotation ]"
+check "O5: SystemUI really shows only the rotation tile (no Wi-Fi, no Bluetooth)" bash -c "grep -q RotationLockTile $OUT/t-custom-systemui.txt && ! grep -q WifiTile $OUT/t-custom-systemui.txt && ! grep -q BluetoothTile $OUT/t-custom-systemui.txt"
+# the guard: something adds a tile while the custom account is active -> it is taken out again
+adb shell settings put secure sysui_qs_tiles "rotation,flashlight" >/dev/null 2>&1; sleep 4
+adb shell settings get secure sysui_qs_tiles > "$OUT/t-guard-setting.txt" 2>&1
+check "O5: an extra tile added while the custom launcher is active is removed again" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/t-guard-setting.txt)\" = rotation ]"
+adb shell locksettings clear --old 1234 > "$OUT/t-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+setfeat; setmode custom; home
+fi # section t
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)

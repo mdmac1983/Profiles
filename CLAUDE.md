@@ -106,7 +106,7 @@ updates monthly. **Minutes are the scarce resource** — never add a `push:` bra
   creates the tag server-side.
 - Hand mechanical work to Actions instead of polling (builds, test runs, waiting on CI): trigger, end the turn or
   do other work, read the result when it lands.
-- **The Emulator check is fast when you ask for a section** (N9, 2026-11-04): `emulator.yml` has a `sections` input (comma list: `base,legacy,x1,e1,y2,b6,b4,n,n6,last`; empty = everything, ~15 min, the release gate).
+- **The Emulator check is fast when you ask for a section** (N9, 2026-11-04): `emulator.yml` has a `sections` input (comma list: `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,last`; empty = everything, ~15 min, the release gate).
   A new feature runs only its own section (e.g. `{"sections":"n6"}`, measured 3.5-3.6 min end to end; an AVD cache + snapshot was tried and DROPPED: no measurable gain, and a snapshot boot changed the drawer order). Two section runs may go side by side (the sections are part of the concurrency group).
   Only the release run (empty) is the full gate. Read results via `download_workflow_run_artifact` -> curl the signed URL into the scratchpad.
 - Local builds are for tests, lint and debug only: `bash tools/gradle.sh <task>` (never `./gradlew` directly — it

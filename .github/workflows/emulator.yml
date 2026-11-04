@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       sections:
-        description: 'Which scenario sections to run, comma list: base,legacy,x1,e1,y2,b6,b4,n,n6,last. EMPTY = everything (the release gate, ~15 min). A new feature usually needs only its own, e.g. "n6" (~5 min).'
+        description: 'Which scenario sections to run, comma list: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,last. EMPTY = everything (the release gate, ~15 min). A new feature usually needs only its own, e.g. "n6" (~5 min).'
         required: false
         default: ''
 
