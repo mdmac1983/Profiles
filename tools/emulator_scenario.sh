@@ -269,6 +269,9 @@ beat "before W3b"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/grant-storage.txt" 2>&1
 setmode custom; setpower wallpaper; rebind; home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 49-wallpaper-mode-menu-open
+adb logcat -d -s TjA11y:I | grep -E "POWERSIG|POWERLAT" > "$OUT/power-latency.txt" 2>&1
+check "D3: the system's 'globalactions' broadcast reached the helper before the menu" grep -q POWERSIG "$OUT/power-latency.txt"
+info "D3 latency: $(grep POWERLAT "$OUT/power-latency.txt" | tail -1 | cut -c1-200)"
 adb shell input keyevent KEYCODE_BACK; sleep 3
 PRECT="$(adb logcat -d -s TjA11y:I | grep -o 'bounds=Rect([0-9, -]*)' | tail -1 | grep -o '[0-9]*' | tr '\n' ' ')"
 shot 50-patch-on
@@ -349,8 +352,9 @@ adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows.
 adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log.txt" 2>&1
 adb shell cmd statusbar collapse; sleep 2
 adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows-after.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log2.txt" 2>&1
 check "B6: a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows.txt)\" -ge 1 ]"
-check "B6: the cover is gone when the panel closes" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows-after.txt)\" = 0 ]"
+check "B6/D4: when the panel closes the cover is hidden (the window is kept warm for an instant next time)" grep -qE 'PENCIL cover (hidden|removed)' "$OUT/pencil-log2.txt"
 # ---- B4: nothing to clear in Recents -> that step is skipped; cover shown and removed in the normal run
 check "B4: the black cover was shown and removed during the reset" bash -c "grep -q 'RESET cover shown' $OUT/y2-log.txt && grep -q 'RESET cover removed' $OUT/y2-log.txt"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
