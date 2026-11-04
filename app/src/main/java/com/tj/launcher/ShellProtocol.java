@@ -47,7 +47,7 @@ public final class ShellProtocol {
         if (listOutput == null) return -1;
         for (String l : listOutput.split("\\n")) {
             int i = l.indexOf("uid:");
-            if (l.contains("package:" + SELF) && i >= 0) {
+            if (l.trim().startsWith("package:" + SELF + " ") && i >= 0) {
                 try { return Integer.parseInt(l.substring(i + 4).trim().split("[^0-9]")[0]); } catch (NumberFormatException ignored) { }
             }
         }

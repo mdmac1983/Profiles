@@ -99,6 +99,15 @@ public class ControlActivity extends Activity {
         section("Double-Home return  (Quickstep to custom)");
         toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
         toggle("Open Solitaire when the launcher starts", "Solitaire in front after boot or a launcher restart.", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
+        final EditText appBox = new EditText(this);
+        appBox.setSingleLine(true);
+        appBox.setText(ReturnReset.appLabel(this));
+        appBox.setHint("app to open (blank = none, plain home screen)");
+        page.addView(appBox);
+        LinearLayout abtn = row();
+        abtn.addView(smallButton("Save app name", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, appBox.getText().toString().trim()); rebuild(); } }));
+        abtn.addView(smallButton("Plain (no app)", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, ""); rebuild(); } }));
+        page.addView(abtn);
         toggle("Clear notifications", "Skipped by itself when the status bar shows none.", ReturnReset.clearNotifications(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, v); } });
         toggle("Close the apps opened from Quickstep", "Only those apps; apps opened from the custom launcher stay.", ReturnReset.clearRecents(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, v); } });
         toggle("Black cover while it works", "Hides the shade / Recents flicker.", Features.get(this, ReturnReset.COVER_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.COVER_KEY, v); } });
