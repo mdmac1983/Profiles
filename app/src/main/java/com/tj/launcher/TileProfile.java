@@ -47,13 +47,30 @@ public final class TileProfile {
                                            : sanitize(Features.getString(c, CUSTOM_KEY, DEFAULT_CUSTOM), DEFAULT_CUSTOM);
     }
 
+    public static final String APPLIED_KEY = "qs_tiles_applied_mode";     // the mode whose list was last written
+
+    /**
+     * Pure (JVM-testable): when LEAVING Quickstep, what Tj arranged there with the pencil (the live list) becomes his Quickstep list, so his own choice survives the switch.
+     * Not saved when it is empty or is just the custom list (then nothing was arranged: the stored Quickstep list stays).
+     */
+    public static boolean shouldRememberQuickstepList(String prevAppliedMode, String newMode, String liveList, String customList) {
+        if (!Mode.QUICKSTEP.equals(prevAppliedMode) || Mode.QUICKSTEP.equals(newMode)) return false;
+        if (liveList == null || liveList.trim().isEmpty()) return false;
+        return !sanitize(liveList, "").equals(sanitize(customList, ""));
+    }
+
     /** Writes the tile list for this mode. Cheap and exception-safe; does nothing when switched off or the adb grant is missing. */
     public static void apply(Context c, String mode) {
         try {
             if (!enabled(c) || !permitted(c)) return;
             RestoreStore.snapshotSecure(c, SETTING);   // the original list is on disk BEFORE the first change
-            String want = tilesFor(c, mode);
             String cur = Settings.Secure.getString(c.getContentResolver(), SETTING);
+            if (shouldRememberQuickstepList(Features.getString(c, APPLIED_KEY, ""), mode, cur, tilesFor(c, Mode.CUSTOM))) {
+                Features.setString(c, QUICKSTEP_KEY, sanitize(cur, DEFAULT_QUICKSTEP));
+                Log.i(TAG, "remembered the Quickstep tiles Tj arranged: " + cur);
+            }
+            Features.setString(c, APPLIED_KEY, Mode.QUICKSTEP.equals(mode) ? Mode.QUICKSTEP : Mode.CUSTOM);
+            String want = tilesFor(c, mode);
             if (want.equals(cur)) return;
             Settings.Secure.putString(c.getContentResolver(), SETTING, want);
             Log.i(TAG, "tiles for " + mode + ": " + want);

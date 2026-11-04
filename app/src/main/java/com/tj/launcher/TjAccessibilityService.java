@@ -103,6 +103,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { updateKeyFilter(); } catch (Throwable t) { Log.e(TAG, "key filter failed", t); }
         try { updateMotion(); } catch (Throwable t) { Log.e(TAG, "motion failed", t); }
+        try { startTileGuard(); } catch (Throwable t) { Log.e(TAG, "tile guard failed", t); }
         try { startRadioGuard(); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); }
         try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
@@ -1030,6 +1031,38 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable t) { Log.e(TAG, "motion sensor update failed", t); }
     }
 
+    // ---------------------------------------------------------------- O5: the custom account keeps its ONE tile (SystemUI's auto-added tiles - hotspot, saver, night light ... - are taken out again)
+    private final long[] tileHist = new long[3];
+    private int tileIdx = 0;
+    private boolean tileGuardOn = false;
+    private final android.database.ContentObserver tileObserver = new android.database.ContentObserver(handler) {
+        @Override public void onChange(boolean selfChange) {
+            try {
+                android.content.Context app = getApplicationContext();
+                if (!Mode.isCustom(app) || !TileProfile.enabled(app) || !TileProfile.permitted(app)) return;
+                String cur = android.provider.Settings.Secure.getString(getContentResolver(), TileProfile.SETTING);
+                if (TileProfile.tilesFor(app, Mode.CUSTOM).equals(cur)) return;
+                long now = System.currentTimeMillis();
+                if (!ProfileSession.enforceRadios(true, true, now, tileHist)) return;     // same "3 tries a minute, never a loop" rule
+                tileHist[tileIdx++ % tileHist.length] = now;
+                Log.i(TAG, "TILES changed while the custom account is active (" + cur + ") -> putting its list back");
+                TileProfile.apply(app, Mode.CUSTOM);
+            } catch (Throwable t) { Log.e(TAG, "tile guard failed", t); }
+        }
+    };
+
+    private void startTileGuard() {
+        if (tileGuardOn) return;
+        getContentResolver().registerContentObserver(android.provider.Settings.Secure.getUriFor(TileProfile.SETTING), false, tileObserver);
+        tileGuardOn = true;
+    }
+
+    private void stopTileGuard() {
+        if (!tileGuardOn) return;
+        try { getContentResolver().unregisterContentObserver(tileObserver); } catch (Throwable ignored) { }
+        tileGuardOn = false;
+    }
+
     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
     private final long[] radioHist = new long[3];
     private int radioIdx = 0;
@@ -1074,9 +1107,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); removeHotspot(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
