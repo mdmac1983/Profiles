@@ -1,177 +1,332 @@
 package com.tj.launcher;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
-import android.content.Intent;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
- * "Launcher control": the app icon that stays reachable from the stock launcher, so Tj can always switch back to the custom launcher or
- * restore everything without any gesture or adb. Plain framework views (tiny, nothing that can fail to inflate).
+ * "Launcher control" (D2, Tj 2026-11-04: "I can't tell what is on or off. make toggles and improve the overall settings ui"). Sections, a real on/off Switch for every option
+ * (green = on, grey = off), one-line explanations, a status card at the top. Only opens while Quickstep is on (Tj: the settings are part of the "other profile").
+ * Plain framework views on purpose: nothing that can fail to inflate on a Go device.
  */
 public class ControlActivity extends Activity {
-    private TextView status;
+    private static final int ACCENT = Color.parseColor("#00796B"), INK = Color.parseColor("#202124"), MUTED = Color.parseColor("#5F6368"), CARD = Color.parseColor("#F1F3F4");
+    private LinearLayout page;
+    private ScrollView scroll;
+    private float dp;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         // Tj: the launcher's settings are only available while the stock launcher (Quickstep) is on ("lock" the user into the custom launcher).
         if (Mode.isCustom(this)) { finish(); return; }
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(48, 96, 48, 160);
-        root.setBackgroundColor(Color.WHITE);
-        status = new TextView(this);
-        status.setTextSize(18);
-        status.setTextColor(Color.BLACK);
-        root.addView(status);
-        root.addView(button("Use custom launcher", new Runnable() { public void run() {
+        dp = getResources().getDisplayMetrics().density;
+        scroll = new ScrollView(this);
+        scroll.setBackgroundColor(Color.WHITE);
+        scroll.setFillViewport(true);
+        page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(px(16), px(36), px(16), px(96));
+        scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        setContentView(scroll);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        RecentsGuard.excludeOurTasks(this);
+        RecentsGuard.describeAsTarget(this);
+        if (Mode.isCustom(this)) { finish(); return; }
+        build();
+    }
+
+    private int px(int v) { return Math.round(v * dp); }
+
+    /** Rebuilds every row from the stored state (keeps the scroll position). */
+    private void rebuild() {
+        final int y = scroll.getScrollY();
+        build();
+        scroll.post(new Runnable() { @Override public void run() { scroll.scrollTo(0, y); } });
+    }
+
+    // ---------------------------------------------------------------- the page
+    private void build() {
+        page.removeAllViews();
+        title("Launcher control");
+
+        // status card
+        boolean helper = TjAccessibilityService.get() != null;
+        boolean grant = AnimationSpeedup.permitted(this);
+        LinearLayout card = card();
+        card.addView(chipLine("Active launcher", "Quickstep (stock)  -  settings only open here", ACCENT));
+        card.addView(chipLine("Accessibility helper", helper ? "ON" : "OFF  -  turn it on in Accessibility settings (power menu, reset, lock screen, pencil need it)", helper ? ACCENT : Color.parseColor("#B3261E")));
+        card.addView(chipLine("adb permission", grant ? "granted" : "not granted  -  keyboard / tiles / faster reset wait for it (see adb guide below)", grant ? ACCENT : Color.parseColor("#B26A00")));
+        page.addView(card);
+
+        section("Launchers");
+        action("Switch to the custom launcher", "Also closes the apps you opened from Quickstep.", new Runnable() { public void run() {
             CrashGuard.clearTripped(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.CUSTOM);
             goHome();
-            ReturnReset.run(ControlActivity.this);   // D5: switching to the custom launcher by the button closes Quickstep's apps too
-        }}));
-        root.addView(button("Use stock launcher (Quickstep)", new Runnable() { public void run() {
+            ReturnReset.run(ControlActivity.this);
+        }});
+        action("Switch to Quickstep (stock)", "Same as the two-finger twist in the custom launcher.", new Runnable() { public void run() {
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);
             goHome();
-        }}));
-        root.addView(button("Choose apps shown in the custom launcher", new Runnable() { public void run() {
+        }});
+        action("Choose the apps shown in the custom launcher", "Everything else stays hidden there (new installs start hidden).", new Runnable() { public void run() {
             startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
-        }}));
-        root.addView(label("Power menu (needs the helper turned on in Accessibility)"));
-        root.addView(button("Power menu: leave alone (default)", new Runnable() { public void run() { setPower(Features.POWER_OFF); }}));
-        root.addView(button("Power menu: remove Screenshot (two-button menu)", new Runnable() { public void run() { setPower(Features.POWER_HIDE_SCREENSHOT); }}));
-        root.addView(button("Power menu: hide it under a permanent wallpaper patch, custom menu on top (custom launcher only)", new Runnable() { public void run() { setPower(Features.POWER_WALLPAPER); }}));
-        root.addView(button("Allow wallpaper access (needed by the wallpaper patch)", new Runnable() { public void run() {
-            requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7);
-        }}));
-        root.addView(button("Power menu: block it completely", new Runnable() { public void run() { setPower(Features.POWER_BLOCK); }}));
-        root.addView(button("Open Accessibility settings", new Runnable() { public void run() {
-            startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
-        }}));
-        root.addView(label("Return reset (when you double-press Home to come back)"));
-        root.addView(button("Return reset: ON / OFF (tap to toggle)", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, ReturnReset.KEY, !ReturnReset.enabled(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("Reset speed-up: animations off during the reset (needs the adb grant below): ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, AnimationSpeedup.KEY, !AnimationSpeedup.enabled(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("Black cover while the reset clears the shade / Recents: ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, ReturnReset.COVER_KEY, !Features.get(ControlActivity.this, ReturnReset.COVER_KEY, true)); refresh();
-        }}));
-        root.addView(label("Keyboard + reset speed-up (one-time adb grant: adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS)"));
-        root.addView(button("Keyboard: stock in custom launcher, SwiftKey in Quickstep: ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, KeyboardSwitch.KEY, !KeyboardSwitch.enabled(ControlActivity.this));
-            KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("Open the launcher at start (Solitaire in front): ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, !Features.get(ControlActivity.this, TjHooks.STARTUP_KEY, true)); refresh();
-        }}));
-        root.addView(label("Lock screen (needs the accessibility helper)"));
-        root.addView(button("Lock-screen number: ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, LockNumber.KEY, !LockNumber.enabled(ControlActivity.this)); refresh();
-        }}));
-        final android.widget.EditText numberBox = new android.widget.EditText(this);
+        }});
+        toggle("Keep Quickstep away unless I do the gesture", "If the stock home screen appears by itself in custom mode, send me back.", Features.get(this, StrayHomeGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, StrayHomeGuard.KEY, v); } });
+
+        section("Double-Home return  (Quickstep to custom)");
+        toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
+        toggle("Open Solitaire when the launcher starts", "Solitaire in front after boot or a launcher restart.", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
+        toggle("Clear notifications", "Skipped by itself when the status bar shows none.", ReturnReset.clearNotifications(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, v); } });
+        toggle("Close the apps opened from Quickstep", "Only those apps; apps opened from the custom launcher stay.", ReturnReset.clearRecents(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, v); } });
+        toggle("Black cover while it works", "Hides the shade / Recents flicker.", Features.get(this, ReturnReset.COVER_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.COVER_KEY, v); } });
+        toggle("Animations off during the reset", AnimationSpeedup.permitted(this) ? "Put back exactly as they were afterwards." : "Needs the adb permission (not granted yet).", AnimationSpeedup.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AnimationSpeedup.KEY, v); } });
+        note("Last reset:\n" + Features.getString(this, TjAccessibilityService.RESET_REPORT_KEY, "(not run yet)"));
+
+        section("Recents");
+        toggle("Hide the launcher from Recents completely", "Home-type launcher: never listed. If the launcher ever crashes Android asks you to choose the Home app again (adb guide, step 6, fixes it).", Features.get(this, RouterActivity.HOME_TYPE_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, v); } });
+        toggle("Keep apps from the custom launcher OUT of Recents", "Off = they appear in Recents like normal apps. On = only Solitaire is listed.", RecentsPolicy.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsPolicy.KEY, v); } });
+
+        section("Power menu");
+        final String mode = Features.powerMode(this);
+        radio("When you hold the side key in the custom launcher", new String[] { "Leave it alone", "Cover it with my two-button card (no Screenshot)", "Hide it under a wallpaper patch + my card (home screen only)", "Block it completely" },
+                new String[] { Features.POWER_OFF, Features.POWER_HIDE_SCREENSHOT, Features.POWER_WALLPAPER, Features.POWER_BLOCK }, mode, new Str() { public void on(String v) { Features.setString(ControlActivity.this, Features.POWER_MODE, v); } });
+        action("Allow wallpaper access", "Needed by the wallpaper patch.", new Runnable() { public void run() { requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7); } });
+        if (Features.POWER_WALLPAPER.equals(mode)) {
+            note("Wallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(not reported yet)"));
+            stepper("Patch left / right", TjAccessibilityService.PATCH_DX_KEY, 2, -200, 200, " px");
+            stepper("Patch up / down", TjAccessibilityService.PATCH_DY_KEY, 2, -200, 200, " px");
+            stepper("Patch size", TjAccessibilityService.PATCH_SCALE_KEY, 1, -30, 30, " %");
+        }
+        note("Speed of the last menu: " + Features.getString(this, TjAccessibilityService.LATENCY_KEY, "(open the menu once)"));
+        action("Open Accessibility settings", "To turn the helper on or off.", new Runnable() { public void run() { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } });
+
+        section("Lock screen");
+        toggle("Show my number at the bottom", "Disappears when you pull up the PIN pad.", LockNumber.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockNumber.KEY, v); } });
+        final EditText numberBox = new EditText(this);
         numberBox.setSingleLine(true);
         numberBox.setText(LockNumber.text(this));
         numberBox.setHint("lock-screen number");
-        root.addView(label("Lock-screen number (same font, colour and position; up to 24 characters)"));
-        root.addView(numberBox);
-        root.addView(button("Save this number", new Runnable() { public void run() {
-            String t = LockNumber.sanitize(numberBox.getText().toString());
-            Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, t);
-            numberBox.setText(t); refresh();
-        }}));
-        root.addView(button("Use the original number again", new Runnable() { public void run() {
-            Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.DEFAULT_TEXT);
-            numberBox.setText(LockNumber.DEFAULT_TEXT); refresh();
-        }}));
-        root.addView(button("Set the lock-screen wallpaper to the ORIGINAL leaf photo (replaces your lock wallpaper)", new Runnable() { public void run() {
-            Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("Hide + disable the pencil (Edit) in the quick-settings panel: ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, !Features.get(ControlActivity.this, TjAccessibilityService.PEN_KEY, true)); refresh();
-        }}));
-        root.addView(label("Recents"));
-        root.addView(button("Hide the Launcher from Recents COMPLETELY (home-type task): ON / OFF  [if the launcher ever crashes, Android asks you to choose the Home app again]", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, !Features.get(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, true)); refresh();
-        }}));
-        root.addView(button("adb setup guide: every command, step by step (copy button, shows what is already granted)", new Runnable() { public void run() {
-            startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class));
-        }}));
-        root.addView(label("Quickstep lock-out"));
-        root.addView(button("Keep the stock home screen away unless I do the gesture: ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, StrayHomeGuard.KEY, !Features.get(ControlActivity.this, StrayHomeGuard.KEY, true)); refresh();
-        }}));
-        root.addView(label("Method A - keep Recents clean"));
-        root.addView(button("A: Recents shows only Solitaire (launch flag): ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, RecentsPolicy.KEY, !RecentsPolicy.enabled(ControlActivity.this)); refresh();
-        }}));
-        root.addView(label("Method B - press the real Clear all buttons on return (needs the accessibility helper)"));
-        root.addView(button("B1: clear notifications (shade Clear all): ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, !ReturnReset.clearNotifications(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("B2: clear Recents (Recents Clear all, closes apps): ON / OFF", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, !ReturnReset.clearRecents(ControlActivity.this)); refresh();
-        }}));
-        root.addView(button("Restore everything", new Runnable() { public void run() {
-            RestoreStore.restoreAll(ControlActivity.this);
-            Mode.set(ControlActivity.this, Mode.QUICKSTEP);
-            refresh();
-        }}));
-        // B2: the menu is longer than the screen: scroll it (ScrollView + padding for the nav bar)
-        android.widget.ScrollView sv = new android.widget.ScrollView(this);
-        sv.setBackgroundColor(Color.WHITE);
-        sv.setFillViewport(true);
-        sv.addView(root, new android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(sv);
+        page.addView(numberBox);
+        LinearLayout nbtns = row();
+        nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
+        nbtns.addView(smallButton("Original number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.DEFAULT_TEXT); rebuild(); } }));
+        page.addView(nbtns);
+        action("Set the lock wallpaper to the original leaf photo", Features.getString(this, "lock_wallpaper_result", "Replaces your current lock wallpaper."), new Runnable() { public void run() {
+            Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); rebuild();
+        }});
+
+        section("Quick settings");
+        toggle("Hide and disable the pencil (Edit)", "A white cover over the pencil while the panel is open.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
+        toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
+        tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
+        tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
+
+        section("Keyboard");
+        toggle("Stock keyboard in custom, SwiftKey in Quickstep", KeyboardSwitch.status(this), KeyboardSwitch.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, KeyboardSwitch.KEY, v);
+            KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+        } });
+
+        section("Advanced");
+        action("adb setup guide", "Every command, step by step, with copy buttons.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class)); } });
+        action("Restore everything", "Turns every change of the launcher off and puts the settings back as they were.", new Runnable() { public void run() {
+            new AlertDialog.Builder(ControlActivity.this).setTitle("Restore everything?").setMessage("Every launcher feature is switched off and the original system settings are put back. You stay in Quickstep.")
+                    .setPositiveButton("Restore", new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int w) {
+                        RestoreStore.restoreAll(ControlActivity.this);
+                        Mode.set(ControlActivity.this, Mode.QUICKSTEP);
+                        rebuild();
+                    } }).setNegativeButton("Cancel", null).show();
+        }});
+        note("Stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")"
+                + "\nSide key seen by the helper: " + Features.getString(this, TjAccessibilityService.PWR_COUNT_KEY, "0") + " times (Android normally never passes it on)"
+                + "\nWill open: " + describeTarget());
+        if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
     }
 
-    @Override protected void onResume() { super.onResume(); RecentsGuard.excludeOurTasks(this); RecentsGuard.describeAsTarget(this); if (Mode.isCustom(this)) { finish(); return; } refresh(); }
+    private String describeTarget() {
+        String app = ReturnReset.findAppLabel(this);
+        return app == null ? "(no app matching '" + ReturnReset.appLabel(this) + "' found)" : app;
+    }
 
-    private void setPower(String m) { Features.setString(this, Features.POWER_MODE, m); refresh(); }
+    // ---------------------------------------------------------------- small UI kit
+    private interface Chg { void on(boolean v); }
+    private interface Str { void on(String v); }
 
-    private TextView label(String t) {
+    private TextView text(String t, int sp, int color, boolean bold) {
         TextView v = new TextView(this);
-        v.setText(t); v.setTextColor(Color.DKGRAY); v.setPadding(0, 32, 0, 0);
+        v.setText(t); v.setTextSize(sp); v.setTextColor(color);
+        if (bold) v.setTypeface(Typeface.DEFAULT_BOLD);
         return v;
     }
 
-    private void refresh() {
-        String s = "Launcher control\n\nMode: " + (Mode.isCustom(this) ? "custom launcher" : "stock launcher (Quickstep)");
-        s += "\nPower menu: " + Features.powerMode(this);
-        if (Features.POWER_WALLPAPER.equals(Features.powerMode(this))) s += "\nWallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(helper has not reported yet)");
-        s += "\nA (launch flag) " + (RecentsPolicy.enabled(this) ? "ON" : "OFF") + " | B1 notifications " + (ReturnReset.clearNotifications(this) ? "ON" : "OFF") + " | B2 recents " + (ReturnReset.clearRecents(this) ? "ON" : "OFF");
-        s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
-        s += "\nKeyboard switch: " + (KeyboardSwitch.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (KeyboardSwitch.permitted(this) ? "yes" : "NO") + " | " + KeyboardSwitch.status(this);
-        s += "\nLock-screen number: " + (LockNumber.enabled(this) ? "ON (" + LockNumber.text(this) + ")" : "OFF") + " | " + Features.getString(this, "lock_wallpaper_result", "wallpaper not changed by the launcher");
-        s += "\nLauncher hidden from Recents completely (home-type): " + (Features.get(this, RouterActivity.HOME_TYPE_KEY, true) ? "ON" : "OFF (the Recents card, if any, says solitaire)");
-        s += "\nQuick-settings pencil hidden: " + (Features.get(this, TjAccessibilityService.PEN_KEY, true) ? "ON" : "OFF");
-        s += "\nQuickstep lock-out: " + (Features.get(this, StrayHomeGuard.KEY, true) ? "ON" : "OFF")
-                + " | stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")";
-        s += "\nSide key seen by the helper: " + Features.getString(this, TjAccessibilityService.PWR_COUNT_KEY, "0") + " times (last " + Features.getString(this, TjAccessibilityService.PWR_LAST_KEY, "never") + ")";
-        s += "\nReset speed-up (animations off during the reset): " + (AnimationSpeedup.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (AnimationSpeedup.permitted(this) ? "yes" : "NO (it does nothing until you run the adb grant)");
-        s += "\nSolitaire at launcher start: " + (Features.get(this, TjHooks.STARTUP_KEY, true) ? "ON" : "OFF");
-        String app = ReturnReset.findAppLabel(this);
-        s += "\nReturn reset: " + (ReturnReset.enabled(this) ? "ON" : "OFF")
-                + " - will open: " + (app == null ? "(no app matching '" + ReturnReset.appLabel(this) + "' found)" : app)
-
-                + "\nAccessibility helper: " + (TjAccessibilityService.get() != null ? "ON" : "OFF (turn on 'Launcher power-menu helper' in Accessibility: it clears notifications and Recents)")
-                + "\nLast reset: " + Features.getString(this, TjAccessibilityService.RESET_REPORT_KEY, "(not run yet)");
-        if (CrashGuard.wasTripped(this)) s += "\n\nThe launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.";
-        status.setText(s);
+    private void title(String t) {
+        TextView v = text(t, 26, INK, true);
+        v.setPadding(px(4), 0, 0, px(12));
+        page.addView(v);
     }
 
-    private Button button(String label, final Runnable r) {
-        Button bt = new Button(this);
-        bt.setText(label);
-        bt.setAllCaps(false);
-        bt.setOnClickListener(new android.view.View.OnClickListener() { public void onClick(android.view.View v) { r.run(); } });
-        return bt;
+    private void section(String t) {
+        TextView v = text(t.toUpperCase(java.util.Locale.ROOT), 12, ACCENT, true);
+        v.setLetterSpacing(0.08f);
+        v.setPadding(px(4), px(26), 0, px(6));
+        page.addView(v);
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor("#DADCE0"));
+        page.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+    }
+
+    private LinearLayout card() {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(CARD); g.setCornerRadius(px(12));
+        c.setBackground(g);
+        c.setPadding(px(14), px(10), px(14), px(10));
+        return c;
+    }
+
+    private View chipLine(String label, String value, int color) {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        l.setPadding(0, px(6), 0, px(6));
+        l.addView(text(label, 12, MUTED, false));
+        l.addView(text(value, 15, color, true));
+        return l;
+    }
+
+    private LinearLayout row() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(px(4), px(10), px(4), px(10));
+        return r;
+    }
+
+    private void toggle(String title, String desc, boolean on, final Chg c) {
+        LinearLayout r = row();
+        LinearLayout left = new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.addView(text(title, 16, INK, false));
+        TextView d = text(desc, 13, MUTED, false);
+        left.addView(d);
+        r.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        final Switch sw = new Switch(this);
+        sw.setChecked(on);
+        sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton b, boolean isChecked) { c.on(isChecked); rebuild(); }
+        });
+        r.addView(sw);
+        r.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { sw.toggle(); } });
+        page.addView(r);
+    }
+
+    private void action(String title, String desc, final Runnable run) {
+        LinearLayout r = row();
+        LinearLayout left = new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.addView(text(title, 16, ACCENT, true));
+        left.addView(text(desc, 13, MUTED, false));
+        r.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        r.addView(text(">", 20, ACCENT, true));
+        r.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { run.run(); } });
+        page.addView(r);
+    }
+
+    private void note(String t) {
+        TextView v = text(t, 13, MUTED, false);
+        v.setPadding(px(4), px(8), px(4), px(8));
+        page.addView(v);
+    }
+
+    private Button smallButton(String label, final Runnable r) {
+        Button b = new Button(this);
+        b.setText(label); b.setAllCaps(false);
+        b.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { r.run(); } });
+        return b;
+    }
+
+    private void radio(String title, String[] labels, final String[] values, String current, final Str s) {
+        page.addView(text(title, 14, MUTED, false));
+        RadioGroup g = new RadioGroup(this);
+        g.setOrientation(RadioGroup.VERTICAL);
+        for (int i = 0; i < labels.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(labels[i]); rb.setTextSize(15); rb.setTextColor(INK);
+            rb.setId(1000 + i);
+            rb.setPadding(px(6), px(8), 0, px(8));
+            g.addView(rb);
+            if (values[i].equals(current)) rb.setChecked(true);
+        }
+        g.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(RadioGroup group, int id) { int i = id - 1000; if (i >= 0 && i < values.length) { s.on(values[i]); rebuild(); } }
+        });
+        page.addView(g);
+    }
+
+    private void stepper(String label, final String key, final int step, final int min, final int max, final String unit) {
+        LinearLayout r = row();
+        r.addView(text(label + ":  " + Features.getInt(this, key, 0) + unit, 15, INK, false), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        r.addView(smallButton("-", new Runnable() { public void run() { Features.setInt(ControlActivity.this, key, Math.max(min, Features.getInt(ControlActivity.this, key, 0) - step)); rebuild(); } }));
+        r.addView(smallButton("+", new Runnable() { public void run() { Features.setInt(ControlActivity.this, key, Math.min(max, Features.getInt(ControlActivity.this, key, 0) + step)); rebuild(); } }));
+        page.addView(r);
+    }
+
+    /** A row of tick boxes for the quick-settings tiles of one launcher; stored as the comma list SystemUI wants. */
+    private void tileChooser(String title, final String key, String def) {
+        page.addView(text(title, 14, MUTED, false));
+        String cur = TileProfile.sanitize(Features.getString(this, key, def), def);
+        final Set<String> on = new HashSet<>(Arrays.asList(cur.split(",")));
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout line = null;
+        for (int i = 0; i < TileProfile.CHOICES.length; i++) {
+            if (i % 3 == 0) { line = new LinearLayout(this); line.setOrientation(LinearLayout.HORIZONTAL); wrap.addView(line); }
+            final String t = TileProfile.CHOICES[i];
+            CheckBox cb = new CheckBox(this);
+            cb.setText(t); cb.setTextSize(14);
+            cb.setChecked(on.contains(t));
+            cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override public void onCheckedChanged(CompoundButton b, boolean isChecked) {
+                    List<String> out = new ArrayList<>();
+                    String now = TileProfile.sanitize(Features.getString(ControlActivity.this, key, "rotation"), "rotation");
+                    Set<String> sel = new HashSet<>(Arrays.asList(now.split(",")));
+                    if (isChecked) sel.add(t); else sel.remove(t);
+                    for (String c : TileProfile.CHOICES) if (sel.contains(c)) out.add(c);
+                    for (String c : sel) if (!out.contains(c)) out.add(c);   // keep any custom spec that is not in the list
+                    Features.setString(ControlActivity.this, key, out.isEmpty() ? "rotation" : android.text.TextUtils.join(",", out));
+                    TileProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+                }
+            });
+            line.addView(cb, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        }
+        page.addView(wrap);
     }
 
     private void goHome() {
