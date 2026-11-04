@@ -58,6 +58,14 @@ public class UnlockMethodsTest {
         u.onPad(true, 0); keys(u, 0, N, D, N, D, N, D, N, N, N, N); u.onEnter(5000);
         assertEquals(UnlockMethods.Method.TAP_ERASE, u.consume(5500));
     }
+    @Test public void pendingPadEntryIsEvaluatedWhenEnterWasNeverSeen() {
+        UnlockMethods u = only(UnlockMethods.Method.TAP_ERASE);
+        u.onPad(true, 0); keys(u, 0, N, D, N, D, N, D, N, N, N, N);
+        assertTrue(u.hasPendingPad());
+        u.onEnter(5000);                                   // what the service does at the unlock when the Enter click was lost
+        assertFalse(u.hasPendingPad());
+        assertEquals(UnlockMethods.Method.TAP_ERASE, u.consume(5500));
+    }
     @Test public void tapEraseTwiceIsNotEnough() {
         UnlockMethods u = only(UnlockMethods.Method.TAP_ERASE);
         u.onPad(true, 0); keys(u, 0, N, D, N, D, N, N, N); u.onEnter(5000);

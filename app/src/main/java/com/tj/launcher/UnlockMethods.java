@@ -133,6 +133,9 @@ public final class UnlockMethods {
         }
     }
 
+    /** True while pad taps were fed but no Enter was processed (the Enter click arrives after the keyguard tore its key down and cannot be recognised): the unlock itself then stands in for Enter. */
+    public boolean hasPendingPad() { return pad.length() > 0; }
+
     public void onKey(UnlockPick.Key k, long now) {
         if (k == UnlockPick.Key.DIGIT) pad.append('N');
         else if (k == UnlockPick.Key.DELETE) {

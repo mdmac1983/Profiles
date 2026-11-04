@@ -495,6 +495,10 @@ public class TjAccessibilityService extends AccessibilityService {
             android.content.Context app = getApplicationContext();
             handler.removeCallbacks(coverCheck);
             ensureUnlockListener();
+            if (unlock.hasPendingPad()) {   // the tablet unlocked but the Enter click never classified (emulator runs 63-65): the unlock is the Enter
+                Log.i(TAG, "UNLOCKPICK Enter click not recognised; evaluating the pending pad entry at the unlock");
+                unlock.onEnter(System.currentTimeMillis());
+            }
             UnlockMethods.Method m = unlock.consume(System.currentTimeMillis());
             preArmedThisLock = false; preCleanedThisLock = false;
             boolean wasFlipped = flippedByHandshake;
