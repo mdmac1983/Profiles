@@ -93,24 +93,40 @@ public final class ShellServer {
         out.println("OK " + forceStop(pkgs));
     }
 
-    /** `am force-stop` for each package, three at a time (each `am` is a small JVM start; the last cost is ~1 s on a slow tablet). */
-    private static int forceStop(List<String> pkgs) throws InterruptedException {
-        final int[] done = {0};
-        List<Thread> ts = new ArrayList<>();
-        for (int i = 0; i < pkgs.size(); i += 1) {
-            final String p = pkgs.get(i);
-            Thread t = new Thread(new Runnable() { @Override public void run() {
-                try {
-                    Process pr = new ProcessBuilder("/system/bin/am", "force-stop", p).redirectErrorStream(true).start();
-                    pr.getInputStream().close();
-                    if (pr.waitFor() == 0) synchronized (done) { done[0]++; }
-                } catch (Throwable ignored) { }
-            } }, "tj-shell-stop");
-            t.start(); ts.add(t);
-            if (ts.size() >= 3) { ts.remove(0).join(8000); }
+    private static Object amService;
+    private static boolean binderFailedOnce = false;
+
+    /** Force-stops through the activity manager's binder (no new JVM per app: cheap on a low-RAM tablet). The shell user holds FORCE_STOP_PACKAGES. False if the hidden API is not callable. */
+    private static synchronized boolean viaBinder(String pkg) {
+        if (binderFailedOnce) return false;
+        try {
+            if (amService == null) {
+                Class<?> sm = Class.forName("android.os.ServiceManager");
+                android.os.IBinder b = (android.os.IBinder) sm.getMethod("getService", String.class).invoke(null, "activity");
+                Class<?> stub = Class.forName("android.app.IActivityManager$Stub");
+                amService = stub.getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+            }
+            amService.getClass().getMethod("forceStopPackage", String.class, int.class).invoke(amService, pkg, 0);
+            return true;
+        } catch (Throwable t) {
+            binderFailedOnce = true;
+            System.out.println("tj-shell: binder force-stop unavailable, using `am` (" + t + ")");
+            return false;
         }
-        for (Thread t : ts) t.join(8000);
-        return done[0];
+    }
+
+    /** One package at a time (a low-RAM tablet must not start several JVMs at once): the binder call first, `am force-stop` as the fallback. */
+    private static int forceStop(List<String> pkgs) {
+        int done = 0;
+        for (String p : pkgs) {
+            try {
+                if (viaBinder(p)) { done++; continue; }
+                Process pr = new ProcessBuilder("/system/bin/am", "force-stop", p).redirectErrorStream(true).start();
+                pr.getInputStream().close();
+                if (pr.waitFor() == 0) done++;
+            } catch (Throwable ignored) { }
+        }
+        return done;
     }
 
     private static int lookupUid() {
