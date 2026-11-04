@@ -25,7 +25,7 @@ UI toolkit = Launcher3's own Views (no Compose); switching back to Quickstep = p
 default OFF; staged releases v0.2 safe core -> v0.3 in-app features -> v0.4+ permission features. **The safety rules in DESIGN section 6 override every feature.**
 
 ## OPEN — ask Tj (do not assume)
-1. The "go back to Quickstep" gesture (DESIGN section 4: icon in Quickstep drawer vs accessibility key gesture) and the kill-switch gesture.
+1. (SUPERSEDED 2026-11-04, v0.4.0) The Quickstep gesture is gone: Quickstep opens only by an unlock handshake (UnlockMethods) or the master failsafes (FailsafeKeys); the ways back are ReturnMethods. See research/PROFILES_2026-11-04.md.
 2. Whether he can use a PC with USB debugging (adb) — needed for L1/L4/L5/L7 permissions and for the first-install safety net.
 3. Power-menu block (L4) is experimental and may not be possible reliably: is a flickering best-effort acceptable?
 4. Keystore creation (below).
