@@ -37,6 +37,11 @@ public class ProfileSessionTest {
         assertTrue(ProfileSession.enforceRadios(true, true, now, new long[] {now - 70_000, now - 2000, now - 3000}));
     }
     @Test public void homeFailsafeOnlyWhenTheHelperIsOffAndThreeQuickPresses() {
-        assertTrue(ProfileSession.homeFailsafe(false, true, 3000, 1000, 2000 - 700 + 700));    // helper off, 3 presses (1000, 2000? gaps 1000 > 800 -> no)
+        assertTrue(ProfileSession.homeFailsafe(false, true, 2400, 1000, 1700));     // three presses, 700 ms apart, helper off
+        assertFalse(ProfileSession.homeFailsafe(true, true, 2400, 1000, 1700));     // helper ON: the handshake is the only way out
+        assertFalse(ProfileSession.homeFailsafe(false, false, 2400, 1000, 1700));   // already Quickstep
+        assertFalse(ProfileSession.homeFailsafe(false, true, 2400, 1000, 1200 + 1000)); // too slow between the last two
+        assertFalse(ProfileSession.homeFailsafe(false, true, 5000, 1000, 1700));    // the last press is old
+        assertFalse(ProfileSession.homeFailsafe(false, true, 1500, 0, 1000));       // only two presses so far
     }
 }
