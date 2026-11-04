@@ -94,6 +94,10 @@ public final class ShellHelper {
 
     /** Runs one allow-listed job (ShellProtocol.RUN) and returns its output, or null. */
     public static String run(String jobId) { return askLong("RUN " + jobId, 60_000); }
+    /** Photographs the stock Settings pages + dumps their screen structure into Downloads/launcher-probe/shots (about 1.5 minutes). */
+    public static String shots() { return askLong("SHOTS", 300_000); }
+    /** Copies the tablet's Settings / SystemUI / stock launcher / framework APKs into Downloads/launcher-probe/apk. */
+    public static String apks() { return askLong("APKS", 300_000); }
     /** Runs the whole read-only probe list bundled in the APK. */
     public static String probe() { return askLong("PROBE", 300_000); }
     /** Adds the accessibility helper to the enabled services. */

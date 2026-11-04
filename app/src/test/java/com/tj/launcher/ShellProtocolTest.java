@@ -87,7 +87,7 @@ public class ShellProtocolTest {
     }
     @Test public void everyJobLineOnlyTouchesThisAppOrTheBrowser() {
         for (String[] r : ShellProtocol.RUN) {
-            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser"));
+            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser") || r[1].startsWith("mkdir -p /sdcard/Download/launcher-probe"));
             assertFalse(r[0], r[1].contains(";") || r[1].contains("&") || r[1].contains("|") || r[1].contains("`") || r[1].contains("$"));
         }
     }
@@ -109,5 +109,21 @@ public class ShellProtocolTest {
         assertTrue(l.get(0).title); assertEquals("build and device", l.get(0).text);
         assertFalse(l.get(1).title); assertEquals("getprop ro.build.fingerprint", l.get(1).text);
         assertEquals("pm list users", l.get(3).text);
+    }
+
+    @Test public void deviceShellLinesHaveNoAdbPrefixAndStartTheHelper() {
+        for (String l : new String[] { ShellProtocol.START_DEVICE_LINE, ShellProtocol.START_DEVICE_SH_C, ShellProtocol.START_DEVICE_TWO_STEP }) {
+            assertFalse(l.startsWith("adb"));
+            assertTrue(l.contains("app_process") && l.contains("com.tj.launcher.ShellServer"));
+        }
+        assertTrue(ShellProtocol.START_DEVICE_SH_C.startsWith("sh -c '"));
+        assertTrue(ShellProtocol.START_DEVICE_LINE.contains("$(pm path com.tj.launcher"));
+    }
+    @Test public void shotsAndApksAreFixedRoutines() {
+        assertTrue(ShellProtocol.isShots(" SHOTS ")); assertTrue(ShellProtocol.isApks("APKS"));
+        assertFalse(ShellProtocol.isShots("SHOTS; reboot")); assertFalse(ShellProtocol.isApks(null));
+        for (String p : ShellProtocol.SHOT_PAGES) assertTrue(p, p.matches("[A-Z_]+"));
+        for (String p : ShellProtocol.APK_PACKAGES) assertTrue(p, p.matches("[a-z.]+"));
+        assertTrue(ShellProtocol.PUBLISH_DIR.startsWith("/sdcard/Download/"));
     }
 }

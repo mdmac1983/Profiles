@@ -123,7 +123,19 @@ public final class ShellProtocol {
         {"IDLE_WL", "dumpsys deviceidle whitelist +com.tj.launcher"},
         {"BROWSER_OFF", "pm disable-user --user 0 com.android.browser"},
         {"BROWSER_ON", "pm enable com.android.browser"},
+        // T1: publishing to a folder a file manager can see (the shell user may write /sdcard/Download)
+        {"MKDIR_PUBLISH", "mkdir -p /sdcard/Download/launcher-probe/shots /sdcard/Download/launcher-probe/apk"},
+        {"PUBLISH_REPORT", "cp /sdcard/Android/data/com.tj.launcher/files/probe/tablet-report.txt /sdcard/Download/launcher-probe/tablet-report.txt"},
     };
+
+    /** SHOTS and APKS are fixed routines inside the helper (loops over fixed lists, nothing from the caller). */
+    public static boolean isShots(String line) { return line != null && line.trim().equals("SHOTS"); }
+    public static boolean isApks(String line) { return line != null && line.trim().equals("APKS"); }
+    public static final String PUBLISH_DIR = "/sdcard/Download/launcher-probe";
+    /** The Settings pages photographed (public android.settings.* actions). */
+    public static final String[] SHOT_PAGES = { "SETTINGS", "WIFI_SETTINGS", "BLUETOOTH_SETTINGS", "DISPLAY_SETTINGS", "SOUND_SETTINGS", "APPLICATION_SETTINGS", "INTERNAL_STORAGE_SETTINGS",
+            "BATTERY_SAVER_SETTINGS", "DATE_SETTINGS", "LOCALE_SETTINGS", "ACCESSIBILITY_SETTINGS", "SECURITY_SETTINGS", "PRIVACY_SETTINGS", "DEVICE_INFO_SETTINGS", "INPUT_METHOD_SETTINGS" };
+    public static final String[] APK_PACKAGES = { "com.android.settings", "com.android.systemui", "com.android.launcher3", "android" };
 
     /** The shell line for a job id, or null (unknown ids are refused). */
     public static String runLine(String id) {
@@ -183,5 +195,12 @@ public final class ShellProtocol {
             "adb shell 'CLASSPATH=$(pm path " + SELF + " | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'";
     public static final String START_STEP1 = "adb shell pm path " + SELF;
     public static final String START_STEP2 = "adb shell \"CLASSPATH=<the path printed above, without 'package:'> setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &\"";
+    // ---- T1 (Tj, 2026-11-04: "I have adb with another android phone to the tablet ... an app such as adb otg"): such an app gives a DEVICE shell, so there is no "adb shell" prefix
+    /** Paste into the phone's adb app terminal (it is already the tablet's shell). */
+    public static final String START_DEVICE_LINE = "CLASSPATH=$(pm path " + SELF + " | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &";
+    /** For adb apps that run each line directly instead of through a shell: wrap it in sh -c. */
+    public static final String START_DEVICE_SH_C = "sh -c '" + START_DEVICE_LINE + "'";
+    /** Two steps for apps that cannot substitute $(...): first `pm path com.tj.launcher`, then this with the printed path (without "package:") in place of PATH. */
+    public static final String START_DEVICE_TWO_STEP = "sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'";
     public static final String STOP_LINE = "adb shell pkill -f com.tj.launcher.ShellServer";
 }

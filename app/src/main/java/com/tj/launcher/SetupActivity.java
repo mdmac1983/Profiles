@@ -137,21 +137,24 @@ public class SetupActivity extends Activity {
             row.addView(text(it.why, 13, MUTED, false));
             page.addView(row);
         }
-        Button copy = button("Copy the adb line that starts the shell helper", new Runnable() { public void run() { copy(ShellProtocol.START_ONE_LINER); } });
-        page.addView(copy);
+        page.addView(button("Copy the helper line for a PHONE / adb app (no 'adb shell')", new Runnable() { public void run() { copy(ShellProtocol.START_DEVICE_LINE); } }));
+        page.addView(button("Copy it wrapped in sh -c (for adb apps that do not use a shell)", new Runnable() { public void run() { copy(ShellProtocol.START_DEVICE_SH_C); } }));
+        page.addView(button("Copy the helper line for a COMPUTER (adb shell ...)", new Runnable() { public void run() { copy(ShellProtocol.START_ONE_LINER); } }));
         final boolean canRun = helper;
         Button all = button("Do everything that is missing (" + missing.size() + ")", new Runnable() { public void run() { doEverything(); } });
         all.setEnabled(canRun && !missing.isEmpty());
         page.addView(all);
-        Button rep = button("Collect the tablet report + copy the system apps", new Runnable() { public void run() { collect(); } });
-        page.addView(rep);
+        page.addView(button("Collect the tablet report (small, about a minute)", new Runnable() { public void run() { collect(false); } }));
+        Button big = button("Collect EVERYTHING: report + Settings screenshots + system apps (big, 2-3 minutes)", new Runnable() { public void run() { collect(true); } });
+        big.setEnabled(canRun);
+        page.addView(big);
         Button browser = button("Disable the old Browser app (com.android.browser) - reversible", new Runnable() { public void run() { runJob("BROWSER_OFF"); } });
         browser.setEnabled(canRun);
         page.addView(browser);
         log = text("", 13, MUTED, false);
         log.setPadding(px(4), px(12), px(4), px(12));
         page.addView(log);
-        page.addView(text("Report and system apps land in: " + TabletReport.shareDir(this) + "\nOn the computer: adb pull " + TabletReport.shareDir(this) + " probe-out\nThen send me the folder (zip it). Nothing is sent anywhere by this app.", 12, MUTED, false));
+        page.addView(text("Everything is published to the folder  Downloads / launcher-probe  on the tablet: open it with any file manager, zip it and send it to me. (From a computer: adb pull " + ShellProtocol.PUBLISH_DIR + " probe-out.) Nothing is sent anywhere by this app.", 12, MUTED, false));
     }
 
     private Button button(String label, final Runnable r) {
@@ -192,13 +195,22 @@ public class SetupActivity extends Activity {
         } }, "tj-setup-all").start();
     }
 
-    private void collect() {
-        say("collecting... (the full probe takes about a minute)");
+    /** The report (and with {@code everything}: the Settings screenshots and the system apps), published to Downloads/launcher-probe where a file manager can reach it. */
+    private void collect(final boolean everything) {
+        say("collecting... (the report takes about a minute" + (everything ? ", the screenshots and apps a few more; touch nothing meanwhile" : "") + ")");
         new Thread(new Runnable() { public void run() {
-            String apks = TabletReport.copyApks(SetupActivity.this);
             File f = TabletReport.write(SetupActivity.this);
-            say(apks.trim());
-            say("report written: " + f + " (" + (f.length() / 1024) + " KB)");
+            say("report written (" + (f.length() / 1024) + " KB)");
+            ShellHelper.run("MKDIR_PUBLISH");
+            String pub = ShellHelper.run("PUBLISH_REPORT");
+            say(pub == null ? "could not publish the report to Downloads (is the shell helper running?): it stays in " + f : "published: " + ShellProtocol.PUBLISH_DIR + "/tablet-report.txt");
+            if (everything) {
+                String shots = ShellHelper.shots();
+                say(shots == null ? "screenshots FAILED (helper not running?)" : "screenshots: " + shots.trim().replace('\n', ' '));
+                String apks = ShellHelper.apks();
+                say(apks == null ? "system apps FAILED" : "system apps: " + apks.trim().replace('\n', ' '));
+            }
+            say("DONE. Open Downloads / launcher-probe with a file manager, zip it and send it to me.");
         } }, "tj-setup-report").start();
     }
 
@@ -210,9 +222,14 @@ public class SetupActivity extends Activity {
                 String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : ShellHelper.run(it.job);
                 b.append(it.job).append(out == null ? " FAILED" : " ok").append('\n');
             }
-            b.append(TabletReport.copyApks(SetupActivity.this));
             File f = TabletReport.write(SetupActivity.this);
             b.append("report ").append(f.length()).append(" bytes\n");
+            ShellHelper.run("MKDIR_PUBLISH");
+            b.append("publish report: ").append(ShellHelper.run("PUBLISH_REPORT") == null ? "FAILED" : "ok").append('\n');
+            String shots = ShellHelper.shots();
+            b.append("shots: ").append(shots == null ? "FAILED" : shots.trim().replace('\n', ' ')).append('\n');
+            String apks = ShellHelper.apks();
+            b.append("apks: ").append(apks == null ? "FAILED" : apks.trim().replace('\n', ' ')).append('\n');
             for (Item it : items) b.append("state ").append(it.title).append(": ").append(done(it) ? "done" : "TODO").append('\n');
             try (java.io.FileOutputStream os = new java.io.FileOutputStream(new File(TabletReport.shareDir(SetupActivity.this), "autorun-done.txt"))) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
             ui.post(new Runnable() { public void run() { build(); } });

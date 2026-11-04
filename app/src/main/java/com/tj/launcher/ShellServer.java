@@ -101,6 +101,31 @@ public final class ShellServer {
             runShell("settings put secure accessibility_enabled 1", 5_000);
             out.println("OK"); out.println("accessibility services now: " + runShell("settings get secure enabled_accessibility_services", 5_000).trim()); out.flush(); return;
         }
+        if (ShellProtocol.isShots(line)) {
+            out.println("OK");
+            runShell("mkdir -p " + ShellProtocol.PUBLISH_DIR + "/shots", 5_000);
+            int n = 0;
+            for (String page : ShellProtocol.SHOT_PAGES) {
+                runShell("am start -a android.settings." + page, 8_000);
+                try { Thread.sleep(2500); } catch (InterruptedException ignored) { }
+                runShell("screencap -p " + ShellProtocol.PUBLISH_DIR + "/shots/" + page + ".png", 15_000);
+                runShell("uiautomator dump " + ShellProtocol.PUBLISH_DIR + "/shots/" + page + ".xml", 15_000);
+                out.println("shot " + page); out.flush(); n++;
+            }
+            runShell("input keyevent KEYCODE_HOME", 5_000);
+            out.println("done: " + n + " pages"); out.flush(); return;
+        }
+        if (ShellProtocol.isApks(line)) {
+            out.println("OK");
+            runShell("mkdir -p " + ShellProtocol.PUBLISH_DIR + "/apk", 5_000);
+            for (String pkg : ShellProtocol.APK_PACKAGES) {
+                String path = runShell("pm path " + pkg + " | head -1 | cut -d: -f2", 8_000).trim();
+                if (path.isEmpty()) { out.println("no apk for " + pkg); continue; }
+                String r = runShell("cp " + path + " " + ShellProtocol.PUBLISH_DIR + "/apk/" + pkg + ".apk", 60_000).trim();
+                out.println("copied " + pkg + (r.isEmpty() ? "" : " (" + r + ")")); out.flush();
+            }
+            out.println("done"); out.flush(); return;
+        }
         if (ShellProtocol.isProbe(line)) {
             out.println("OK");
             java.io.InputStream ris = ShellServer.class.getClassLoader().getResourceAsStream("probe-commands.txt");
