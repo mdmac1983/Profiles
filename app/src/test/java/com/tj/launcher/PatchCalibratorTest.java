@@ -62,7 +62,7 @@ public class PatchCalibratorTest {
         int bw = 800, bh = 1200, W = 300, H = 512;
         int[] wall = wallpaper(bw, bh);
         int[] shot = new int[W * H];
-        for (int i = 0; i < shot.length; i++) shot[i] = 0xFF000000 | ((i * 2654435761L) >>> 8 & 0xFFFFFF) | 0;   // noise
+        for (int i = 0; i < shot.length; i++) shot[i] = 0xFF000000 | (int) (((i * 2654435761L) >>> 8) & 0xFFFFFF);   // noise
         assertNull(PatchCalibrator.solve(wall, bw, bh, shot, W, H, 180, 150, 290, 300, 0.5f));
     }
 }
