@@ -1,23 +1,22 @@
-# CHECKPOINT 251 — read me first, then TASKS.md
+# CHECKPOINT 252 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T18:43:38Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `9bf6b8f` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T18:45:30Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `a10b038` (this checkpoint is the commit after it)
 
 ## Just done
-S1+S2 built: tools/adb-all.sh/.bat + shared probe list (app/src/main/resources/probe-commands.txt, bundled in the APK), helper learns RUN <id> (fixed allow-list) / PROBE / A11YON, SetupActivity (status checklist, Do everything, Collect report + copy system APKs, autorun for the test), TabletReport (app-side facts), Control entry; unit tests+lint green; section x (adb-all.sh on the emulator + in-app autorun)
+Run 55 read: o,t,p = 20 PASS 0 FAIL (Solitaire in front 1.5 s after unlock = race fixed). MEASURED: device_demo_mode=1 removes the QS pencil AND gear natively (screenshots 73/74), power menu unchanged. Built DemoModeProfile (opt-in, default OFF, snapshot/restore via RestoreStore.snapshotGlobal, applied in Mode.set, pencil cover skipped when active) + Control toggle + t-section checks incl. lock screen with the flag on
 
 ## Do this next
-dispatch sections 'x' and read run 55 (o,t,p) results (should be done); then update ADB_TODO (fast path = adb-all), IDEAS doc pencil result, full run, ship v0.5.0
+dispatch sections t; read x (adb-all + in-app) and t; update ADB_TODO (fast path adb-all, E1 demo-mode experiment line), IDEAS (pencil result), full run, ship v0.5.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
-     M .github/workflows/emulator.yml
      M CHECKPOINT.md
-     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  01ef1e0 ckpt 251: S1+S2 built: tools/adb-all.sh/.bat + shared probe list (app/src/main/resources
   51c2ccb ckpt 250: S1: tools/adb-all.sh (+ .bat for Windows, CRLF) + tools/probe-commands.txt (on
   3893c30 ckpt 249: Wrote S1-S3 (one-session adb: PC script + in-app Tablet setup & report via the
   3f46b2f ckpt 248: Run 54 (s) read: pm suspend works (Recents card removed, process stays, card N
@@ -27,8 +26,7 @@ dispatch sections 'x' and read run 55 (o,t,p) results (should be done); then upd
   95fb3fc ckpt 244: Added experiment section 's' (pm suspend/hide effect on Recents/notifications/
   fbf54bc ckpt 243: Wrote Q1-Q4 (Tj's deep-research request: separation ideas, instant power menu,
   2bba67e ckpt 242: Added research section 'u' (second Android user experiment: switch time, first
-  656ee09 ckpt 241: Wrote P1 (separate profiles keeping their own apps open: decide, only build if
 ```
 
-(5 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
