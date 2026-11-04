@@ -317,7 +317,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void updatePencil() {
         try {
             Rect r = findPencil();
-            if (r == null) { removePencil(); return; }
+            if (r == null) { hidePencil(); return; }
             showPencil(r);
         } catch (Throwable t) { Log.e(TAG, "pencil update failed", t); removePencil(); }
     }
@@ -345,11 +345,30 @@ public class TjAccessibilityService extends AccessibilityService {
         return null;
     }
 
-    private void showPencil(Rect r) {
-        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+    private boolean penShown = false;
+
+    private WindowManager.LayoutParams penParams(Rect r, boolean touchable) {
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(r.width(), r.height(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,   // touchable on purpose: it swallows taps meant for the pencil
-                PixelFormat.OPAQUE);
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        | (touchable ? 0 : WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE),   // touchable when shown on purpose: it swallows taps meant for the pencil
+                PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.START;
+        lp.x = r.left; lp.y = r.top;
+        lp.setTitle("TjPencilCover");
+        return lp;
+    }
+
+    private void showPencil(Rect r) {
+        // D4: the cover window stays attached (invisible, untouchable) once it exists, so showing it is one redraw + one layout update, not a window creation.
+        WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        if (penView != null) {
+            if (!penShown) { penView.setAlpha(1f); penShown = true; wm.updateViewLayout(penView, penParams(r, true)); penAt.set(r); Log.i(TAG, "PENCIL cover shown " + r.toShortString()); }
+            else if (!penAt.equals(r)) { wm.updateViewLayout(penView, penParams(r, true)); penAt.set(r); }
+            return;
+        }
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(r.width(), r.height(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.START;
         lp.x = r.left; lp.y = r.top;
         lp.setTitle("TjPencilCover");
@@ -358,7 +377,7 @@ public class TjAccessibilityService extends AccessibilityService {
             v.setBackgroundColor(Color.WHITE);   // the stock panel is pure white (255,255,255) in Tj's photo
             v.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View view, android.view.MotionEvent ev) { return true; } });
             wm.addView(v, lp);
-            penView = v; penAt.set(r);
+            penView = v; penAt.set(r); penShown = true;
             Log.i(TAG, "PENCIL cover shown " + r.toShortString());
         } else if (!penAt.equals(r)) {
             wm.updateViewLayout(penView, lp);
@@ -366,10 +385,20 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     }
 
+    /** Panel closed: hide the cover but keep the window (warm) so the next open is instant; a real removal happens on removePencil(). */
+    private void hidePencil() {
+        if (penView == null || !penShown) return;
+        try {
+            penView.setAlpha(0f); penShown = false;
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).updateViewLayout(penView, penParams(penAt, false));
+            Log.i(TAG, "PENCIL cover hidden (kept warm)");
+        } catch (Throwable t) { removePencil(); }
+    }
+
     private void removePencil() {
         if (penView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(penView); } catch (Throwable ignored) { }
-        penView = null; penAt.setEmpty();
+        penView = null; penAt.setEmpty(); penShown = false;
         Log.i(TAG, "PENCIL cover removed");
     }
 
@@ -1022,6 +1051,7 @@ public class TjAccessibilityService extends AccessibilityService {
             wm.addView(overlay, overlayParams(r, true));
             shownAt.set(r);
             overlayShown = true; overlayTouchable = true;
+            cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
             return;
         }
         if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency(); }          // visible first (one redraw) ...

@@ -22,6 +22,8 @@ public final class Features {
     public static void set(Context c, String key, boolean on) { p(c).edit().putBoolean(key, on).commit(); }
     public static String getString(Context c, String key, String def) { return p(c).getString(key, def); }
     public static void setString(Context c, String key, String v) { p(c).edit().putString(key, v).commit(); }
+    public static int getInt(Context c, String key, int def) { return p(c).getInt(key, def); }
+    public static void setInt(Context c, String key, int v) { p(c).edit().putInt(key, v).commit(); }
     public static void allOff(Context c) { p(c).edit().clear().commit(); }
 
     public static String powerMode(Context c) {
