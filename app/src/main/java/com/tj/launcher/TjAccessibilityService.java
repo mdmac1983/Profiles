@@ -99,7 +99,6 @@ public class TjAccessibilityService extends AccessibilityService {
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
-        try { startPowerWatch(); } catch (Throwable t) { Log.e(TAG, "power watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
 
@@ -553,34 +552,12 @@ public class TjAccessibilityService extends AccessibilityService {
         return n;
     }
 
-    // ---------------------------------------------------------------- D3: the earliest signal there is that the power menu is coming
-    // The side key itself never reaches an accessibility service (Android drops consumed keys before the key filter). But PhoneWindowManager broadcasts
-    // ACTION_CLOSE_SYSTEM_DIALOGS (reason "globalactions") right BEFORE it creates the dialog: that is our head start. Latencies are logged and shown in Launcher control.
+    // ---------------------------------------------------------------- D3: how fast is the card? (measured, shown in Launcher control)
+    // There is NO earlier signal on Android 10: the side key is consumed before the key filter (never reaches a service), and PhoneWindowManager no longer broadcasts
+    // ACTION_CLOSE_SYSTEM_DIALOGS("globalactions") when it opens the power menu (checked in the android-10.0.0_r47 source; only the shutdown path still does).
+    // The first thing an accessibility service can see is the menu window itself, so speed comes from the pre-built (warm) card.
     public static final String LATENCY_KEY = "power_latency";
     private long signalMs = 0, menuSeenMs = 0, cardShownMs = 0;
-    private boolean powerWatch = false;
-    private final android.content.BroadcastReceiver powerSignal = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
-            try {
-                if (!"globalactions".equals(i.getStringExtra("reason"))) return;
-                signalMs = android.os.SystemClock.uptimeMillis(); menuSeenMs = 0; cardShownMs = 0;
-                Log.i(TAG, "POWERSIG globalactions broadcast");
-                earlyCover();
-            } catch (Throwable t) { Log.e(TAG, "power signal failed", t); }
-        }
-    };
-
-    private void startPowerWatch() {
-        if (powerWatch) return;
-        registerReceiver(powerSignal, new android.content.IntentFilter(android.content.Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
-        powerWatch = true;
-    }
-
-    private void stopPowerWatch() {
-        if (!powerWatch) return;
-        try { unregisterReceiver(powerSignal); } catch (Throwable ignored) { }
-        powerWatch = false;
-    }
 
     /** Called when the card becomes visible: how long after the broadcast / after the real menu window appeared? (negative = the card came FIRST) */
     private void recordLatency() {
@@ -623,9 +600,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopPowerWatch(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopPowerWatch(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
