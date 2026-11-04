@@ -314,3 +314,13 @@ Always keep the goal in mind: the two launchers should act like separate profile
 - [ ] Q2 research: power menu (Power off + Restart only) with no visible delay: native ROM setting? shell-helper input monitor (MONITOR_INPUT) to show the card BEFORE the real menu? -> experiment + doc
 - [ ] Q3 research: pencil icon removal with no visible delay: earlier trigger + cached bounds (show on the first SystemUI shade event, before the node scan), plus what the tile guard already makes harmless -> doc + (if sound) code
 - [ ] Q4 plan the cloned Settings app: what Tj can send (screenshots, adb probe output, the tablet's Settings APK via adb pull), where the source is online (AOSP / Lineage), staged implementation plan -> research/SETTINGS_CLONE plan update + tools/adb-probe.sh
+
+## Tj, 2026-11-04 (follow-up to the research request), verbatim
+"Also, can the accelerometer be used to go from quickstep to the custom launcher?
+I need a to do list for when i have time to do adb commands. 
+
+Tell me every command to do with adb now, including the browser uninstall,  the permissions for the launcher including for future possible upgrades, the check of user profiles,  etc.
+Also,  see if adb can help fix the power menu and the pencil icon"
+- [ ] R1 accelerometer Quickstep -> custom: shake / knock as two more ReturnMethods (reuse MotionDetector; sensor only while Quickstep is active and the screen is on; default OFF, experimental) + JVM tests
+- [ ] R2 an ADB TO-DO LIST (research/ADB_TODO.md): EVERY adb command in order with why / expected output / undo: connection check, launcher permissions incl. future ones, helper (after every restart), browser uninstall, user-profile check, read-only probe, optional experiments; also reflected in the in-app adb guide
+- [ ] R3 can adb fix the power menu and the pencil? experiments on the emulator (device_demo_mode hides the QS footer pencil/gear natively?; power-menu knobs; input monitor) -> doc + code only if proven safe

@@ -1,21 +1,23 @@
-# CHECKPOINT 244 — read me first, then TASKS.md
+# CHECKPOINT 245 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T18:29:39Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `6e27421` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T18:31:47Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `4075944` (this checkpoint is the commit after it)
 
 ## Just done
-Added experiment section 's' (pm suspend/hide effect on Recents/notifications/processes, input-monitor probe via InputProbe as shell, overlay/settings knobs) + InputProbe.java
+Wrote R1-R3 (accelerometer back to custom, adb to-do list, adb for power menu/pencil) into TASKS
 
 ## Do this next
-dispatch emulator.yml sections 's'; read o,t / u / s runs together
+check runs o,t / u / s; then R1 code, R2 doc, R3 experiments (device_demo_mode for the pencil), final answer
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  95fb3fc ckpt 244: Added experiment section 's' (pm suspend/hide effect on Recents/notifications/
   fbf54bc ckpt 243: Wrote Q1-Q4 (Tj's deep-research request: separation ideas, instant power menu,
   2bba67e ckpt 242: Added research section 'u' (second Android user experiment: switch time, first
   656ee09 ckpt 241: Wrote P1 (separate profiles keeping their own apps open: decide, only build if
@@ -25,8 +27,7 @@ dispatch emulator.yml sections 's'; read o,t / u / s runs together
   1bf7d6a ckpt 237: N9 DONE: run 51 FULL emulator = green (0 FAIL) in 15m05s after the REC1 tapapp
   13b6eb6 ckpt 236: N9 proof: run 48 cold n6 = 3.6 min green; run 49 WARM n6 = 3.5 min green (cach
   047609d ckpt 235: N9 proof run 48 (sections=n6, COLD cache): green in 3.6 min total (AVD create 
-  b7966f1 ckpt 234: N9 built: emulator_scenario.sh sections (want X), emulator.yml sections input 
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
