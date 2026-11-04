@@ -50,7 +50,7 @@ if [ "$STATUS_ONLY" = 0 ]; then
   apkpath="$(adbsh pm path "$PKG" | head -1 | cut -d: -f2)"
   adb shell "CLASSPATH=$apkpath setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &" >/dev/null 2>&1
   sleep 2
-  n="$(adbsh "ps -A | grep -c ShellServer")"; [ "${n:-0}" -ge 1 ] 2>/dev/null && ok "helper running" || bad "helper did not start"
+  n="$(adbsh "ps -A -o ARGS | grep -c '[S]hellServer'")"; [ "${n:-0}" -ge 1 ] 2>/dev/null && ok "helper running" || bad "helper did not start"
   if [ "$BROWSER" = 1 ]; then
     say "== 4. Browser app off"; r="$(adbsh pm disable-user --user 0 com.android.browser)"; echo "$r" | grep -qi disabled && ok "$r  (undo: adb shell pm enable com.android.browser)" || bad "$r"
   else say "== 4. Browser app: skipped (add --browser-off to disable it; undo: adb shell pm enable com.android.browser)"; fi
@@ -60,14 +60,14 @@ say "== 5. status of every permission command (what the tablet reports)"
 adbsh dumpsys package "$PKG" | grep -E 'granted=(true|false)' | grep -E 'WRITE_SECURE_SETTINGS|DUMP|CHANGE_CONFIGURATION|READ_EXTERNAL_STORAGE|PACKAGE_USAGE_STATS|WRITE_SETTINGS' | sed 's/^ */  /' | tee -a "$STATUS"
 adbsh cmd appops get "$PKG" | grep -E 'GET_USAGE_STATS|WRITE_SETTINGS|RUN_IN_BACKGROUND|RUN_ANY_IN_BACKGROUND' | sed 's/^/  appop /' | tee -a "$STATUS"
 say "  accessibility: $(adbsh settings get secure enabled_accessibility_services)"
-say "  helper processes: $(adbsh "ps -A | grep -c ShellServer")"
+say "  helper processes: $(adbsh "ps -A -o ARGS | grep -c '[S]hellServer'")"
 say "  max users: $(adbsh pm get-max-users)   users: $(adbsh pm list users | tr '\n' ' ')"
 say "  crypto: $(adbsh getprop ro.crypto.type) / $(adbsh getprop ro.crypto.state)   adb tcp: '$(adbsh getprop service.adb.tcp.port)' / persist '$(adbsh getprop persist.adb.tcp.port)'"
 say "  power-menu setting: '$(adbsh settings get secure power_menu_actions)'   lineage: '$(adbsh getprop ro.lineage.version)'"
 
 say "== 6. read-only probe -> $REPORT"
 while IFS= read -r line; do
-  case "$line" in "## "*) { echo; echo "===== ${line#\#\# }"; } >> "$REPORT";; "") ;; *) { echo "\$ adb shell $line"; adb shell "$line" 2>&1 | tr -d '\r'; } >> "$REPORT";; esac
+  case "$line" in "## "*) { echo; echo "===== ${line#\#\# }"; } >> "$REPORT";; "") ;; *) { echo "\$ adb shell $line"; adb shell "$line" < /dev/null 2>&1 | tr -d '\r'; } >> "$REPORT";; esac
 done < "$D/../app/src/main/resources/probe-commands.txt"
 ok "$(wc -l < "$REPORT") lines"
 

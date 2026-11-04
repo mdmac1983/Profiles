@@ -76,7 +76,7 @@ call :say == 5. status of every permission command - what the tablet reports
 adb shell "dumpsys package %PKG% | grep -E 'granted=(true|false)' | grep -E 'WRITE_SECURE_SETTINGS|DUMP|CHANGE_CONFIGURATION|READ_EXTERNAL_STORAGE|PACKAGE_USAGE_STATS|WRITE_SETTINGS'" >> %STATUS% 2>&1
 adb shell "cmd appops get %PKG% | grep -E 'GET_USAGE_STATS|WRITE_SETTINGS|RUN_IN_BACKGROUND|RUN_ANY_IN_BACKGROUND'" >> %STATUS% 2>&1
 adb shell settings get secure enabled_accessibility_services >> %STATUS% 2>&1
-adb shell "ps -A | grep ShellServer" >> %STATUS% 2>&1
+adb shell "ps -A -o ARGS | grep '[S]hellServer'" >> %STATUS% 2>&1
 adb shell pm get-max-users >> %STATUS% 2>&1
 adb shell pm list users >> %STATUS% 2>&1
 type %STATUS%

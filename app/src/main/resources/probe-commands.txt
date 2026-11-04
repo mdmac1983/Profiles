@@ -76,6 +76,6 @@ dumpsys package com.tj.launcher | grep -E 'versionName|versionCode|granted=(true
 cmd appops get com.tj.launcher | head -40
 dumpsys deviceidle whitelist | grep -i tj
 dumpsys accessibility | grep -iE 'Enabled services|Bound services|tj' | head -12
-ps -A | grep -c ShellServer
+ps -A -o ARGS | grep -c '[S]hellServer'
 ## what is running / recent
 dumpsys activity recents | grep -E 'Recent #' | head -20
