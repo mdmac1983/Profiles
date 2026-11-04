@@ -32,3 +32,7 @@ android {
     }
     lint { abortOnError = false }
 }
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}

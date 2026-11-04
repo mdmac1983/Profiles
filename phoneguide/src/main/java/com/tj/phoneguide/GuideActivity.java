@@ -200,11 +200,7 @@ public class GuideActivity extends Activity {
         addCommand(c, "settings put secure accessibility_enabled 1", "Copy this line");
     }
 
-    static String a11yLine(String printed) {
-        String p = printed == null ? "" : printed.trim();
-        String list = (p.isEmpty() || p.equalsIgnoreCase("null")) ? A11Y : (p.contains(A11Y) ? p : p + ":" + A11Y);
-        return "settings put secure enabled_accessibility_services " + list;
-    }
+    static String a11yLine(String printed) { return A11yLine.build(printed); }
 
     private void refreshCommands() {
         for (int i = 0; i < commandViews.size(); i++) commandViews.get(i).setText(shown(commandTexts.get(i)));
