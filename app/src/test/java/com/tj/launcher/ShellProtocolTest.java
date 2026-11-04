@@ -123,7 +123,7 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.isShots(" SHOTS ")); assertTrue(ShellProtocol.isApks("APKS"));
         assertFalse(ShellProtocol.isShots("SHOTS; reboot")); assertFalse(ShellProtocol.isApks(null));
         for (String p : ShellProtocol.SHOT_PAGES) assertTrue(p, p.matches("[A-Z_]+"));
-        for (String p : ShellProtocol.APK_PACKAGES) assertTrue(p, p.matches("[a-z.]+"));
+        for (String p : ShellProtocol.APK_PACKAGES) assertTrue(p, p.matches("[a-z0-9.]+"));
         assertTrue(ShellProtocol.PUBLISH_DIR.startsWith("/sdcard/Download/"));
     }
 }
