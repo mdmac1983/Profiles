@@ -20,3 +20,4 @@ No releases yet.
 | v0.3.3 | code 9 | 2026-11-03T20:40Z | v0.3.3: power-menu cover on the lock screen, faster double-Home reset (skip empty shade, animations off), lock-screen number matched to Tj's measurements, wallpaper-cover power mode, original leaf wallpaper
 | v0.3.4 | code 10 | 2026-11-04T00:49Z | v0.3.4: launcher hidden from Recents (home-type, default ON by Tj's choice), Launcher control scrolls, quick-settings pencil hidden, double-Home shortest path (skip empty shade/Recents, black cover, instant Solitaire)
 | v0.3.5 | code 11 | 2026-11-04T01:08Z | v0.3.5: editable lock-screen number, in-app adb setup guide + permissions declared in advance, Quickstep started as a home-type task (never in Recents)
+| v0.3.6 | code 12 | 2026-11-04T02:36Z | v0.3.6: new settings UI with real switches, separate Recents per launcher, quick-settings tiles per launcher, faster pencil cover, home-screen-only wallpaper patch with nudges, power-menu latency readout
