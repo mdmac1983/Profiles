@@ -470,3 +470,8 @@ Make the adb probe an app or something that i can plug in the tablet and give th
 ```
 I have adb with another android phone to the tablet. Make the script able to be used with an app such as adb otg for android
 ```
+
+## 2026-11-04T18:51:23Z
+```
+The probe
+```
