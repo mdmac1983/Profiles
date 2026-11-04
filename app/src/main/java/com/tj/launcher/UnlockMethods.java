@@ -50,7 +50,8 @@ public final class UnlockMethods {
     private int volN = 0;
     private final ArrayDeque<Long> screenChanges = new ArrayDeque<>();
     private final ArrayDeque<Long> peeks = new ArrayDeque<>();
-    private long lastVolUpAt = 0;
+    private long lastVolUpAt = 0, firstDeleteAt = 0;
+    private boolean volUpBeforeErase = false;               // Volume Up came within 10 s BEFORE the first Delete of this pad entry
     // ---- the latch
     private Method armed = null;
     private long armedAt = 0;
@@ -67,7 +68,7 @@ public final class UnlockMethods {
 
     /** Forget everything of the previous lock session (screen off, or the unlock was handled). */
     public void reset() {
-        pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0;
+        pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
         disarm();
     }
 
@@ -81,7 +82,7 @@ public final class UnlockMethods {
     /** The PIN pad (bouncer) appeared or went away. Appearing starts a fresh pad session and counts as one "peek". */
     public void onPad(boolean shown, long now) {
         pad.setLength(0);
-        padMatch = null;
+        padMatch = null; volUpBeforeErase = false;
         if (shown) {
             peeks.addLast(now);
             while (!peeks.isEmpty() && now - peeks.peekFirst() > PEEK_WINDOW_MS) peeks.pollFirst();
@@ -91,7 +92,13 @@ public final class UnlockMethods {
 
     public void onKey(UnlockPick.Key k, long now) {
         if (k == UnlockPick.Key.DIGIT) pad.append('N');
-        else if (k == UnlockPick.Key.DELETE) pad.append('D');
+        else if (k == UnlockPick.Key.DELETE) {
+            pad.append('D');
+            if (pad.length() == 1) {
+                firstDeleteAt = now;
+                volUpBeforeErase = lastVolUpAt > 0 && lastVolUpAt <= now && now - lastVolUpAt <= VOLUP_ERASE_WINDOW_MS;
+            }
+        }
         if (pad.length() > 12) pad.setLength(12);
     }
 
@@ -100,9 +107,9 @@ public final class UnlockMethods {
         String p = pad.toString();
         Method m = null;
         if (enabled.on(Method.TAP_ERASE) && p.startsWith("NDNDND")) m = Method.TAP_ERASE;
-        else if (enabled.on(Method.VOLUP_ERASE) && p.startsWith("DD") && lastVolUpAt > 0 && now - lastVolUpAt <= VOLUP_ERASE_WINDOW_MS + 30_000) m = Method.VOLUP_ERASE;   // Enter comes after typing the PIN: allow a slow typist
+        else if (enabled.on(Method.VOLUP_ERASE) && p.startsWith("DD") && volUpBeforeErase) m = Method.VOLUP_ERASE;
         else if (enabled.on(Method.ERASE2) && p.startsWith("DD")) m = Method.ERASE2;
-        pad.setLength(0);
+        pad.setLength(0); volUpBeforeErase = false;
         if (m != null) arm(m, now, true);
         else if (armedAtPad) disarm();     // a later plain attempt withdraws the earlier pad latch; free latches (volume, side key, peek) stay
         return m;
@@ -127,7 +134,7 @@ public final class UnlockMethods {
         screenChanges.addLast(now);
         while (!screenChanges.isEmpty() && now - screenChanges.peekFirst() > SIDEKEY_WINDOW_MS) screenChanges.pollFirst();
         if (!on) {                     // the screen going dark ends the lock session: pad, volume code, peeks and any free latch are gone
-            pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0;
+            pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
             disarm();
         } else if (screenChanges.size() >= 4 && enabled.on(Method.SIDEKEY)) {
             screenChanges.clear();
