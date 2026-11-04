@@ -1,0 +1,81 @@
+## Read-only probe commands. One shell command per line, run as `adb shell <line>`. Lines starting with ## are section titles. NO double quotes in this file (Windows passes the line inside double quotes).
+## Used by tools/adb-all.sh and tools/adb-all.bat. Nothing here changes the tablet. No accounts, no serial number, no Wi-Fi names, no private setting VALUES (names only, except the few listed).
+## build and device
+getprop ro.build.fingerprint
+getprop ro.build.display.id
+getprop ro.build.version.release
+getprop ro.build.version.sdk
+getprop ro.build.version.security_patch
+getprop ro.build.type
+getprop ro.product.manufacturer
+getprop ro.product.model
+getprop ro.product.device
+getprop ro.lineage.version
+getprop ro.modversion
+getprop ro.config.low_ram
+getprop ro.sf.lcd_density
+getprop | grep -iE 'lineage|alps|mtk|durasp' | head -40
+wm size
+wm density
+head -3 /proc/meminfo
+df /data | tail -1
+## boot and encryption (can the helper run before the first unlock after a restart?)
+getprop ro.crypto.state
+getprop ro.crypto.type
+getprop ro.boot.verifiedbootstate
+getprop ro.boot.flash.locked
+getprop ro.boot.veritymode
+## users and profiles (is a real second Android user possible?)
+pm get-max-users
+pm list users
+settings get global user_switcher_enabled
+getprop fw.max_users
+getprop fw.show_multiuserui
+pm list features | grep -iE 'multiuser|managed|device_admin|freeform|picture'
+## adb over network (could the launcher start its own helper after every restart?)
+getprop service.adb.tcp.port
+getprop persist.adb.tcp.port
+settings get global adb_enabled
+settings list global | cut -d= -f1 | grep -i adb
+## setting NAMES (names only) that could matter
+settings list secure | cut -d= -f1 | sort
+settings list global | cut -d= -f1 | sort
+settings list system | cut -d= -f1 | sort
+## a few harmless setting values
+settings get secure sysui_qs_tiles
+settings get secure power_menu_actions
+settings get secure enabled_accessibility_services
+settings get secure default_input_method
+settings get global device_demo_mode
+settings get global zen_mode
+settings get system font_scale
+settings get system accelerometer_rotation
+settings get global window_animation_scale
+## power menu / lineage settings
+content query --uri content://lineagesettings/secure 2>&1 | grep -iE 'power|button|nav|gesture|menu' | head -40
+cmd overlay list
+## keyboards
+ime list -s
+## packages: system apps, disabled apps, and the ones that matter
+pm list packages -s
+pm list packages -d
+pm list packages -f -s | grep -iE 'settings|systemui|launcher|quickstep|setup|permissioncontroller|durasp|alps|mediatek'
+## the Settings app
+pm path com.android.settings
+dumpsys package com.android.settings | grep -E 'versionName|versionCode|sharedUser|codePath|targetSdk|firstInstallTime|flags='
+dumpsys package com.android.settings | grep -oE 'android\.settings\.[A-Za-z_0-9.]+' | sort -u
+dumpsys package com.android.settings | grep -oE 'com\.android\.settings\.[A-Za-z$_0-9.]+' | sort -u | head -500
+## the stock launcher, SystemUI, framework
+pm path com.android.launcher3
+dumpsys package com.android.launcher3 | grep -E 'versionName|versionCode'
+pm path com.android.systemui
+pm path android
+cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | head -8
+## this launcher
+dumpsys package com.tj.launcher | grep -E 'versionName|versionCode|granted=(true|false)' | head -60
+cmd appops get com.tj.launcher | head -40
+dumpsys deviceidle whitelist | grep -i tj
+dumpsys accessibility | grep -iE 'Enabled services|Bound services|tj' | head -12
+ps -A | grep -c ShellServer
+## what is running / recent
+dumpsys activity recents | grep -E 'Recent #' | head -20
