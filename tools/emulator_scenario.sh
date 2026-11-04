@@ -755,8 +755,8 @@ check "T1: the device-shell helper line (phone adb app, no adb shell prefix) sta
 # S2: take three things away, then let the app put them back through the helper
 adb shell pm revoke "$PKG" android.permission.DUMP >/dev/null 2>&1; adb shell pm revoke "$PKG" android.permission.CHANGE_CONFIGURATION >/dev/null 2>&1; adb shell cmd appops set "$PKG" RUN_IN_BACKGROUND default >/dev/null 2>&1
 sleep 2
-vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
-vfeat true
+vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"${2:-0}\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+vfeat true 12
 setmode quickstep; rebind; home
 adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez autorun true >/dev/null 2>&1
 SHARE=/sdcard/Android/data/$PKG/files/probe
@@ -788,17 +788,22 @@ adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" | grep -o 'test_lock_wallpaper_done">[^<]*' > "$OUT/v-lockwp.txt" 2>&1
 info "V2: test lock wallpaper: $(cat $OUT/v-lockwp.txt)"
 setmode custom; rebind; home
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/v-helper-start.txt" 2>&1; sleep 5
 adb shell locksettings set-pin 1234 > "$OUT/v-setpin.txt" 2>&1
 adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 adb logcat -c
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 80-lock-menu-first      # first time: the helper learns the rectangle and the item size
-adb shell input keyevent KEYCODE_BACK; sleep 3
+adb shell input keyevent KEYCODE_BACK; sleep 14      # the patch is built now; the helper photographs the lock screen and the app calibrates (about 5-8 s)
+adb logcat -d -s TjA11y:I | grep "CAL lock patch" > "$OUT/v-cal.txt" 2>&1
+info "V4: $(tail -1 $OUT/v-cal.txt | cut -c1-240)"
+check "V4: the calibration measured the (deliberately skewed) model and corrected it" grep -q "CAL lock patch calibrated" "$OUT/v-cal.txt"
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows.txt" 2>&1
 shot 81-lock-closed-patch-on
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 82-lock-menu-open
 adb logcat -d -s TjA11y:I | grep -E "CARD area|PATCH|bounds=" > "$OUT/v-log.txt" 2>&1
 adb shell input keyevent KEYCODE_BACK; sleep 3
-vfeat false
+vfeat false 0
+adb shell am force-stop "$PKG"; sleep 1
 rebind; adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 shot 83-lock-closed-patch-off
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows-off.txt" 2>&1

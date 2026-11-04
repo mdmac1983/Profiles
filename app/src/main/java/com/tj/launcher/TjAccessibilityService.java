@@ -124,6 +124,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String CAL_STATUS_KEY = "lock_cal_status";
     private float lockCalM = 1f; private int lockCalDx = 0, lockCalDy = 0; private String lockCalSig = "";
     private volatile boolean calBusy = false;
+    private final Runnable calTrigger = new Runnable() { @Override public void run() { try { maybeCalibrateLock(); } catch (Throwable t) { Log.e(TAG, "calibrate trigger failed", t); } } };
     private float testSkew() { return 1f + Features.getInt(this, "patch_test_skew", 0) / 100f; }   // emulator test only: a deliberately wrong model the calibration must correct
     private String itemKey() { return "power_item_r" + rotation(); }
     private final Rect patchAt = new Rect();
@@ -227,7 +228,8 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Runs once per wallpaper / rotation / rectangle: a real screenshot (shell helper) of the lock screen with the menu closed is compared with the wallpaper picture. */
     private void maybeCalibrateLock() {
-        if (!patchLockMode || patchView == null || calBusy || lockBmp == null || overlayShown) return;
+        if (!patchLockMode || patchView == null || calBusy || lockBmp == null) return;
+        if (overlayShown) { handler.postDelayed(calTrigger, 2000); return; }   // never photograph the screen while our menu is up
         final Rect r = new Rect(patchAt);
         final String sig = lockCalSigFor(r);
         if (sig.equals(lockCalSig)) return;
@@ -326,7 +328,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
             if (patchView != null && (!patchAt.equals(want) || patchRot != rotation() || patchLockMode != targetIsLock)) { removeOverlay(); removePatch(); }
             if (patchView == null) { removeOverlay(); addPatch(want); warmUp(); }
-            if (patchLockMode) handler.postDelayed(new Runnable() { @Override public void run() { try { maybeCalibrateLock(); } catch (Throwable t) { Log.e(TAG, "calibrate trigger failed", t); } } }, 1500);
+            if (patchLockMode) { handler.removeCallbacks(calTrigger); handler.postDelayed(calTrigger, 1500); }
         } catch (Throwable t) { Log.e(TAG, "layer refresh failed", t); removeOverlay(); removePatch(); }
     }
 
@@ -1725,6 +1727,7 @@ public class TjAccessibilityService extends AccessibilityService {
             return;
         }
         Rect r = cardArea(full);
+        if (!overlayShown) Log.i(TAG, "CARD area=" + r.toShortString() + " full=" + full.toShortString() + " lockPatch=" + patchLockMode);
         patchShow(true);
         if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency(); }          // visible first (one redraw) ...
         if (!overlayTouchable || !shownAt.equals(r)) {                              // ... then touchable / moved
@@ -1739,6 +1742,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlay == null) { warmUp(); return; }
         if (!overlayShown) return;
         patchShow(false);
+        if (patchLockMode) { handler.removeCallbacks(calTrigger); handler.postDelayed(calTrigger, 1200); }
         overlay.setAlpha(0f);
         overlayShown = false;
         try {
