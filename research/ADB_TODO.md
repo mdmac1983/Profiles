@@ -1,5 +1,23 @@
 # ADB TO-DO LIST — everything to do with adb, in order (written 2026-11-04 for Tj)
 
+## FAST PATH — everything in ONE adb session (about 5 minutes, no need to read the rest first)
+1. On the tablet: Settings > About tablet > tap **Build number** 7 times; Settings > System > Developer options > **USB debugging ON**. Plug in USB, tap **Allow**.
+2. On the computer, in the Launcher folder, run **one** of these:
+   - Mac / Linux: `bash tools/adb-all.sh`
+   - Windows: `tools\adb-all.bat`
+   (add `Launcher-v0.5.0.apk` after it to install/update the launcher first; add `--browser-off` to also disable the old Browser app; `--status` only shows what is granted and changes nothing.)
+3. It grants every permission and background setting (including the ones for future upgrades), turns the accessibility helper on, starts the invisible clean-up helper, reads everything useful (read-only), **copies the tablet's own Settings / SystemUI / stock launcher / framework apps**, takes screenshots of the stock Settings pages, and prints a status table of every permission command. Touch nothing on the tablet while the Settings screenshots are taken (about a minute).
+4. **Send me the folder `probe-out`** (zip it), or paste `probe-out/status.txt` and `probe-out/launcher-probe.txt`.
+5. After every tablet RESTART run it again (or only the helper line, section C): the helper does not survive a restart.
+6. Later, with the helper running, the same things (and a fresh report) are one tap away inside the launcher: **Launcher control > Tablet setup & report**.
+
+Optional experiment E1 (do it after the fast path; 1 minute): the notification panel's **pencil and gear** can be hidden by Android itself with no delay.
+- [ ] `adb shell settings put global device_demo_mode 1` then pull down the notification panel twice: the pencil and gear should be gone. Look for anything odd (lock screen, power menu, Settings).
+- [ ] Undo at once if anything is odd: `adb shell settings put global device_demo_mode 0`
+- If it looks clean, turn on Launcher control > Quick settings > "Hide the pencil AND the gear natively (experimental)": the launcher then switches it on only while the custom launcher is active. (On the emulator the lock screen, power menu and shade were unchanged with the flag on.)
+
+The sections below explain every command one by one (this is what the scripts run).
+
 Tick a box when you have done it. **Total first time: about 10 minutes.** Every command can be pasted one line at a time (Windows, Mac or Linux).
 Lines starting with `#` are comments. Every change is reversible (the UNDO block at the end). Nothing here touches the lock screen or installs software.
 
