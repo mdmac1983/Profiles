@@ -235,6 +235,7 @@ public class ControlActivity extends Activity {
         } });
 
         section("Advanced");
+        action("Tablet setup & report", "Every adb to-do item on one screen (permissions, battery, accessibility, helper), a \"Do everything\" button, and a report + copies of the system apps for Claude.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, SetupActivity.class)); } });
         action("adb setup guide", "Every command, step by step, with copy buttons.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class)); } });
         action("Restore everything", "Turns every change of the launcher off and puts the settings back as they were.", new Runnable() { public void run() {
             new AlertDialog.Builder(ControlActivity.this).setTitle("Restore everything?").setMessage("Every launcher feature is switched off and the original system settings are put back. You stay in Quickstep.")

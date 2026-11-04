@@ -276,6 +276,14 @@
             </intent-filter>
         </service>
 
+        <!-- S2: "Tablet setup & report": the whole adb to-do list on one screen (opens only in Quickstep mode; exported so the emulator test can start it with adb). -->
+        <activity
+            android:name="com.tj.launcher.SetupActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
+            android:label="Tablet setup and report" />
+
         <!-- C2: the in-app adb setup guide (opens only in Quickstep mode, from Launcher control). -->
         <activity
             android:name="com.tj.launcher.AdbGuideActivity"

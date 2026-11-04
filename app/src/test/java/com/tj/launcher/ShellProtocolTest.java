@@ -77,4 +77,37 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.recentTaskIds(null, Arrays.asList("a.b")).isEmpty());
         assertTrue(ShellProtocol.recentTaskIds(DUMP, Arrays.<String>asList()).isEmpty());
     }
+
+    // ---- S2: the allow-listed jobs
+    @Test public void onlyListedJobsHaveALine() {
+        assertEquals("pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS", ShellProtocol.runLine("GRANT_WSS"));
+        assertNull(ShellProtocol.runLine("pm grant com.evil.app android.permission.WRITE_SECURE_SETTINGS"));
+        assertNull(ShellProtocol.runLine("GRANT_WSS; reboot"));
+        assertNull(ShellProtocol.runLine(null));
+    }
+    @Test public void everyJobLineOnlyTouchesThisAppOrTheBrowser() {
+        for (String[] r : ShellProtocol.RUN) {
+            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser"));
+            assertFalse(r[0], r[1].contains(";") || r[1].contains("&") || r[1].contains("|") || r[1].contains("`") || r[1].contains("$"));
+        }
+    }
+    @Test public void parsesRunAndProbeLines() {
+        assertEquals("OP_BG", ShellProtocol.runId("RUN OP_BG"));
+        assertNull(ShellProtocol.runId("PROBE"));
+        assertTrue(ShellProtocol.isProbe("PROBE")); assertTrue(ShellProtocol.isA11yOn(" A11YON "));
+    }
+    @Test public void mergesTheAccessibilityHelperIntoTheList() {
+        assertEquals(ShellProtocol.A11Y, ShellProtocol.mergeA11y(null));
+        assertEquals(ShellProtocol.A11Y, ShellProtocol.mergeA11y("null"));
+        assertEquals("a.b/c.D:" + ShellProtocol.A11Y, ShellProtocol.mergeA11y("a.b/c.D"));
+        assertEquals("a.b/c.D:" + ShellProtocol.A11Y, ShellProtocol.mergeA11y("a.b/c.D:" + ShellProtocol.A11Y));
+    }
+    @Test public void parsesTheProbeFileAndSkipsItsNotes() {
+        String f = "## Read-only probe commands. note\n## Used by tools\n## build and device\ngetprop ro.build.fingerprint\n\n## users\npm list users\n";
+        java.util.List<ShellProtocol.ProbeLine> l = ShellProtocol.parseProbeList(f);
+        assertEquals(4, l.size());
+        assertTrue(l.get(0).title); assertEquals("build and device", l.get(0).text);
+        assertFalse(l.get(1).title); assertEquals("getprop ro.build.fingerprint", l.get(1).text);
+        assertEquals("pm list users", l.get(3).text);
+    }
 }
