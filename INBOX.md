@@ -327,3 +327,10 @@ The goal is for the custom launcher and quickstep to essentially be two differen
 ```
 The goal is for the custom launcher and quickstep to essentially be two different profiles of android, custom launcher is default and quickstep can only be accessed by gesture, otherwise the user is locked inside the custom launcher. Think of the best ways to achieve this, whether adb or accessibility or any other method
 ```
+
+## 2026-11-04T03:46:29Z
+```
+Forget the wallpaper.  No longer needed. 
+
+1) is it possible to have 2 different login pins which determine which launcher starts? For example,  1000 opens custom launcher,  1001 opens quickstep. Or,  1000 opens custom launcher,  10001 opens quickstep. Consider if this is possible by any means without root. I was thinking an accessibility service overlay which "watches" which numbers are typed, and if the extra number or different number is typed, it automatically loads a certain launcher when unlocking.  For example, regular pin 1000 unlocks the tablet with custom launcher like normal, but if the accessibility service sees 10001, the extra digit triggers quickstep on unlock. If this isn't possible, is there anything else accessibility service can do which has the same effect? Such as typing the pin then doing a gesture before unlocking?
+```
