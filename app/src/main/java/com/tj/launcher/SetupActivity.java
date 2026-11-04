@@ -54,6 +54,7 @@ public class SetupActivity extends Activity {
         new Item("Allowed to run in the background", "So Android does not freeze the helper.", "OP_BG"),
         new Item("Allowed to run any time in the background", "Same.", "OP_ANYBG"),
         new Item("Battery: not frozen while the screen is off", "The helper keeps working with the screen off (lock-time clean-up).", "IDLE_WL"),
+        new Item("Speed: compile the launcher ahead of time", "Sideloaded apps run half-optimised until Android has time to compile them; this does it now (about a minute) so the launcher starts faster after an unlock. Redo after every update.", "COMPILE_SELF"),
         new Item("Accessibility helper is ON", "Power menu, pencil, lock screen handshakes, return reset.", "A11YON"),
         new Item("Shell helper is running", "Invisible clean-up and everything on this screen. Start it with the adb line below (again after every restart).", null),
     };
@@ -108,10 +109,19 @@ public class SetupActivity extends Activity {
                 case "OP_BG": return op("android:run_in_background");
                 case "OP_ANYBG": return op("android:run_any_in_background");
                 case "IDLE_WL": return ((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName());
+                case "COMPILE_SELF": return Features.getInt(this, "compile_done_code", 0) == getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
                 case "A11YON": return TjAccessibilityService.get() != null;
                 default: return false;
             }
         } catch (Throwable t) { return false; }
+    }
+
+    /** Runs one allow-listed job; remembers that the speed compile finished for THIS version (the shell cannot tell us later). */
+    private String runJob(String job) {
+        String out = ShellHelper.run(job);
+        try { if ("COMPILE_SELF".equals(job) && out != null && !out.toLowerCase().contains("error") && !out.toLowerCase().contains("fail"))
+            Features.setInt(this, "compile_done_code", getPackageManager().getPackageInfo(getPackageName(), 0).versionCode); } catch (Throwable ignored) { }
+        return out;
     }
 
     private boolean op(String name) {
@@ -176,7 +186,7 @@ public class SetupActivity extends Activity {
 
     private void runJob(final String job) {
         new Thread(new Runnable() { public void run() {
-            String out = job.equals("A11YON") ? ShellHelper.a11yOn() : ShellHelper.run(job);
+            String out = job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(job);
             say(job + ": " + (out == null ? "FAILED (is the helper running?)" : (out.trim().isEmpty() ? "done" : out.trim())));
             ui.post(new Runnable() { public void run() { build(); } });
         } }, "tj-setup-job").start();
@@ -187,7 +197,7 @@ public class SetupActivity extends Activity {
         for (Item it : items) if (it.job != null && !done(it)) todo.add(it);
         new Thread(new Runnable() { public void run() {
             for (Item it : todo) {
-                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : ShellHelper.run(it.job);
+                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(it.job);
                 say(it.job + ": " + (out == null ? "FAILED" : "done"));
             }
             say("finished: " + todo.size() + " item(s) applied. The list above refreshes.");
@@ -219,7 +229,7 @@ public class SetupActivity extends Activity {
         new Thread(new Runnable() { public void run() {
             StringBuilder b = new StringBuilder();
             for (Item it : items) if (it.job != null && !done(it)) {
-                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : ShellHelper.run(it.job);
+                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(it.job);
                 b.append(it.job).append(out == null ? " FAILED" : " ok").append('\n');
             }
             File f = TabletReport.write(SetupActivity.this);

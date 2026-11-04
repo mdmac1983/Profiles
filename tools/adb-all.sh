@@ -39,6 +39,8 @@ if [ "$STATUS_ONLY" = 0 ]; then
     r="$(adbsh cmd appops set "$PKG" $op allow)"; if [ -z "$r" ]; then ok "appop $op allow"; else bad "appop $op: $r"; fi
   done
   adbsh dumpsys deviceidle whitelist +"$PKG" | grep -q Added && ok "battery: not frozen while the screen is off" || ok "battery whitelist (already set or no message)"
+  say "== 1b. speed: compile the launcher ahead of time (about a minute; sideloaded apps are otherwise only half-optimised, which slows the first start after an unlock)"
+  r="$(adbsh cmd package compile -m speed -f "$PKG")"; echo "$r" | grep -qi success && ok "compiled ($r)" || bad "compile: $r"
   say "== 2. accessibility helper"
   cur="$(adbsh settings get secure enabled_accessibility_services)"
   if echo "$cur" | grep -q "$A11Y"; then ok "already on"; else

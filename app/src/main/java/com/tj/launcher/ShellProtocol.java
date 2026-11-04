@@ -121,6 +121,8 @@ public final class ShellProtocol {
         {"OP_BG", "cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow"},
         {"OP_ANYBG", "cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow"},
         {"IDLE_WL", "dumpsys deviceidle whitelist +com.tj.launcher"},
+        // U2 (Tj: "significant delay when loading either launcher"): sideloaded apps run half-optimised until Android compiles them in idle time; this compiles our launcher fully now
+        {"COMPILE_SELF", "cmd package compile -m speed -f com.tj.launcher"},
         {"BROWSER_OFF", "pm disable-user --user 0 com.android.browser"},
         {"BROWSER_ON", "pm enable com.android.browser"},
         // T1: publishing to a folder a file manager can see (the shell user may write /sdcard/Download)
@@ -135,7 +137,7 @@ public final class ShellProtocol {
     /** The Settings pages photographed (public android.settings.* actions). */
     public static final String[] SHOT_PAGES = { "SETTINGS", "WIFI_SETTINGS", "BLUETOOTH_SETTINGS", "DISPLAY_SETTINGS", "SOUND_SETTINGS", "APPLICATION_SETTINGS", "INTERNAL_STORAGE_SETTINGS",
             "BATTERY_SAVER_SETTINGS", "DATE_SETTINGS", "LOCALE_SETTINGS", "ACCESSIBILITY_SETTINGS", "SECURITY_SETTINGS", "PRIVACY_SETTINGS", "DEVICE_INFO_SETTINGS", "INPUT_METHOD_SETTINGS" };
-    public static final String[] APK_PACKAGES = { "com.android.settings", "com.android.systemui", "com.android.launcher3", "android" };
+    public static final String[] APK_PACKAGES = { "com.android.settings", "com.android.systemui", "com.android.launcher3", "android", "com.android.providers.settings", "com.android.permissioncontroller", "com.google.android.permissioncontroller", "com.android.packageinstaller", "com.android.inputmethod.latin" };   // W2: + settings storage, permission UI, installer, stock keyboard
 
     /** The shell line for a job id, or null (unknown ids are refused). */
     public static String runLine(String id) {

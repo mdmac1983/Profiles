@@ -49,6 +49,9 @@ for %%O in (GET_USAGE_STATS WRITE_SETTINGS RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROU
 )
 adb shell dumpsys deviceidle whitelist +%PKG% >> %STATUS% 2>&1
 
+call :say == 1b. speed: compile the launcher ahead of time (about a minute)
+adb shell cmd package compile -m speed -f %PKG% >> %STATUS% 2>&1
+
 call :say == 2. accessibility helper
 set CUR=
 for /f "delims=" %%i in ('adb shell settings get secure enabled_accessibility_services') do set CUR=%%i
