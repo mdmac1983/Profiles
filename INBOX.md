@@ -359,3 +359,17 @@ Does it matter what the pin is? Or does it work regardless of pin
 ```
 Checkpoint and save for a new session
 ```
+
+## 2026-11-04T05:34:05Z
+```
+Resume work on this project from the handoff:
+
+1) remove from settings: set wallpaper to original leaf, and restore lock screen to original number
+
+2) add to the launcher settings multiple creative options on how to get to quickstep from the lock screen, including the current double erase then type pin, and other gestures/key strokes/secret methods. Come up with several creative ideas that are not too hard or long to execute, but also unlikely to happen by accident for someone to get to quickstep.
+3) make it impossible to get to quickstep from the custom launcher. Remove the gesture feature entirely. The idea is if the regular pin is entered without the secret gesture, the user is "locked" into the custom launcher, which should behave like a separate user account:
+Custom launcher: only the auto rotate quick settings tile, no recent apps from the quickstep launcher should ever be in the recent apps list, no notifications from quickstep apps, no wifi or bluetooth enabled, has altered power menu, and eventually altered settings app, boots with solitaire, stock keyboard
+Quickstep: regular power menu allowed if possible, any apps can be in recent list, separate notification panel and quick settings tiles, no need to cover the pencil icon for quick settings tiles edit, Swiftkey keyboard.
+
+Figure out the best way to keep these two launchers separate, as much like different user accounts as possible. Figure out how to make the custom launcher always open immediately with solitaire and no other open apps or recents from quickstep. Ideally, it would open like a regular unlock without any delay or closing apps or notificatios
+```
