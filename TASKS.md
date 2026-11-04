@@ -231,3 +231,9 @@ If i send multiple messages interrupting you, always continue what you are alrea
 - [ ] D3 research + build: faster / invisible-delay hiding of the stock power menu via accessibility (anything that beats the flash)
 - [ ] D4 pencil: permanent or faster so it never shows
 - [ ] D5 separate Recents per launcher: apps opened from the custom launcher stay in Recents normally; apps opened via Quickstep never show in the custom launcher's Recents (may stay for Quickstep)
+
+## Tj, 2026-11-04 (interrupting D0-D5), verbatim
+"Can I keep the one quick settings tile in the custom launcher but have three tiles in quickstep? Keep in mind I had to use adb to make it have only one tile in the first place because there is a minimum amount of tiles android requirement
+If I send additional messages at any time, always finish the prior prompts I sent and queue the next messages in order"
+- [ ] D6 per-launcher quick-settings tiles: ONE tile (Auto-rotate) in custom mode, THREE tiles in Quickstep mode. Research answer: YES. The tile list is the secure setting `sysui_qs_tiles`; the minimum-tiles rule is only in SystemUI's tile EDITOR (that is why adb was needed), writing the setting directly bypasses it and SystemUI reloads it live. Needs the WRITE_SECURE_SETTINGS adb grant. Build: write "rotation" on custom, the chosen 3 on Quickstep (snapshot the original first, restore on 'Restore everything'). ASK Tj which three tiles for Quickstep (default suggestion wifi,bt,rotation).
+- STANDING (already in CLAUDE.md "Messages from Tj"): finish the earlier prompts first, queue later messages in order, answer every one.
