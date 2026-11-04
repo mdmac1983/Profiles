@@ -1,22 +1,23 @@
-# CHECKPOINT 273 — read me first, then TASKS.md
+# CHECKPOINT 274 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T22:31:47Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `f3b4c86` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T22:35:44Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `944d6e8` (this checkpoint is the commit after it)
 
 ## Just done
-Tj: patch must cover the whole 3-button menu, card = top two buttons only; patch may show the wrong part of the wallpaper -> auto-calibrate; keep Quickstep apps open but invisible if ever possible. Written as V3, V4, P2 in TASKS
+V3 (patch = learned rect + 12dp margin, card = top two items), V4 (PatchCalibrator + CAL_SHOT shell job + service calibration + Control status/button; test skew hook), CARD log in both branches, retry/trigger after menu closes; ShellProtocolTest allow-list extended for the fixed screenshot path; run 70 showed U1 113 ms, U2 compile ok (no emulator gain: 388->439 ms, x86 verify vs speed), V control failed because the test reloaded prefs without force-stop (fixed)
 
 ## Do this next
-implement: PatchCalibrator (pure, JVM test) + CAL_SHOT shell job + service integration + patch rect expanded; then P2 research from AOSP source; then section v test with skew, bump 0.6.0, ship
+dispatch sections v (new flow: helper started, skew 12, force-stop reload); read: V4 calibrated, V2 MAEs, V1 card shorter; fix; P2 research; bump 0.6.0 and ship
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M app/src/test/java/com/tj/launcher/ShellProtocolTest.java
 
 ## Last ten checkpoints
 ```
+  aa72200 ckpt 273: Tj: patch must cover the whole 3-button menu, card = top two buttons only; pat
   e9b3365 ckpt 272: HANDOFF.md written (single entry point for a no-context Claude account; linked
   953311b ckpt 271: fixed section v helper (vfeat sets lock_patch + power_mode)
   45e6c46 ckpt 270: V1+V2+U1+U2+W1+W2 coded: lock-screen wallpaper patch (invisible until menu ope
@@ -26,8 +27,7 @@ implement: PatchCalibrator (pure, JVM test) + CAL_SHOT shell job + service integ
   feaae74 ckpt 266: Final full run 68: 90 PASS / 0 FAIL, no native crash, but the job was CUT by t
   7b73448 ckpt 265: Run 67 (sections e1,y2,b6,b4,n,n6,o,t with fixes #2/#3 + ensurehome): ALL PASS
   92b77fc ckpt 264: Run 66 (short, fix #2): N2 still failed because onPad(false) clears the pad BE
-  0b229ab ckpt 263: Run 65 (race fix #1): Enter click now arrives but classifies 'none' (keyguard 
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(5 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)

@@ -87,7 +87,7 @@ public class ShellProtocolTest {
     }
     @Test public void everyJobLineOnlyTouchesThisAppOrTheBrowser() {
         for (String[] r : ShellProtocol.RUN) {
-            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser") || r[1].startsWith("mkdir -p /sdcard/Download/launcher-probe"));
+            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser") || r[1].startsWith("mkdir -p /sdcard/Download/launcher-probe") || r[1].equals("screencap -p /sdcard/Download/launcher-probe/cal.png"));   // CAL_SHOT: the one fixed screenshot path (V4)
             assertFalse(r[0], r[1].contains(";") || r[1].contains("&") || r[1].contains("|") || r[1].contains("`") || r[1].contains("$"));
         }
     }
