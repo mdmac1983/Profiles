@@ -124,7 +124,9 @@ public class ControlActivity extends Activity {
         radio("When you hold the side key in the custom launcher", new String[] { "Leave it alone", "Cover it with my two-button card (no Screenshot)", "Hide it under a wallpaper patch + my card (home screen only)", "Block it completely" },
                 new String[] { Features.POWER_OFF, Features.POWER_HIDE_SCREENSHOT, Features.POWER_WALLPAPER, Features.POWER_BLOCK }, mode, new Str() { public void on(String v) { Features.setString(ControlActivity.this, Features.POWER_MODE, v); } });
         action("Allow wallpaper access", "Needed by the wallpaper patch.", new Runnable() { public void run() { requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7); } });
-        if (Features.POWER_WALLPAPER.equals(mode)) {
+        toggle("Lock screen: patch of my lock wallpaper + stock-size two-button menu", "On the lock screen only, while the custom launcher is active and the cover is on: a piece of your LOCK-screen wallpaper hides the real menu and my Power off / Restart menu has the stock item size (the stock menu minus Screenshot). The patch is invisible until the menu opens. Needs the wallpaper permission; if it looks off, use the nudges below.",
+                Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.LOCK_PATCH_KEY, v); rebuild(); } });
+        if (Features.POWER_WALLPAPER.equals(mode) || Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true) && Features.isCover(mode)) {
             note("Wallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(not reported yet)"));
             stepper("Patch left / right", TjAccessibilityService.PATCH_DX_KEY, 2, -200, 200, " px");
             stepper("Patch up / down", TjAccessibilityService.PATCH_DY_KEY, 2, -200, 200, " px");
