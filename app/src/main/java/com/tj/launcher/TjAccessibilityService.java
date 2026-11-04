@@ -242,13 +242,12 @@ public class TjAccessibilityService extends AccessibilityService {
     private void trackDirty(AccessibilityEvent e) {
         try {
             if (e == null || e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || e.getPackageName() == null) return;
-            boolean other = !Mode.isCustom(this) || !RecentsPolicy.enabled(this);   // only then do other apps end up in Recents
-            if (!other) return;
+            if (Mode.isCustom(this)) return;   // D5: only apps whose window appears while QUICKSTEP is on count as Quickstep-opened (the custom launcher marks its own launches itself)
             String ime = null;
             String cur = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
             if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
             ComponentName stock = StockLauncher.find(this);
-            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) RecentsDirty.mark(this);
+            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) { RecentsDirty.mark(this); AppOrigin.markQuickstep(this, e.getPackageName().toString()); }
         } catch (Throwable t) { Log.e(TAG, "dirty tracking failed", t); }
     }
 

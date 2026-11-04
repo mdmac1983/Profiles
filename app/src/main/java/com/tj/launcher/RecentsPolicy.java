@@ -10,7 +10,7 @@ import android.util.Log;
  * except the target app (Solitaire). No automation, no flicker. Only affects launches made from the custom launcher; Quickstep mode is stock.
  */
 public final class RecentsPolicy {
-    public static final String KEY = "recents_only_target";   // default ON
+    public static final String KEY = "recents_only_target";   // default OFF since 2026-11-04 (D5: apps opened from the custom launcher stay in Recents normally)
     private RecentsPolicy() {}
 
     /** Pure rule (JVM-testable). */
@@ -19,13 +19,14 @@ public final class RecentsPolicy {
         return !pkg.equals(targetPkg) && !pkg.equals(selfPkg);
     }
 
-    public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
+    public static boolean enabled(Context c) { return Features.get(c, KEY, false); }
 
     /** Called by the patched Launcher3 right before it starts an app. Never throws; on any problem the launch stays exactly as stock. */
     public static void apply(Context c, Intent intent) {
         try {
             ComponentName cn = intent.getComponent();
             String pkg = cn != null ? cn.getPackageName() : intent.getPackage();
+            if (pkg != null && !pkg.equals(c.getPackageName())) AppOrigin.markCustom(c, pkg);   // D5: started from the custom launcher = the custom launcher's own app
             if (shouldExclude(enabled(c), pkg, ReturnReset.targetPackage(c), c.getPackageName())) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
             }
