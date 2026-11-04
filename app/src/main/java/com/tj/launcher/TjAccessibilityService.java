@@ -340,6 +340,9 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "RESET cover removed");
     }
 
+    /** Presses Home (used by the reset when there is no app to open, so Recents / the shade are not left on screen). */
+    public void goHome() { performGlobalAction(GLOBAL_ACTION_HOME); }
+
     /** Public wrapper for the reset: TRUE = notification icons in the status bar, FALSE = none, null = cannot tell. */
     public Boolean hasNotificationIcons() { return notificationIconsPresent(); }
 

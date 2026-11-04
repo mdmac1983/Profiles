@@ -167,7 +167,13 @@ public final class ReturnReset {
         final List<String> labels = new ArrayList<>();
         List<ResolveInfo> ris = launchables(c, labels);
         int i = ResetPolicy.pickLabel(labels, appLabel(c));
-        if (i < 0) { Log.i(TAG, "no app matching '" + appLabel(c) + "' found"); report(c, "app: no app matching '" + appLabel(c) + "' is installed"); return; }
+        if (i < 0) {
+            Log.i(TAG, "no app matching '" + appLabel(c) + "' found"); report(c, "app: no app matching '" + appLabel(c) + "' is installed");
+            // Nothing to put in front, so leave Recents / the shade ourselves (found by the E1 emulator test: Recents stayed open). No Solitaire start can race with this Home press.
+            TjAccessibilityService svc = TjAccessibilityService.get();
+            if (svc != null) { svc.hideResetCover(); svc.goHome(); }
+            return;
+        }
         final ResolveInfo ri = ris.get(i);
         final String label = labels.get(i);
         launchOnce(c, ri, 0);
