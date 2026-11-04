@@ -756,7 +756,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
             }
             if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
-            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
             }
@@ -925,10 +925,30 @@ public class TjAccessibilityService extends AccessibilityService {
     // ---------------------------------------------------------------- N5: which app is in front (for the hidden hotspot and the probe)
     private String fgPkg = "";
 
+    // ---------------------------------------------------------------- U1 (Tj: "significant delay when loading either launcher from the lock screen"): measure it on the tablet itself
+    public static final String UNLOCK_SPEED_KEY = "unlock_speed";
+    private long unlockAtMs = 0;
+    private final Runnable unlockSpeedTimeout = new Runnable() { @Override public void run() {
+        if (unlockAtMs > 0) { unlockAtMs = 0; Log.i(TAG, "UNLOCKSPEED no new window within 3 s: the target was already in front behind the lock screen"); Features.setString(TjAccessibilityService.this, UNLOCK_SPEED_KEY, now() + "  already in front (nothing to load)"); }
+    } };
+
+    /** USER_PRESENT: start the stopwatch. */
+    private void startUnlockSpeed() { unlockAtMs = android.os.SystemClock.uptimeMillis(); handler.removeCallbacks(unlockSpeedTimeout); handler.postDelayed(unlockSpeedTimeout, 3000); }
+
+    /** The first real app window after the unlock: how long the launcher / app took to appear. */
+    private void noteUnlockSpeed(String pk) {
+        if (unlockAtMs <= 0) return;
+        long d = android.os.SystemClock.uptimeMillis() - unlockAtMs;
+        unlockAtMs = 0; handler.removeCallbacks(unlockSpeedTimeout);
+        Log.i(TAG, "UNLOCKSPEED first window after the unlock: " + pk + " +" + d + " ms");
+        Features.setString(this, UNLOCK_SPEED_KEY, now() + "  " + pk + " appeared +" + d + " ms after the unlock");
+    }
+
     private void trackForeground(AccessibilityEvent e) {
         if (e == null || e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || e.getPackageName() == null || e.getClassName() == null) return;
         String pk = e.getPackageName().toString();
         if ("com.android.systemui".equals(pk) || pk.startsWith("com.google.android.inputmethod") || pk.contains("inputmethod") || pk.contains("keyboard") || pk.contains("swiftkey")) return;
+        noteUnlockSpeed(pk);
         if (pk.equals(fgPkg)) return;
         fgPkg = pk;
         updateHotspot();

@@ -132,6 +132,7 @@ public class ControlActivity extends Activity {
             stepper("Patch up / down", TjAccessibilityService.PATCH_DY_KEY, 2, -200, 200, " px");
             stepper("Patch size", TjAccessibilityService.PATCH_SCALE_KEY, 1, -30, 30, " %");
         }
+        note("Last unlock: " + Features.getString(this, TjAccessibilityService.UNLOCK_SPEED_KEY, "(unlock once to measure)"));
         note("Speed of the last menu: " + Features.getString(this, TjAccessibilityService.LATENCY_KEY, "(open the menu once)"));
         action("Open Accessibility settings", "To turn the helper on or off.", new Runnable() { public void run() { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } });
 
