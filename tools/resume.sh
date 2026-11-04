@@ -127,7 +127,7 @@ BRIEF="$(
     echo
   fi
   echo "######## STOCK LOOK REFERENCE (Tj: remember at all times): research/reference/stock/INDEX.md — stock-home.png, stock-drawer.png; 5 cols, 8 rows, NO dock, scrim 50% white ########"
-  echo "######## RULES (full text: CLAUDE.md, BRIEF.md) ########"
+  echo "######## RULES (full text: CLAUDE.md, BRIEF.md; NEW to this project with no context: HANDOFF.md) ########"
   cat <<'SHORT'
 - Checkpoint after EVERY step:  bash tools/ckpt.sh "did" "next"   (no gate; "next" is what no diff can recover).
 - New request from Tj -> TASKS.md as [ ] boxes in his words FIRST, ckpt, then code.
