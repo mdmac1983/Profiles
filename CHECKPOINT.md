@@ -1,21 +1,23 @@
-# CHECKPOINT 220 — read me first, then TASKS.md
+# CHECKPOINT 221 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T05:56:06Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `31036f4` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T06:11:15Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `c6745ee` (this checkpoint is the commit after it)
 
 ## Just done
-Lint + debug build green locally; PROFILES doc has N4/N5 ladder; emulator run 41 (https://github.com/tjshea90/Launcher/actions/runs/41782076557, sha 39eb540) in progress
+Wrote N6/N7/N8 (invisible adb clean-up, restart survival, real-profile plausibility) into TASKS from Tj's follow-up
 
 ## Do this next
-read run 41 result: actions_get download artifact or job logs; results.txt N-section (N2/N3/N4/N5 checks) must be 0 FAIL; fix any FAIL; then tick N1-N5 in TASKS with the proving test names, bump version (ship.sh v0.4.0), android.yml full_build, record-release; answer Tj
+check emulator run 41 (id 41782076557) result; then N7 boot-session-end fix (Settings.Global.BOOT_COUNT in service onServiceConnected), then N6 ShellServer/ShellHelper + Control status + guide + scenario, then N8 doc, ship v0.4.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  a719c05 ckpt 220: Lint + debug build green locally; PROFILES doc has N4/N5 ladder; emulator run 
   d563818 ckpt 219: Dispatched emulator.yml on claude/admiring-gates-1ut5m3 (run not yet read)
   39eb540 ckpt 218: N1-N5 coded: buttons removed, UnlockMethods x6, gesture removed, ProfileSessio
   1b534f7 ckpt 217: Built N1 (buttons removed), N2 (UnlockMethods x6 + tests), N3a (gesture remove
@@ -25,7 +27,6 @@ read run 41 result: actions_get download artifact or job logs; results.txt N-sec
   fe43e6c ckpt 210: v0.3.7 gated (code 13) and pushed (3451263 on main); android.yml full_build di
   3451263 ckpt 209: gated v0.3.7 (code 13) and pushed it: the handoff self-test, the full unit sui
   3ecc89a ckpt 208: pre-ship: v0.3.7: choose the launcher at unlock (Delete twice before your PIN 
-  494614c ckpt 207: Run 39 (1eca5f1): 59 PASS / 1 FAIL. E1 WORKS on the emulator: the helper sees 
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
