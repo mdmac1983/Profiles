@@ -109,6 +109,75 @@ public final class ShellProtocol {
         return out;
     }
 
+    // ------------------------------------------------------------------ S2 (Tj, 2026-11-04: "do everything in one session"): a fixed list of jobs the helper runs FOR the launcher
+    /** id -> the exact shell line. Nothing from the caller is ever put into a line: only these ids exist. Each one is either a grant for THIS app or a read-only look. */
+    public static final String[][] RUN = {
+        {"GRANT_WSS", "pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS"},
+        {"GRANT_DUMP", "pm grant com.tj.launcher android.permission.DUMP"},
+        {"GRANT_CFG", "pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION"},
+        {"GRANT_STORAGE", "pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE"},
+        {"OP_USAGE", "cmd appops set com.tj.launcher GET_USAGE_STATS allow"},
+        {"OP_WRITE", "cmd appops set com.tj.launcher WRITE_SETTINGS allow"},
+        {"OP_BG", "cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow"},
+        {"OP_ANYBG", "cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow"},
+        {"IDLE_WL", "dumpsys deviceidle whitelist +com.tj.launcher"},
+        {"BROWSER_OFF", "pm disable-user --user 0 com.android.browser"},
+        {"BROWSER_ON", "pm enable com.android.browser"},
+    };
+
+    /** The shell line for a job id, or null (unknown ids are refused). */
+    public static String runLine(String id) {
+        if (id == null) return null;
+        for (String[] r : RUN) if (r[0].equals(id.trim())) return r[1];
+        return null;
+    }
+
+    /** "RUN <id>" -> the id, else null. */
+    public static String runId(String line) {
+        if (line == null) return null;
+        String t = line.trim();
+        return t.startsWith("RUN ") ? t.substring(4).trim() : null;
+    }
+
+    public static boolean isProbe(String line) { return line != null && line.trim().equals("PROBE"); }
+    public static boolean isA11yOn(String line) { return line != null && line.trim().equals("A11YON"); }
+
+    /** The component name of the accessibility helper. */
+    public static final String A11Y = SELF + "/" + SELF + ".TjAccessibilityService";
+
+    /** The new value of enabled_accessibility_services with our helper added (kept as it is when already there). */
+    public static String mergeA11y(String current) {
+        String c = current == null ? "" : current.trim();
+        if (c.isEmpty() || c.equals("null")) return A11Y;
+        for (String part : c.split(":")) if (part.equals(A11Y)) return c;
+        return c + ":" + A11Y;
+    }
+
+    /** One line of probe-commands.txt: a section title ("## ...") or a command; blank lines are dropped. */
+    public static final class ProbeLine {
+        public final boolean title; public final String text;
+        ProbeLine(boolean title, String text) { this.title = title; this.text = text; }
+    }
+
+    /** Parses the probe list (the file bundled INSIDE the APK: the helper only ever runs lines from its own signed APK). The first "## " block of notes at the top is skipped. */
+    public static List<ProbeLine> parseProbeList(String text) {
+        List<ProbeLine> out = new ArrayList<>();
+        if (text == null) return out;
+        boolean started = false;
+        for (String raw : text.split("\\n")) {
+            String l = raw.replace("\r", "").trim();
+            if (l.isEmpty()) continue;
+            if (l.startsWith("## ")) {
+                String t = l.substring(3);
+                // the first lines are notes about the file itself (they contain 'Read-only probe' / 'Used by' / 'NO double quotes'): skip until the first real section title
+                if (!started && (t.startsWith("Read-only") || t.startsWith("Used by"))) continue;
+                started = true;
+                out.add(new ProbeLine(true, t));
+            } else if (started) out.add(new ProbeLine(false, l));
+        }
+        return out;
+    }
+
     /** The one adb line that starts the helper (single quotes: the DEVICE shell expands the $(...)). */
     public static final String START_ONE_LINER =
             "adb shell 'CLASSPATH=$(pm path " + SELF + " | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'";

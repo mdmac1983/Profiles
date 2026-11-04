@@ -88,6 +88,30 @@ public final class ShellServer {
         String line = in.readLine();
         if (ShellProtocol.isPing(line)) { out.println("OK tj-shell 1"); return; }
         if (ShellProtocol.isQuit(line)) { out.println("OK"); out.flush(); System.exit(0); return; }
+        String id = ShellProtocol.runId(line);
+        if (id != null) {
+            String sh = ShellProtocol.runLine(id);
+            if (sh == null) { out.println("ERR unknown job"); return; }
+            out.println("OK"); out.print(runShell(sh, 20_000)); out.flush(); return;
+        }
+        if (ShellProtocol.isA11yOn(line)) {
+            String cur = runShell("settings get secure enabled_accessibility_services", 5_000).trim();
+            String merged = ShellProtocol.mergeA11y(cur);
+            runShell("settings put secure enabled_accessibility_services " + merged, 5_000);
+            runShell("settings put secure accessibility_enabled 1", 5_000);
+            out.println("OK"); out.println("accessibility services now: " + runShell("settings get secure enabled_accessibility_services", 5_000).trim()); out.flush(); return;
+        }
+        if (ShellProtocol.isProbe(line)) {
+            out.println("OK");
+            java.io.InputStream ris = ShellServer.class.getClassLoader().getResourceAsStream("probe-commands.txt");
+            StringBuilder sb = new StringBuilder();
+            if (ris != null) { BufferedReader rr = new BufferedReader(new InputStreamReader(ris)); String l; while ((l = rr.readLine()) != null) sb.append(l).append('\n'); rr.close(); }
+            for (ShellProtocol.ProbeLine pl : ShellProtocol.parseProbeList(sb.toString())) {
+                if (pl.title) out.println("\n===== " + pl.text);
+                else { out.println("$ " + pl.text); out.print(runShell(pl.text, 15_000)); }
+            }
+            out.flush(); return;
+        }
         List<String> pkgs = ShellProtocol.forceStopTargets(line);
         if (pkgs == null) { out.println("ERR unknown command"); return; }
         int stopped = forceStop(pkgs);
@@ -129,6 +153,22 @@ public final class ShellServer {
             System.out.println("tj-shell: removeTask unavailable (" + t + ")");
             return false;
         }
+    }
+
+    /** Runs one FIXED shell line (never built from caller input) and returns its output, capped at 60 KB and cut off after the timeout. */
+    private static String runShell(String sh, long timeoutMs) {
+        try {
+            Process pr = new ProcessBuilder("/system/bin/sh", "-c", sh).redirectErrorStream(true).start();
+            final StringBuilder sb = new StringBuilder();
+            final BufferedReader r = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            Thread t = new Thread(new Runnable() { @Override public void run() {
+                try { String l; while ((l = r.readLine()) != null) { if (sb.length() < 60_000) sb.append(l).append('\n'); } } catch (Throwable ignored) { }
+            } });
+            t.start();
+            t.join(timeoutMs);
+            if (t.isAlive()) { pr.destroy(); sb.append("(cut off after ").append(timeoutMs / 1000).append(" s)\n"); }
+            return sb.toString();
+        } catch (Throwable e) { return "(failed: " + e + ")\n"; }
     }
 
     private static Object amService;

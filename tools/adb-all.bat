@@ -82,7 +82,7 @@ adb shell pm list users >> %STATUS% 2>&1
 type %STATUS%
 
 call :say == 6. read-only probe into %REPORT%
-for /f "usebackq delims=" %%L in ("%~dp0probe-commands.txt") do (
+for /f "usebackq delims=" %%L in ("%~dp0..\app\src\main\resources\probe-commands.txt") do (
   set "LINE=%%L"
   if "!LINE:~0,3!"=="## " (
     echo.>> %REPORT%

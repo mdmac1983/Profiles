@@ -68,7 +68,7 @@ say "  power-menu setting: '$(adbsh settings get secure power_menu_actions)'   l
 say "== 6. read-only probe -> $REPORT"
 while IFS= read -r line; do
   case "$line" in "## "*) { echo; echo "===== ${line#\#\# }"; } >> "$REPORT";; "") ;; *) { echo "\$ adb shell $line"; adb shell "$line" 2>&1 | tr -d '\r'; } >> "$REPORT";; esac
-done < "$D/probe-commands.txt"
+done < "$D/../app/src/main/resources/probe-commands.txt"
 ok "$(wc -l < "$REPORT") lines"
 
 if [ "$STATUS_ONLY" = 0 ] && [ "$PULL" = 1 ]; then
