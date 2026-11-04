@@ -119,7 +119,7 @@ public final class ReturnReset {
         Log.i(TAG, "cleared notifications");
     }
 
-    private static void radiosOff(Context c) {
+    static void radiosOff(Context c) {
         WifiManager wm = (WifiManager) c.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm != null && wm.isWifiEnabled()) { boolean ok = wm.setWifiEnabled(false); Log.i(TAG, "wifi off -> " + ok); }
         BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
@@ -155,6 +155,20 @@ public final class ReturnReset {
         List<ResolveInfo> ris = pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0);
         for (ResolveInfo ri : ris) labelsOut.add(String.valueOf(ri.loadLabel(pm)));
         return ris;
+    }
+
+    /** N3: start the target app once, with no verification loop and no Home press: used while the lock screen still covers everything (the accessibility check cannot see behind it). */
+    public static void startTargetBehindLock(Context c) {
+        List<String> labels = new ArrayList<>();
+        List<ResolveInfo> ris = launchables(c.getApplicationContext(), labels);
+        int i = ResetPolicy.pickLabel(labels, appLabel(c));
+        if (i >= 0) launchOnce(c.getApplicationContext(), ris.get(i), 0);
+    }
+
+    /** N3: might the return reset have anything to do (used to decide whether the black cover goes up at the Enter tap)? */
+    public static boolean mayHaveWork(Context c) {
+        if (!enabled(c)) return false;
+        return clearNotifications(c) || (clearRecents(c) && (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty()));
     }
 
     /** Puts the target app in front because the custom launcher just STARTED (boot / restart). Same safe, verified launch as the return reset; nothing else is touched. */

@@ -99,6 +99,8 @@ public class TjAccessibilityService extends AccessibilityService {
         instance = this;
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
+        try { updateKeyFilter(); } catch (Throwable t) { Log.e(TAG, "key filter failed", t); }
+        try { startRadioGuard(); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); }
         try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
@@ -118,6 +120,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+            if (key != null && key.startsWith("unlock_m_")) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
@@ -247,48 +250,197 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "PATCH removed");
     }
 
-    // ---------------------------------------------------------------- E1: unlock-time launcher choice (opt-in). Watches WHICH TYPE of PIN-pad key is tapped (by view id), never which digit.
-    private final UnlockPick.Token unlockToken = new UnlockPick.Token();
+    // ---------------------------------------------------------------- E1 / N2 / N3: the secret handshake picks the launcher; the lock screen covers all the switching
+    // Watches WHICH TYPE of PIN-pad key is tapped (by view id), never which digit. Everything is started BEHIND the keyguard, so the unlock itself shows the right screen at once.
+    private final UnlockMethods unlock = new UnlockMethods(new UnlockMethods.Enabled() {
+        @Override public boolean on(UnlockMethods.Method m) { return methodOn(m); }
+    });
     private final Runnable unlockApply = new Runnable() { @Override public void run() { applyUnlockChoice(); } };
+    private boolean preArmedThisLock = false;       // the custom stack was already put in front during this lock
+    private boolean flippedByHandshake = false;     // Mode was flipped to Quickstep by a handshake that has not unlocked yet
+    private boolean lastBouncer = false;
+    private final java.util.concurrent.atomic.AtomicBoolean listenerSet = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /** A method is on when its switch says so; if Tj switched every one off, the original (double erase) stays on so Quickstep can never become unreachable. */
+    private boolean methodOn(UnlockMethods.Method m) {
+        boolean any = false;
+        for (UnlockMethods.Method x : UnlockMethods.Method.values()) if (Features.get(this, x.prefKey(), x.defaultOn)) { any = true; break; }
+        if (!any) return m == UnlockMethods.Method.ERASE2;
+        return Features.get(this, m.prefKey(), m.defaultOn);
+    }
+
+    private void ensureUnlockListener() {
+        if (!listenerSet.compareAndSet(false, true)) return;
+        unlock.setListener(new UnlockMethods.Listener() {
+            @Override public void onArmed(UnlockMethods.Method m, boolean padMethodAtEnter) { try { secretAccepted(m); } catch (Throwable t) { Log.e(TAG, "secret accepted failed", t); } }
+            @Override public void onDisarmed() { try { secretWithdrawn(); } catch (Throwable t) { Log.e(TAG, "secret withdrawn failed", t); } }
+        });
+    }
+
+    private boolean keyguardLocked() {
+        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        return km != null && km.isKeyguardLocked();
+    }
 
     private void trackUnlockKey(AccessibilityEvent e) {
         try {
             if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
-            if (!Features.get(this, UnlockPick.KEY, false)) return;
             CharSequence pkg = e.getPackageName();
             if (pkg == null || !"com.android.systemui".contentEquals(pkg)) return;
-            KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-            if (km == null || !km.isKeyguardLocked()) return;
+            if (!keyguardLocked()) return;
+            ensureUnlockListener();
             AccessibilityNodeInfo n = e.getSource();
             UnlockPick.Key k = null;
             for (int i = 0; i < 3 && n != null && k == null; i++) { k = UnlockPick.classify(n.getViewIdResourceName()); n = n.getParent(); }   // ids only: nothing else of the key is read
             if (k == null) return;
-            if (k == UnlockPick.Key.ENTER) { unlockToken.onEnter(System.currentTimeMillis()); Log.i(TAG, "UNLOCKPICK enter tapped"); }
-            else unlockToken.onKey(k);
+            long now = System.currentTimeMillis();
+            if (k == UnlockPick.Key.ENTER) {
+                UnlockMethods.Method m = unlock.onEnter(now);
+                Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
+                if (m == null) coverAtEnter();
+            } else unlock.onKey(k, now);
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
     }
 
-    /** The unlock succeeded (USER_PRESENT): token given = Quickstep, otherwise the custom launcher. Only acts after the lock screen is already gone. */
+    /** Hardware keys: only the volume keys, only on the lock screen, only to feed the volume handshakes. Never consumed. */
+    @Override protected boolean onKeyEvent(android.view.KeyEvent ev) {
+        try {
+            if (ev == null || ev.getAction() != android.view.KeyEvent.ACTION_DOWN || ev.getRepeatCount() != 0) return false;
+            int code = ev.getKeyCode();
+            if (code != android.view.KeyEvent.KEYCODE_VOLUME_UP && code != android.view.KeyEvent.KEYCODE_VOLUME_DOWN) return false;
+            if (!(methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE)) || !keyguardLocked()) return false;
+            ensureUnlockListener();
+            unlock.onVolume(code == android.view.KeyEvent.KEYCODE_VOLUME_UP, System.currentTimeMillis());
+        } catch (Throwable t) { Log.e(TAG, "key event failed", t); }
+        return false;
+    }
+
+    /** The key filter is switched on only while a volume handshake is on (it needs the capability declared in tj_accessibility.xml). */
+    private void updateKeyFilter() {
+        try {
+            android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
+            if (info == null) return;
+            boolean want = methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE);
+            boolean has = (info.flags & android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) != 0;
+            if (want == has) return;
+            if (want) info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+            else info.flags &= ~android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+            setServiceInfo(info);
+            Log.i(TAG, "key filter " + (want ? "ON" : "OFF"));
+        } catch (Throwable t) { Log.e(TAG, "key filter update failed", t); }
+    }
+
+    private void buzz() {
+        try {
+            if (!ProfileSession.buzz(this)) return;
+            android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (v != null) v.vibrate(android.os.VibrationEffect.createOneShot(40, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+        } catch (Throwable ignored) { }
+    }
+
+    private String now() { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()); }
+
+    private void profileNote(String s) {
+        Features.setString(this, ProfileSession.PREARM_REPORT_KEY, now() + "  " + s);
+        Log.i(TAG, "PROFILE " + s);
+    }
+
+    /** A handshake was accepted while the lock screen is up: Quickstep is the target. Flip the mode and put the stock home in front BEHIND the keyguard. */
+    private void secretAccepted(UnlockMethods.Method m) {
+        buzz();
+        android.content.Context app = getApplicationContext();
+        if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; }
+        if (ProfileSession.prearm(app)) startRouter("stock");
+        preArmedThisLock = true;
+        Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
+        profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
+    }
+
+    /** The handshake was withdrawn (plain retry after a wrong PIN, or the screen went dark): back to the custom account. */
+    private void secretWithdrawn() {
+        if (!flippedByHandshake) return;
+        flippedByHandshake = false;
+        android.content.Context app = getApplicationContext();
+        if (!Mode.isCustom(app) && !CrashGuard.wasTripped(app)) Mode.set(app, Mode.CUSTOM);
+        preArmedThisLock = false;
+        if (keyguardLocked()) prearmCustom("handshake withdrawn");
+    }
+
+    private void startRouter(String which) {
+        try {
+            startActivity(new android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME).setPackage(getPackageName())
+                    .putExtra(RouterActivity.EXTRA_PREARM, which)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (Throwable t) { Log.e(TAG, "router start (" + which + ") failed", t); }
+    }
+
+    /** Custom home + the target app (Solitaire) in front, behind the keyguard. Mode is left alone: the unlock decides. */
+    private void prearmCustom(String why) {
+        try {
+            android.content.Context app = getApplicationContext();
+            startRouter("custom");
+            ReturnReset.startTargetBehindLock(app);
+            preArmedThisLock = true;
+            profileNote("lock screen (" + why + "): custom home + " + ReturnReset.appLabel(app) + " put in front behind the keyguard");
+        } catch (Throwable t) { Log.e(TAG, "prearm failed", t); }
+    }
+
+    /** SCREEN_ON: the lock screen is what the screen shows. Put the custom stack behind it (never when it is NOT locked: that is a plain wake, nothing to switch). */
+    private void handleLockedWake() {
+        try {
+            android.content.Context app = getApplicationContext();
+            boolean locked = keyguardLocked();
+            if (!ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, unlock.armedMethod() != null, preArmedThisLock, CrashGuard.wasTripped(app))) return;
+            prearmCustom("woke locked");
+        } catch (Throwable t) { Log.e(TAG, "locked wake failed", t); }
+    }
+
+    private final Runnable coverCheck = new Runnable() { @Override public void run() {
+        if (keyguardLocked()) hideResetCover();    // the PIN was wrong: the pad is still there, so the cover must not stay
+    } };
+
+    /** A PLAIN Enter tap while a Quickstep session is current: raise the black cover now, so the unlock animation never shows what Quickstep left behind. */
+    private void coverAtEnter() {
+        try {
+            android.content.Context app = getApplicationContext();
+            if (!ProfileSession.coverAtEnter(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), false, ReturnReset.mayHaveWork(app), Features.get(app, ReturnReset.COVER_KEY, true))) return;
+            showResetCover();
+            handler.removeCallbacks(coverCheck);
+            handler.postDelayed(coverCheck, 1800);
+        } catch (Throwable t) { Log.e(TAG, "cover at enter failed", t); }
+    }
+
+    /** The unlock succeeded (USER_PRESENT). Handshake given = Quickstep (already in front); plain = the custom account (a Quickstep session ends here). */
     private void applyUnlockChoice() {
         try {
-            if (!Features.get(this, UnlockPick.KEY, false)) return;
-            boolean quickstep = unlockToken.consume(System.currentTimeMillis());
-            unlockToken.reset();
             android.content.Context app = getApplicationContext();
-            String when = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
-            if (quickstep) {
+            handler.removeCallbacks(coverCheck);
+            ensureUnlockListener();
+            UnlockMethods.Method m = unlock.consume(System.currentTimeMillis());
+            preArmedThisLock = false;
+            boolean wasFlipped = flippedByHandshake;
+            flippedByHandshake = false;
+            unlock.reset();
+            if (m != null) {
                 if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
-                performGlobalAction(GLOBAL_ACTION_HOME);   // the router answers with the stock launcher
-                Features.setString(this, UnlockPick.LAST_KEY, when + "  Quickstep (token given)");
-                Log.i(TAG, "UNLOCKPICK quickstep");
+                // The stock home was started behind the lock screen; only if the pre-start did not land (not in front now) press the router's Home.
+                ComponentName stock = StockLauncher.find(this);
+                boolean front = stock != null && isForeground(stock.getPackageName());
+                if (!front) startRouter("stock");
+                Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
+                Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
+                return;
+            }
+            boolean ends = ProfileSession.plainUnlockEndsQuickstep(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app));
+            if (ends) {
+                Mode.set(app, Mode.CUSTOM);
+                startRouter("custom");           // quiet: the stack is already (or about to be) in front; no Home press, no double-Home
+                ReturnReset.run(app);            // closes what Quickstep opened, clears the shade, radios off, Solitaire last (the cover is usually up already)
+                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
+                Log.i(TAG, "UNLOCKPICK custom (session ended)");
             } else {
-                if (!Mode.isCustom(app)) {
-                    CrashGuard.clearTripped(app);
-                    Mode.set(app, Mode.CUSTOM);
-                    performGlobalAction(GLOBAL_ACTION_HOME);
-                    ReturnReset.run(app);   // coming back to the custom launcher closes what Quickstep opened (D5)
-                }
-                Features.setString(this, UnlockPick.LAST_KEY, when + "  custom launcher (plain unlock)");
+                hideResetCover();
+                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
                 Log.i(TAG, "UNLOCKPICK custom");
             }
         } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
@@ -356,7 +508,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Look at SystemUI events only (and keep checking while a cover is up, so it follows the panel and goes with it). Throttled. */
     private void schedulePencil(AccessibilityEvent e) {
-        if (!Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }
+        if (!Mode.isCustom(this) || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }   // N3: Quickstep needs no cover over the pencil
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
         if (!sysui && penView == null) return;
         long now = android.os.SystemClock.uptimeMillis();
@@ -463,7 +615,10 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.post(lockEval); handler.postDelayed(lockEval, 400);
             handler.post(layerRefresh);
             String act = i == null ? null : i.getAction();
-            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) unlockToken.reset();
+            long t = System.currentTimeMillis();
+            ensureUnlockListener();
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) { unlock.onScreen(false, t); preArmedThisLock = false; lastBouncer = false; }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handleLockedWake(); }
             if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) handler.post(unlockApply);
         }
     };
@@ -487,7 +642,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Called on every accessibility event: leading edge at once (the number must go the moment the PIN pad appears), plus one trailing check. */
     private void scheduleLockUpdate() {
-        if (!LockNumber.enabled(this) && lockView == null) return;   // feature off and nothing on screen: zero cost
+        if (!LockNumber.enabled(this) && lockView == null && !keyguardLocked()) return;   // number off, nothing on screen and not on the lock screen: zero cost
         long now = android.os.SystemClock.uptimeMillis();
         if (now - lastLockEvalMs >= 60) { lastLockEvalMs = now; updateLockNumber(); }
         if (!lockEvalPending) { lockEvalPending = true; handler.postDelayed(lockEval, 120); }
@@ -500,7 +655,8 @@ public class TjAccessibilityService extends AccessibilityService {
             KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
             boolean on = pm != null && pm.isInteractive();
             boolean locked = km != null && km.isKeyguardLocked();
-            boolean bouncer = enabled && on && locked && bouncerShown();
+            boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
+            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); }
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
     }
@@ -624,11 +780,53 @@ public class TjAccessibilityService extends AccessibilityService {
 
     public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";   // kept so old settings files stay readable; the side key never reaches a service
 
+    // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
+    private final long[] radioHist = new long[3];
+    private int radioIdx = 0;
+    private boolean radioGuardOn = false;
+    private final android.content.BroadcastReceiver radioReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            try {
+                String act = i == null ? null : i.getAction();
+                boolean turnedOn;
+                if (android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION.equals(act)) {
+                    int st = i.getIntExtra(android.net.wifi.WifiManager.EXTRA_WIFI_STATE, -1);
+                    turnedOn = st == android.net.wifi.WifiManager.WIFI_STATE_ENABLED || st == android.net.wifi.WifiManager.WIFI_STATE_ENABLING;
+                } else if (android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED.equals(act)) {
+                    int st = i.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1);
+                    turnedOn = st == android.bluetooth.BluetoothAdapter.STATE_ON || st == android.bluetooth.BluetoothAdapter.STATE_TURNING_ON;
+                } else return;
+                if (!turnedOn) return;
+                long now = System.currentTimeMillis();
+                if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) return;
+                radioHist[radioIdx++ % radioHist.length] = now;
+                final android.content.Context app = getApplicationContext();
+                new Thread(new Runnable() { @Override public void run() { try { ReturnReset.radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); } } }, "tj-radio-guard").start();
+                Log.i(TAG, "RADIOS switched on in the custom account -> switching off");
+            } catch (Throwable t) { Log.e(TAG, "radio receiver failed", t); }
+        }
+    };
+
+    private void startRadioGuard() {
+        if (radioGuardOn) return;
+        android.content.IntentFilter f = new android.content.IntentFilter();
+        f.addAction(android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION);
+        f.addAction(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED);
+        registerReceiver(radioReceiver, f);
+        radioGuardOn = true;
+    }
+
+    private void stopRadioGuard() {
+        if (!radioGuardOn) return;
+        try { unregisterReceiver(radioReceiver); } catch (Throwable ignored) { }
+        radioGuardOn = false;
+    }
+
     @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
