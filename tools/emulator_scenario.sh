@@ -453,6 +453,30 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "N2: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/n2-clearpin.txt"
 setfeat; setmode custom; home
 
+# ---- N6: the invisible clean-up helper (shell-uid process started by one adb line): Quickstep's apps are force-stopped with no cover, their Recents cards vanish
+beat "before N6"
+setfeat; setmode quickstep; rebind; home; sleep 2
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &' > "$OUT/n6-start.txt" 2>&1; sleep 5
+adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/n6-ps.txt" 2>&1
+check "N6: the shell helper process is running (started by the one adb line)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n6-ps.txt)\" -ge 1 ]"
+for APP in com.android.contacts com.android.gallery3d com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|gallery3d|email' > "$OUT/n6-recents-before.txt"
+home; sleep 2
+adb logcat -c
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 8
+adb logcat -d -s TjReset:I TjA11y:I > "$OUT/n6-log.txt" 2>&1
+adb shell dumpsys activity recents 2>/dev/null | grep -ciE 'contacts|gallery3d|email' > "$OUT/n6-recents-after.txt"
+resumed > "$OUT/n6-resumed.txt"
+info "N6: Recents entries of the three apps: before $(tr -d ' \r\n' < $OUT/n6-recents-before.txt), after $(tr -d ' \r\n' < $OUT/n6-recents-after.txt)"
+check "N6: the return used the INVISIBLE path (helper answered, apps force-stopped)" grep -q "INVISIBLE: force-stopped" "$OUT/n6-log.txt"
+check "N6: no black cover was raised for it" bash -c "! grep -q 'RESET cover shown' $OUT/n6-log.txt"
+check "N6: the Quickstep apps' Recents cards are gone" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n6-recents-after.txt)\" = 0 ]"
+check "N6: the target app (Calendar) is on screen" grep -qi calendar "$OUT/n6-resumed.txt"
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
+adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/n6-ps2.txt" 2>&1
+check "N6: the helper stops with the documented line" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n6-ps2.txt)\" = 0 ]"
+setfeat; setmode custom; home
+
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
