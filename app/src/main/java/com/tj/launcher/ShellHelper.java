@@ -69,6 +69,36 @@ public final class ShellHelper {
         return r[0];
     }
 
+    /** Everything the helper printed after its "OK" line (for RUN / PROBE / A11YON), or null if it could not be reached / refused. Blocking, long timeout: call off the main thread. */
+    private static String askLong(String line, int timeoutMs) {
+        for (int port = ShellProtocol.TCP_PORT_FIRST; port <= ShellProtocol.TCP_PORT_LAST; port++) {
+            java.net.Socket t = new java.net.Socket();
+            try {
+                t.connect(new java.net.InetSocketAddress("127.0.0.1", port), 400);
+                t.setSoTimeout(timeoutMs);
+                PrintWriter w = new PrintWriter(new OutputStreamWriter(t.getOutputStream()), true);
+                w.println(line);
+                BufferedReader r = new BufferedReader(new InputStreamReader(t.getInputStream()));
+                String first = r.readLine();
+                if (first == null || !first.startsWith("OK")) { lastError = "refused: " + first; return null; }
+                StringBuilder sb = new StringBuilder(); String l;
+                while ((l = r.readLine()) != null) sb.append(l).append('\n');
+                return sb.toString();
+            } catch (java.net.ConnectException e) {
+                // nothing on this port: try the next one (the helper takes the first free port of the range)
+            } catch (Throwable e) { lastError = e.getClass().getSimpleName() + " " + e.getMessage(); return null; }
+            finally { try { t.close(); } catch (Throwable ignored) { } }
+        }
+        return null;
+    }
+
+    /** Runs one allow-listed job (ShellProtocol.RUN) and returns its output, or null. */
+    public static String run(String jobId) { return askLong("RUN " + jobId, 60_000); }
+    /** Runs the whole read-only probe list bundled in the APK. */
+    public static String probe() { return askLong("PROBE", 300_000); }
+    /** Adds the accessibility helper to the enabled services. */
+    public static String a11yOn() { return askLong("A11YON", 20_000); }
+
     /** Is the shell helper running right now? (a refused connection fails at once, so this is cheap) */
     public static boolean running() {
         String r = ask("PING", 1500);
