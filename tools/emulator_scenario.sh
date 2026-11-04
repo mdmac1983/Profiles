@@ -22,10 +22,10 @@ getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | gr
 # Android then clears our default-home setting (AppErrors.clearPackagePreferredForHomeActivities, the accepted cost of the B1 HOME-type launch) and the accessibility helper
 # restarts late, which made EVERY later check fail. heal() notices such a crash, says so in results.txt (never silently) and puts the default home + helper back.
 CRASHSEEN=0
-heal(){ local n; n=$(command adb logcat -d -b crash 2>/dev/null | grep -c "Fatal signal.*($PKG)")
+heal(){ local n; n=$(command adb logcat -d -b all 2>/dev/null | grep -c "Fatal signal.*($PKG)")
   if [ "${n:-0}" -gt "$CRASHSEEN" ]; then CRASHSEEN=$n
     echo "INFO  NATIVE CRASH #$n of $PKG inside an Android system library (not a Java exception); re-asserting the default home and the helper so the rest of the run is meaningful. Checks that FAIL within ~15 s after this line are caused by the crash." | tee -a "$OUT/results.txt"
-    command adb logcat -d -b crash 2>/dev/null | grep -A14 "Fatal signal.*($PKG)" | tail -30 > "$OUT/native-crash-$n.txt"
+    command adb logcat -d -b all 2>/dev/null | grep -A14 "Fatal signal.*($PKG)" | tail -30 > "$OUT/native-crash-$n.txt"
     adb shell cmd package set-home-activity "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1
     declare -F rebind >/dev/null && rebind
   fi; }
