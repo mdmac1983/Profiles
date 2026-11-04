@@ -65,7 +65,8 @@ cmd: settings get secure enabled_accessibility_services
 @ Switch the launcher's helper on (keeps the others)
 why: Type the reply from the card above into the box. The app builds the exact line.
 special: a11y
-note: If anything looks wrong afterwards: Settings > Accessibility on the tablet shows the list and lets you switch it off.
+cmd: settings put secure accessibility_enabled 1
+note: Run the line built above FIRST, then the second line (accessibility_enabled 1). If anything looks wrong afterwards: Settings > Accessibility on the tablet shows the list and lets you switch it off.
 ## 4. Start the invisible clean-up helper (do this AGAIN after every tablet restart)
 @ Start the helper
 why: Starts a small program that only the launcher can talk to. It prints nothing. It survives unplugging the cable but not a restart.

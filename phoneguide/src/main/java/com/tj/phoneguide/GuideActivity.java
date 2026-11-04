@@ -196,8 +196,6 @@ public class GuideActivity extends Activity {
         copy.setMinHeight(px(52));
         copy.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { copyLine(shown(a11yLine(in.getText().toString()))); } });
         c.addView(copy);
-        c.addView(text("Then, as the next card, turn the accessibility switch on:", 13, Color.DKGRAY, true));
-        addCommand(c, "settings put secure accessibility_enabled 1", "Copy this line");
     }
 
     static String a11yLine(String printed) { return A11yLine.build(printed); }
