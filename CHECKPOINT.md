@@ -1,21 +1,24 @@
-# CHECKPOINT 235 — read me first, then TASKS.md
+# CHECKPOINT 236 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T08:38:17Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `b7966f1` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T08:55:36Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `b0dfcca` (this checkpoint is the commit after it)
 
 ## Just done
-N9 proof run 48 (sections=n6, COLD cache): green in 3.6 min total (AVD create 53 s + cache save 7 s + scenario 71 s), ran only N6 checks, 0 FAIL (Recents 22->0). Dispatched run (sections=n6, WARM cache) and a FULL run (empty) side by side
+N9 proof: run 48 cold n6 = 3.6 min green; run 49 WARM n6 = 3.5 min green (cache hit, scenario 2m03) -> the AVD cache gave no measurable gain; run 50 FULL = 75 PASS / 1 FAIL: REC1 tapped drawer coordinates and hit Contacts instead of Clock (drawer order differs on a snapshot boot) = test fragility, not product. Fixes: tapapp finds icons by label (uiautomator), AVD cache/snapshot DROPPED (back to run-47 environment), docs updated
 
 ## Do this next
-read both: warm n6 time (expect ~2.5 min) and the full run result (expect 0 FAIL, ~15 min or less with snapshot boot); then tick N9 in TASKS with timings and tell Tj
+dispatch a FULL emulator run (empty sections) on the branch; expect 76 PASS / 0 FAIL; then tick N9 with the honest timings (n6 3.5-3.6 min; full ~15 min) and tell Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M CLAUDE.md
+     M research/HANDOFF_2026-11-04.md
 
 ## Last ten checkpoints
 ```
+  047609d ckpt 235: N9 proof run 48 (sections=n6, COLD cache): green in 3.6 min total (AVD create 
   b7966f1 ckpt 234: N9 built: emulator_scenario.sh sections (want X), emulator.yml sections input 
   9f71e4f ckpt 233: RELEASED v0.4.0 (Build APK run 41798376459 green, Release published + signed, 
   2e7509b ckpt 232: v0.4.0 (code 14) gated + pushed; android.yml full_build=true dispatched on mai
@@ -25,5 +28,7 @@ read both: warm n6 time (expect ~2.5 min) and the full run result (expect 0 FAIL
   f6e7aae ckpt 228: Run 46 read: 74 PASS, INVISIBLE WORKS on the emulator ('force-stopped 3 of 3 a
   e1834c0 ckpt 227: Run 45 read: emulator survived (run 44 death was a flake); only 3 FAIL, all N6
   c762a6d ckpt 226: Run 44 read: tap-erase/prearm/plain-unlock/icon PASS; EMULATOR DIED (qemu gone
-  74302d6 ckpt 225: Run 43 read (artifact): restart check now PASS; tap-erase, prearm, plain-unloc
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
