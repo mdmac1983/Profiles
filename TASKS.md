@@ -251,3 +251,5 @@ If I send additional messages at any time, always finish the prior prompts I sen
 ## Tj, 2026-11-04 (question while E1 is being tested), verbatim
 "Does it matter what the pin is? Or does it work regardless of pin"
 - [x] E2 answered: works with ANY numeric PIN (any digits, any length): it never looks at digits, only at the TYPE of key (Delete, a digit key, Enter). Only needs the numeric PIN pad (not pattern / password keyboard). Fingerprint / face = no token = custom launcher.
+
+- [x] F1 Tj: "Checkpoint and save for a new session" — done: research/HANDOFF_2026-11-04.md written, CHECKPOINT updated, all pushed (ckpt)
