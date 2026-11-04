@@ -16,7 +16,7 @@ check(){ # check "<name>" <command...>
   if "$@" >/dev/null 2>&1; then echo "PASS  $name" | tee -a "$OUT/results.txt"; else echo "FAIL  $name" | tee -a "$OUT/results.txt"; FAILS=$((FAILS+1)); fi
 }
 info(){ echo "INFO  $1" | tee -a "$OUT/results.txt"; }
-setmode(){ heal; heal; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">$1</string></map>\" > shared_prefs/tj_mode.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
+setmode(){ heal; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">$1</string></map>\" > shared_prefs/tj_mode.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
 getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | grep -o 'mode">[a-z]*' | cut -d'>' -f2; }
 # Native (SIGSEGV) crash of OUR process inside Android's own libraries (libz / libhwui heap faults seen on this emulator in full runs 59 and 60, never a Java exception):
 # Android then clears our default-home setting (AppErrors.clearPackagePreferredForHomeActivities, the accepted cost of the B1 HOME-type launch) and the accessibility helper
