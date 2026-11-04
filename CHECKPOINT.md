@@ -1,23 +1,23 @@
-# CHECKPOINT 215 — read me first, then TASKS.md
+# CHECKPOINT 216 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T05:12:39Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/install-hooks-script-chvlig` · **builds on:** `d2eb501` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T05:35:51Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `73bbd2e` (this checkpoint is the commit after it)
 
 ## Just done
-Handoff written for a new session: research/HANDOFF_2026-11-04.md (v0.3.7 released, nothing half-done); older handoff points to it
+Wrote N1-N3 (Tj's 2026-11-04 3-part request) into TASKS.md; read RouterActivity/UnlockPick/ControlActivity/TjHooks/ReturnReset
 
 ## Do this next
-Wait for Tj: tablet report for v0.3.7 + v0.3.6 findings, D7 pm get-max-users, C4/SET1 go-ahead. New session: install-hooks, read CHECKPOINT + HANDOFF_2026-11-04.md; do not start SET1/C4/multi-user without his go
+Read TjAccessibilityService lines 230-330 + 560-700 (unlock/keyguard/mode hooks), then do N1 (remove 2 buttons in ControlActivity), N2 (UnlockToken), N3a (remove gesture), research doc N3b
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
      M TASKS.md
-     M research/HANDOFF_2026-11-03.md
 
 ## Last ten checkpoints
 ```
+  87e5f36 ckpt 215: Handoff written for a new session: research/HANDOFF_2026-11-04.md (v0.3.7 rele
   47b476a ckpt 212: RELEASED v0.3.7 (Build APK green, Release published, signed, 9.19 MB; emulator
   fe43e6c ckpt 210: v0.3.7 gated (code 13) and pushed (3451263 on main); android.yml full_build di
   3451263 ckpt 209: gated v0.3.7 (code 13) and pushed it: the handoff self-test, the full unit sui
@@ -27,8 +27,7 @@ Wait for Tj: tablet report for v0.3.7 + v0.3.6 findings, D7 pm get-max-users, C4
   1eca5f1 ckpt 205: E1 coded (v0.3.7/code 13): UnlockPick token (Delete x2 on the empty PIN pad = 
   1bab462 ckpt 204: Recorded E1 (choose the launcher at unlock: two PINs / extra digit / gesture t
   4b3344b ckpt 203: RELEASED v0.3.6 (Build APK green, Release published, signed, 9.19 MB; emulator
-  4e15095 ckpt 202: v0.3.6 gated (code 12) and pushed (046cb76 on main); android.yml full_build di
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)

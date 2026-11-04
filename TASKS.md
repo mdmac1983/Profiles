@@ -253,3 +253,16 @@ If I send additional messages at any time, always finish the prior prompts I sen
 - [x] E2 answered: works with ANY numeric PIN (any digits, any length): it never looks at digits, only at the TYPE of key (Delete, a digit key, Enter). Only needs the numeric PIN pad (not pattern / password keyboard). Fingerprint / face = no token = custom launcher.
 
 - [x] F1 Tj: "Checkpoint and save for a new session" — done: research/HANDOFF_2026-11-04.md written, CHECKPOINT updated, all pushed (ckpt)
+
+## Tj, 2026-11-04 (after v0.3.7), verbatim
+"1) remove from settings: set wallpaper to original leaf, and restore lock screen to original number
+2) add to the launcher settings multiple creative options on how to get to quickstep from the lock screen, including the current double erase then type pin, and other gestures/key strokes/secret methods. Come up with several creative ideas that are not too hard or long to execute, but also unlikely to happen by accident for someone to get to quickstep.
+3) make it impossible to get to quickstep from the custom launcher. Remove the gesture feature entirely. The idea is if the regular pin is entered without the secret gesture, the user is "locked" into the custom launcher, which should behave like a separate user account:
+Custom launcher: only the auto rotate quick settings tile, no recent apps from the quickstep launcher should ever be in the recent apps list, no notifications from quickstep apps, no wifi or bluetooth enabled, has altered power menu, and eventually altered settings app, boots with solitaire, stock keyboard
+Quickstep: regular power menu allowed if possible, any apps can be in recent list, separate notification panel and quick settings tiles, no need to cover the pencil icon for quick settings tiles edit, Swiftkey keyboard.
+Figure out the best way to keep these two launchers separate, as much like different user accounts as possible. Figure out how to make the custom launcher always open immediately with solitaire and no other open apps or recents from quickstep. Ideally, it would open like a regular unlock without any delay or closing apps or notificatios"
+- [ ] N1 remove the "Set the lock wallpaper to the original leaf photo" and the "Original number" (restore lock-screen number) buttons from Launcher control (the number box + Save stay)
+- [ ] N2 unlock-method chooser in Launcher control: several independent secret ways to unlock into Quickstep (double erase [existing], plus new key/volume/side-key/swipe patterns); pure rules + JVM tests (UnlockToken)
+- [ ] N3a remove the two-finger twist gesture (and every other way into Quickstep from the custom launcher: Launcher-control "Switch to Quickstep", TjHooks.goToQuickstep); Quickstep is reachable ONLY by an unlock method (N2)
+- [ ] N3b research + decide (write research/PROFILES_2026-11-04.md): best way to make custom/Quickstep behave like two user accounts; unlock-time switch so the custom launcher opens with Solitaire at once, no delay, no visible closing apps/notifications
+- [ ] N3c build the chosen design (per-mode: tiles, Recents, notifications, radios, keyboard, power menu); emulator proof; ship
