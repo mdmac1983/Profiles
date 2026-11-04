@@ -119,6 +119,12 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean patchLockMode, targetIsLock;
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
     private long lastOffTop = -1, lastItemH = -1;
+    // V4: auto-calibration of the lock-screen patch against a real screenshot (shell helper). Final lock-patch scale = lockCalM * (1 + Tj's nudge %); shifts add.
+    public static final String LOCK_CAL_KEY = "lock_cal";
+    public static final String CAL_STATUS_KEY = "lock_cal_status";
+    private float lockCalM = 1f; private int lockCalDx = 0, lockCalDy = 0; private String lockCalSig = "";
+    private volatile boolean calBusy = false;
+    private float testSkew() { return 1f + Features.getInt(this, "patch_test_skew", 0) / 100f; }   // emulator test only: a deliberately wrong model the calibration must correct
     private String itemKey() { return "power_item_r" + rotation(); }
     private final Rect patchAt = new Rect();
     private int patchRot = -1;
@@ -137,7 +143,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
     };
 
     private void startPatchWatch() {
@@ -188,7 +194,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
             if (loadLockWallpaper() == null) return null;
             targetIsLock = true;
-            return r;
+            return patchRect(r);
         }
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
         if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
@@ -196,7 +202,70 @@ public class TjAccessibilityService extends AccessibilityService {
         Rect r = cachedCard();
         if (r == null) { patchStatus("waiting: open the power menu once so the helper learns where it sits (this screen orientation)"); return null; }
         if (loadWallpaper() == null) return null;
-        return r;
+        return patchRect(r);
+    }
+
+    /** V3: the patch covers the ENTIRE 3-button menu: the learned rectangle plus the panel's margin / shadow. */
+    private Rect patchRect(Rect r) {
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        int m = (int) (12 * dm.density);
+        return new Rect(Math.max(0, r.left - m), Math.max(0, r.top - m), Math.min(dm.widthPixels, r.right + m), Math.min(dm.heightPixels, r.bottom + m));
+    }
+
+    // ---------------------------------------------------------------- V4: make the lock-screen patch show the RIGHT part of the wallpaper
+    private String lockCalSigFor(Rect r) {
+        long id = 0;
+        try { android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
+              id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK); if (id <= 0) id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        return id + "|r" + rotation() + "|" + dm.widthPixels + "x" + dm.heightPixels + "|" + r.toShortString() + "|k" + Features.getInt(this, "patch_test_skew", 0);
+    }
+
+    private void calStatus(String s) { if (!s.equals(Features.getString(this, CAL_STATUS_KEY, ""))) Features.setString(this, CAL_STATUS_KEY, s); }
+
+    /** Runs once per wallpaper / rotation / rectangle: a real screenshot (shell helper) of the lock screen with the menu closed is compared with the wallpaper picture. */
+    private void maybeCalibrateLock() {
+        if (!patchLockMode || patchView == null || calBusy || lockBmp == null || overlayShown) return;
+        final Rect r = new Rect(patchAt);
+        final String sig = lockCalSigFor(r);
+        if (sig.equals(lockCalSig)) return;
+        String saved = Features.getString(this, LOCK_CAL_KEY, "");
+        String[] p = saved.split("#");
+        if (p.length == 4 && p[0].equals(sig)) {     // measured before for exactly this wallpaper / rotation / rectangle
+            try { lockCalM = Float.parseFloat(p[1]); lockCalDx = Integer.parseInt(p[2]); lockCalDy = Integer.parseInt(p[3]); lockCalSig = sig; patchView.invalidate(); return; } catch (NumberFormatException ignored) { }
+        }
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        if (pm == null || !pm.isInteractive()) return;
+        if (!ShellHelper.reachable()) { calStatus("not calibrated: start the adb helper (Launcher control > Tablet setup) or use the nudges"); return; }
+        calBusy = true;
+        final android.graphics.Bitmap wall = lockBmp;
+        final float skew = testSkew();
+        new Thread(new Runnable() { @Override public void run() {
+            String result = "failed";
+            try {
+                ShellHelper.run("MKDIR_PUBLISH");
+                String out = ShellHelper.run("CAL_SHOT");
+                if (out == null) throw new IllegalStateException("the screenshot job did not answer");
+                android.graphics.Bitmap shot = android.graphics.BitmapFactory.decodeFile("/sdcard/Download/launcher-probe/cal.png");
+                if (shot == null) throw new IllegalStateException("the screenshot could not be read");
+                int W = shot.getWidth(), H = shot.getHeight();
+                int[] sp = new int[W * H]; shot.getPixels(sp, 0, W, 0, 0, W, H); shot.recycle();
+                int bw = wall.getWidth(), bh = wall.getHeight();
+                int[] wp = new int[bw * bh]; wall.getPixels(wp, 0, bw, 0, 0, bw, bh);
+                PatchCalibrator.Result res = PatchCalibrator.solve(wp, bw, bh, sp, W, H, r.left, r.top, r.right, r.bottom, 0.5f, skew);
+                final float m = res == null ? 1f : res.scale; final int dx = res == null ? 0 : res.dx, dy = res == null ? 0 : res.dy;
+                result = res == null ? "default alignment kept (the area is too plain, or the picture on screen is not the wallpaper)" : "calibrated: " + res;
+                handler.post(new Runnable() { @Override public void run() {
+                    lockCalM = m; lockCalDx = dx; lockCalDy = dy; lockCalSig = sig;
+                    Features.setString(TjAccessibilityService.this, LOCK_CAL_KEY, sig + "#" + m + "#" + dx + "#" + dy);
+                    if (patchView != null) patchView.invalidate();
+                } });
+                Log.i(TAG, "CAL lock patch " + result);
+            } catch (Throwable t) { result = "failed: " + t; Log.e(TAG, "lock patch calibration failed", t); }
+            finally { calBusy = false; calStatus(now() + "  " + result); }
+        } }, "tj-patch-cal").start();
     }
 
     /** V1: the picture the lock screen shows: a separate lock wallpaper if Tj set one, else the home wallpaper. Down-sampled to the display so a Go tablet keeps its memory. */
@@ -257,6 +326,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
             if (patchView != null && (!patchAt.equals(want) || patchRot != rotation() || patchLockMode != targetIsLock)) { removeOverlay(); removePatch(); }
             if (patchView == null) { removeOverlay(); addPatch(want); warmUp(); }
+            if (patchLockMode) handler.postDelayed(new Runnable() { @Override public void run() { try { maybeCalibrateLock(); } catch (Throwable t) { Log.e(TAG, "calibrate trigger failed", t); } } }, 1500);
         } catch (Throwable t) { Log.e(TAG, "layer refresh failed", t); removeOverlay(); removePatch(); }
     }
 
@@ -281,10 +351,11 @@ public class TjAccessibilityService extends AccessibilityService {
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
                 float cal = 1f + Features.getInt(TjAccessibilityService.this, PATCH_SCALE_KEY, 0) / 100f;   // Tj's alignment nudges (Launcher control)
+                if (patchLockMode) cal *= testSkew() * lockCalM;                                           // V4: the measured fit (1 until calibrated)
                 s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
-                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0),
-                        -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0));
+                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0) + (patchLockMode ? lockCalDx : 0),
+                        -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0) + (patchLockMode ? lockCalDy : 0));
                 c.drawBitmap(b, m, p);
             }
         };

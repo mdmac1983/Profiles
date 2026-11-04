@@ -128,6 +128,8 @@ public class ControlActivity extends Activity {
                 Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.LOCK_PATCH_KEY, v); rebuild(); } });
         if (Features.POWER_WALLPAPER.equals(mode) || Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true) && Features.isCover(mode)) {
             note("Wallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(not reported yet)"));
+            note("Lock-screen patch alignment: " + Features.getString(this, TjAccessibilityService.CAL_STATUS_KEY, "(lock the tablet once with the adb helper running; it photographs the lock screen and finds the right part of the wallpaper by itself)"));
+            action("Re-calibrate the lock-screen patch", "Forgets the measured alignment; it is measured again the next time the lock screen shows (needs the adb helper).", new Runnable() { public void run() { Features.setString(ControlActivity.this, TjAccessibilityService.LOCK_CAL_KEY, ""); Features.setString(ControlActivity.this, TjAccessibilityService.CAL_STATUS_KEY, "(will be measured at the next lock)"); rebuild(); } });
             stepper("Patch left / right", TjAccessibilityService.PATCH_DX_KEY, 2, -200, 200, " px");
             stepper("Patch up / down", TjAccessibilityService.PATCH_DY_KEY, 2, -200, 200, " px");
             stepper("Patch size", TjAccessibilityService.PATCH_SCALE_KEY, 1, -30, 30, " %");

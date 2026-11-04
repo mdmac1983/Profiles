@@ -127,6 +127,8 @@ public final class ShellProtocol {
         {"BROWSER_ON", "pm enable com.android.browser"},
         // T1: publishing to a folder a file manager can see (the shell user may write /sdcard/Download)
         {"MKDIR_PUBLISH", "mkdir -p /sdcard/Download/launcher-probe/shots /sdcard/Download/launcher-probe/apk"},
+        // V4: a screenshot of the CURRENT screen for the wallpaper-patch auto-calibration (run MKDIR_PUBLISH first)
+        {"CAL_SHOT", "screencap -p /sdcard/Download/launcher-probe/cal.png"},
         {"PUBLISH_REPORT", "cp /sdcard/Android/data/com.tj.launcher/files/probe/tablet-report.txt /sdcard/Download/launcher-probe/tablet-report.txt"},
     };
 
