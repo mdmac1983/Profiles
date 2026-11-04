@@ -108,7 +108,9 @@ check "lock: Launcher control does not open in custom mode" bash -c "! grep -q C
 adb shell pm install-existing --user 0 com.android.gallery3d >/dev/null 2>&1
 home
 
-# ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself
+# ---- crash-loop breaker: 3 crashes in 2 minutes must flip the mode to quickstep by itself.
+#      Runs with the home-type switch OFF: with it ON (the default) Android itself clears the default home on the FIRST crash (AppErrors.clearPackagePreferredForHomeActivities), which is a different, known behaviour.
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"home_type_launcher\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; home
 adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml"; adb shell am force-stop "$PKG"; sleep 1; home
 for i in 1 2 3; do

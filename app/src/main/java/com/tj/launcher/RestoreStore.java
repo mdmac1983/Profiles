@@ -43,6 +43,7 @@ public final class RestoreStore {
         try { AnimationSpeedup.restoreIfPending(c); } catch (Throwable ignored) { }
         sp.edit().clear().commit();
         Features.allOff(c);
-        Features.set(c, LockNumber.KEY, false);   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
+        Features.set(c, LockNumber.KEY, false);
+        Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }

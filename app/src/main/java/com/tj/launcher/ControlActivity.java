@@ -82,7 +82,7 @@ public class ControlActivity extends Activity {
         }}));
         root.addView(label("Recents"));
         root.addView(button("Hide the Launcher from Recents COMPLETELY (home-type task): ON / OFF  [if the launcher ever crashes, Android asks you to choose the Home app again]", new Runnable() { public void run() {
-            Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, !Features.get(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, false)); refresh();
+            Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, !Features.get(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, true)); refresh();
         }}));
         root.addView(label("Quickstep lock-out"));
         root.addView(button("Keep the stock home screen away unless I do the gesture: ON / OFF", new Runnable() { public void run() {
@@ -130,7 +130,7 @@ public class ControlActivity extends Activity {
         s += "\nRecents shows only the target app: " + (RecentsPolicy.enabled(this) ? "ON (other apps started from the custom launcher stay out of Recents)" : "OFF");
         s += "\nKeyboard switch: " + (KeyboardSwitch.enabled(this) ? "ON" : "OFF") + " | adb grant: " + (KeyboardSwitch.permitted(this) ? "yes" : "NO") + " | " + KeyboardSwitch.status(this);
         s += "\nLock-screen number: " + (LockNumber.enabled(this) ? "ON (" + LockNumber.text(this) + ")" : "OFF") + " | " + Features.getString(this, "lock_wallpaper_result", "wallpaper not changed by the launcher");
-        s += "\nLauncher hidden from Recents completely (home-type): " + (Features.get(this, RouterActivity.HOME_TYPE_KEY, false) ? "ON" : "OFF (the Recents card, if any, says solitaire)");
+        s += "\nLauncher hidden from Recents completely (home-type): " + (Features.get(this, RouterActivity.HOME_TYPE_KEY, true) ? "ON" : "OFF (the Recents card, if any, says solitaire)");
         s += "\nQuick-settings pencil hidden: " + (Features.get(this, TjAccessibilityService.PEN_KEY, true) ? "ON" : "OFF");
         s += "\nQuickstep lock-out: " + (Features.get(this, StrayHomeGuard.KEY, true) ? "ON" : "OFF")
                 + " | stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")";

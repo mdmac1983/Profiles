@@ -14,7 +14,7 @@ import android.util.Log;
  */
 public class RouterActivity extends Activity {
     private static final String TAG = "TjRouter";
-    public static final String HOME_TYPE_KEY = "home_type_launcher";   // B1 switch, default OFF
+    public static final String HOME_TYPE_KEY = "home_type_launcher";   // B1 switch, default ON (Tj chose full hiding, 2026-11-04, knowing the crash cost)
 
     @Override
     protected void onCreate(Bundle b) {
@@ -54,10 +54,10 @@ public class RouterActivity extends Activity {
         }
         if (Mode.isCustom(this)) {
             int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS;   // V4: also excluded (belt and braces)
-            // B1 (switch, default OFF): an IMPLICIT MAIN + SECONDARY_HOME intent (no component) makes Android create a HOME-type task, which is never listed in Recents (not even as the
+            // B1 (switch, default ON: Tj's decision, 2026-11-04): an IMPLICIT MAIN + SECONDARY_HOME intent (no component) makes Android create a HOME-type task, which is never listed in Recents (not even as the
             // most recent task). COST (found by the crash-breaker emulator test): if the launcher process ever crashes, Android clears our default-home setting
-            // (AppErrors -> clearPackagePreferredForHomeActivities) and the next Home press shows the "choose a Home app" dialog. So it is opt-in.
-            Intent i = Features.get(this, HOME_TYPE_KEY, false)
+            // (AppErrors -> clearPackagePreferredForHomeActivities) and the next Home press shows the "choose a Home app" dialog. Tj accepted that cost.
+            Intent i = Features.get(this, HOME_TYPE_KEY, true)
                     ? new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_SECONDARY_HOME).setPackage(getPackageName()).addFlags(flags)
                     : new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(this, "com.android.launcher3.Launcher")).addFlags(flags);
             if (TjHooks.launcherWasForeground()) i.putExtra(TjHooks.EXTRA_HOME_WHILE_ON_HOME, true);
