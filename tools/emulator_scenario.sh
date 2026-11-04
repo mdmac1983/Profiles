@@ -394,6 +394,55 @@ check "B4: with Recents untouched the reset skips the Recents step" grep -q 'rec
 check "B4: the app (Calendar) is in front after the shorter reset" grep -qi 'calendar' "$OUT/resumed-b4.txt"
 setmode custom; home
 
+# ---- N4 / N5: ways back to custom, the master failsafe, and the lock-screen profile switch (v0.4.0)
+beat "before N"
+setfeat; setmode quickstep; rebind; home; sleep 2
+adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" > "$OUT/n4-icon-start.txt" 2>&1; sleep 5
+getmode > "$OUT/n4-icon-mode.txt"
+check "N4: the Back-to-custom icon switches Quickstep to custom" grep -q custom "$OUT/n4-icon-mode.txt"
+setfeat; setmode quickstep; rebind; home; sleep 2
+for k in 25 25 24 24; do adb shell input keyevent $k; sleep 0.4; done; sleep 5
+getmode > "$OUT/n4-volcode-mode.txt"
+check "N4: the volume code (Down, Down, Up, Up) switches Quickstep to custom" grep -q custom "$OUT/n4-volcode-mode.txt"
+setfeat; setmode custom; rebind; home; sleep 2
+for k in 24 24 25 25 4 4 24 25; do adb shell input keyevent $k; sleep 0.4; done; sleep 4
+getmode > "$OUT/n5-konami-mode.txt"; resumed > "$OUT/n5-konami-resumed.txt"
+check "N5: the Konami key code switches the custom launcher to Quickstep (master failsafe)" grep -q quickstep "$OUT/n5-konami-mode.txt"
+check "N5: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n5-konami-resumed.txt"
+setfeat; setmode custom; rebind; home; sleep 2
+# the same Up/Down presses on a half code must NOT switch
+for k in 24 24 25 25; do adb shell input keyevent $k; sleep 0.4; done; sleep 2
+getmode > "$OUT/n5-half-mode.txt"
+check "N5: half of the key code does nothing" grep -q custom "$OUT/n5-half-mode.txt"
+
+# N2/N3 on the lock screen: tap-and-erase handshake = Quickstep, the screen wake puts the custom stack behind the keyguard, a plain PIN = custom
+setfeat; setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/n2-setpin.txt" 2>&1
+adb logcat -c
+lockpad; shot 46-n2-pinpad
+adb logcat -d -s TjA11y:I | grep PROFILE > "$OUT/n3-prearm-log.txt" 2>&1
+adb logcat -d | grep -c "Abort background activity starts" > "$OUT/n3-bal.txt" 2>&1
+check "N3: waking to the lock screen put the custom stack in front behind the keyguard" grep -q "woke locked" "$OUT/n3-prearm-log.txt"
+check "N3: Android did not block the helper's start behind the keyguard" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n3-bal.txt)\" = 0 ]"
+pad 1 d 1 d 1 d 1 2 3 4 e; sleep 6
+getmode > "$OUT/n2-taperase-mode.txt"; resumed > "$OUT/n2-taperase-resumed.txt"
+check "N2: tap-and-erase x3 before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/n2-taperase-mode.txt"
+check "N2: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n2-taperase-resumed.txt"
+lockpad
+pad 1 2 3 4 e; sleep 1.5; resumed > "$OUT/n3-plain-1s5.txt"; sleep 5.5
+getmode > "$OUT/n3-plain-mode.txt"; resumed > "$OUT/n3-plain-resumed.txt"
+info "N3: 1.5 s after the Enter tap of a plain PIN (a Quickstep session ended): $(cat $OUT/n3-plain-1s5.txt)"
+check "N3: a plain PIN after a Quickstep session ends it (custom mode)" grep -q custom "$OUT/n3-plain-mode.txt"
+check "N3: and Solitaire/our launcher is on screen, not Quickstep" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/n3-plain-resumed.txt"
+# a CUSTOM-to-CUSTOM unlock: the wake pre-armed the stack, nothing is closed or cleared
+lockpad
+pad 1 2 3 4 e; sleep 2; resumed > "$OUT/n3-c2c-resumed.txt"
+check "N3: a plain unlock from the custom account lands on the custom stack at once" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/n3-c2c-resumed.txt"
+adb shell locksettings clear --old 1234 > "$OUT/n2-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "N2: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/n2-clearpin.txt"
+setfeat; setmode custom; home
+
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
 setmode custom; setpower hide_screenshot; rebind; home
