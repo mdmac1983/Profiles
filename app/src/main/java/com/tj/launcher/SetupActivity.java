@@ -117,7 +117,7 @@ public class SetupActivity extends Activity {
     }
 
     /** Runs one allow-listed job; remembers that the speed compile finished for THIS version (the shell cannot tell us later). */
-    private String runJob(String job) {
+    private String shellJob(String job) {
         String out = ShellHelper.run(job);
         try { if ("COMPILE_SELF".equals(job) && out != null && !out.toLowerCase().contains("error") && !out.toLowerCase().contains("fail"))
             Features.setInt(this, "compile_done_code", getPackageManager().getPackageInfo(getPackageName(), 0).versionCode); } catch (Throwable ignored) { }
@@ -186,7 +186,7 @@ public class SetupActivity extends Activity {
 
     private void runJob(final String job) {
         new Thread(new Runnable() { public void run() {
-            String out = job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(job);
+            String out = job.equals("A11YON") ? ShellHelper.a11yOn() : shellJob(job);
             say(job + ": " + (out == null ? "FAILED (is the helper running?)" : (out.trim().isEmpty() ? "done" : out.trim())));
             ui.post(new Runnable() { public void run() { build(); } });
         } }, "tj-setup-job").start();
@@ -197,7 +197,7 @@ public class SetupActivity extends Activity {
         for (Item it : items) if (it.job != null && !done(it)) todo.add(it);
         new Thread(new Runnable() { public void run() {
             for (Item it : todo) {
-                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(it.job);
+                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : shellJob(it.job);
                 say(it.job + ": " + (out == null ? "FAILED" : "done"));
             }
             say("finished: " + todo.size() + " item(s) applied. The list above refreshes.");
@@ -229,7 +229,7 @@ public class SetupActivity extends Activity {
         new Thread(new Runnable() { public void run() {
             StringBuilder b = new StringBuilder();
             for (Item it : items) if (it.job != null && !done(it)) {
-                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : runJob(it.job);
+                String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : shellJob(it.job);
                 b.append(it.job).append(out == null ? " FAILED" : " ok").append('\n');
             }
             File f = TabletReport.write(SetupActivity.this);
