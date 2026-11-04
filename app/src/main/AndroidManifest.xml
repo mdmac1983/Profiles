@@ -36,6 +36,9 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <!-- N6: INTERNET is declared ONLY because Android refuses an app any socket without it, and the optional adb shell helper (research/PROFILES_2026-11-04.md) is reached over loopback TCP
+         (127.0.0.1, ports 47631-47635; SELinux forbids apps the shell user's abstract unix socket). No code opens any other address; the helper is off unless Tj starts it with adb. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />   <!-- N2: a 40 ms buzz when an unlock handshake is accepted -->
 
 

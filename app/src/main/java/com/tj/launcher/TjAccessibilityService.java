@@ -323,6 +323,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!vol && code != android.view.KeyEvent.KEYCODE_BACK) return false;
             long now = System.currentTimeMillis();
             android.content.Context app = getApplicationContext();
+            Log.i(TAG, "KEY " + (code == android.view.KeyEvent.KEYCODE_BACK ? "back" : code == android.view.KeyEvent.KEYCODE_VOLUME_UP ? "vol-up" : "vol-down") + " locked=" + keyguardLocked() + " custom=" + Mode.isCustom(app));   // only Back / volume keys are ever looked at
             if (keyguardLocked()) {
                 if (vol && (methodOn(UnlockMethods.Method.VOLUME) || methodOn(UnlockMethods.Method.VOLUP_ERASE))) {
                     ensureUnlockListener();

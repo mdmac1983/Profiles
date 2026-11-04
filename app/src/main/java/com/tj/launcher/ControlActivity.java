@@ -171,6 +171,7 @@ public class ControlActivity extends Activity {
             ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("adb", ShellProtocol.START_ONE_LINER));
             android.widget.Toast.makeText(ControlActivity.this, "Copied", android.widget.Toast.LENGTH_SHORT).show();
         }});
+        note("Link: a local-only connection (127.0.0.1). The launcher declares the Internet permission only so Android lets it open that connection; nothing else in the launcher uses it.");
         note("The helper is a small process the adb command starts as the shell user. It only answers this app, and only knows two commands: \"are you there\" and \"force-stop these apps\" (never the system, the keyboard, this launcher or the stock launcher). Stop it any time with: " + ShellProtocol.STOP_LINE);
 
         section("Back to the custom launcher (from Quickstep)");

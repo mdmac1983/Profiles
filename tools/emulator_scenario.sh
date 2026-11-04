@@ -406,6 +406,8 @@ check "N4: the Back-to-custom icon switches Quickstep to custom" grep -q custom 
 adb logcat -d -s TjA11y:I | grep "key filter" > "$OUT/n5-keyfilter-log.txt" 2>&1
 check "N5: the helper asked for the key filter (want=true in Quickstep with the volume code on)" grep -q "key filter want=true" "$OUT/n5-keyfilter-log.txt"
 ekey 115 > /dev/null; sleep 1
+adb logcat -d -s TjA11y:I | grep " KEY " > "$OUT/n5-key-arrival.txt" 2>&1
+info "N4/N5: hardware key events seen by the helper after one console Volume Up: $(wc -l < $OUT/n5-key-arrival.txt) ($(head -c 100 $OUT/n5-key-arrival.txt | tr '\n' ' '))"
 if grep -qiE '^KO|error|unknown' "$OUT/n-emu-keys.txt" 2>/dev/null; then
   info "N4/N5: the emulator console could not send hardware key events ($(head -c 120 $OUT/n-emu-keys.txt | tr '\n' ' ')); key-code checks skipped"
 else
