@@ -616,14 +616,17 @@ public class TjAccessibilityService extends AccessibilityService {
      * SPEED (V3): no fixed sleeps. After opening the shade / Recents it polls every 40 ms and presses "Clear all" the moment it appears; an EMPTY shade / Recents
      * ("No notifications" / "No recent items") ends that step at once.
      */
-    public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) {
+    public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) { runReset(clearNotifications, clearRecents, null, done); }
+
+    /** @param closeLabels null = press "Clear all"; otherwise dismiss ONLY the Recents cards of these app labels (D5: Quickstep-opened apps), falling back to Clear all if the cards cannot be found. */
+    public void runReset(final boolean clearNotifications, final boolean clearRecents, final java.util.Set<String> closeLabels, final Runnable done) {
         resetReport.setLength(0);
         guardPausedUntil = System.currentTimeMillis() + 10_000;   // Recents / the shade are opened on purpose during the reset
         removeOverlay();
         final long t0 = android.os.SystemClock.uptimeMillis();
         Log.i(TAG, "RESET start notifications=" + clearNotifications + " recents=" + clearRecents);
         final Runnable afterShade = new Runnable() { @Override public void run() {
-            if (clearRecents) resetRecents(t0, done); else { resetReport.append("recents: switch is OFF\n"); finishReset(t0, done); }
+            if (clearRecents) resetRecents(t0, done, closeLabels); else { resetReport.append("recents: skipped (nothing opened from Quickstep, or the switch is OFF)\n"); finishReset(t0, done); }
         } };
         if (!clearNotifications) {
             resetReport.append("notifications: switch is OFF\n");
@@ -716,11 +719,70 @@ public class TjAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    private void resetRecents(final long t0, final Runnable done) {
+    private void resetRecents(final long t0, final Runnable done, final java.util.Set<String> closeLabels) {
         performGlobalAction(GLOBAL_ACTION_RECENTS);
+        if (closeLabels == null || closeLabels.isEmpty()) { recentsClearAll(t0, done); return; }
+        // D5: dismiss only the cards of apps opened from Quickstep (each Quickstep card carries a "Close" accessibility action); anything unexpected falls back to Clear all.
+        final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
+        final int[] closed = {0}, idle = {0};
+        final boolean[] sawCards = {false};
+        handler.post(new Runnable() { @Override public void run() {
+            try {
+                List<AccessibilityNodeInfo> cards = findTaskCards();
+                if (cards.size() > 0) sawCards[0] = true;
+                boolean did = false;
+                for (AccessibilityNodeInfo card : cards) {
+                    if (!AppOrigin.cardMatches(card.getContentDescription() == null ? null : card.getContentDescription().toString(), closeLabels)) continue;
+                    for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
+                        if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) { closed[0]++; did = true; break; }
+                    }
+                    if (did) break;   // the list changed: look again
+                }
+                if (did) { idle[0] = 0; handler.postDelayed(this, 30); return; }
+                if (sawCards[0] && ++idle[0] >= 3) {   // cards are there and none of ours is left
+                    AppOrigin.clearQuickstep(TjAccessibilityService.this); AppOrigin.setTracked(TjAccessibilityService.this);
+                    resetReport.append("recents: closed ").append(closed[0]).append(" card(s) of apps opened from Quickstep, others kept (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
+                    Log.i(TAG, "RESET recents selective closed=" + closed[0]);
+                    finishReset(t0, done);
+                    return;
+                }
+            } catch (Throwable t) { Log.e(TAG, "selective recents failed", t); }
+            if (android.os.SystemClock.uptimeMillis() >= deadline) {
+                if (!sawCards[0]) { Log.i(TAG, "RESET recents: cards not recognised, falling back to Clear all"); recentsClearAll(t0, done); }
+                else { resetReport.append("recents: stopped after ").append(closed[0]).append(" card(s)\n"); finishReset(t0, done); }
+                return;
+            }
+            handler.postDelayed(this, 40);
+        } });
+    }
+
+    /** Recents task cards: nodes (in the stock launcher / SystemUI windows) that offer a "Close" action. */
+    private List<AccessibilityNodeInfo> findTaskCards() {
+        List<AccessibilityNodeInfo> out = new java.util.ArrayList<>();
+        List<AccessibilityWindowInfo> windows = getWindows();
+        if (windows == null) return out;
+        for (AccessibilityWindowInfo w : windows) {
+            AccessibilityNodeInfo root = w.getRoot();
+            if (root == null) continue;
+            CharSequence pkg = root.getPackageName();
+            if (pkg == null || !(pkg.toString().startsWith("com.android.launcher3") || "com.android.systemui".contentEquals(pkg))) continue;
+            collectCards(root, 0, out);
+        }
+        return out;
+    }
+
+    private void collectCards(AccessibilityNodeInfo n, int depth, List<AccessibilityNodeInfo> out) {
+        if (n == null || depth > 8) return;
+        for (AccessibilityNodeInfo.AccessibilityAction a : n.getActionList()) {
+            if (a.getLabel() != null && "close".equalsIgnoreCase(a.getLabel().toString().trim())) { out.add(n); return; }
+        }
+        for (int i = 0; i < n.getChildCount(); i++) collectCards(n.getChild(i), depth + 1, out);
+    }
+
+    private void recentsClearAll(final long t0, final Runnable done) {
         pollPress("clear all", new String[] {"no recent items"}, new String[] {"com.android.launcher3", "com.android.systemui"}, 1800, true, new PollResult() {
             @Override public void done(int result) {
-                if (result == PRESSED || result == EMPTY) RecentsDirty.clear(TjAccessibilityService.this);   // Recents is clean again: the next reset can skip this step
+                if (result == PRESSED || result == EMPTY) { RecentsDirty.clear(TjAccessibilityService.this); AppOrigin.clearQuickstep(TjAccessibilityService.this); AppOrigin.setTracked(TjAccessibilityService.this); }   // Recents is clean again
                 resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found")
                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");

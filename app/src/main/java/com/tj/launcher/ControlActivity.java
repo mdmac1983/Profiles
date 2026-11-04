@@ -33,6 +33,7 @@ public class ControlActivity extends Activity {
             CrashGuard.clearTripped(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.CUSTOM);
             goHome();
+            ReturnReset.run(ControlActivity.this);   // D5: switching to the custom launcher by the button closes Quickstep's apps too
         }}));
         root.addView(button("Use stock launcher (Quickstep)", new Runnable() { public void run() {
             Mode.set(ControlActivity.this, Mode.QUICKSTEP);

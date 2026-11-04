@@ -50,10 +50,14 @@ public final class ReturnReset {
             // B4: look first. Nothing in the status bar = no shade step; Recents untouched since the last clear = no Recents step. Both skipped = Solitaire at once, nothing else on screen.
             Boolean icons = notif ? svc.hasNotificationIcons() : Boolean.FALSE;
             final boolean doShade = notif && (icons == null || icons.booleanValue());
-            final boolean doRecents = recents && RecentsDirty.isDirty(app);
+            // D5: only apps opened from QUICKSTEP are closed; apps opened from the custom launcher stay. First run after install (untracked) clears everything once.
+            final boolean tracked = AppOrigin.tracked(app);
+            final java.util.Set<String> pendPkgs = AppOrigin.pending(app);
+            final boolean doRecents = recents && (!tracked || !pendPkgs.isEmpty());
+            final java.util.Set<String> labels = (tracked && !AppOrigin.custom(app).isEmpty()) ? labelsOf(app, pendPkgs) : null;   // selective dismissal only when something must be preserved
             if (!doShade && !doRecents) {
                 fastActive = false;
-                svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no other app opened since Recents was last cleared" : "") + "): Solitaire at once");
+                svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no app was opened from Quickstep since the last clear" : "") + "): Solitaire at once");
                 Log.i(TAG, "RESET nothing to clear: Solitaire at once");
                 try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
                 return;
@@ -62,7 +66,7 @@ public final class ReturnReset {
             fastActive = fast;
             if (Features.get(app, COVER_KEY, true)) svc.showResetCover();   // the shade / Recents are driven behind a black cover: you never see them flicker
             // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app.
-            try { svc.runReset(doShade, doRecents, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
+            try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
         } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
@@ -77,6 +81,16 @@ public final class ReturnReset {
     /** True while this reset runs with the animations off: the waits can be shorter. */
     public static volatile boolean fastActive = false;
 
+    /** The app labels of these packages (what a Recents card says). */
+    private static java.util.Set<String> labelsOf(Context c, java.util.Set<String> pkgs) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        PackageManager pm = c.getPackageManager();
+        for (String p : pkgs) {
+            try { out.add(String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(p, 0)))); } catch (Throwable ignored) { }
+        }
+        return out;
+    }
+
     private static void killApps(Context c) {
         PackageManager pm = c.getPackageManager();
         ActivityManager am = (ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
@@ -85,9 +99,11 @@ public final class ReturnReset {
         String cur = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
         if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        java.util.Set<String> keep = AppOrigin.custom(c);
         int n = 0;
         for (ResolveInfo ri : pm.queryIntentActivities(launcher, 0)) {
             String pkg = ri.activityInfo.packageName;
+            if (keep.contains(pkg)) continue;   // D5: apps opened from the custom launcher stay open
             if (ResetPolicy.shouldKill(pkg, c.getPackageName(), stock == null ? null : stock.getPackageName(), ime)) {
                 am.killBackgroundProcesses(pkg);
                 n++;
