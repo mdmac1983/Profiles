@@ -289,3 +289,14 @@ send me the v0.3.3 release link when it's built
 5) I sent the incorrect original wallpaper. Replace it with the attached wallpaper which is the original leaf wallpaper
 6) is there a way to hide the "pencil" edit icon or disable it in the notification panel? If so, add it to the app.
 ```
+
+## 2026-11-04T00:33:53Z
+```
+1) add a setting to the launcher settings which allows me to change the serial number on the bottom of the lock screen. keep the same font, color, position, and behavior but allow me to change the number.
+2) make it easy for me to add the necessary adb permissions when i am ready to do the adb commands. for example, either do all the adb commands needed automatically by giving the app adb permissions if possible, or in the app tell me a step by step guide of what adb commands to enter. also give me the commands line by line in a txt file in this session so i can save it for later. include as many permissions as needed for all of the current features of this launcher, plus additional permissions which may be necessary for later added features to the launcher, as long as the permissions dont break or risk anything.
+3) i found the wallpaper, but it is slightly different, maybe due to my screen dimensions or due to lineage having a slightly different copy. the wallpaper is from android 4 ics, named leaf or macro leave, but the one i found is slightly brighter and sharper than the stock one on this lineage based tablet. find the lineage version of android 4 green leaf wallpaper. this may also be due to how the os scales the photo for the screen dimensions.
+4) research if it is possible for the notification panel settings button on both the lock screen and inside android to lead to the cloned modified settings that i am going to build.
+5) make both "launcher" and "quickstep" never appear in the recents list at any time in any launcher. use adb if needed
+6) research if it is possible to have separate notification panels and quick settings tiles depending on the active launcher
+7) tell me the adb command to uninstall or disable the "browser" app (com.android.browser) from lineageos. i cant uninstall or disable it without adb. would it break anything if i disable or uninstall it?
+```
