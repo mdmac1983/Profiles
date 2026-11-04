@@ -442,3 +442,12 @@ How confident are you that i can choose different quick settings tiles depending
 If the two launchers can be completely separate just like two different profiles or android users, then i want each launcher to keep its own apps open and in the recents list,  their own notifications,  etc. Quickstep no longer would need to close apps automatically if it could keep the apps open but completely hidden if i lock the screen and log into the custom launcher or if i go to the custom launcher from quickstep. Only make this change if you are confident it can be done seamlessly 
 Always keep the goal in mind: the two launchers should act like separate profiles which don't know each other
 ```
+
+## 2026-11-04T18:26:18Z
+```
+Keeping the goal in mind of these launchers,  deep research and think outside the box.  What are some clever ways to take advantage of either adb or accessibility service or both to:
+1) keep these two launchers separate but effective and fast
+2) hide or fix the power menu for power off and restart only without the delay, or so fast it isn't noticeable
+3) remove the pencil icon from the notification panel without delay, or so fast it isn't noticeable
+4) soon i will send screenshots of what i want the new,  fake/cloned settings app to look like for the custom launcher. I want it to be functional and look stock.  Can i send anything to help with this? The code for the original settings app somehow extracted from the tablet? Source online somewhere? Start planning how to implement this
+```
