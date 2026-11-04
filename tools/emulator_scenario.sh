@@ -473,13 +473,15 @@ setfeat2; setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/n2-setpin.txt" 2>&1
 adb logcat -c
 lockpad; shot 46-n2-pinpad
+adb shell dumpsys accessibility 2>/dev/null | grep -iE 'Tj|eventTypes|flags=|Enabled services|Bound services' | head -12 > "$OUT/n2-a11y-state.txt"
+adb shell "run-as $PKG cat shared_prefs/tj_features.xml" > "$OUT/n2-features.txt" 2>&1
 adb logcat -d -s TjA11y:I | grep PROFILE > "$OUT/n3-prearm-log.txt" 2>&1
 adb logcat -d | grep -c "Abort background activity starts" > "$OUT/n3-bal.txt" 2>&1
 check "N3: the lock screen (screen off, or the wake) put the custom stack in front behind the keyguard" grep -qE "woke locked|screen off, locked|custom home" "$OUT/n3-prearm-log.txt"
 check "N3: Android did not block the helper's start behind the keyguard" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n3-bal.txt)\" = 0 ]"
 pad 1 d 1 d 1 d 1 2 3 4 e; sleep 6
 getmode > "$OUT/n2-taperase-mode.txt"; resumed > "$OUT/n2-taperase-resumed.txt"
-adb logcat -d -s TjA11y:I | grep -E "UNLOCKPICK|PROFILE" > "$OUT/n2-taperase-log.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep -E "UNLOCKPICK|UNLOCKCLICK|PROFILE" > "$OUT/n2-taperase-log.txt" 2>&1
 check "N2: tap-and-erase x3 before the PIN unlocks into Quickstep" grep -q quickstep "$OUT/n2-taperase-mode.txt"
 check "N2: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/n2-taperase-resumed.txt"
 lockpad

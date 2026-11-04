@@ -304,6 +304,7 @@ public class TjAccessibilityService extends AccessibilityService {
             AccessibilityNodeInfo n = e.getSource();
             UnlockPick.Key k = null;
             for (int i = 0; i < 3 && n != null && k == null; i++) { k = UnlockPick.classify(n.getViewIdResourceName()); n = n.getParent(); }   // ids only: nothing else of the key is read
+            Log.i(TAG, "UNLOCKCLICK class=" + (k == null ? "none" : k.name()));   // diagnostics (full emulator runs 59-61): the KIND of key only, never which digit
             if (k == null) return;
             long now = System.currentTimeMillis();
             if (k == UnlockPick.Key.ENTER) {
