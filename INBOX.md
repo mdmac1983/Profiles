@@ -311,3 +311,9 @@ the permanent wallpaper overlay hiding the power menu worked, but it currently i
 4) the disappearing pencil works, but is there a way to make it permanent or faster so the pencil never shows?
 5) if possible, make it so any apps i open using the custom launcher can stay in the recents list as normal and disappear when closed(normal behavior), but any app that i open using quickstep launcher never shows up at any time in the custom launcher's recents list (they may stay in the recents list for quickstep). Basically, keep the two launchers' recents lists functional but separate
 ```
+
+## 2026-11-04T01:54:34Z
+```
+Can I keep the one quick settings tile in the custom launcher but have three tiles in quickstep? Keep in mind I had to use adb to make it have only one tile in the first place because there is a minimum amount of tiles android requirement
+If I send additional messages at any time, always finish the prior prompts I sent and queue the next messages in order
+```
