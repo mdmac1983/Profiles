@@ -1,22 +1,22 @@
-# CHECKPOINT 243 — read me first, then TASKS.md
+# CHECKPOINT 244 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T18:28:43Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `4313fb0` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T18:29:39Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `6e27421` (this checkpoint is the commit after it)
 
 ## Just done
-Wrote Q1-Q4 (Tj's deep-research request: separation ideas, instant power menu, instant pencil removal, Settings clone plan) into TASKS
+Added experiment section 's' (pm suspend/hide effect on Recents/notifications/processes, input-monitor probe via InputProbe as shell, overlay/settings knobs) + InputProbe.java
 
 ## Do this next
-check emulator runs o,t (41886896202) and u (research: second user) when they land; then research: read research/SETTINGS_CLONE_2026-11-02.md, test network reach (googlesource/github), write experiments s (pm suspend/hide) and m (monitorInput), tools/adb-probe.sh, research/IDEAS_2026-11-04.md
+dispatch emulator.yml sections 's'; read o,t / u / s runs together
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  fbf54bc ckpt 243: Wrote Q1-Q4 (Tj's deep-research request: separation ideas, instant power menu,
   2bba67e ckpt 242: Added research section 'u' (second Android user experiment: switch time, first
   656ee09 ckpt 241: Wrote P1 (separate profiles keeping their own apps open: decide, only build if
   a6fdf8c ckpt 240: O1-O5 coded: 10 more lock-screen methods (UnlockMethods + MotionDetector, serv
@@ -26,7 +26,6 @@ check emulator runs o,t (41886896202) and u (research: second user) when they la
   13b6eb6 ckpt 236: N9 proof: run 48 cold n6 = 3.6 min green; run 49 WARM n6 = 3.5 min green (cach
   047609d ckpt 235: N9 proof run 48 (sections=n6, COLD cache): green in 3.6 min total (AVD create 
   b7966f1 ckpt 234: N9 built: emulator_scenario.sh sections (want X), emulator.yml sections input 
-  9f71e4f ckpt 233: RELEASED v0.4.0 (Build APK run 41798376459 green, Release published + signed, 
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
