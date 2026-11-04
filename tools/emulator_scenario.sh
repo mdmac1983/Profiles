@@ -331,6 +331,8 @@ adb logcat -d -s TjA11y:I TjAnim:I TjReset:I > "$OUT/y2-log.txt" 2>&1
 adb shell settings get global window_animation_scale > "$OUT/anim-after.txt" 2>&1
 adb shell settings get global animator_duration_scale >> "$OUT/anim-after.txt" 2>&1
 resumed > "$OUT/resumed-y2.txt"
+adb shell settings get secure sysui_qs_tiles > "$OUT/qs-tiles-custom.txt" 2>&1
+check "D6: back in custom mode the quick-settings tiles are just 'rotation'" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/qs-tiles-custom.txt)\" = rotation ]"
 check "Y2b: animations were turned off for the reset" grep -q 'animations off for the reset' "$OUT/y2-log.txt"
 check "Y2b: animation scales are back to 1.0 afterwards" bash -c "[ \"\$(sed -n 1p $OUT/anim-after.txt | tr -d ' \r\n')\" = 1.0 ] && [ \"\$(sed -n 2p $OUT/anim-after.txt | tr -d ' \r\n')\" = 1.0 ]"
 check "Y2: the app (Calendar) was opened by the faster reset" grep -qi 'calendar' "$OUT/resumed-y2.txt"

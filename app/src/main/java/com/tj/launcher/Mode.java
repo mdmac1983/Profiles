@@ -42,6 +42,7 @@ public final class Mode {
     public static void set(Context c, String mode) {
         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
         prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
-        KeyboardSwitch.apply(c, m);   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
+        KeyboardSwitch.apply(c, m);
+        TileProfile.apply(c, m);       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }
