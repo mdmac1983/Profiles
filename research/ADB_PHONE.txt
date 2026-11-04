@@ -1,3 +1,6 @@
+NEW (2026-11-04): the easiest way is the PHONE GUIDE APP (PhoneGuide-vX.apk on the same GitHub Release): every command below as a card with a Copy button, in order. Source list: research/ADB_PHONE_COMMANDS.txt.
+Format note: an "ADB OTG - Shell" style app takes the command WITHOUT "adb shell" (its listing says so; a GrapheneOS forum post agrees); other apps (e.g. FastADB OTG) may want the full "adb shell ..." form: the guide has a switch for it.
+
 ADB FROM A PHONE (an "ADB OTG" style app)  -  Tj, 2026-11-04: "I have adb with another android phone to the tablet."
 ===============================================================================================================
 An adb app on a phone (ADB OTG, Bugjaeger, ...) gives you a SHELL ON THE TABLET. In that shell you type commands WITHOUT the "adb shell" prefix.

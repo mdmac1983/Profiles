@@ -76,6 +76,7 @@ checked against the repo at that date; where it can go stale it says where to lo
 | Power menu | `PowerMenuRule`, parts of the service | Cover modes: `off`, `hide_screenshot`, `wallpaper` (home), `block`. **Lock screen (v0.6.0):** wallpaper patch of the LOCK wallpaper + a card of stock item height (Power off + Restart), patch invisible until the menu opens (`lock_patch` key, Control toggle). Menu rect + item size are learned once per rotation (`power_card_rect_rN`, `power_item_rN`). |
 | Per-launcher settings | `TileProfile` (QS tiles), `DemoModeProfile` (hides pencil+gear natively; opt-in), `KeyboardSwitch/Policy`, `RestoreStore` ("Restore everything") | Need `WRITE_SECURE_SETTINGS` (adb grant). Every setting change is snapshotted first and restorable. |
 | Invisible clean-up helper | `ShellServer` (shell-uid `app_process` over loopback TCP 127.0.0.1:47631-47635, peer uid checked in /proc/net/tcp), `ShellProtocol` (allow-listed jobs only), `ShellHelper` (client) | Started by ONE adb line, dies at reboot. Force-stops apps + removes Recents tasks with no UI. Jobs include permission grants, `COMPILE_SELF`, `SHOTS`, `APKS`, `PROBE`. |
+| Phone guide app | `phoneguide/` (own module/APK `com.tj.phoneguide`, plain views, no permissions), list = `phoneguide/src/main/assets/steps.txt` (copy: `research/ADB_PHONE_COMMANDS.txt`, checked identical by `tools/test_handoff.sh`) | Tj's phone-side adb guide (2026-11-04): one card per command with a Copy button, done-ticks, undo lines, accessibility-merge helper. Commands are in the bare ADB-OTG form (no `adb`/`adb shell`; source: the "ADB OTG - Shell" listing and a GrapheneOS forum post say the shell takes the command without the prefix; a switch in the app adds `adb shell ` for other apps). Built, signed and attached to the same Release by `android.yml` (`PhoneGuide-vX.apk`). Edit the asset, then `cp` it to research/. |
 | Setup/probe | `SetupActivity`, `TabletReport`, `AdbGuideActivity`, `tools/adb-all.sh`/`.bat`, `app/src/main/resources/probe-commands.txt`, `tools/adb-probe.sh`, `research/ADB_*` | The "probe": one adb session grants everything, starts the helper, reads tablet facts, copies the tablet's own Settings/SystemUI/Launcher3/framework APKs, screenshots stock Settings. Phone-adb route: `research/ADB_PHONE.txt`. |
 | UI | `ControlActivity` (Launcher control; Quickstep-only), `HiddenAppsActivity`, `Features` (prefs `tj_features`), `TjLook` | Control screen is hidden in custom mode by design. |
 
@@ -91,12 +92,16 @@ checked against the repo at that date; where it can go stale it says where to lo
 - Do not decide `BRIEF.md` OPEN items for Tj. Do not start **SET1 (stock-looking Settings clone)** or multi-user/device-owner work without his go-ahead and his inputs.
 
 ## 6. Waiting on Tj (as of this hand-off)
+0. **Tj's next physical step:** install the Release APK + the PhoneGuide APK (phone), then follow the guide with the OTG cable (he will have the cable only briefly, so the guide is deliberately complete). Result to ask for afterwards: the `probe-out`/`Downloads/launcher-probe` folder + the copied replies of guide section 7.
 1. Tablet testing of v0.5.0/v0.6.0: install over the old one, turn the accessibility helper off and on once, start the shell helper (adb line or `Launcher control > Tablet setup & report`),
    try the new lock-screen methods, the lock-screen power menu (nudges in Control if the patch is off), and report the unlock timing shown in Control ("Last unlock: …").
 2. **The probe output** (`probe-out/` from `bash tools/adb-all.sh`, or `Downloads/launcher-probe` from the phone route): answers max users / second user, ROM identity, whether the helper can start before
    first unlock, `power_menu_actions`, compile state, memory/process facts, and delivers the tablet's own Settings APK for SET1.
 3. Screenshots + keep/remove list for the Settings clone (SET1/C4) when he is ready.
 4. Optional housekeeping: delete the old branch `ccr-4ff66321-chzhhg`; Dependabot PRs re-open against `main`.
+
+## 6b. Tj's open requests at hand-off time (all are in TASKS.md in his words)
+U1-U3 (lock-screen delay: measure + compile + stopwatch), V1-V4 (lock-screen wallpaper patch covering the whole 3-button menu, card = top two buttons, auto-calibration), W1-W2 (probe extras), P2 (keep Quickstep apps open but invisible: answered "not seamless", documented), Y1-Y5 (phone guide app + this hand-off). Check each box's PROOF line before assuming it is finished; anything `[ ]` is not proven.
 
 ## 7. Backlog beyond what is shipped (see `TASKS.md` for exact wording)
 SET1 (curated Settings clone; plan in `research/SETTINGS_CLONE_2026-11-02.md` + `IDEAS_2026-11-04.md §4`), C4 gear→clone, L5 (tile strip partly covered by `TileProfile`),
