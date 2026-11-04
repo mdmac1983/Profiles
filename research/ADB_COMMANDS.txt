@@ -1,0 +1,90 @@
+LAUNCHER (com.tj.launcher) - ADB COMMANDS, LINE BY LINE
+Saved 2026-11-04. Copy one line at a time into a terminal on the computer the tablet is plugged into.
+Lines starting with # are explanations, not commands.
+
+HOW THE LINES WORK
+- You can install the launcher first and run these later, at any time. Nothing needs reinstalling. Grants survive updates (every release is signed with the same key). They are lost only if you uninstall the launcher.
+- Lines marked [NOW] work with v0.3.3 and newer.
+- Lines marked [v0.3.5+] need release v0.3.5 or newer, because Android only lets "pm grant" give permissions the app already lists in its manifest (v0.3.5 lists them in advance, so later features need no reinstall).
+- Every line is reversible (see section 9). Nothing here installs software, touches the lock screen, or makes the launcher a device admin.
+- Without any of these the launcher still works. Each feature that needs one simply says "needs adb grant" in Launcher control.
+
+SECTION 0 - ONE-TIME SETUP ON THE TABLET (no computer needed)
+# Settings > About tablet > tap "Build number" 7 times
+# Settings > System > Developer options > turn ON "USB debugging"
+# Plug the tablet into the computer by USB, tap "Allow" on the tablet when it asks about the computer's key
+
+SECTION 1 - CHECK THE CONNECTION [NOW]
+adb devices
+# The tablet must show as "device" (not "unauthorized"). If "unauthorized": unplug, replug, tap Allow.
+
+SECTION 2 - THE ONE THAT MATTERS MOST [NOW]
+# WRITE_SECURE_SETTINGS lets the launcher: switch the keyboard (stock <-> SwiftKey), turn animations off during the double-Home reset and put them back,
+# and (later features) keep different quick-settings tiles / status-bar icons for each launcher.
+adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+
+SECTION 3 - WALLPAPER PATCH FOR THE POWER MENU [NOW]
+# Same as tapping "Allow wallpaper access" inside Launcher control; this just does it from the computer.
+adb shell pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+
+SECTION 4 - KEEP THE HELPER ALIVE ON THIS LOW-MEMORY TABLET [NOW]
+# Stops Android from freezing the accessibility helper (power-menu cover, lock-screen number, double-Home reset) while the screen is off.
+adb shell dumpsys deviceidle whitelist +com.tj.launcher
+adb shell cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow
+adb shell cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow
+
+SECTION 5 - TURN THE ACCESSIBILITY HELPER ON FROM THE COMPUTER [NOW] (optional: you can also do it in Settings > Accessibility)
+# First read what is already switched on:
+adb shell settings get secure enabled_accessibility_services
+# If it prints "null": use these two lines as they are:
+adb shell settings put secure enabled_accessibility_services com.tj.launcher/com.tj.launcher.TjAccessibilityService
+adb shell settings put secure accessibility_enabled 1
+# If it printed something else (for example com.other.app/com.other.Service), keep it by joining with a colon, e.g.:
+#   adb shell settings put secure enabled_accessibility_services com.other.app/com.other.Service:com.tj.launcher/com.tj.launcher.TjAccessibilityService
+#   adb shell settings put secure accessibility_enabled 1
+
+SECTION 6 - ADVANCE PERMISSIONS FOR LATER FEATURES [v0.3.5+]
+# DUMP: read-only. Lets the launcher read "what is in Recents / what is running" so the double-Home reset only closes apps when there are apps.
+adb shell pm grant com.tj.launcher android.permission.DUMP
+# CHANGE_CONFIGURATION: font size / orientation / locale changes by the launcher (used by later features).
+adb shell pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION
+# Usage access: lets the launcher see which app was used last (read-only list).
+adb shell cmd appops set com.tj.launcher GET_USAGE_STATS allow
+# Modify system settings (brightness, screen timeout ...) for later features.
+adb shell cmd appops set com.tj.launcher WRITE_SETTINGS allow
+
+SECTION 7 - IF ANDROID EVER SHOWS "CHOOSE A HOME APP" [NOW]
+# (Happens after the launcher crashes once, because Android clears its default-home setting for home-type launchers.)
+# Put it back from the computer without tapping through the dialog:
+adb shell cmd package set-home-activity com.tj.launcher/com.tj.launcher.RouterActivity
+
+SECTION 8 - CHECK WHAT IS GRANTED [NOW]
+adb shell dumpsys package com.tj.launcher | grep -E "WRITE_SECURE_SETTINGS|READ_EXTERNAL_STORAGE|DUMP|CHANGE_CONFIGURATION"
+# Each granted one shows "granted=true".
+
+SECTION 9 - UNDO [NOW]
+adb shell pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+adb shell pm revoke com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+adb shell pm revoke com.tj.launcher android.permission.DUMP
+adb shell pm revoke com.tj.launcher android.permission.CHANGE_CONFIGURATION
+adb shell cmd appops set com.tj.launcher GET_USAGE_STATS default
+adb shell cmd appops set com.tj.launcher WRITE_SETTINGS default
+adb shell dumpsys deviceidle whitelist -com.tj.launcher
+# If animations ever stay switched off (they are put back automatically, this is only a manual safety net):
+adb shell settings put global window_animation_scale 1.0
+adb shell settings put global transition_animation_scale 1.0
+adb shell settings put global animator_duration_scale 1.0
+
+SECTION 10 - OPTIONAL: THE "Browser" APP (com.android.browser) [NOW]
+# Safest: DISABLE it (hidden, no longer runs, fully reversible). This is the one to use:
+adb shell pm disable-user --user 0 com.android.browser
+# Turn it back on:
+adb shell pm enable com.android.browser
+# Stronger (removes it for your user, the app file stays in the system image so it can be brought back):
+adb shell pm uninstall -k --user 0 com.android.browser
+# Bring it back after that:
+adb shell pm install-existing --user 0 com.android.browser
+# What it can affect: links open in your other browser (Brave) instead; apps that read the old browser bookmarks lose them. Nothing in Android itself needs it.
+
+LATER (do not run now)
+# A single command that runs sections 2 to 4 for you: bash tools/adb-setup.sh   (in the Launcher repo)
