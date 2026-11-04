@@ -320,6 +320,33 @@ check "X1: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fa
 check "X1: the number overlay is on the lock screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-shown.txt)\" -ge 1 ]"
 check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/lock-pad.txt)\" = 0 ]"
 home
+# ---- E1: unlock-time launcher choice (opt-in). Tap Delete twice on the empty PIN pad before the PIN = Quickstep; a plain PIN = custom launcher. The test PIN is ALWAYS cleared at the end.
+beat "before E1"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/e1-setpin.txt" 2>&1
+pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
+  for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
+lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+adb logcat -c
+lockpad; shot 44-e1-pinpad
+pad d d 1 2 3 4 e; sleep 6
+resumed > "$OUT/e1-resumed-token.txt"; getmode > "$OUT/e1-mode-token.txt"
+adb logcat -d -s TjA11y:I | grep UNLOCKPICK > "$OUT/e1-log-token.txt" 2>&1
+check "E1: Delete x2 before the PIN unlocks into QUICKSTEP (mode switched)" grep -q quickstep "$OUT/e1-mode-token.txt"
+check "E1: and the stock launcher is on screen" grep -q 'com.android.launcher3/' "$OUT/e1-resumed-token.txt"
+adb logcat -c
+lockpad
+pad 1 2 3 4 e; sleep 7
+resumed > "$OUT/e1-resumed-plain.txt"; getmode > "$OUT/e1-mode-plain.txt"
+adb logcat -d -s TjA11y:I | grep UNLOCKPICK > "$OUT/e1-log-plain.txt" 2>&1
+check "E1: a plain PIN returns to the CUSTOM launcher (mode switched back)" grep -q custom "$OUT/e1-mode-plain.txt"
+check "E1: and our Launcher is on screen" grep -q 'com.tj.launcher' "$OUT/e1-resumed-plain.txt"
+adb shell locksettings clear --old 1234 > "$OUT/e1-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "E1: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/e1-clearpin.txt"
+home
+
 
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
 beat "before Y2"
