@@ -124,6 +124,9 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String CAL_STATUS_KEY = "lock_cal_status";
     private float lockCalM = 1f; private int lockCalDx = 0, lockCalDy = 0; private String lockCalSig = "";
     private volatile boolean calBusy = false;
+    /** V4, second design (run 74): the keyguard darkens the wallpaper by about 23 %, so no model of the wallpaper can match the lock screen. The patch is therefore a PHOTO of the real lock screen
+     *  (shell-helper screenshot with the menu closed, cropped to the patch rectangle): exact by construction (dimming, position, zoom). The wallpaper model below stays as the fallback until the first photo exists. */
+    private android.graphics.Bitmap lockShot; private int lockShotDx, lockShotDy; private volatile boolean lockShotFresh = false; private long lastShotTry = 0;
     private final Runnable calTrigger = new Runnable() { @Override public void run() { try { maybeCalibrateLock(); } catch (Throwable t) { Log.e(TAG, "calibrate trigger failed", t); } } };
     private float testSkew() { return 1f + Features.getInt(this, "patch_test_skew", 0) / 100f; }   // emulator test only: a deliberately wrong model the calibration must correct
     private String itemKey() { return "power_item_r" + rotation(); }
@@ -144,7 +147,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; lockShot = null; lockShotFresh = false; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
     };
 
     private void startPatchWatch() {
@@ -232,15 +235,17 @@ public class TjAccessibilityService extends AccessibilityService {
         if (overlayShown) { handler.postDelayed(calTrigger, 2000); return; }   // never photograph the screen while our menu is up
         final Rect r = new Rect(patchAt);
         final String sig = lockCalSigFor(r);
-        if (sig.equals(lockCalSig)) return;
+        if (sig.equals(lockCalSig) && lockShotFresh) return;    // already photographed during this lock
         String saved = Features.getString(this, LOCK_CAL_KEY, "");
         String[] p = saved.split("#");
-        if (p.length == 4 && p[0].equals(sig)) {     // measured before for exactly this wallpaper / rotation / rectangle
-            try { lockCalM = Float.parseFloat(p[1]); lockCalDx = Integer.parseInt(p[2]); lockCalDy = Integer.parseInt(p[3]); lockCalSig = sig; patchView.invalidate(); return; } catch (NumberFormatException ignored) { }
+        if (p.length == 4 && p[0].equals(sig) && !sig.equals(lockCalSig)) {     // model fit measured before for exactly this wallpaper / rotation / rectangle (fallback while there is no photo)
+            try { lockCalM = Float.parseFloat(p[1]); lockCalDx = Integer.parseInt(p[2]); lockCalDy = Integer.parseInt(p[3]); lockCalSig = sig; patchView.invalidate(); } catch (NumberFormatException ignored) { }
         }
         android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
         if (pm == null || !pm.isInteractive()) return;
-        if (!ShellHelper.reachable()) { calStatus("not calibrated: start the adb helper (Launcher control > Tablet setup) or use the nudges"); return; }
+        if (!ShellHelper.reachable()) { calStatus("no photo of the lock screen: start the adb helper (Launcher control > Tablet setup); the wallpaper model is used meanwhile"); return; }
+        if (android.os.SystemClock.elapsedRealtime() - lastShotTry < 4000) { handler.postDelayed(calTrigger, 4000); return; }   // never a screenshot storm if a photo keeps failing
+        lastShotTry = android.os.SystemClock.elapsedRealtime();
         calBusy = true;
         final android.graphics.Bitmap wall = lockBmp;
         final float skew = testSkew();
@@ -254,14 +259,26 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (shot == null) throw new IllegalStateException("the screenshot could not be read");
                 int W = shot.getWidth(), H = shot.getHeight();
                 int[] sp = new int[W * H]; shot.getPixels(sp, 0, W, 0, 0, W, H); shot.recycle();
+                final int cl = Math.max(0, r.left), ct = Math.max(0, r.top), cr = Math.min(W, r.right), cb = Math.min(H, r.bottom);
+                android.graphics.Bitmap crop = null; String mean = "";
+                if (cr - cl >= 12 && cb - ct >= 12) {
+                    crop = android.graphics.Bitmap.createBitmap(cr - cl, cb - ct, android.graphics.Bitmap.Config.ARGB_8888);
+                    crop.setPixels(sp, ct * W + cl, W, 0, 0, cr - cl, cb - ct);
+                    long sr = 0, sg = 0, sb = 0; int n = 0;
+                    for (int y = ct; y < cb; y += 3) for (int x = cl; x < cr; x += 3) { int q = sp[y * W + x]; sr += (q >> 16) & 255; sg += (q >> 8) & 255; sb += q & 255; n++; }
+                    if (n > 0) mean = (sr / n) + "," + (sg / n) + "," + (sb / n);
+                }
+                final android.graphics.Bitmap photo = crop; final int photoDx = cl - r.left, photoDy = ct - r.top;
                 int bw = wall.getWidth(), bh = wall.getHeight();
                 int[] wp = new int[bw * bh]; wall.getPixels(wp, 0, bw, 0, 0, bw, bh);
                 PatchCalibrator.Result res = PatchCalibrator.solve(wp, bw, bh, sp, W, H, r.left, r.top, r.right, r.bottom, 0.5f, skew);
                 final float m = res == null ? 1f : res.scale; final int dx = res == null ? 0 : res.dx, dy = res == null ? 0 : res.dy;
-                result = res == null ? "default alignment kept (the area is too plain, or the picture on screen is not the wallpaper)" : "calibrated: " + res;
+                final String model = res == null ? "wallpaper model: default alignment kept" : "wallpaper model: " + res;
+                result = photo != null ? "PHOTO of the lock screen taken (" + photo.getWidth() + "x" + photo.getHeight() + ", mean colour " + mean + "); " + model : model;
                 handler.post(new Runnable() { @Override public void run() {
                     lockCalM = m; lockCalDx = dx; lockCalDy = dy; lockCalSig = sig;
                     Features.setString(TjAccessibilityService.this, LOCK_CAL_KEY, sig + "#" + m + "#" + dx + "#" + dy);
+                    if (photo != null && patchView != null && patchLockMode && patchAt.equals(r) && keyguardLocked()) { lockShot = photo; lockShotDx = photoDx; lockShotDy = photoDy; lockShotFresh = true; }
                     if (patchView != null) patchView.invalidate();
                 } });
                 Log.i(TAG, "CAL lock patch " + result + " [" + PatchCalibrator.lastNote + "]");
@@ -347,6 +364,7 @@ public class TjAccessibilityService extends AccessibilityService {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
             @Override protected void onDraw(android.graphics.Canvas c) {
+                if (patchLockMode && lockShot != null) { c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
@@ -375,7 +393,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; lockShot = null; lockShotFresh = false;
         Log.i(TAG, "PATCH removed");
     }
 
@@ -823,6 +841,7 @@ public class TjAccessibilityService extends AccessibilityService {
             long t = System.currentTimeMillis();
             ensureUnlockListener();
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
+                lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
                 unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
                 handler.removeCallbacks(lockPrepareLater);
                 handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark

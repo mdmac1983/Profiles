@@ -803,7 +803,7 @@ for PT in "300 300" "300 700" "540 490"; do set -- $PT
   GOT="$(convert "$OUT/v-cal-screenshot.png" -crop 1x1+$1+$2 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)')"
   [ -n "$CW" ] && info "V4: calibration screenshot ${CW}x${CH} at $1,$2 = $GOT; the test wallpaper there is ($(( $1 * 255 / CW )),$(( $2 * 255 / CH )),$(( 255 - $1 * 255 / CW )))"
 done
-check "V4: the calibration measured the (deliberately skewed) model and corrected it" grep -q "CAL lock patch calibrated" "$OUT/v-cal.txt"
+check "V4: the patch is a PHOTO of the real lock screen (the helper screenshot with the menu closed, cropped to the patch)" grep -q "CAL lock patch PHOTO" "$OUT/v-cal.txt"
 adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/v-patch-windows.txt" 2>&1
 shot 81-lock-closed-patch-on
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 82-lock-menu-open
