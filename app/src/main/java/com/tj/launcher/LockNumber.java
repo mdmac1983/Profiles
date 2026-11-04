@@ -1,10 +1,6 @@
 package com.tj.launcher;
 
-import android.app.WallpaperManager;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import com.android.launcher3.R;
 
 /**
  * X1 (Tj, 2026-11-03, L10 lock-screen rule relaxed by Tj for THIS feature only): a number at the bottom of the lock screen that disappears when the PIN pad is pulled up.
@@ -50,19 +46,5 @@ public final class LockNumber {
     /** Pure rule (JVM-testable): shown only on the lock screen itself, screen on, switch on, and never while the PIN/pattern/password pad is up. */
     public static boolean shouldShow(boolean enabled, boolean screenOn, boolean keyguardLocked, boolean bouncerShown) {
         return enabled && screenOn && keyguardLocked && !bouncerShown;
-    }
-
-    /** Sets the ORIGINAL leaf photo (Tj sent it 2026-11-03; no number in it) as the LOCK-screen wallpaper. Only ever called from an explicit button. Returns a status line. */
-    public static String setLockWallpaper(Context c) {
-        try {
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            o.inScaled = false;
-            Bitmap b = BitmapFactory.decodeResource(c.getResources(), R.drawable.tj_lock_wallpaper, o);
-            if (b == null) return "could not read the bundled photo";
-            WallpaperManager.getInstance(c).setBitmap(b, null, true, WallpaperManager.FLAG_LOCK);
-            return "lock-screen wallpaper set (original leaf photo, no number)";
-        } catch (Throwable t) {
-            return "could not set the lock-screen wallpaper: " + t.getClass().getSimpleName();
-        }
     }
 }

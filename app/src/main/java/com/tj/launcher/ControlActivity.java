@@ -136,11 +136,7 @@ public class ControlActivity extends Activity {
         page.addView(numberBox);
         LinearLayout nbtns = row();
         nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
-        nbtns.addView(smallButton("Original number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.DEFAULT_TEXT); rebuild(); } }));
         page.addView(nbtns);
-        action("Set the lock wallpaper to the original leaf photo", Features.getString(this, "lock_wallpaper_result", "Replaces your current lock wallpaper."), new Runnable() { public void run() {
-            Features.setString(ControlActivity.this, "lock_wallpaper_result", LockNumber.setLockWallpaper(ControlActivity.this)); rebuild();
-        }});
 
         toggle("Choose the launcher when I unlock", "Tap DELETE TWICE on the empty PIN pad, then type your normal PIN = Quickstep. A plain PIN = custom launcher. Never reads your digits (it only sees which TYPE of key was tapped).", Features.get(this, UnlockPick.KEY, false), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, UnlockPick.KEY, v); } });
         if (Features.get(this, UnlockPick.KEY, false)) note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
