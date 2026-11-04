@@ -44,4 +44,12 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.homeFailsafe(false, true, 5000, 1000, 1700));    // the last press is old
         assertFalse(ProfileSession.homeFailsafe(false, true, 1500, 0, 1000));       // only two presses so far
     }
+    @Test public void aNewBootEndsAQuickstepSessionOnlyWhenAllowed() {
+        assertTrue(ProfileSession.bootEndsQuickstep(41, 42, true, false, false));
+        assertFalse(ProfileSession.bootEndsQuickstep(42, 42, true, false, false));    // same boot
+        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, true, false));     // already custom
+        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, false, false, false));   // switched off / Restore everything
+        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false, true));     // crash breaker tripped: stay stock
+        assertFalse(ProfileSession.bootEndsQuickstep(41, -1, true, false, false));    // counter unreadable
+    }
 }

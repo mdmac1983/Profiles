@@ -44,6 +44,7 @@ public class RouterActivity extends Activity {
     }
 
     private void route(Intent in) {
+        ProfileSession.checkBoot(this);   // N7: a restart ends a Quickstep session
         String pre = in == null ? null : in.getStringExtra(EXTRA_PREARM);
         if ("stock".equals(pre)) { startStock(); return; }
         boolean prearm = "custom".equals(pre);

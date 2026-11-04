@@ -41,6 +41,11 @@ public final class ProfileSession {
         return plainUnlockEndsQuickstep(endOnLock, customMode, crashTripped) && !handshakeGiven && maybeWorkToDo && coverEnabled;
     }
 
+    /** Pure: is this the first Home of a NEW boot (the boot counter changed since we last looked) while a Quickstep session is still marked? A restart kills every app, so the session is over. */
+    public static boolean bootEndsQuickstep(int seenBootCount, int nowBootCount, boolean endOnLock, boolean customMode, boolean crashTripped) {
+        return nowBootCount >= 0 && seenBootCount != nowBootCount && endOnLock && !customMode && !crashTripped;
+    }
+
     /** Pure: switch Wi-Fi / Bluetooth off again? Custom account only, at most 3 attempts per 60 s (a radio that refuses to go off is never fought in a loop). */
     public static boolean enforceRadios(boolean enabled, boolean customMode, long now, long[] recent) {
         if (!enabled || !customMode) return false;
@@ -56,6 +61,22 @@ public final class ProfileSession {
     public static boolean homeFailsafe(boolean helperRunning, boolean customMode, long now, long p1, long p2) {
         if (helperRunning || !customMode) return false;
         return p1 > 0 && p2 > 0 && now - p2 <= 800 && p2 - p1 <= 800 && now >= p2 && p2 >= p1;
+    }
+
+    /** Called at every Home (the router): notices a new boot, remembers it, and ends a Quickstep session that outlived the restart. Cheap: one settings read. */
+    public static void checkBoot(Context c) {
+        try {
+            int now = android.provider.Settings.Global.getInt(c.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+            int seen = Features.getInt(c, "boot_count_seen", -2);
+            if (now == seen) return;
+            Features.setInt(c, "boot_count_seen", now);
+            if (seen == -2) return;   // first look after install
+            if (bootEndsQuickstep(seen, now, endOnLock(c), Mode.isCustom(c), CrashGuard.wasTripped(c))) {
+                Mode.set(c, Mode.CUSTOM);
+                AppOrigin.clearQuickstep(c);
+                Features.setString(c, PREARM_REPORT_KEY, "boot: a new boot ended the Quickstep session (custom launcher)");
+            }
+        } catch (Throwable t) { android.util.Log.e("TjBoot", "boot check failed", t); }
     }
 
     // ------------------------------------------------------------------ the two actions every method ends in

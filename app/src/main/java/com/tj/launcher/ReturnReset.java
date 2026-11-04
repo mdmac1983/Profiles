@@ -36,9 +36,64 @@ public final class ReturnReset {
     public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
     public static String appLabel(Context c) { return Features.getString(c, APP_KEY, DEFAULT_APP); }
 
+    /**
+     * N6: is the INVISIBLE path possible right now? Needs the shell helper (adb, once per boot) and the switch. Checked on the main thread: a refused local connection fails at once.
+     * Cached for 4 s so the Enter-tap check and the unlock itself do not both pay for it.
+     */
+    private static volatile long invisAt = 0;
+    private static volatile boolean invisVal = false;
+    public static boolean invisibleReady(Context c) {
+        if (!ShellHelper.enabled(c)) return false;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - invisAt < 4000) return invisVal;
+        boolean v = ShellHelper.running();
+        invisVal = v; invisAt = now;
+        return v;
+    }
+
+    /** The packages to force-stop on return: what Quickstep opened (or, before anything is tracked, every launchable app except the custom ones). Never us, the stock launcher, the keyboard, the target app. */
+    private static java.util.List<String> invisibleTargets(Context c) {
+        ComponentName stock = StockLauncher.find(c);
+        String ime = null;
+        String cur = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
+        if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
+        String target = targetPackage(c);
+        java.util.Set<String> pkgs = new java.util.LinkedHashSet<>();
+        if (AppOrigin.tracked(c)) pkgs.addAll(AppOrigin.pending(c));
+        else {
+            java.util.Set<String> keep = AppOrigin.custom(c);
+            for (ResolveInfo ri : c.getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0))
+                if (!keep.contains(ri.activityInfo.packageName)) pkgs.add(ri.activityInfo.packageName);
+        }
+        java.util.List<String> out = new ArrayList<>();
+        for (String p : pkgs) {
+            if (p.equals(target)) continue;
+            if (ResetPolicy.shouldKill(p, c.getPackageName(), stock == null ? null : stock.getPackageName(), ime)) out.add(p);
+        }
+        return out;
+    }
+
+    /** Solitaire (or the target app) at once; the Quickstep apps are force-stopped BEHIND it: Recents cards, notifications and processes vanish with no shade, no Recents screen, no cover. */
+    private static void runInvisible(final Context app) {
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        final java.util.List<String> pkgs = invisibleTargets(app);
+        final boolean first = !AppOrigin.tracked(app);
+        new Thread(new Runnable() { @Override public void run() {
+            try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
+            int n = ShellHelper.forceStop(pkgs);
+            if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
+            invisAt = 0;
+            String line = "INVISIBLE: " + (n < 0 ? "the shell helper stopped answering, " + pkgs.size() + " apps NOT stopped (next return uses the cover method)" : "force-stopped " + n + " of " + pkgs.size() + " apps"
+                    + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; no cover, no shade, no Recents screen");
+            report(app, line);
+        } }, "tj-reset-invisible").start();
+        try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+    }
+
     public static void run(final Context c) {
         if (!enabled(c)) return;
         final Context app = c.getApplicationContext();
+        if (invisibleReady(app)) { runInvisible(app); return; }
         // W1: the slow, blocking parts (a binder call per app, Wi-Fi/Bluetooth) run on their own thread, so the main thread starts pressing "Clear all" at once.
         new Thread(new Runnable() { @Override public void run() {
             try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
@@ -167,7 +222,7 @@ public final class ReturnReset {
 
     /** N3: might the return reset have anything to do (used to decide whether the black cover goes up at the Enter tap)? */
     public static boolean mayHaveWork(Context c) {
-        if (!enabled(c)) return false;
+        if (!enabled(c) || invisibleReady(c)) return false;   // the invisible path needs no cover
         return clearNotifications(c) || (clearRecents(c) && (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty()));
     }
 
