@@ -495,9 +495,9 @@ public class TjAccessibilityService extends AccessibilityService {
             android.content.Context app = getApplicationContext();
             handler.removeCallbacks(coverCheck);
             ensureUnlockListener();
-            if (unlock.hasPendingPad()) {   // the tablet unlocked but the Enter click never classified (emulator runs 63-65): the unlock is the Enter
-                Log.i(TAG, "UNLOCKPICK Enter click not recognised; evaluating the pending pad entry at the unlock");
-                unlock.onEnter(System.currentTimeMillis());
+            if (unlock.hasPendingPad()) {   // the tablet unlocked but the Enter click never classified (emulator runs 63-66): the unlock is the Enter
+                UnlockMethods.Method pm = unlock.finishPendingPad(System.currentTimeMillis());
+                Log.i(TAG, "UNLOCKPICK Enter click not recognised; pending pad entry evaluated at the unlock: " + (pm == null ? "none" : pm.id));
             }
             UnlockMethods.Method m = unlock.consume(System.currentTimeMillis());
             preArmedThisLock = false; preCleanedThisLock = false;

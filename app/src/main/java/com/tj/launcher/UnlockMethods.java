@@ -107,7 +107,7 @@ public final class UnlockMethods {
 
     /** Forget everything of the previous lock session (screen off, or the unlock was handled). */
     public void reset() {
-        pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
+        pad.setLength(0); dismissedPad = null; volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
         lastVolDownAt = 0; volDownHeld = false; heldAt = 0; pingPong.reset(); backsUp.reset(); power.clear(); rotations.clear();
         disarm();
     }
@@ -121,6 +121,8 @@ public final class UnlockMethods {
     // ------------------------------------------------------------------ PIN pad
     /** The PIN pad (bouncer) appeared or went away. Appearing starts a fresh pad session and counts as one "peek". */
     public void onPad(boolean shown, long now) {
+        // The pad going away right after typing = the Enter that unlocked: the keyguard tears its keys down before the Enter click can be recognised, so remember what was typed.
+        if (!shown && pad.length() > 0) { dismissedPad = pad.toString(); dismissedAt = now; }
         pad.setLength(0);
         padMatch = null; volUpBeforeErase = false;
         if (shown) {
@@ -134,7 +136,15 @@ public final class UnlockMethods {
     }
 
     /** True while pad taps were fed but no Enter was processed (the Enter click arrives after the keyguard tore its key down and cannot be recognised): the unlock itself then stands in for Enter. */
-    public boolean hasPendingPad() { return pad.length() > 0; }
+    public boolean hasPendingPad() { return pad.length() > 0 || dismissedPad != null; }
+
+    /** The tablet just unlocked with pad taps never submitted by a recognised Enter: treat them as the entry that unlocked it (dismissed within 3 s). Returns the matched method or null. */
+    public Method finishPendingPad(long now) {
+        if (pad.length() == 0 && dismissedPad != null && now - dismissedAt <= 3000) pad.append(dismissedPad);
+        dismissedPad = null;
+        return pad.length() > 0 ? onEnter(now) : null;
+    }
+    private String dismissedPad; private long dismissedAt;
 
     public void onKey(UnlockPick.Key k, long now) {
         if (k == UnlockPick.Key.DIGIT) pad.append('N');

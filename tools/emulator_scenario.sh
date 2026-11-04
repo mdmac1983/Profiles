@@ -22,6 +22,7 @@ getmode(){ adb shell "run-as $PKG cat shared_prefs/tj_mode.xml 2>/dev/null" | gr
 # Android then clears our default-home setting (AppErrors.clearPackagePreferredForHomeActivities, the accepted cost of the B1 HOME-type launch) and the accessibility helper
 # restarts late, which made EVERY later check fail. heal() notices such a crash, says so in results.txt (never silently) and puts the default home + helper back.
 CRASHSEEN=0
+ensurehome(){ adb shell cmd package set-home-activity "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1; }   # section-only runs and the crash-breaker block can leave no default home (the "Choose a Home app" chooser, run 66)
 heal(){ local n; n=$(command adb logcat -d -b all 2>/dev/null | grep -c "Fatal signal.*($PKG)")
   if [ "${n:-0}" -gt "$CRASHSEEN" ]; then CRASHSEEN=$n
     echo "INFO  NATIVE CRASH #$n of $PKG inside an Android system library (not a Java exception); re-asserting the default home and the helper so the rest of the run is meaningful. Checks that FAIL within ~15 s after this line are caused by the crash." | tee -a "$OUT/results.txt"
@@ -326,6 +327,7 @@ setpower off; setmode custom
 
 fi # section legacy
 if want x1; then # section x1
+ensurehome
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
@@ -354,6 +356,7 @@ check "X1: the number overlay is gone when the PIN pad is pulled up" bash -c "[ 
 home
 fi # section x1
 if want e1; then # section e1
+ensurehome
 # ---- E1: unlock-time launcher choice (opt-in). Tap Delete twice on the empty PIN pad before the PIN = Quickstep; a plain PIN = custom launcher. The test PIN is ALWAYS cleared at the end.
 beat "before E1"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
@@ -384,6 +387,7 @@ home
 
 fi # section e1
 if want y2; then # section y2
+ensurehome
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
 beat "before Y2"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/grant-secure2.txt" 2>&1
@@ -408,6 +412,7 @@ setmode custom; home
 
 fi # section y2
 if want b6; then # section b6
+ensurehome
 # ---- B6: the quick-settings pencil is covered (and uncovered when the panel closes)
 beat "before B6"
 setpower off; setmode custom; rebind; home
@@ -422,6 +427,7 @@ check "B6: a cover window sits over the pencil while the panel is open" bash -c 
 check "B6/D4: when the panel closes the cover is hidden (the window is kept warm for an instant next time)" grep -qE 'PENCIL cover (hidden|removed)' "$OUT/pencil-log2.txt"
 fi # section b6
 if want b4; then # section b4
+ensurehome
 # ---- B4: nothing to clear in Recents -> that step is skipped; cover shown and removed in the normal run
 check "B4: the black cover was shown and removed during the reset" bash -c "grep -q 'RESET cover shown' $OUT/y2-log.txt && grep -q 'RESET cover removed' $OUT/y2-log.txt"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
@@ -436,6 +442,7 @@ setmode custom; home
 
 fi # section b4
 if want n; then # section n
+ensurehome
 # ---- N4 / N5: ways back to custom, the master failsafe, and the lock-screen profile switch (v0.4.0)
 beat "before N"
 # `adb shell input keyevent` is INJECTED and bypasses the accessibility key filter, so hardware keys are sent through the emulator console (a real input device) instead.
@@ -501,6 +508,7 @@ setfeat; setmode custom; home
 
 fi # section n
 if want n6; then # section n6
+ensurehome
 # ---- N6: the invisible clean-up helper (shell-uid process started by one adb line): Quickstep's apps are force-stopped with no cover, their Recents cards vanish
 beat "before N6"
 setfeat; setmode quickstep; rebind; home; sleep 2
@@ -531,6 +539,7 @@ setfeat; setmode custom; home
 
 fi # section n6
 if want o; then # section o
+ensurehome
 # ---- O1 / O3 / O4 (v0.5.0): more lock-screen methods, closing at lock, instant unlock to custom
 beat "before O"
 setfeat3(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_ladder\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_charger\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_peek5\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
@@ -590,6 +599,7 @@ setfeat; setmode quickstep; home; adb shell am start -n "$PKG/com.tj.launcher.Hi
 setfeat; setmode custom; home
 fi # section o
 if want t; then # section t
+ensurehome
 # ---- O5: different quick-settings tiles per launcher. SystemUI's REAL tile list is read back from its own dump, not just the setting.
 beat "before T"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS > "$OUT/t-grant.txt" 2>&1
@@ -633,6 +643,7 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; home
 fi # section t
 if want u; then # section u
+ensurehome
 # ---- P1 RESEARCH (informational only): would a real SECOND ANDROID USER give two launchers that keep their own apps open, with their own Recents and notifications? How seamless is the switch?
 beat "before U"
 adb shell pm get-max-users > "$OUT/u-maxusers.txt" 2>&1
@@ -664,6 +675,7 @@ if [ -n "$UID2" ]; then
 fi
 fi # section u
 if want s; then # section s
+ensurehome
 # ---- Q1/Q2 RESEARCH (informational only): can the shell user HIDE an app from Recents / notifications without closing it (pm suspend / pm hide)? Is an input monitor allowed (instant power-menu card)? What system knobs exist?
 beat "before S"
 setfeat; setmode custom; rebind; home
@@ -700,6 +712,7 @@ adb shell getprop ro.build.fingerprint > "$OUT/s-build.txt" 2>&1; adb shell getp
 setfeat; setmode custom; home
 fi # section s
 if want p; then # section p
+ensurehome
 # ---- R3 RESEARCH (informational only): can adb alone hide the quick-settings pencil (and gear) with NO delay? Android's own QS footer hides them when the device is in "demo mode" (Settings.Global device_demo_mode).
 beat "before P"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
@@ -721,6 +734,7 @@ info "P5 system services the shell user can see: $(adb shell service list 2>/dev
 setfeat; setmode custom; home
 fi # section p
 if want x; then # section x
+ensurehome
 # ---- S1 / S2 (Tj: "do everything in one session with adb"): the real tools/adb-all.sh against the emulator, then the in-app "Do everything" through the helper
 beat "before X"
 setfeat; setmode quickstep; rebind; home

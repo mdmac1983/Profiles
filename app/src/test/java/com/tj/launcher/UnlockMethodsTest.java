@@ -66,6 +66,20 @@ public class UnlockMethodsTest {
         assertFalse(u.hasPendingPad());
         assertEquals(UnlockMethods.Method.TAP_ERASE, u.consume(5500));
     }
+    @Test public void padDismissedByTheUnlockStillCountsAsTheEnter() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N, N, N, N);
+        u.onPad(false, 5000);                              // the keyguard went away; the Enter click was never recognised
+        assertTrue(u.hasPendingPad());
+        assertEquals(UnlockMethods.Method.ERASE2, u.finishPendingPad(5100));
+        assertEquals(UnlockMethods.Method.ERASE2, u.consume(5200));
+    }
+    @Test public void aPadClosedLongAgoIsNotAnEnter() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N);
+        u.onPad(false, 1000);
+        assertNull(u.finishPendingPad(9000));              // fingerprint unlock much later: nothing pending
+    }
     @Test public void tapEraseTwiceIsNotEnough() {
         UnlockMethods u = only(UnlockMethods.Method.TAP_ERASE);
         u.onPad(true, 0); keys(u, 0, N, D, N, D, N, N, N); u.onEnter(5000);
