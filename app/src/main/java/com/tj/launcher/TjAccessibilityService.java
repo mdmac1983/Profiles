@@ -114,6 +114,12 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String PATCH_DX_KEY = "patch_dx", PATCH_DY_KEY = "patch_dy", PATCH_SCALE_KEY = "patch_scale_pct";   // alignment nudges in px / percent
     private View patchView;
     private android.graphics.Bitmap wallpaperBmp;
+    /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
+    private android.graphics.Bitmap lockBmp;
+    private boolean patchLockMode, targetIsLock;
+    public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
+    private long lastOffTop = -1, lastItemH = -1;
+    private String itemKey() { return "power_item_r" + rotation(); }
     private final Rect patchAt = new Rect();
     private int patchRot = -1;
     private boolean patchWatching = false;
@@ -131,7 +137,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
     };
 
     private void startPatchWatch() {
@@ -158,7 +164,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public void onWallpaperOffset() { handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40); }
 
     private void scheduleLayerRefresh() {
-        if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this)) && patchView == null) return;   // not in this mode and nothing to clean up: free
+        if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this)) && patchView == null && !lockPatchWanted()) return;   // not in this mode and nothing to clean up: free
         long now = android.os.SystemClock.uptimeMillis();
         if (now - lastLayerMs >= 150) { lastLayerMs = now; refreshLayers(); }
         if (!layerRefreshPending) { layerRefreshPending = true; handler.postDelayed(layerRefresh, 250); }
@@ -169,16 +175,56 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Launcher control. */
+    private boolean lockPatchWanted() {
+        return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && Mode.isCustom(this) && keyguardLocked();
+    }
+
     private Rect patchTarget() {
+        targetIsLock = false;
+        if (keyguardLocked()) {   // V1: the lock screen has its own rules (the wallpaper there may be another picture, and nothing may be painted over the clock / PIN pad)
+            if (!Features.get(this, LOCK_PATCH_KEY, true)) { patchStatus("off: lock-screen patch switched off"); return null; }
+            if (!Features.isCover(Features.powerMode(this)) || !Mode.isCustom(this)) { patchStatus("off: lock screen, power menu cover off or Quickstep mode"); return null; }
+            Rect r = cachedCard();
+            if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
+            if (loadLockWallpaper() == null) return null;
+            targetIsLock = true;
+            return r;
+        }
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
         if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
         if (!TjHooks.homeScreenShowing()) { patchStatus("off: only shown on the home screen (not over apps, not in All Apps)"); return null; }
-        KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        if (km != null && km.isKeyguardLocked()) { patchStatus("off: lock screen"); return null; }
         Rect r = cachedCard();
         if (r == null) { patchStatus("waiting: open the power menu once so the helper learns where it sits (this screen orientation)"); return null; }
         if (loadWallpaper() == null) return null;
         return r;
+    }
+
+    /** V1: the picture the lock screen shows: a separate lock wallpaper if Tj set one, else the home wallpaper. Down-sampled to the display so a Go tablet keeps its memory. */
+    private android.graphics.Bitmap loadLockWallpaper() {
+        if (lockBmp != null) return lockBmp;
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            patchStatus("needs permission: Launcher control > Allow wallpaper access"); return null;
+        }
+        try {
+            android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
+            android.os.ParcelFileDescriptor pfd = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK) > 0 ? wm.getWallpaperFile(android.app.WallpaperManager.FLAG_LOCK) : null;
+            if (pfd != null) {
+                try {
+                    android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+                    ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+                    android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+                    o.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeFileDescriptor(pfd.getFileDescriptor(), null, o);
+                    int sample = 1;
+                    while (o.outWidth / (sample * 2) >= dm.widthPixels && o.outHeight / (sample * 2) >= dm.heightPixels) sample *= 2;
+                    o = new android.graphics.BitmapFactory.Options(); o.inSampleSize = sample;
+                    lockBmp = android.graphics.BitmapFactory.decodeFileDescriptor(pfd.getFileDescriptor(), null, o);
+                } finally { try { pfd.close(); } catch (Throwable ignored) { } }
+            }
+            if (lockBmp == null) lockBmp = loadWallpaper();   // no separate lock picture: the lock screen shows the home wallpaper
+        } catch (Throwable t) { Log.e(TAG, "lock wallpaper read failed", t); }
+        if (lockBmp == null) patchStatus("off: the lock wallpaper could not be read");
+        return lockBmp;
     }
 
     private android.graphics.Bitmap loadWallpaper() {
@@ -205,10 +251,11 @@ public class TjAccessibilityService extends AccessibilityService {
             if (want == null) {
                 if (patchView != null) { removeOverlay(); removePatch(); }
                 if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) wallpaperBmp = null;
+                if (!keyguardLocked()) lockBmp = null;   // V1: not needed off the lock screen (memory)
                 if (Features.isCover(Features.powerMode(this)) && Mode.isCustom(this)) warmUp();   // plain cover mode keeps its pre-built card
                 return;
             }
-            if (patchView != null && (!patchAt.equals(want) || patchRot != rotation())) { removeOverlay(); removePatch(); }
+            if (patchView != null && (!patchAt.equals(want) || patchRot != rotation() || patchLockMode != targetIsLock)) { removeOverlay(); removePatch(); }
             if (patchView == null) { removeOverlay(); addPatch(want); warmUp(); }
         } catch (Throwable t) { Log.e(TAG, "layer refresh failed", t); removeOverlay(); removePatch(); }
     }
@@ -228,7 +275,7 @@ public class TjAccessibilityService extends AccessibilityService {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
             @Override protected void onDraw(android.graphics.Canvas c) {
-                android.graphics.Bitmap b = wallpaperBmp;
+                android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
@@ -236,7 +283,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 float cal = 1f + Features.getInt(TjAccessibilityService.this, PATCH_SCALE_KEY, 0) / 100f;   // Tj's alignment nudges (Launcher control)
                 s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
-                m.postTranslate(-(dw - dm.widthPixels) * TjHooks.wallpaperX - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0),
+                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0),
                         -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0));
                 c.drawBitmap(b, m, p);
             }
@@ -245,6 +292,8 @@ public class TjAccessibilityService extends AccessibilityService {
         lp.format = PixelFormat.OPAQUE;
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
+        patchLockMode = targetIsLock;
+        if (patchLockMode) v.setAlpha(0f);   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad)
         patchView = v; patchAt.set(r); patchRot = rotation();
         patchStatus("active over " + r.toShortString());
         Log.i(TAG, "PATCH shown " + r.toShortString());
@@ -253,7 +302,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false;
         Log.i(TAG, "PATCH removed");
     }
 
@@ -1157,7 +1206,8 @@ public class TjAccessibilityService extends AccessibilityService {
                             menuOpen = true;
                             // the card = the smallest ancestor of "Power off" that also contains the Screenshot entry
                             AccessibilityNodeInfo offItem = clickableAncestor(off.get(0));
-                            Rect scr = new Rect(), c = new Rect();
+                            Rect scr = new Rect(), c = new Rect(), ob = new Rect();
+                            offItem.getBoundsInScreen(ob); lastOffTop = ob.top; lastItemH = ob.height();   // V1: the stock item size, so our menu is "stock minus Screenshot"
                             clickableAncestor(sc.get(0)).getBoundsInScreen(scr);
                             AccessibilityNodeInfo t = offItem;
                             for (int i = 0; i < 6 && t != null; i++) {
@@ -1177,8 +1227,9 @@ public class TjAccessibilityService extends AccessibilityService {
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
             Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
+            if (lastItemH > 0) Features.setString(this, itemKey(), lastOffTop + "," + lastItemH);
             handler.removeCallbacks(recheck);
-            if (Features.POWER_WALLPAPER.equals(mode) && patchView == null) refreshLayers();
+            if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
@@ -1533,6 +1584,26 @@ public class TjAccessibilityService extends AccessibilityService {
         return lp;
     }
 
+    /** V1: on the lock screen the patch is invisible until the power menu opens (and again afterwards). */
+    private void patchShow(boolean on) {
+        if (patchView != null && patchLockMode) patchView.setAlpha(on ? 1f : 0f);
+    }
+
+    /**
+     * V1 (Tj): our menu is "the stock menu minus the Screenshot button": same item size, Power off + Restart only. The wallpaper patch underneath fills what the rest of the stock menu
+     * (Screenshot, Emergency ...) would have covered. Without a patch below we keep the whole rectangle so a real Screenshot button can never show.
+     */
+    private Rect cardArea(Rect full) {
+        if (patchView == null) return full;
+        try {
+            String[] p = Features.getString(this, itemKey(), "").split(",");
+            if (p.length != 2) return full;
+            int top = Integer.parseInt(p[0]), h = Integer.parseInt(p[1]);
+            if (h <= 0 || top < full.top || top - full.top > h || top + 2 * h >= full.bottom) return full;
+            return new Rect(full.left, top, full.right, top + 2 * h);
+        } catch (NumberFormatException e) { return full; }
+    }
+
     /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
     private void warmUp() {
         if (overlay != null || !Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
@@ -1540,16 +1611,30 @@ public class TjAccessibilityService extends AccessibilityService {
         if (cached == null) return;
         ensurePatch();   // the wallpaper patch must be added BEFORE the card so the card is on top
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        Rect area = cardArea(cached);
         overlay = buildCard();
         overlay.setAlpha(0f);
-        wm.addView(overlay, overlayParams(cached, false));
-        shownAt.set(cached);
+        wm.addView(overlay, overlayParams(area, false));
+        shownAt.set(area);
         overlayShown = false; overlayTouchable = false;
     }
 
-    private void showOverlay(Rect r) {
+    private void showOverlay(Rect full) {
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (overlay == null) {
+            ensurePatch();
+            Rect r0 = cardArea(full);
+            patchShow(true);
+            overlay = buildCard();
+            wm.addView(overlay, overlayParams(r0, true));
+            shownAt.set(r0);
+            overlayShown = true; overlayTouchable = true;
+            cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
+            return;
+        }
+        Rect r = cardArea(full);
+        patchShow(true);
+        if (false) {
             ensurePatch();
             overlay = buildCard();
             wm.addView(overlay, overlayParams(r, true));
@@ -1570,6 +1655,7 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.removeCallbacks(recheck);
         if (overlay == null) { warmUp(); return; }
         if (!overlayShown) return;
+        patchShow(false);
         overlay.setAlpha(0f);
         overlayShown = false;
         try {
@@ -1581,6 +1667,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removeOverlay() {
         handler.removeCallbacks(recheck);
         if (overlay == null) return;
+        patchShow(false);
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(overlay); } catch (Throwable ignored) { }
         overlay = null;
         overlayShown = false; overlayTouchable = false;
