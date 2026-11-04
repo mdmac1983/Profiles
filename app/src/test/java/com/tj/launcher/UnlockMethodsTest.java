@@ -90,10 +90,10 @@ public class UnlockMethodsTest {
     }
     @Test public void aFreeLatchSurvivesAWrongPlainPinButNotTheScreenGoingOff() {
         UnlockMethods u = only(UnlockMethods.Method.VOLUME);
-        u.onVolume(true, 0); u.onVolume(true, 100); u.onVolume(false, 200); u.onVolume(false, 300);
-        u.onPad(true, 400); keys(u, 400, N, N); u.onEnter(2000);      // wrong plain PIN
+        u.onVolume(true, 1000); u.onVolume(true, 1100); u.onVolume(false, 1200); u.onVolume(false, 1300);
+        u.onPad(true, 1400); keys(u, 1400, N, N); u.onEnter(3000);      // wrong plain PIN
         assertEquals(UnlockMethods.Method.VOLUME, u.armedMethod());
-        u.onScreen(false, 3000);
+        u.onScreen(false, 4000);
         assertNull(u.armedMethod());
     }
 
