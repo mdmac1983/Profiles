@@ -460,3 +460,8 @@ I need a to do list for when i have time to do adb commands.
 Tell me every command to do with adb now, including the browser uninstall,  the permissions for the launcher including for future possible upgrades, the check of user profiles,  etc.
 Also,  see if adb can help fix the power menu and the pencil icon
 ```
+
+## 2026-11-04T18:36:51Z
+```
+Make the adb probe an app or something that i can plug in the tablet and give the app permission to read the tablet settings and everything needed to help this project. You have full permissions to get all the information necessary, including but not limited to,  getting the settings app code to modify it,  figuring out users profiles, telling me which permissions commands to enter, etc. Make it so i can do everything in one session with adb
+```
