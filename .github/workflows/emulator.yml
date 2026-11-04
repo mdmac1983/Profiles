@@ -45,34 +45,6 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends imagemagick >/dev/null
       - name: Build the debug APK
         run: ./gradlew :app:assembleDebug --console=plain
-      # N9: the emulator image is cached with a quick-boot snapshot, so only the first run on a cold cache pays the full boot (bump the key to rebuild it).
-      - name: AVD cache
-        uses: actions/cache@v4
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-api29-x86-default-v1
-      - name: Create the AVD and its snapshot (only on a cold cache)
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86
-          force-avd-creation: false
-          disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: echo "AVD and snapshot generated for the cache"
-      - name: Save the AVD cache now (a failing scenario must not lose it)
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-api29-x86-default-v1
       - name: Boot Android 10, run the scenario
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -81,9 +53,8 @@ jobs:
           api-level: 29
           target: default
           arch: x86
-          force-avd-creation: false
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: timeout 1000 bash tools/emulator_scenario.sh
       - uses: actions/upload-artifact@v4
         if: always()

@@ -42,6 +42,11 @@ SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
 # helpers that more than one section uses (hoisted here so a section-only run has them)
+# tap an app icon in the OPEN drawer by its label (found with uiautomator), falling back to fixed coordinates: the drawer order is not the same on every emulator boot
+tapapp(){ local l="$1" fx="$2" fy="$3" b; adb shell uiautomator dump /sdcard/tjui.xml >/dev/null 2>&1
+  b=$(adb shell cat /sdcard/tjui.xml 2>/dev/null | tr '>' '\n' | grep -F "text=\"$l\"" | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
+  set -- $b
+  if [ "$#" -ge 4 ]; then adb shell input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 )); else adb shell input tap "$fx" "$fy"; fi; }
 setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
   for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
@@ -195,8 +200,8 @@ adb logcat -d -s TjA11y:I | grep -E 'POWER key down' > "$OUT/key-diag.txt" 2>&1
 #      Uses apps NOT launched earlier in this run (a task that already exists keeps its old Recents entry: the flag only applies when a task is created).
 setlabel(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"recents_only_target\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; }
 setlabel Clock; setmode custom; home; sleep 2
-adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 255; sleep 4; shot 32-launched-messaging; adb shell input keyevent KEYCODE_HOME; sleep 2     # Messaging (row 2, col 3)
-adb shell input swipe 300 900 300 200 400; sleep 3; adb shell input tap 300 135; sleep 4; shot 33-launched-clock; adb shell input keyevent KEYCODE_HOME; sleep 2         # Clock = target (row 1, col 3)
+adb shell input swipe 300 900 300 200 400; sleep 3; tapapp Messaging 300 255; sleep 4; shot 32-launched-messaging; adb shell input keyevent KEYCODE_HOME; sleep 2     # Messaging (row 2, col 3)
+adb shell input swipe 300 900 300 200 400; sleep 3; tapapp Clock 300 135; sleep 4; shot 33-launched-clock; adb shell input keyevent KEYCODE_HOME; sleep 2         # Clock = target (row 1, col 3)
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; shot 31-recents-only-target
 adb shell dumpsys activity recents > "$OUT/recents-policy.txt" 2>&1     # taken while the Recents screen is open: the (excluded) launcher is no longer the top task, so a leak would show here
 adb shell input keyevent KEYCODE_HOME; sleep 1
