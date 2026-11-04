@@ -373,3 +373,10 @@ Quickstep: regular power menu allowed if possible, any apps can be in recent lis
 
 Figure out the best way to keep these two launchers separate, as much like different user accounts as possible. Figure out how to make the custom launcher always open immediately with solitaire and no other open apps or recents from quickstep. Ideally, it would open like a regular unlock without any delay or closing apps or notificatios
 ```
+
+## 2026-11-04T05:48:23Z
+```
+Also include several different options for going from quickstep to the custom launcher in addition to double tapping the home button (the kill switch) such as other buttons, combinations, gestures, an app on the home screen that acts like a kill switch when pressed, etc.
+
+I need some master failsafe plan in case the lock screen accessibility method to get into quickstep doesn't work. I need to always be able to get to quickstep no matter what, but in such a way that it is highly unlikely for someone to accidentally access it. What about a certain card move combination in the custom launcher solitaire game? Think of a good creative way or ways to do so, using accessibility service or anything else
+```
