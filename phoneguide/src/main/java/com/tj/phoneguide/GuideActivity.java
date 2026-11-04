@@ -92,7 +92,7 @@ public class GuideActivity extends Activity {
         sw.setText("Show lines with the \"adb shell \" prefix");
         sw.setChecked(withPrefix);
         sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton v, boolean on) { withPrefix = on; prefs.edit().putBoolean("prefix", on).apply(); refreshCommands(); }
+            @Override public void onCheckedChanged(CompoundButton v, boolean on) { withPrefix = on; prefs.edit().putBoolean("prefix", on).apply(); page.post(new Runnable() { @Override public void run() { build(); } }); }
         });
         how.addView(sw);
         page.addView(how);
