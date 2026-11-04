@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -849,6 +849,24 @@ info "U2: cold start with verify-only: $(cat $OUT/v-start-before.txt)   after 'c
 check "U2: 'cmd package compile -m speed -f' succeeds as the shell user" grep -qi success "$OUT/v-compile.txt"
 setmode custom; home
 fi # section v
+if want g; then # section g
+# ---- Y2 (Tj, 2026-11-04): the PHONE-side adb guide app. Installed here only to prove it opens, lists the commands and has Copy buttons.
+beat "before G"
+GAPK=phoneguide/build/outputs/apk/debug/phoneguide-debug.apk
+adb install -r "$GAPK" > "$OUT/g-install.txt" 2>&1
+adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
+shot 90-phoneguide-top
+adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-top.xml" 2>/dev/null
+check "Y2: the phone guide installs" grep -qi success "$OUT/g-install.txt"
+check "Y2: the phone guide opens and shows its title" grep -q "Tablet adb guide" "$OUT/g-ui-top.xml"
+check "Y2: the first screen has Copy buttons" bash -c "[ \"\$(grep -o 'Copy this line' $OUT/g-ui-top.xml | wc -l)\" -ge 1 ]"
+for i in 1 2 3 4 5 6; do adb shell input swipe 300 800 300 200 300; sleep 1; done
+shot 91-phoneguide-middle
+adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-mid.xml" 2>/dev/null
+check "Y2: further down the list there are commands with Copy buttons (permissions section)" bash -c "grep -q 'pm grant' $OUT/g-ui-mid.xml || grep -q 'appops' $OUT/g-ui-mid.xml"
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell am force-stop com.tj.phoneguide; home
+fi # section g
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
