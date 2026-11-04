@@ -321,6 +321,7 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
         mDragController = new DragController(this);
         mAllAppsController = new AllAppsTransitionController(this);
         mStateManager = new LauncherStateManager(this);
+        com.tj.launcher.TjHooks.watchState(mStateManager);   // Tj (D0): the wallpaper patch only exists while the plain home screen is showing
         UiFactory.onCreate(this);
 
         mAppWidgetManager = AppWidgetManagerCompat.getInstance(this);

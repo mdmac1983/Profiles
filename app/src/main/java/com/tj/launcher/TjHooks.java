@@ -18,6 +18,8 @@ public final class TjHooks {
     /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
     public static void onLauncherResumed(final Context c) {
         launcherResumed = true;
+        try { if (c instanceof com.android.launcher3.Launcher) launcherNormal = ((com.android.launcher3.Launcher) c).isInState(com.android.launcher3.LauncherState.NORMAL); } catch (Throwable ignored) { }
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         RecentsGuard.excludeOurTasks(c);                       // W2: also fixes a Launcher task created before the exclude flags existed
         if (c instanceof android.app.Activity) RecentsGuard.describeAsTarget((android.app.Activity) c);
         try {
@@ -40,8 +42,28 @@ public final class TjHooks {
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
     }
 
+    /** True while the plain home screen (workspace, NORMAL state) is the visible, settled screen. */
+    public static volatile boolean launcherNormal = false;
+
+    public static boolean homeScreenShowing() { return launcherResumed && launcherNormal; }
+
+    public static void watchState(com.android.launcher3.LauncherStateManager sm) {
+        try {
+            sm.addStateListener(new com.android.launcher3.LauncherStateManager.StateListener() {
+                @Override public void onStateTransitionStart(com.android.launcher3.LauncherState toState) { setNormal(false); }
+                @Override public void onStateTransitionComplete(com.android.launcher3.LauncherState finalState) { setNormal(finalState == com.android.launcher3.LauncherState.NORMAL); }
+            });
+        } catch (Throwable t) { android.util.Log.e("TjHooks", "state watch failed", t); }
+    }
+
+    private static void setNormal(boolean v) {
+        launcherNormal = v;
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
+    }
+
     public static void onLauncherPaused() {
         launcherResumed = false;
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         lastLauncherPauseMs = System.currentTimeMillis();
     }
 

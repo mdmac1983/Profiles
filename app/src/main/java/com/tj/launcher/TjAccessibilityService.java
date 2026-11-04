@@ -99,11 +99,13 @@ public class TjAccessibilityService extends AccessibilityService {
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { startPatchWatch(); } catch (Throwable t) { Log.e(TAG, "patch watch failed", t); }
+        try { startPowerWatch(); } catch (Throwable t) { Log.e(TAG, "power watch failed", t); }
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
     }
 
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
     public static final String PATCH_STATUS_KEY = "wallpaper_patch_status";
+    public static final String PATCH_DX_KEY = "patch_dx", PATCH_DY_KEY = "patch_dy", PATCH_SCALE_KEY = "patch_scale_pct";   // alignment nudges in px / percent
     private View patchView;
     private android.graphics.Bitmap wallpaperBmp;
     private final Rect patchAt = new Rect();
@@ -140,6 +142,9 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** Called by the launcher (same process) whenever it moves the wallpaper: redraw the patch with the new slice (debounced). */
+    /** Called by the launcher (state changes, resume, pause): re-evaluate the patch at once. */
+    public void refreshLayersSoon() { handler.removeCallbacks(layerRefresh); handler.post(layerRefresh); }
+
     public void onWallpaperOffset() { handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40); }
 
     private void scheduleLayerRefresh() {
@@ -157,6 +162,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private Rect patchTarget() {
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
         if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
+        if (!TjHooks.homeScreenShowing()) { patchStatus("off: only shown on the home screen (not over apps, not in All Apps)"); return null; }
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         if (km != null && km.isKeyguardLocked()) { patchStatus("off: lock screen"); return null; }
         Rect r = cachedCard();
@@ -217,8 +223,11 @@ public class TjAccessibilityService extends AccessibilityService {
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
+                float cal = 1f + Features.getInt(TjAccessibilityService.this, PATCH_SCALE_KEY, 0) / 100f;   // Tj's alignment nudges (Launcher control)
+                s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
-                m.postTranslate(-(dw - dm.widthPixels) * TjHooks.wallpaperX - rect.left, -(dh - dm.heightPixels) * 0.5f - rect.top);
+                m.postTranslate(-(dw - dm.widthPixels) * TjHooks.wallpaperX - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0),
+                        -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0));
                 c.drawBitmap(b, m, p);
             }
         };
@@ -515,6 +524,44 @@ public class TjAccessibilityService extends AccessibilityService {
         return n;
     }
 
+    // ---------------------------------------------------------------- D3: the earliest signal there is that the power menu is coming
+    // The side key itself never reaches an accessibility service (Android drops consumed keys before the key filter). But PhoneWindowManager broadcasts
+    // ACTION_CLOSE_SYSTEM_DIALOGS (reason "globalactions") right BEFORE it creates the dialog: that is our head start. Latencies are logged and shown in Launcher control.
+    public static final String LATENCY_KEY = "power_latency";
+    private long signalMs = 0, menuSeenMs = 0, cardShownMs = 0;
+    private boolean powerWatch = false;
+    private final android.content.BroadcastReceiver powerSignal = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            try {
+                if (!"globalactions".equals(i.getStringExtra("reason"))) return;
+                signalMs = android.os.SystemClock.uptimeMillis(); menuSeenMs = 0; cardShownMs = 0;
+                Log.i(TAG, "POWERSIG globalactions broadcast");
+                earlyCover();
+            } catch (Throwable t) { Log.e(TAG, "power signal failed", t); }
+        }
+    };
+
+    private void startPowerWatch() {
+        if (powerWatch) return;
+        registerReceiver(powerSignal, new android.content.IntentFilter(android.content.Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+        powerWatch = true;
+    }
+
+    private void stopPowerWatch() {
+        if (!powerWatch) return;
+        try { unregisterReceiver(powerSignal); } catch (Throwable ignored) { }
+        powerWatch = false;
+    }
+
+    /** Called when the card becomes visible: how long after the broadcast / after the real menu window appeared? (negative = the card came FIRST) */
+    private void recordLatency() {
+        if (cardShownMs == 0) return;
+        String line = "card shown " + (signalMs > 0 ? (cardShownMs - signalMs) + " ms after the system broadcast" : "(no broadcast seen)")
+                + (menuSeenMs > 0 ? ", " + (cardShownMs - menuSeenMs) + " ms after the real menu appeared (negative = card first)" : ", real menu not seen before the card");
+        Features.setString(this, LATENCY_KEY, line);
+        Log.i(TAG, "POWERLAT " + line);
+    }
+
     // ---------------------------------------------------------------- W4: the side key reaches the helper before the long-press power menu exists
     public static final String PWR_COUNT_KEY = "power_key_count", PWR_LAST_KEY = "power_key_last";
 
@@ -547,9 +594,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopPowerWatch(); stopLockNumber(); return super.onUnbind(i); }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopPowerWatch(); stopLockNumber(); super.onDestroy(); }
 
     private void evaluate() {
         String mode = Features.powerMode(this);
@@ -560,6 +607,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean menuOpen = false, found = false;
         if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
             List<AccessibilityWindowInfo> windows = getWindows();
+            if (menuSeenMs == 0 && dialogWindowPresent(windows)) menuSeenMs = android.os.SystemClock.uptimeMillis();
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
                 if (cached != null && dialogWindowPresent(windows)) showOverlay(cached);   // instant: no node scan yet
@@ -976,7 +1024,7 @@ public class TjAccessibilityService extends AccessibilityService {
             overlayShown = true; overlayTouchable = true;
             return;
         }
-        if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; }          // visible first (one redraw) ...
+        if (!overlayShown) { overlay.setAlpha(1f); overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency(); }          // visible first (one redraw) ...
         if (!overlayTouchable || !shownAt.equals(r)) {                              // ... then touchable / moved
             wm.updateViewLayout(overlay, overlayParams(r, true));
             shownAt.set(r); overlayTouchable = true;
