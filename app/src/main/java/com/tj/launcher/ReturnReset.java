@@ -46,7 +46,7 @@ public final class ReturnReset {
         if (!ShellHelper.enabled(c)) return false;
         long now = android.os.SystemClock.uptimeMillis();
         if (now - invisAt < 4000) return invisVal;
-        boolean v = ShellHelper.running();
+        boolean v = ShellHelper.reachable();
         invisVal = v; invisAt = now;
         return v;
     }

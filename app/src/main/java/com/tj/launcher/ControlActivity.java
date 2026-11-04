@@ -162,7 +162,7 @@ public class ControlActivity extends Activity {
         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
         section("Invisible clean-up (needs adb after every restart)");
-        final boolean helperUp = ShellHelper.running();
+        final boolean helperUp = ShellHelper.reachable();
         LinearLayout hc = card();
         hc.addView(chipLine("Shell helper", helperUp ? "RUNNING - the clean-up is invisible" : "not running - the black-cover method is used instead", helperUp ? ACCENT : Color.parseColor("#B26A00")));
         page.addView(hc);

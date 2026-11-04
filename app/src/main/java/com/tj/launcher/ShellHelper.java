@@ -34,7 +34,7 @@ public final class ShellHelper {
             if (r != null) { lastError = ""; return r; }
             err.append("unix: no answer; ");
         } catch (Throwable t) {
-            err.append("unix: ").append(t.getMessage()).append("; ");
+            err.append("unix: ").append(t.getClass().getSimpleName()).append(" ").append(t.getMessage()).append("; ");
         } finally {
             try { s.close(); } catch (Throwable ignored) { }
         }
@@ -47,7 +47,7 @@ public final class ShellHelper {
                 if (r != null && r.startsWith("OK")) { lastError = ""; return r; }
                 err.append("tcp ").append(port).append(": ").append(r).append("; ");
             } catch (Throwable e) {
-                err.append("tcp ").append(port).append(": ").append(e.getMessage()).append("; ");
+                err.append("tcp ").append(port).append(": ").append(e.getClass().getSimpleName()).append(" ").append(e.getMessage()).append("; ");
                 if (e instanceof java.net.ConnectException) break;   // nothing listening on the first port: no helper
             } finally {
                 try { t.close(); } catch (Throwable ignored) { }
@@ -55,6 +55,18 @@ public final class ShellHelper {
         }
         lastError = err.toString();
         return null;
+    }
+
+    /**
+     * Is the helper reachable? Safe to call from the MAIN thread: Android throws NetworkOnMainThreadException for a TCP connect there (that is what made run 45 report "tcp ...: null"),
+     * so the PING runs on its own short-lived thread and the caller waits at most ~700 ms (a refused connection answers in a few ms).
+     */
+    public static boolean reachable() {
+        final boolean[] r = {false};
+        Thread t = new Thread(new Runnable() { @Override public void run() { r[0] = running(); } }, "tj-shell-ping");
+        t.start();
+        try { t.join(700); } catch (InterruptedException ignored) { }
+        return r[0];
     }
 
     /** Is the shell helper running right now? (a refused connection fails at once, so this is cheap) */

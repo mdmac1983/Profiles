@@ -458,7 +458,9 @@ setfeat; setmode custom; home
 # ---- N6: the invisible clean-up helper (shell-uid process started by one adb line): Quickstep's apps are force-stopped with no cover, their Recents cards vanish
 beat "before N6"
 setfeat; setmode quickstep; rebind; home; sleep 2
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &' > "$OUT/n6-start.txt" 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/n6-start.txt" 2>&1; sleep 5
+adb shell cat /data/local/tmp/tjshell.log > "$OUT/n6-server-log.txt" 2>&1
+info "N6: the helper's own output: $(tr '\n' ' ' < $OUT/n6-server-log.txt | head -c 300)"
 adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/n6-ps.txt" 2>&1
 check "N6: the shell helper process is running (started by the one adb line)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/n6-ps.txt)\" -ge 1 ]"
 for APP in com.android.contacts com.android.gallery3d com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
