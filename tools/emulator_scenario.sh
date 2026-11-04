@@ -37,7 +37,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -634,6 +634,42 @@ if [ -n "$UID2" ]; then
   adb shell pm remove-user "$UID2" >/dev/null 2>&1
 fi
 fi # section u
+if want s; then # section s
+# ---- Q1/Q2 RESEARCH (informational only): can the shell user HIDE an app from Recents / notifications without closing it (pm suspend / pm hide)? Is an input monitor allowed (instant power-menu card)? What system knobs exist?
+beat "before S"
+setfeat; setmode custom; rebind; home
+for APP in com.android.contacts com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+snap(){ echo "$1: contacts pid '$(adb shell pidof com.android.contacts | tr -d '\r\n')', email pid '$(adb shell pidof com.android.email | tr -d '\r\n')', recents lines contacts $(adb shell dumpsys activity recents 2>/dev/null | grep -ci contacts) email $(adb shell dumpsys activity recents 2>/dev/null | grep -ci 'com.android.email')"; }
+info "S0 baseline  $(snap)"
+adb shell pm suspend com.android.contacts > "$OUT/s-suspend.txt" 2>&1; sleep 3
+info "S1 pm suspend contacts -> [$(tr '\n' ' ' < $OUT/s-suspend.txt)]  $(snap suspended)"
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 > "$OUT/s-start-suspended.txt" 2>&1; sleep 2; shot 72-suspended-app-start
+info "S1b starting a suspended app: $(tr '\n' ' ' < $OUT/s-start-suspended.txt | head -c 160); resumed: $(resumed | head -c 120)"
+adb shell input keyevent KEYCODE_HOME; sleep 1
+adb shell pm unsuspend com.android.contacts > "$OUT/s-unsuspend.txt" 2>&1; sleep 3
+info "S2 pm unsuspend contacts -> [$(tr '\n' ' ' < $OUT/s-unsuspend.txt)]  $(snap unsuspended)"
+adb shell pm hide com.android.email > "$OUT/s-hide.txt" 2>&1; sleep 3
+info "S3 pm hide email -> [$(tr '\n' ' ' < $OUT/s-hide.txt)]  $(snap hidden)"
+adb shell pm unhide com.android.email > "$OUT/s-unhide.txt" 2>&1; sleep 3
+info "S4 pm unhide email -> [$(tr '\n' ' ' < $OUT/s-unhide.txt)]  $(snap unhidden)"
+# notifications of a suspended package: the shell package posts one, then is suspended
+adb shell cmd notification post -t TjS tagS "hello" > "$OUT/s-post.txt" 2>&1; sleep 2
+info "S5 notification posted by the shell package: $(adb shell dumpsys notification --noredact 2>/dev/null | grep -c 'tagS') line(s) mention it"
+adb shell pm suspend com.android.shell > "$OUT/s-suspend-shell.txt" 2>&1; sleep 2
+info "S5b pm suspend com.android.shell -> [$(tr '\n' ' ' < $OUT/s-suspend-shell.txt | head -c 200)]; notification lines now $(adb shell dumpsys notification --noredact 2>/dev/null | grep -c 'tagS'); (a hidden/suspended notification stays in the list but is flagged)"
+adb shell dumpsys notification --noredact 2>/dev/null | grep -B2 -A12 'tagS' | head -40 > "$OUT/s-notif-dump.txt"
+adb shell pm unsuspend com.android.shell >/dev/null 2>&1
+# the input monitor probe (as the shell user)
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.InputProbe' > "$OUT/s-inputprobe.txt" 2>&1
+info "S6 input monitor probe: $(grep -E 'RESULT' $OUT/s-inputprobe.txt | tr '\n' ' ' | head -c 300)"
+# knobs
+adb shell cmd overlay list > "$OUT/s-overlays.txt" 2>&1
+info "S7 overlays the shell user could switch: $(grep -c '\[' $OUT/s-overlays.txt) listed"
+adb shell settings list secure > "$OUT/s-secure.txt" 2>&1; adb shell settings list global > "$OUT/s-global.txt" 2>&1; adb shell settings list system > "$OUT/s-system.txt" 2>&1
+info "S8 settings that mention power / tiles / zen / policy: $(cat $OUT/s-secure.txt $OUT/s-global.txt $OUT/s-system.txt | grep -iE 'power|qs_tiles|zen|policy_control|navigation|immersive' | cut -d= -f1 | tr '\n' ' ' | head -c 400)"
+adb shell getprop ro.build.fingerprint > "$OUT/s-build.txt" 2>&1; adb shell getprop ro.lineage.version >> "$OUT/s-build.txt" 2>&1
+setfeat; setmode custom; home
+fi # section s
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
