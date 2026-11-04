@@ -91,14 +91,10 @@ public class ControlActivity extends Activity {
             goHome();
             ReturnReset.run(ControlActivity.this);
         }});
-        action("Switch to Quickstep (stock)", "Same as the two-finger twist in the custom launcher.", new Runnable() { public void run() {
-            Mode.set(ControlActivity.this, Mode.QUICKSTEP);
-            goHome();
-        }});
         action("Choose the apps shown in the custom launcher", "Everything else stays hidden there (new installs start hidden).", new Runnable() { public void run() {
             startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
         }});
-        toggle("Keep Quickstep away unless I do the gesture", "If the stock home screen appears by itself in custom mode, send me back.", Features.get(this, StrayHomeGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, StrayHomeGuard.KEY, v); } });
+        toggle("Keep Quickstep away unless I use a handshake", "Quickstep opens ONLY after a secret unlock handshake (Lock screen section). If its home screen appears any other way in custom mode, send me back.", Features.get(this, StrayHomeGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, StrayHomeGuard.KEY, v); } });
 
         section("Double-Home return  (Quickstep to custom)");
         toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
@@ -138,11 +134,26 @@ public class ControlActivity extends Activity {
         nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
         page.addView(nbtns);
 
-        toggle("Choose the launcher when I unlock", "Tap DELETE TWICE on the empty PIN pad, then type your normal PIN = Quickstep. A plain PIN = custom launcher. Never reads your digits (it only sees which TYPE of key was tapped).", Features.get(this, UnlockPick.KEY, false), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, UnlockPick.KEY, v); } });
-        if (Features.get(this, UnlockPick.KEY, false)) note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
+        section("Unlock into Quickstep (secret handshakes)");
+        note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of these handshakes, done on the lock screen BEFORE the PIN. Any one that is switched on works. At least one always stays on, so you can never lock yourself out. Which digits you type is never read.");
+        boolean anyOn = false;
+        for (UnlockMethods.Method m : UnlockMethods.Method.values()) if (Features.get(this, m.prefKey(), m.defaultOn)) anyOn = true;
+        for (final UnlockMethods.Method m : UnlockMethods.Method.values()) {
+            boolean shownOn = anyOn ? Features.get(this, m.prefKey(), m.defaultOn) : m == UnlockMethods.Method.ERASE2;
+            toggle(m.title, m.how, shownOn, new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
+        }
+        toggle("Buzz when a handshake is accepted", "A 40 ms vibration so you know it counted.", ProfileSession.buzz(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.BUZZ_KEY, v); } });
+        note("Volume code and Volume Up + double erase need the helper's key-event access (the helper asks for it only while one of them is on; turn the helper off and on once after switching one on).");
+        note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)") + "\nLast lock-screen switch: " + Features.getString(this, ProfileSession.PREARM_REPORT_KEY, "(none yet)"));
+
+        section("Two profiles (custom launcher / Quickstep)");
+        toggle("Locking the tablet ends a Quickstep session", "Like logging out: after the tablet locks, a plain PIN gives you the custom launcher again and closes what Quickstep left open.", ProfileSession.endOnLock(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.END_ON_LOCK_KEY, v); } });
+        toggle("Switch behind the lock screen", "On waking to the lock screen, Solitaire and the custom home are put in front behind it, so the unlock opens them at once with no delay. (A handshake puts Quickstep there instead.)", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
+        toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
+        note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
         section("Quick settings");
-        toggle("Hide and disable the pencil (Edit)", "A white cover over the pencil while the panel is open.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
+        toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
         tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
         tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
