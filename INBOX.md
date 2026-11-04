@@ -508,3 +508,11 @@ Now build and release the remaining items, only do as much of the test run as ne
 
 When you are done, prepare this project to be handed off to another Claude account which doesn't have context.
 ```
+
+## 2026-11-04T22:30:31Z
+```
+Make sure the wallpaper patch covers the entire 3 button power menu, but the custom power menu that shows up should be only the size of the top two buttons and hide the screenshot. 
+
+The wallpaper patch may need sizing because last time it was the wrong part of the wallpaper so it didn't match
+Remember that if it is possible to keep the quickstep apps open but totally invisible in the custom launcher then that is ideal instead of closing them
+```
