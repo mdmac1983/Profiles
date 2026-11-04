@@ -1,22 +1,22 @@
-# CHECKPOINT 239 — read me first, then TASKS.md
+# CHECKPOINT 240 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T18:15:52Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `f6df5a1` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T18:24:41Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `3864aad` (this checkpoint is the commit after it)
 
 ## Just done
-New session: wrote Tj's O1-O5 (more lock-screen methods + dropdown multi-select min 1, larger hidden-app toggles, instant custom open + pre-clean at lock, tile-per-launcher confidence) into TASKS
+O1-O5 coded: 10 more lock-screen methods (UnlockMethods + MotionDetector, service wiring: hw keys/charger/rotation/sensor), drop-down multi-select with min-one in Control, big hidden-app switches, lock-time prepare (preCleanAtLock: close Quickstep apps+notifications at lock via the helper, flip to custom behind the keyguard, prearm at screen-off), tiles remember Quickstep arrangement + tile guard; unit tests + lint green; scenario sections o + t added
 
 ## Do this next
-1) research O5 now: read TileProfile.java + scenario tile checks + results; 2) O2 HiddenAppsActivity big toggles; 3) O1 engine+UI; 4) O3/O4 pre-clean at lock (helper) + flip Mode at lock; 5) section-only emulator runs, then ship v0.5.0
+dispatch emulator.yml sections 'o,t' (~5 min); read via artifact; fix; then full run + ship v0.5.0 (versionCode 15)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  d6e9381 ckpt 239: New session: wrote Tj's O1-O5 (more lock-screen methods + dropdown multi-selec
   3a268c7 ckpt 238: N9 tick actually applied in TASKS.md (the first attempt failed on a regex; ckp
   1bf7d6a ckpt 237: N9 DONE: run 51 FULL emulator = green (0 FAIL) in 15m05s after the REC1 tapapp
   13b6eb6 ckpt 236: N9 proof: run 48 cold n6 = 3.6 min green; run 49 WARM n6 = 3.5 min green (cach
@@ -26,8 +26,7 @@ New session: wrote Tj's O1-O5 (more lock-screen methods + dropdown multi-select 
   2e7509b ckpt 232: v0.4.0 (code 14) gated + pushed; android.yml full_build=true dispatched on mai
   2f54373 ckpt 231: gated v0.4.0 (code 14) and pushed it: the handoff self-test, the full unit sui
   bee2b86 ckpt 230: Run 47: 76 PASS / 0 FAIL (INVISIBLE force-stop 3/3 in 166 ms, no cover, Recent
-  9521144 ckpt 229: Wrote N9 (faster emulator workflow, after v0.4.0) into TASKS from Tj's yes
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(9 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
