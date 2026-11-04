@@ -27,6 +27,9 @@ TAG="${1:-}"; NOTE="${2:-}"
 VNAME="${TAG#v}"
 VCODE="$(grep -m1 -oE 'versionCode *= *[0-9]+' app/build.gradle.kts | grep -oE '[0-9]+')"
 [ -n "$VCODE" ] || { echo "  FAIL  could not read versionCode from app/build.gradle.kts"; exit 1; }
+# Guard (2026-11-04 lesson): the code is read from the CURRENT build file, so if the version was already bumped for the next release the line would be wrong.
+GVNAME="$(grep -m1 -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE '"[^"]+"' | tr -d '"')"
+[ "$GVNAME" = "$VNAME" ] || { echo "  FAIL  build.gradle.kts is at version $GVNAME, not $VNAME: record the release BEFORE bumping for the next one (or fix BUILDLOG.md by hand with the real versionCode)"; exit 1; }
 
 if grep -q "^| v${VNAME} |" BUILDLOG.md 2>/dev/null; then
   echo "  ..    v$VNAME is already in BUILDLOG.md — nothing to record"
