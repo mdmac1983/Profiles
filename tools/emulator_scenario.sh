@@ -351,7 +351,7 @@ check "B6: a cover window sits over the pencil while the panel is open" bash -c 
 check "B6: the cover is gone when the panel closes" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows-after.txt)\" = 0 ]"
 # ---- B4: nothing to clear in Recents -> that step is skipped; cover shown and removed in the normal run
 check "B4: the black cover was shown and removed during the reset" bash -c "grep -q 'RESET cover shown' $OUT/y2-log.txt && grep -q 'RESET cover removed' $OUT/y2-log.txt"
-adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"dirty\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_dirty.xml'"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
 setcal; setmode quickstep; rebind; home; sleep 1
 adb logcat -c
 adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 9
