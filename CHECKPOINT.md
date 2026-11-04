@@ -1,22 +1,22 @@
-# CHECKPOINT 262 — read me first, then TASKS.md
+# CHECKPOINT 263 — read me first, then TASKS.md
 
-**Written:** 2026-11-04T20:35:48Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `ea69503` (this checkpoint is the commit after it)
+**Written:** 2026-11-04T20:48:18Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/admiring-gates-1ut5m3` · **builds on:** `4a96fa2` (this checkpoint is the commit after it)
 
 ## Just done
-Run 64 (sections e1,y2,b6,b4,n,n6): only N2 FAILS and it is a real race: the service saw all 10 pad taps (UNLOCKCLICK DIGIT/DELETE) but NOT the Enter click -> trackUnlockKey dropped it because keyguardLocked() was already false. Fix: accept a pad click within 3 s of the previous pad tap even if the keyguard reports unlocked (lastPadKeyAt). N6 passed in run 64.
+Run 65 (race fix #1): Enter click now arrives but classifies 'none' (keyguard key already torn down). Fix #2: UnlockMethods.hasPendingPad(); at USER_PRESENT (applyUnlockChoice) a pending pad entry is evaluated as the Enter (service logs 'Enter click not recognised'); JVM test added, unit suite green
 
 ## Do this next
-dispatch sections 'e1,y2,b6,b4,n,n6' to confirm N2 (full run 63 from 20:21 is still running, read it too: run id via list in_progress/completed filter created>20:20); then a FINAL full run; then ship v0.5.0
+dispatch sections e1,y2,b6,b4,n,n6 to confirm N2; meanwhile read FULL run 63 (id 41905740966) FAILs for anything besides N2; then FINAL full run; then ship v0.5.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
 
 ## Last ten checkpoints
 ```
+  ee9d8c8 ckpt 262: Run 64 (sections e1,y2,b6,b4,n,n6): only N2 FAILS and it is a real race: the s
   ea69503 ckpt 261: N,N6 alone (run 62): PASS. In the full run N2's service log has NO 'UNLOCKPICK
   a61d580 ckpt 260: Run 61 (full, no native crash this time): 80 PASS / 6 FAIL, all in N sections 
   457cb4a ckpt 259: Two full runs (59,60) each failed after ONE native SIGSEGV of our process in A
@@ -26,5 +26,7 @@ dispatch sections 'e1,y2,b6,b4,n,n6' to confirm N2 (full run 63 from 20:21 is st
   e58575b ckpt 255: T1 built: device-shell helper lines (plain / sh -c / two-step) in ShellProtoco
   fe11070 ckpt 254: Wrote T1 (adb from a phone / adb OTG app) into TASKS
   5019f17 ckpt 253: ADB_TODO: FAST PATH on top (one session: tools/adb-all.sh / adb-all.bat, then 
-  5a4b7aa ckpt 252: Run 55 read: o,t,p = 20 PASS 0 FAIL (Solitaire in front 1.5 s after unlock = r
 ```
+
+(2 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
