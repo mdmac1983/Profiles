@@ -317,3 +317,8 @@ the permanent wallpaper overlay hiding the power menu worked, but it currently i
 Can I keep the one quick settings tile in the custom launcher but have three tiles in quickstep? Keep in mind I had to use adb to make it have only one tile in the first place because there is a minimum amount of tiles android requirement
 If I send additional messages at any time, always finish the prior prompts I sent and queue the next messages in order
 ```
+
+## 2026-11-04T01:58:02Z
+```
+The goal is for the custom launcher and quickstep to essentially be two different profiles of android, custom launcher is default and quickstep can only be accessed by gesture, otherwise the user is locked inside the custom launcher. Think of the best ways to achieve this, whether adb or accessibility or any other method
+```
