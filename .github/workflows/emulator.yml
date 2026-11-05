@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       sections:
-        description: 'Which scenario sections to run, comma list: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,ka,rt,im,gc,rs,rs2,rs3,rs4,last. EMPTY = everything (the release gate, ~15 min). A new feature usually needs only its own, e.g. "n6" (~5 min).'
+        description: 'Which scenario sections to run, comma list: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,ka,rt,im,gc,pf,rs,rs2,rs3,rs4,last. EMPTY = everything (the release gate, ~15 min). A new feature usually needs only its own, e.g. "n6" (~5 min).'
         required: false
         default: ''
 
@@ -44,7 +44,7 @@ jobs:
       - name: ImageMagick (the scenario compares screenshots with it)
         run: sudo apt-get install -y --no-install-recommends imagemagick >/dev/null
       - name: Build the debug APK
-        run: ./gradlew :app:assembleDebug :phoneguide:assembleDebug --console=plain
+        run: ./gradlew :app:assembleDebug :phoneguide:assembleDebug :testnotifier:assembleDebug --console=plain
       - name: Boot Android 10, run the scenario
         uses: reactivecircus/android-emulator-runner@v2
         env:
