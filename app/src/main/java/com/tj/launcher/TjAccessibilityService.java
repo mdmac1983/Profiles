@@ -866,6 +866,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final Runnable lockEval = new Runnable() { @Override public void run() { lockEvalPending = false; updateLockNumber(); } };
     private final android.content.BroadcastReceiver lockReceiver = new android.content.BroadcastReceiver() {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            kgAt = -10_000;   // AB2: screen on/off and unlock change the keyguard: never answer these from the 250 ms memo
             handler.post(lockEval); handler.postDelayed(lockEval, 400);
             handler.post(layerRefresh);
             String act = i == null ? null : i.getAction();
