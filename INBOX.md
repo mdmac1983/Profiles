@@ -696,3 +696,8 @@ Should I turn duraspeed off
 ```
 /active-memory:amhandoff 
 ```
+
+## 2026-11-05T19:31:58Z
+```
+Send me the handoff file
+```
