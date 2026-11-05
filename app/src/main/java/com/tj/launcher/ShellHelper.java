@@ -98,6 +98,8 @@ public final class ShellHelper {
     public static String shots() { return askLong("SHOTS", 300_000); }
     /** Copies the tablet's Settings / SystemUI / stock launcher / framework APKs into Downloads/launcher-probe/apk. */
     public static String apks() { return askLong("APKS", 300_000); }
+    /** The side-key / "no power menu" readiness test (about 13 s, see ShellProtocol.isKeyTest). Blocking: call off the main thread. */
+    public static String keyTest() { return askLong("KEYTEST", 45_000); }
     /** Runs the whole read-only probe list bundled in the APK. */
     public static String probe() { return askLong("PROBE", 300_000); }
     /** Adds the accessibility helper to the enabled services. */

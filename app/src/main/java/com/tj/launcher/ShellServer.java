@@ -128,6 +128,11 @@ public final class ShellServer {
             }
             out.println("done"); out.flush(); return;
         }
+        if (ShellProtocol.isKeyTest(line)) {
+            out.println("OK");
+            keyTest(out);
+            return;
+        }
         if (ShellProtocol.isProbe(line)) {
             out.println("OK");
             java.io.InputStream ris = ShellServer.class.getClassLoader().getResourceAsStream("probe-commands.txt");
@@ -166,6 +171,54 @@ public final class ShellServer {
         int stopped = forceStop(pkgs);
         int removed = removeRecentTasks(pkgs);
         out.println("OK " + stopped + " " + removed);
+    }
+
+    /**
+     * KEYTEST (see ShellProtocol.isKeyTest): a fixed routine, every argument is a constant. ShellProbe holds the "no power menu" status-bar flag for a few seconds (Android clears it by itself when that
+     * process ends) while getevent reads the key events of every input device; the person holds the side key for about a second in that window. Prints the key lines between KEYTEST-START and
+     * KEYTEST-END, then what ShellProbe answered. Takes about 13 seconds.
+     */
+    private static void keyTest(PrintWriter out) {
+        final List<String> raw = java.util.Collections.synchronizedList(new java.util.ArrayList<String>());
+        final StringBuilder probeOut = new StringBuilder();
+        Process probe = null, ev = null;
+        try {
+            String apk = runShell("pm path " + ShellProtocol.SELF + " | head -1 | cut -d: -f2", 5_000).trim();
+            if (apk.isEmpty()) { out.println("KEYTEST-START"); out.println("KEYTEST-END"); out.println("REFUSED: the launcher's apk was not found"); out.flush(); return; }
+            ProcessBuilder pb = new ProcessBuilder("app_process", "/system/bin", "com.tj.launcher.ShellProbe", "statusbar", "0", "0x8", String.valueOf(ShellProtocol.KEYTEST_FLAG_SECONDS));
+            pb.environment().put("CLASSPATH", apk);
+            pb.redirectErrorStream(true);
+            probe = pb.start();
+            final BufferedReader pr = new BufferedReader(new InputStreamReader(probe.getInputStream()));
+            Thread pt = new Thread(new Runnable() { @Override public void run() {
+                try { String l; while ((l = pr.readLine()) != null) synchronized (probeOut) { if (probeOut.length() < 1500) probeOut.append(l).append('\n'); } } catch (Throwable ignored) { }
+            } }, "tj-keytest-probe");
+            pt.start();
+            Thread.sleep(1000);
+            ev = new ProcessBuilder("getevent", "-lt").redirectErrorStream(true).start();
+            final BufferedReader er = new BufferedReader(new InputStreamReader(ev.getInputStream()));
+            Thread et = new Thread(new Runnable() { @Override public void run() {
+                try { String l; while ((l = er.readLine()) != null) { if (raw.size() < 4000) raw.add(l); } } catch (Throwable ignored) { }
+            } }, "tj-keytest-events");
+            et.start();
+            Thread.sleep(ShellProtocol.KEYTEST_READ_SECONDS * 1000L);
+            ev.destroy();
+            et.join(1000);
+            // the flag holder prints its last line when its seconds are over: wait for it (at most a few seconds more)
+            for (int i = 0; i < 40; i++) { try { probe.exitValue(); break; } catch (IllegalThreadStateException running) { Thread.sleep(150); } }
+            pt.join(500);
+            out.println("KEYTEST-START");
+            List<String> copy; synchronized (raw) { copy = new java.util.ArrayList<>(raw); }
+            for (String l : ShellProtocol.keyTestLines(copy)) out.println(l);
+            out.println("KEYTEST-END");
+            synchronized (probeOut) { out.print(probeOut); }
+            out.flush();
+        } catch (Throwable t) {
+            out.println("KEYTEST-START"); out.println("KEYTEST-END"); out.println("REFUSED: " + t); out.flush();
+        } finally {
+            if (ev != null) ev.destroy();
+            if (probe != null) { try { probe.exitValue(); } catch (IllegalThreadStateException running) { probe.destroy(); } }   // destroying it also clears the flag at once
+        }
     }
 
     private static Object atmService;
