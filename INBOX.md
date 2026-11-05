@@ -646,3 +646,8 @@ Can you resume work on this without losing the last Claude account progress
 ```
 Check
 ```
+
+## 2026-11-05T18:02:41Z
+```
+I think it says 1, but the tablet says helper not running
+```
