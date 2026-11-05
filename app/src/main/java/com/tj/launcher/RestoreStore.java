@@ -33,6 +33,15 @@ public final class RestoreStore {
         sp.edit().putString("global:" + key, cur == null ? "\u0000null" : cur).commit();
     }
 
+    /**
+     * Replaces the snapshot with what the system has NOW. Only for a moment when the launcher is NOT holding a changed value (the caller checks): then whatever is there IS the original,
+     * also when another tool changed it since the first snapshot (a stale snapshot would overwrite that newer value on the next restore).
+     */
+    public static void resnapshotGlobal(Context c, String key) {
+        String cur = Settings.Global.getString(c.getContentResolver(), key);
+        p(c).edit().putString("global:" + key, cur == null ? "\u0000null" : cur).commit();
+    }
+
     public static boolean hasGlobalSnapshot(Context c, String key) { return p(c).contains("global:" + key); }
 
     /** The snapshotted Settings.Global value, or {@code fallback} if none (or it was unset). */
