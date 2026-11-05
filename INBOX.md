@@ -651,3 +651,8 @@ Check
 ```
 I think it says 1, but the tablet says helper not running
 ```
+
+## 2026-11-05T18:09:35Z
+```
+What two diagnostics
+```
