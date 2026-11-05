@@ -232,7 +232,11 @@ def facts_markdown(rep, source, when):
     nsample = rep.get("NotificationRecord(")
     mn = re.search(r"Apps with a notification now \(as the clean-up sees them\): (.*)", rep.text)
     if mn and nsample and "NotificationRecord(" in nsample and mn.group(1).strip() in ("(none)", "[]"):
-        flags.append("PARSER MISMATCH: the notification sample shows records but the launcher's own reader found no app. The 'shared app with a notification' rule does not work on this ROM.")
+        # The launcher's reader (ShellProtocol.parseNotifPackages) counts only an ACTIVE record of user 0 whose package has a dotted name. The system's own "pkg=android" (for example "USB debugging connected")
+        # is not an app the clean-up can close, so a sample of only those is no mismatch (a stock emulator shows exactly that, run 119). A record shape the loose pattern cannot read at all still is one.
+        recs = re.findall(r"NotificationRecord\(0x[0-9a-fA-F]+: pkg=(\S+) user=UserHandle\{(\d+)\}", nsample)
+        if not recs or any("." in p and u == "0" for p, u in recs):
+            flags.append("PARSER MISMATCH: the notification sample shows records but the launcher's own reader found no app. The 'shared app with a notification' rule does not work on this ROM.")
     # The launcher stores a one-line verdict ("keytest_summary") computed from the WHOLE helper answer; the raw answer is cut by the report, so it is only a fallback for older reports.
     ksum = kv.get("keytest_summary", "")
     kout = kv.get("keytest_output", "")
