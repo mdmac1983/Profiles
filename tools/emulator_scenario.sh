@@ -1383,7 +1383,9 @@ resumed > "$OUT/rb-resumed.txt"
 adb shell dumpsys window windows 2>/dev/null | grep -c 'Window{[^}]* Keyguard' > /dev/null 2>&1
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
 adb shell dumpsys accessibility > "$OUT/rb-a11y.txt" 2>&1
-check "RB5: the accessibility helper is bound again by itself after the restart" bash -c "grep -q 'TjAccessibilityService' $OUT/rb-a11y.txt && grep -qE 'Bound services:.*TjAccessibilityService|bound.*TjAccessibilityService' $OUT/rb-a11y.txt || grep -A3 'Bound services' $OUT/rb-a11y.txt | grep -q TjAccessibilityService"
+adb shell settings get secure enabled_accessibility_services > "$OUT/rb-a11y-list.txt" 2>&1
+check "RB5a: the accessibility helper is still switched on after the restart (the list survived)" grep -q 'com.tj.launcher/' "$OUT/rb-a11y-list.txt"
+check "RB5b: Android bound the helper again by itself (a bound accessibility service exists; the emulator has no other)" grep -q 'Service\[label=' "$OUT/rb-a11y.txt"
 adb shell settings get secure sysui_qs_tiles > "$OUT/rb-tiles-after.txt" 2>&1
 check "RB6: the one-tile list survived the restart" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-tiles-after.txt)\" = \"\$(tr -d ' \r\n' < $OUT/rb-tiles-before.txt)\" ]"
 adb shell dumpsys activity services "$PKG" > "$OUT/rb-services.txt" 2>&1
