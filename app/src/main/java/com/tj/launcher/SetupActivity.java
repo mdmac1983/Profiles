@@ -291,7 +291,8 @@ public class SetupActivity extends Activity {
                 String apks = ShellHelper.apks();
                 say(apks == null ? "system apps FAILED" : "system apps: " + apks.trim().replace('\n', ' '));
             }
-            say("DONE. Open Downloads / launcher-probe with a file manager, zip it and send it to me.");
+            if (pub == null) say("DONE, but the copy to Downloads did NOT happen (no shell helper). The report is only here: Android > data > com.tj.launcher > files > probe > tablet-report.txt (in a file manager), or tap \"2b. Share a SHORT summary as text\" and send me that text.");
+            else say("DONE. Open Downloads / launcher-probe with a file manager, zip it and send it to me.");
         } }, "tj-setup-report").start();
     }
 

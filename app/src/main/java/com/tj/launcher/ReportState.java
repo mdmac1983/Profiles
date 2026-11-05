@@ -23,7 +23,7 @@ public final class ReportState {
             "power_mode", "return_app_label", "qs_tiles_applied_mode", "qs_tiles_custom", "qs_tiles_quickstep",
             "unlock_pick_last", "unlock_speed", "reset_last", "failsafe_last", "profile_last", "power_latency",
             "guard_count", "guard_last", "keyboard_status", "wallpaper_patch_status", "lock_cal_status",
-            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at"));
+            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why"));
 
     /** Pure: the "key: value" lines for the preferences in {@code all}: every Boolean, plus the allow-listed text and number values; sorted, values flattened to one line and cut to 600 characters. */
     public static String format(Map<String, ?> all) {
@@ -63,6 +63,7 @@ public final class ReportState {
         b.append("shell helper reachable: ").append(yes(helperReachable)).append('\n');
         b.append("accessibility helper bound: ").append(yes(TjAccessibilityService.get() != null)).append('\n');
         b.append("keep-alive service running: ").append(yes(KeepAliveService.running())).append(" (switch ").append(KeepAliveService.enabled(c) ? "on" : "off").append(")\n");
+        b.append("keep-alive crash fuse blown (Android refused its notification, so it stays off until you switch it on again): ").append(yes(KeepAliveService.blocked(c))).append(KeepAliveService.blocked(c) ? "  " + KeepAliveService.blockedWhy(c) : "").append('\n');
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');
         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');

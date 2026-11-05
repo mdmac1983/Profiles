@@ -7,6 +7,7 @@ public class TjApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
         try { CrashGuard.install(this); } catch (Throwable ignored) { }
+        try { CrashGuard.clearIfNewer(this); } catch (Throwable ignored) { }   // CBR1: a tripped breaker is cleared by the first start of a NEWER version (a fair try)
         try { AnimationSpeedup.restoreIfPending(this); } catch (Throwable ignored) { }   // an interrupted reset must never leave the animations off
     }
 }

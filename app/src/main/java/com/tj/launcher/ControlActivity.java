@@ -194,10 +194,11 @@ public class ControlActivity extends Activity {
         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
         section("Speed");
-        toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\") sits in the notification shade. Its status-bar icon is transparent; Android, not the app, decides whether it also shows on the lock screen (hide it under Settings > Notifications if it does). Off = Android may close the launcher when memory is short.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
-            Features.set(ControlActivity.this, KeepAlivePolicy.KEY, v);
+        toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\") sits in the notification shade. Its status-bar icon is transparent; Android, not the app, decides whether it also shows on the lock screen (hide it under Settings > Notifications if it does). Off = Android may close the launcher when memory is short. OFF by default (version 0.7.2): on one tablet its notification crashed the launcher, so it must be proven first; if Android ever refuses the notification again, this switch turns itself off.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
+            KeepAliveService.setUserChoice(ControlActivity.this, v);
             KeepAliveService.ensure(ControlActivity.this);
         } });
+        if (KeepAliveService.blocked(this)) note("Keep-alive switched ITSELF off because Android refused its notification (" + KeepAliveService.blockedWhy(this) + "). Nothing else was changed. Switch it on again only to try once more.");
         note("Keep-alive now: " + (KeepAliveService.running() ? "RUNNING (the launcher process is a foreground service)" : "not running") + ".  Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
 
         section("Invisible clean-up (needs adb after every restart)");
