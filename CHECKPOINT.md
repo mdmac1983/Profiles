@@ -1,13 +1,13 @@
-# CHECKPOINT 338 — read me first, then TASKS.md
+# CHECKPOINT 339 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T18:01:08Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `3dfb1b1` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T18:05:58Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `9e03f75` (this checkpoint is the commit after it)
 
 ## Just done
-Tj is in the CABLE SESSION (screenshot 12:59 phone clock): shell uid 2000 OK, launcher installed, helper start line accepted ([1] 10761; the scrambled echo is the ADB OTG app); facts saved in TASKS.md (picture not committed); the handoff files + CLAUDE/AGENTS learnings block are committed, the 'interrupted mid-change' warning for them is a false alarm
+Tj's 2nd screenshot (1:02): helper start attempt 1 left no process, attempt 2 shows 1 process, but the tablet says NOT running; diagnostics sent (stale screen? logcat TjReset reason, /proc/net/tcp listen check, restart with log); facts + PG6 saved in TASKS.md
 
 ## Do this next
-Tj runs the check card 'Is the helper running?' (ps -A -o ARGS | grep -c '[S]hellServer'): 1 = unplug, PART 3 on the tablet (Launcher control > Tablet setup & report > 1, 2, optional 3, 2b) then send tablet-report.txt: bash tools/tablet-intake.sh <file>, read research/tablet/LATEST.md first; 0 = the second form of the start card, then the two-step card. After that: RS1a-c, PG5 (with a v0.7.2)
+WAIT for Tj's screenshot of: logcat -d -s TjReset:I | grep -i 'not reachable' | tail -3 and grep -E 'BA(0F|1[0-3])' /proc/net/tcp (0A = listening); if nothing listens: the restart-with-log line (cat /data/local/tmp/tj.log). Decide from the reason: ECONNREFUSED on all = helper dies at start (read the log), EACCES/Permission denied = SELinux on his ROM (needs a different transport), listening but not reachable = slow answer vs the 700 ms limit. Then PG5/PG6 + RS1a-c as v0.7.2
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Tj runs the check card 'Is the helper running?' (ps -A -o ARGS | grep -c '[S]hel
 
 ## Last ten checkpoints
 ```
+  336c9e7 ckpt 338: Tj is in the CABLE SESSION (screenshot 12:59 phone clock): shell uid 2000 OK, 
   63a17ba ckpt 337: v0.7.1 RELEASED (android.yml run 20 green, signed): https://github.com/tjshea9
   e06b833 ckpt 336: v0.7.0 experiment (run 129) = identical legacy-alone failure on 2a547f6: the n
   4686fda ckpt 335: ship.sh gates passed again for v0.7.1 (code 18; handoff, unit, lint green; pus
@@ -26,7 +27,6 @@ Tj runs the check card 'Is the helper running?' (ps -A -o ARGS | grep -c '[S]hel
   2b571e9 ckpt 331: workflow step limit 2100 -> 2700 s and docs: the release gate is the two runs 
   bb99c07 ckpt 330: FULL gate run 124 (3398b67): 167 PASS 3 FAIL, cut by the 2100 s timeout in rs4
   4b02f31 ckpt 329: run 123 (x on 3398b67) green: 31 PASS 0 FAIL (setup screen finds all 5 steps, 
-  1657930 ckpt 328: dispatched on main at 3398b67: run 123 = x (id 41986024102), run 124 = FULL ga
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
