@@ -1,13 +1,13 @@
-# CHECKPOINT 359 — read me first, then TASKS.md
+# CHECKPOINT 360 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T20:08:29Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `8bb9af6` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T20:12:10Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `2035ff8` (this checkpoint is the commit after it)
 
 ## Just done
-step 14 done: Tj restarted the tablet (Back); step 15 sent (a11y Bound/Binding + TjA11y log)
+step 15: a11y service BOUND after restart = ACC1 solved (stale Binding from crash loop); step 16 (default home + connect log) sent
 
 ## Do this next
-Tj sends step 15 screenshot: Bound services lists TjAccessibilityService? = ACC1 solved (stale state from crash loop); TjA11y log shows connected + custom=false; if still Binding/empty run the activity-services grep again; then cable-done line; then KA1 PNG + default OFF + CrashGuard fuse + CBR1 + A11Y plain-words state in report; BATCH1 vs mailbox decision for Tj
+Tj sends step 16 screenshot (default home component + connected/STRAY log lines); then one visual question (Home + drawer normal on the tablet?), then cable-done line; then KA1 PNG + default OFF + CrashGuard fuse + CBR1 + A11Y plain words in report/setup; BATCH1 vs mailbox decision for Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Tj sends step 15 screenshot: Bound services lists TjAccessibilityService? = ACC1
 
 ## Last ten checkpoints
 ```
+  2035ff8 ckpt 359: step 14 done: Tj restarted the tablet (Back); step 15 sent (a11y Bound/Binding
   a8b34fd ckpt 358: step 13: no ServiceRecord = stale a11y Binding (ACC1 A); first-connect safety 
   5f0da9b ckpt 357: step 12: DuraSpeed back on (1,1); a11y service STUCK in Binding services; step
   354b658 ckpt 356: Tj: step 11 Done (no screenshot); step 12 sent (read-back + ACC1 grep); BATCH1
@@ -26,8 +27,4 @@ Tj sends step 15 screenshot: Bound services lists TjAccessibilityService? = ACC1
   b807da4 ckpt 352: Tj's step 9 (2:18): DuraSpeed now OFF, helper restarted 14:17:57 (EST tablet c
   e252af8 ckpt 351: Tj's step 8 (2:13): the helper started 13:31 is DEAD at 14:13 (silent, tj.log 
   3f63046 ckpt 350: tablet intake 2026-11-05: Tj's first real report saved (3 red flags); the cras
-  cedcd7c ckpt 349: Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
