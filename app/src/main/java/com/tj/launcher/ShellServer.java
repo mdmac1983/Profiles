@@ -147,10 +147,10 @@ public final class ShellServer {
             // the deny-list is enforced HERE, on the package the system itself reports for each id: an id can never be used to close the system, the keyboard, this app or the stock launcher
             java.util.Map<Integer, String> now = ShellProtocol.parseTasks(recentsDump());
             int removed = 0, skipped = 0;
-            for (int id : rmIds) {
-                String pkg = now.get(id);
+            for (int tid : rmIds) {
+                String pkg = now.get(tid);
                 if (pkg == null || !ShellProtocol.allowed(pkg)) { skipped++; continue; }
-                if (removeTask(id)) removed++; else skipped++;
+                if (removeTask(tid)) removed++; else skipped++;
             }
             out.println("OK " + removed + " " + skipped); return;
         }
