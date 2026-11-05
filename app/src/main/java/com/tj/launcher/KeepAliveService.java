@@ -20,6 +20,7 @@ import com.android.launcher3.R;
  * notification to at least LOW importance whatever the channel asks for, so it gets a status-bar slot; its icon is fully transparent (tj_ic_blank) and the accessibility helper's "are there notifications to clear"
  * look ignores it by its title, so the reset still skips the shade when nothing else is there. Effect on priority, MEASURED: with the accessibility helper bound the process already sat at oom_score_adj 100
  * (visible) and survived `am kill-all`; with the service it is 50. The gain on the real tablet (MediaTek's own memory cleaner) can only be seen there ("Last unlock" in Launcher control). Switch in Launcher control; "Restore everything" turns it off and stops it. It does no work, holds no wake lock and never touches the lock screen.
+ * KA1 (v0.7.2): OFF by default; a PNG icon; a crash fuse (see {@link KeepAlivePolicy}) because on the real tablet the notification crash-looped the launcher.
  */
 public final class KeepAliveService extends Service {
     private static final String TAG = "TjKeepAlive";
@@ -27,7 +28,30 @@ public final class KeepAliveService extends Service {
     private static final int NOTIFICATION_ID = 7471;
     private static volatile boolean running = false;
 
-    public static boolean enabled(Context c) { return Features.get(c, KeepAlivePolicy.KEY, true); }
+    /** The switch. KA1 (v0.7.2): OFF unless Tj has switched it on. */
+    public static boolean enabled(Context c) { return Features.get(c, KeepAlivePolicy.KEY, KeepAlivePolicy.DEFAULT_ON); }
+    /** KA1: true after the crash fuse blew (Android refused our notification once): stays true until Tj switches keep-alive on again himself. */
+    public static boolean blocked(Context c) { return Features.get(c, KeepAlivePolicy.BLOCKED_KEY, false); }
+    /** KA1: why the fuse blew (time + Android's wording), or "". */
+    public static String blockedWhy(Context c) { return Features.getString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, ""); }
+    /** The Launcher-control switch = Tj's own choice. Switching ON is his explicit retry, so it re-arms the fuse. */
+    public static void setUserChoice(Context c, boolean on) {
+        if (on) { Features.set(c, KeepAlivePolicy.BLOCKED_KEY, false); Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, ""); }
+        Features.set(c, KeepAlivePolicy.KEY, on);
+    }
+    /**
+     * KA1, called from the crash handler ({@link CrashGuard}) on the main thread of the dying process: the system just crashed us because it could not draw the keep-alive notification. Switch ONLY keep-alive off
+     * and remember why; synchronous (commit) because the process is about to die. Must never throw.
+     */
+    static void blowFuse(Context c, Throwable e) {
+        try {
+            Features.set(c, KeepAlivePolicy.KEY, false);
+            Features.set(c, KeepAlivePolicy.BLOCKED_KEY, true);
+            String m = e == null ? "" : String.valueOf(e.getMessage());
+            Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US).format(new java.util.Date()) + "  " + (m.length() > 160 ? m.substring(0, 160) : m));
+        } catch (Throwable ignored) { }
+    }
+    private static boolean mayRun(Context c) { return KeepAlivePolicy.shouldRun(enabled(c), CrashGuard.wasTripped(c), blocked(c)); }
     /** True while this process runs the service (a new process starts as false). */
     public static boolean running() { return running; }
 
@@ -35,7 +59,7 @@ public final class KeepAliveService extends Service {
     public static void ensure(Context c) {
         try {
             Context app = c.getApplicationContext();
-            if (!KeepAlivePolicy.shouldRun(enabled(app), CrashGuard.wasTripped(app))) { if (running) stop(app); return; }
+            if (!mayRun(app)) { if (running) stop(app); return; }
             if (running) return;
             app.startForegroundService(new Intent(app, KeepAliveService.class));
         } catch (Throwable t) { Log.e(TAG, "could not start the keep-alive service", t); }
@@ -57,8 +81,11 @@ public final class KeepAliveService extends Service {
             ch.setLockscreenVisibility(KeepAlivePolicy.VISIBILITY_SECRET);
             nm.createNotificationChannel(ch);
         }
+        // KA1: tj_ic_blank is now a fully transparent PNG (it was an EMPTY vector drawable, which the tablet's MediaTek SystemUI could not turn into an icon: "Couldn't create icon", then Android crashed us).
+        // The test key makes the icon one that does not exist (emulator test of the fuse only; it is off unless a test writes it into our private preferences).
+        int icon = Features.get(this, KeepAlivePolicy.TEST_BAD_ICON_KEY, false) ? 0x7f0e7777 : R.drawable.tj_ic_blank;
         Notification n = new Notification.Builder(this, CHANNEL)
-                .setSmallIcon(R.drawable.tj_ic_blank)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
+                .setSmallIcon(icon)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
                 .setContentTitle(KeepAlivePolicy.TITLE)
                 .setContentText("Faster unlock. Turn off in Launcher control.")
                 .setOngoing(true)
@@ -71,13 +98,16 @@ public final class KeepAliveService extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+        // KA1: Android re-creates a killed sticky service BEFORE onStartCommand runs, so the rule has to be checked here too: reposting the notification the system could not draw is what made the three crashes in seven
+        // seconds on the real tablet. Not allowed now (switch off, fuse blown, breaker tripped) = end at once without posting anything.
+        if (!mayRun(this)) { running = false; Log.i(TAG, "keep-alive not allowed now (switch off, fuse blown or breaker tripped): stopping without a notification"); stopSelf(); return; }
         try { goForeground(); running = true; Log.i(TAG, "keep-alive service running (the launcher process is now a foreground service)"); }
         catch (Throwable t) { Log.e(TAG, "keep-alive could not go foreground, stopping", t); running = false; stopSelf(); }
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         // START_STICKY: Android restarts us (and with us the process) if it is ever killed. A restart request after the rules said "off" ends at once.
-        if (!KeepAlivePolicy.honourRestart(enabled(this), CrashGuard.wasTripped(this))) { stopSelf(); return START_NOT_STICKY; }
+        if (!KeepAlivePolicy.honourRestart(enabled(this), CrashGuard.wasTripped(this), blocked(this))) { stopSelf(); return START_NOT_STICKY; }
         try { goForeground(); running = true; }
         catch (Throwable t) {
             // a start made with startForegroundService() that never reaches startForeground() crashes the whole app after ~5 s: if going foreground fails, end the service instead (review of 2026-11-05)
