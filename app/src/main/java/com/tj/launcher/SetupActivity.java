@@ -152,7 +152,7 @@ public class SetupActivity extends Activity {
     private void build() {
         page.removeAllViews();
         page.addView(text("Tablet setup & report", 26, INK, true));
-        page.addView(text("Every adb to-do item on one screen. Green = done. The only adb line you ever need first starts the shell helper (below); everything else can be done from here.", 14, MUTED, false));
+        page.addView(text("Every adb to-do item on one screen. Green = done. The only adb line you ever need first starts the shell helper (below); everything else is a button here. Press 1, then 2 (then 3 and 4 only if asked).", 14, MUTED, false));
         boolean helper = ShellHelper.reachable();
         page.addView(text(helper ? "Shell helper: RUNNING" : "Shell helper: NOT running - start it with the adb line (tap Copy), then come back", 15, helper ? ACCENT : BAD, true));
         List<Item> missing = new ArrayList<>();
@@ -170,11 +170,24 @@ public class SetupActivity extends Activity {
         page.addView(button("Copy it wrapped in sh -c (for adb apps that do not use a shell)", new Runnable() { public void run() { copy(ShellProtocol.START_DEVICE_SH_C); } }));
         page.addView(button("Copy the helper line for a COMPUTER (adb shell ...)", new Runnable() { public void run() { copy(ShellProtocol.START_ONE_LINER); } }));
         final boolean canRun = helper;
-        Button all = button("Do everything that is missing (" + missing.size() + ")", new Runnable() { public void run() { doEverything(); } });
+        Button all = button("1. Do everything that is missing (" + missing.size() + ")", new Runnable() { public void run() { doEverything(); } });
         all.setEnabled(canRun && !missing.isEmpty());
         page.addView(all);
-        page.addView(button("Collect the tablet report (small, about a minute)", new Runnable() { public void run() { collect(false); } }));
-        Button big = button("Collect EVERYTHING: report + Settings screenshots + system apps (big, 2-3 minutes)", new Runnable() { public void run() { collect(true); } });
+        page.addView(button("2. Collect the tablet report (small, about a minute) - SEND THIS FILE", new Runnable() { public void run() { collect(false); } }));
+        Button key = button("3. Side-key test (optional, 15 seconds)", new Runnable() { public void run() { keyTest(); } });
+        key.setEnabled(canRun);
+        page.addView(key);
+        final String kout = Features.getString(this, "keytest_output", "");
+        if (!kout.isEmpty()) {
+            page.addView(text("Side-key test: " + ShellProtocol.keyTestSummary(kout), 13, INK, false));
+            String ans = Features.getString(this, "keytest_menu", "");
+            if (ans.isEmpty()) {
+                page.addView(text("Did the NORMAL power menu (Power off / Restart / Screenshot) appear while you held the key?", 14, INK, true));
+                page.addView(button("No, it did NOT appear", new Runnable() { public void run() { keyAnswer("not_shown"); } }));
+                page.addView(button("Yes, it appeared (press Back to close it)", new Runnable() { public void run() { keyAnswer("shown"); } }));
+            } else page.addView(text("Your answer: the normal power menu " + ("shown".equals(ans) ? "APPEARED" : "did NOT appear") + ". Tap 2 again so the report holds it.", 13, MUTED, false));
+        }
+        Button big = button("4. Collect EVERYTHING: report + Settings screenshots + system apps (big, 2-3 minutes, only if Claude asks)", new Runnable() { public void run() { collect(true); } });
         big.setEnabled(canRun);
         page.addView(big);
         Button browser = button("Disable the old Browser app (com.android.browser) - reversible", new Runnable() { public void run() { runJob("BROWSER_OFF"); } });
@@ -183,7 +196,7 @@ public class SetupActivity extends Activity {
         log = text("", 13, MUTED, false);
         log.setPadding(px(4), px(12), px(4), px(12));
         page.addView(log);
-        page.addView(text("Everything is published to the folder  Downloads / launcher-probe  on the tablet: open it with any file manager, zip it and send it to me. (From a computer: adb pull " + ShellProtocol.PUBLISH_DIR + " probe-out.) Nothing is sent anywhere by this app.", 12, MUTED, false));
+        page.addView(text("Everything is published to the folder  Downloads / launcher-probe  on the tablet: open it with any file manager and send me tablet-report.txt first (it is small); zip the whole folder only if you pressed 4. (From a computer: adb pull " + ShellProtocol.PUBLISH_DIR + " probe-out.) Nothing is sent anywhere by this app.", 12, MUTED, false));
     }
 
     private Button button(String label, final Runnable r) {
@@ -209,6 +222,26 @@ public class SetupActivity extends Activity {
             say(job + ": " + (out == null ? "FAILED (is the helper running?)" : (out.trim().isEmpty() ? "done" : out.trim())));
             ui.post(new Runnable() { public void run() { build(); } });
         } }, "tj-setup-job").start();
+    }
+
+    /** Tj, 2026-11-05 (Power menu v2): can the shell read the side key here, and does the "no power menu" flag keep the normal menu away? The helper does the 13-second routine; the person holds the key. */
+    private void keyTest() {
+        Features.setString(this, "keytest_menu", "");
+        say("SIDE-KEY TEST: within the next 8 seconds hold the SIDE key (power) for about 1.5 seconds, then let go. Never hold it longer than 3 seconds.");
+        new Thread(new Runnable() { public void run() {
+            String out = ShellHelper.keyTest();
+            if (out == null) { say("side-key test FAILED (is the helper running?)"); return; }
+            String res = out.trim();
+            Features.setString(SetupActivity.this, "keytest_output", res.length() > 1500 ? res.substring(0, 1500) : res);
+            Features.setString(SetupActivity.this, "keytest_at", new java.util.Date().toString());
+            say("side-key test: " + ShellProtocol.keyTestSummary(res));
+            ui.post(new Runnable() { public void run() { build(); } });
+        } }, "tj-setup-keytest").start();
+    }
+
+    private void keyAnswer(String a) {
+        Features.setString(this, "keytest_menu", a);
+        build();
     }
 
     private void doEverything() {
@@ -259,6 +292,8 @@ public class SetupActivity extends Activity {
             b.append("shots: ").append(shots == null ? "FAILED" : shots.trim().replace('\n', ' ')).append('\n');
             String apks = ShellHelper.apks();
             b.append("apks: ").append(apks == null ? "FAILED" : apks.trim().replace('\n', ' ')).append('\n');
+            String kt = ShellHelper.keyTest();
+            b.append("keytest: ").append(kt == null ? "FAILED" : kt.trim().replace('\n', '|')).append('\n');
             for (Item it : items) b.append("state ").append(it.title).append(": ").append(done(it) ? "done" : "TODO").append('\n');
             try (java.io.FileOutputStream os = new java.io.FileOutputStream(new File(TabletReport.shareDir(SetupActivity.this), "autorun-done.txt"))) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
             ui.post(new Runnable() { public void run() { build(); } });
