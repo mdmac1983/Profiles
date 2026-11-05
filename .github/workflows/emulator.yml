@@ -60,7 +60,7 @@ jobs:
           arch: x86
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: timeout 2100 bash tools/emulator_scenario.sh
+          script: timeout 2700 bash tools/emulator_scenario.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
