@@ -926,24 +926,47 @@ gdump "$OUT/g-ui-fb1.xml"; adb shell input swipe 300 850 300 450 300; sleep 1; g
 cat "$OUT/g-ui-fb1.xml" "$OUT/g-ui-fb2.xml" > "$OUT/g-ui-fb.xml"
 shot 93-phoneguide-fallback-open
 check "PG1: tapping FALLBACK opens it and shows the permission commands (pm grant)" grep -q 'pm grant' "$OUT/g-ui-fb.xml"
-# the tick: restart the guide (back at the top), tick the first card, "Take me to my next step" must put the SECOND card at the top of the screen, and the tick must survive another restart
+# the tick: restart the guide (back at the top), tick the FIRST card, "Take me to my next step" must put the SECOND card at the top of the screen, and the tick must survive another restart.
+# A dump only lists what is on screen, so the boxes are FOUND, not assumed: tools/uinode.py looks for the Done box in the SAME ROW as the card's own title, and gseek swipes one step at a time until it is on screen.
+# (Runs 117/118, 2026-11-05: a blind swipe plus "the first Done in the dump" ticked nothing, which failed this check and the restart check for a reason that was not in the app. tools/test_uinode.sh pins the finder.)
+guinode(){ python3 -I tools/uinode.py "$@"; }
+gseek(){ # gseek <dump file> <down|up> <tries> <uinode args>: fresh dump; if the node is not on screen swipe one step (down = further down the page) and look again; 0 = found, the last dump stays in the file
+  local out="$1" dir="$2" max="$3" k; shift 3
+  for k in $(seq 0 "$max"); do
+    gdump "$out"
+    [ -n "$(guinode "$out" "$@")" ] && return 0
+    if [ "$dir" = down ]; then adb shell input swipe 300 800 300 500 500; else adb shell input swipe 300 500 300 800 500; fi
+    sleep 1
+  done
+  return 1
+}
+gtapn(){ # gtapn <dump file> <uinode args>: tap the centre of the node uinode.py finds in that dump
+  local d="$1" b; shift; b=$(guinode "$d" "$@"); set -- $b; [ "$#" -ge 4 ] || return 1
+  adb shell input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 ))
+}
+CARD1=$(grep -m1 '^@ ' phoneguide/src/main/assets/steps.txt | sed 's/^@ //'); CARD2=$(grep '^@ ' phoneguide/src/main/assets/steps.txt | sed -n 2p | sed 's/^@ //')
+GTITLE1="1.  $CARD1"; GTITLE2="2.  $CARD2"      # how the app writes a title: number, two spaces, the title (a must card has a star in front)
 adb shell am force-stop com.tj.phoneguide; sleep 1
 adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
-adb shell input swipe 300 850 300 450 300; sleep 1      # the plan card fills the first screen: scroll a little so the button and card 1's Done box are both on screen
-gdump "$OUT/g-ui-r1.xml"
-CARD1=$(grep -m1 '^@ ' phoneguide/src/main/assets/steps.txt | sed 's/^@ //'); CARD2=$(grep '^@ ' phoneguide/src/main/assets/steps.txt | sed -n 2p | sed 's/^@ //')
-gtap 'text="Done"' "$OUT/g-ui-r1.xml"; sleep 1
-gtap 'Take me to my next step' "$OUT/g-ui-r1.xml"; sleep 2
+gseek "$OUT/g-ui-r1.xml" down 12 --contains Done --exact --row-of "$GTITLE1"; GF1=$?
+gtapn "$OUT/g-ui-r1.xml" --contains Done --exact --row-of "$GTITLE1"; GT1=$?; sleep 1
+gdump "$OUT/g-ui-r1b.xml"
+TICK1=$(guinode "$OUT/g-ui-r1b.xml" --contains Done --exact --row-of "$GTITLE1" --attr checked)
+info "PG1: card 1 [$GTITLE1]: Done box found=$([ "$GF1" = 0 ] && echo yes || echo NO) tapped=$([ "$GT1" = 0 ] && echo yes || echo NO) checked afterwards=${TICK1:-not on screen}"
+check "PG1: tapping the Done box in card 1's row ticks card 1 (the box reads checked=true)" test "$TICK1" = true
+gseek "$OUT/g-ui-r1c.xml" up 12 --contains "Take me to my next step"; GFB=$?
+gtapn "$OUT/g-ui-r1c.xml" --contains "Take me to my next step"; sleep 2
 gdump "$OUT/g-ui-r2.xml"
 shot 94-phoneguide-next-step
-GTOP=$(gbounds "$CARD2" "$OUT/g-ui-r2.xml" | awk '{print $2}')
-info "PG1: card 1 [$CARD1] ticked; after 'Take me to my next step' card 2 [$CARD2] has its top at y=${GTOP:-not on screen}"
+GTOP=$(guinode "$OUT/g-ui-r2.xml" --contains "$GTITLE2" | awk '{print $2}')
+info "PG1: button found=$([ "$GFB" = 0 ] && echo yes || echo NO); after 'Take me to my next step' card 2 [$GTITLE2] has its top at y=${GTOP:-not on screen}"
 check "PG1: 'Take me to my next step' scrolled to the second card (its title is within the top 250 px)" bash -c "[ -n '$GTOP' ] && [ '$GTOP' -le 250 ]"
 adb shell am force-stop com.tj.phoneguide; sleep 1
 adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
-adb shell input swipe 300 850 300 450 300; sleep 1
-gdump "$OUT/g-ui-r3.xml"
-check "PG1: the tick on card 1 survived a restart of the guide" bash -c "tr '>' '\n' < $OUT/g-ui-r3.xml | grep -F 'text=\"Done\"' | head -1 | grep -q 'checked=\"true\"'"
+gseek "$OUT/g-ui-r3.xml" down 12 --contains Done --exact --row-of "$GTITLE1"
+TICK3=$(guinode "$OUT/g-ui-r3.xml" --contains Done --exact --row-of "$GTITLE1" --attr checked)
+info "PG1: after a restart of the guide card 1's Done box reads checked=${TICK3:-not on screen}"
+check "PG1: the tick on card 1 survived a restart of the guide" test "$TICK3" = true
 adb shell am force-stop com.tj.phoneguide; home
 fi # section g
 if want rs; then # section rs
