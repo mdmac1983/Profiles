@@ -175,7 +175,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
-            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); BatterySaverGuard.check(TjAccessibilityService.this, "the mode changed"); } });
+            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
             if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
@@ -428,8 +428,15 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** AC6: draws with brightness {@code k} (1 = unchanged): a black SRC_ATOP layer of alpha 1-k. */
-    private static void setDim(android.graphics.Paint p, float k) {
-        p.setColorFilter(k >= 0.999f ? null : new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP));
+    private float dimKCache = -1f;
+    private android.graphics.ColorFilter dimFilterCache;
+    private void setDim(android.graphics.Paint p, float k) {
+        if (k >= 0.999f) { p.setColorFilter(null); return; }
+        if (dimFilterCache == null || Math.abs(k - dimKCache) > 0.0005f) {   // one filter per brightness, not one per draw (a Go tablet's UI thread)
+            dimFilterCache = new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP);
+            dimKCache = k;
+        }
+        p.setColorFilter(dimFilterCache);
     }
 
     private void removePatch() {
@@ -600,6 +607,7 @@ public class TjAccessibilityService extends AccessibilityService {
         preArmedThisLock = true;
         Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
         profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
+        Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: dates this session after the lock it came from, even if the helper dies before the unlock is processed
         LockLog.add(app, "HANDSHAKE", m.id + " accepted, mode now " + Mode.get(app));
     }
 
