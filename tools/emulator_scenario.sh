@@ -1088,7 +1088,11 @@ kafeat false; setmode custom; adb shell am force-stop "$PKG"; rebind; home; slee
 adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-off.txt" 2>&1
 kameasure OFF
 check "AA2: with the switch OFF there is no foreground service" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-off.txt"
-# switch ON (the default)
+# KA1 (v0.7.2): with NO stored choice (a fresh install, or after the breaker / "Restore everything") keep-alive is OFF: nothing is posted until Tj switches it on. (The next block is the positive control: the same flow with the switch ON.)
+setfeat; adb shell am force-stop "$PKG"; rebind; home; sleep 4
+adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-default.txt" 2>&1
+check "KA1: with no stored choice keep-alive is OFF by default (no foreground service)" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-default.txt"
+# switch ON (explicit; the default is OFF since v0.7.2)
 kafeat true; adb shell am force-stop "$PKG"; rebind; home; sleep 4
 adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-on.txt" 2>&1
 check "AA2: with the switch ON the keep-alive service is a foreground service" grep -q 'isForeground=true' "$OUT/ka-services-on.txt"
