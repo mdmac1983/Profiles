@@ -86,6 +86,11 @@ public class GuideActivity extends Activity {
 
     private String shown(String cmd) { return withPrefix ? "adb shell " + cmd : cmd; }
 
+    /** Re-writes the text of every command box after the "adb shell " switch changed; nothing else on the page is touched. */
+    private void refreshCommands() {
+        for (int i = 0; i < commandViews.size() && i < commandTexts.size(); i++) commandViews.get(i).setText(shown(commandTexts.get(i)));
+    }
+
     private void build() {
         page.removeAllViews();
         commandViews.clear(); commandTexts.clear(); cardViews.clear(); cardDone.clear(); cardSkippable.clear();
