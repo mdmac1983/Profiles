@@ -190,6 +190,14 @@ public class TaskOriginTest {
         assertTrue("it was never shared, so it is not counted as a notification stop", p.notificationStops.isEmpty());
     }
 
+    @Test public void anAppOnlyTheCustomLauncherStartedIsSparedInBothLoops() {
+        // review of 2026-11-05: the custom launcher started Contacts, its task is not in the start snapshot, and (however it got there) the package is also on the old Quickstep list: it must be spared like a new task of it would be
+        TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"), tasks(8, "com.android.calendar"), Arrays.asList("com.android.contacts"),
+                new HashSet<>(Arrays.asList("com.android.contacts")), "com.android.calendar", GUARD);
+        assertTrue(p.stopPackages.isEmpty());
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts")), p.spared);
+    }
+
     @Test public void aCustomLauncherStartedAppOpenedAgainInQuickstepWithANotificationIsClosed() {
         // the custom launcher started Contacts itself (AppOrigin.custom), the session began without a Contacts task, Quickstep opened a task and it posted a notification
         TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"), tasks(12, "com.android.contacts", 8, "com.android.calendar"), Collections.<String>emptyList(),
