@@ -136,6 +136,9 @@ check "no phone-guide command is destructive" '! grep -E "^(cmd|alt):.*(pm unins
 # ---------------------------------------------------------------- the tablet intake: what Tj sends from the tablet is saved redacted + summarised (its own self-test, ~2 s)
 if TI_OUT="$(bash "$D/tools/test_tablet_intake.sh" 2>&1)"; then ok; else bad "tablet intake self-test failed (bash tools/test_tablet_intake.sh)"; printf '%s\n' "$TI_OUT" | grep FAIL | head -10; fi
 
+# ---------------------------------------------------------------- the node finder the emulator scenario's phone-guide checks use (tools/uinode.py; its own self-test, ~1 s)
+if UN_OUT="$(bash "$D/tools/test_uinode.sh" 2>&1)"; then ok; else bad "uinode self-test failed (bash tools/test_uinode.sh)"; printf '%s\n' "$UN_OUT" | grep FAIL | head -10; fi
+
 # ---------------------------------------------------------------- inbox capture
 printf '{"prompt":"please build X, my key is ghp_%s ok"}' "$(printf 'c%.0s' $(seq 1 36))" | bash tools/capture_inbox.sh
 check "inbox captures the message, redacts the key, and commits it" 'grep -q "please build X" INBOX.md && grep -q "REDACTED-KEY" INBOX.md && ! grep -q "ghp_c" INBOX.md && [ "$(bash tools/unpushed.sh)" = 0 ]'
