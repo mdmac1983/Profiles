@@ -153,6 +153,26 @@ open(sys.argv[2], "w").write(s)
 PY
 $INTAKE "$T/badin" --out "$T/outbad2" --date 2026-11-05 >/dev/null 2>&1
 check "red flag: the shell could not read the input devices at all" 'grep -q "could NOT read the input devices at all" "$T/outbad2/2026-11-05/FACTS.md" && ! grep -q "side key was NOT seen by the helper" "$T/outbad2/2026-11-05/FACTS.md"'
+# the launcher's reader skips the system's own "pkg=android" records (not an app it can close): a sample of ONLY those is no mismatch (a stock emulator shows exactly that, run 119 of 2026-11-05);
+# a record shape the reader cannot parse at all still is one
+python3 -I - "$SAMPLE" "$T/sysin/tablet-report.txt" "$T/shapein/tablet-report.txt" <<'PY'
+import os, sys
+s = open(sys.argv[1]).read()
+a = "Apps with a notification now (as the clean-up sees them): [com.android.systemui, com.whatsapp]"
+assert a in s
+s = s.replace(a, "Apps with a notification now (as the clean-up sees them): (none)")
+w, u = "pkg=com.whatsapp user=UserHandle{0}", "pkg=com.android.systemui user=UserHandle{0}"
+assert w in s and u in s
+variants = ((sys.argv[2], s.replace(w, "pkg=android user=UserHandle{0}").replace(u, "pkg=android user=UserHandle{0}")),
+            (sys.argv[3], s.replace(w, "package com.whatsapp userId 0").replace(u, "package com.android.systemui userId 0")))
+for path, text in variants:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "w").write(text)
+PY
+$INTAKE "$T/sysin" --out "$T/outsys" --date 2026-11-05 >/dev/null 2>&1
+$INTAKE "$T/shapein" --out "$T/outshape" --date 2026-11-05 >/dev/null 2>&1
+check "no notification mismatch flag when the sample holds only the system's pkg=android records" '[ -f "$T/outsys/2026-11-05/FACTS.md" ] && ! grep -q "PARSER MISMATCH: the notification sample" "$T/outsys/2026-11-05/FACTS.md"'
+check "a notification record shape the reader cannot parse is still a mismatch" 'grep -q "PARSER MISMATCH: the notification sample" "$T/outshape/2026-11-05/FACTS.md"'
 check "the red flags come BEFORE the table"               '[ "$(grep -n "## Red flags" "$F" | cut -d: -f1)" -lt "$(grep -n "## Answers" "$F" | cut -d: -f1)" ]'
 
 # ---------------------------------------------------------------- the guide tells Tj to send the file this tool reads
