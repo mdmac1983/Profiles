@@ -741,3 +741,8 @@ It's on
 ```
 The number is there
 ```
+
+## 2026-11-05T20:31:22Z
+```
+Tell me everything else i need to do right now with the otg cable. I'm not going to have it much longer
+```
