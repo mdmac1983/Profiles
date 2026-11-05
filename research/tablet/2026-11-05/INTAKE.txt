@@ -1,0 +1,8 @@
+source: 9cf8f644-tablet-report.txt
+label: first-cable-session
+date: 2026-11-05
+kept: tablet-report.txt
+read: FACTS.md was written from tablet-report.txt
+redactions: none
+skipped:
+  (nothing)
