@@ -1,0 +1,7 @@
+name: Compact results at the very end
+description: Registers a post step that prints the emulator scenario's compact results (counts, every FAIL, every INFO) as the LAST lines of the job log, after the noisy post steps of the other actions, so a short log tail is enough to read a run. It never fails the job.
+runs:
+  using: node20
+  main: noop.js
+  post: post.js
+  post-if: always()
