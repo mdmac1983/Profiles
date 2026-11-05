@@ -1,13 +1,13 @@
-# CHECKPOINT 361 — read me first, then TASKS.md
+# CHECKPOINT 362 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T20:15:29Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `ddf42e9` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T20:20:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `7e73b9a` (this checkpoint is the commit after it)
 
 ## Just done
-step 16: default Home is the STOCK launcher (crash cleared ours) but mode flag custom; logcat buffer ~3 min; step 17 decision try/stock put to Tj
+Tj: wants the permissions set up now; audit: only notification access missing; step 17 (allow_listener) sent
 
 ## Do this next
-Tj answers try or stock. try -> give the set-home-activity line, read logs within minutes (3-min buffer: logcat -d -s TjA11y:I | tail), one visual question (Home + drawer normal?), then cable-done; stock -> give helper-off line; then KA1 PNG + default OFF + CrashGuard fuse + CBR1 + A11Y plain words; BATCH1 vs mailbox decision for Tj
+Tj sends step 17 screenshot (enabled_notification_listeners list); then step 18 read-only proof of all grants (section 8 + appops + whitelist); then ONE plain question: make the custom launcher the Home app now? (cmd package set-home-activity ... RouterActivity; undo ... com.android.launcher3/.Launcher); then cable-done; then KA1 etc; PG7 notification access into guide
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Tj answers try or stock. try -> give the set-home-activity line, read logs withi
 
 ## Last ten checkpoints
 ```
+  cb3d79a ckpt 361: step 16: default Home is the STOCK launcher (crash cleared ours) but mode flag
   ddf42e9 ckpt 360: step 15: a11y service BOUND after restart = ACC1 solved (stale Binding from cr
   2035ff8 ckpt 359: step 14 done: Tj restarted the tablet (Back); step 15 sent (a11y Bound/Binding
   a8b34fd ckpt 358: step 13: no ServiceRecord = stale a11y Binding (ACC1 A); first-connect safety 
@@ -26,5 +27,7 @@ Tj answers try or stock. try -> give the set-home-activity line, read logs withi
   b0580ee ckpt 354: new session resumed from handoff: v0.7.2 plan (KA1 fuse, MBX1 security finding
   92ecc01 ckpt 353: active-memory handoff #1 written and pushed: handoff-launcher.md (13 sections,
   b807da4 ckpt 352: Tj's step 9 (2:18): DuraSpeed now OFF, helper restarted 14:17:57 (EST tablet c
-  e252af8 ckpt 351: Tj's step 8 (2:13): the helper started 13:31 is DEAD at 14:13 (silent, tj.log 
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
