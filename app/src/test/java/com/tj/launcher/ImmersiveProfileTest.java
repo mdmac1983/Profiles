@@ -27,5 +27,11 @@ public class ImmersiveProfileTest {
         assertNull(ImmersiveProfile.valueFor(true, Mode.QUICKSTEP, null));                       // there was nothing before: the setting is removed again
         assertEquals("immersive.preconfirms=*", ImmersiveProfile.valueFor(true, Mode.QUICKSTEP, "immersive.preconfirms=*"));
     }
+    @Test public void aSwitchedOffLauncherOnlyUndoesWhatItOwns() {
+        assertEquals(true, ImmersiveProfile.mayUndoWhenOff(true, true));      // we took a snapshot and the bar is hidden: put the original back
+        assertEquals(false, ImmersiveProfile.mayUndoWhenOff(false, true));    // the same value, but nobody ever snapshotted it: it is not ours, leave it
+        assertEquals(false, ImmersiveProfile.mayUndoWhenOff(true, false));    // nothing hidden right now: nothing to undo
+        assertEquals(false, ImmersiveProfile.mayUndoWhenOff(false, false));
+    }
     @Test public void theSettingNameAndSwitchKeyAreStable() { assertEquals("policy_control", ImmersiveProfile.SETTING); assertEquals("profile_hide_status_bar", ImmersiveProfile.KEY); }
 }
