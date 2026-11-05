@@ -36,7 +36,7 @@ public final class KeepAliveService extends Service {
     public static String blockedWhy(Context c) { return Features.getString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, ""); }
     /** The Launcher-control switch = Tj's own choice. Switching ON is his explicit retry, so it re-arms the fuse. */
     public static void setUserChoice(Context c, boolean on) {
-        if (on) { Features.set(c, KeepAlivePolicy.BLOCKED_KEY, false); Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, ""); }
+        Features.set(c, KeepAlivePolicy.BLOCKED_KEY, false); Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, "");   // on = his retry; off = nothing left to explain
         Features.set(c, KeepAlivePolicy.KEY, on);
     }
     /**
@@ -47,8 +47,8 @@ public final class KeepAliveService extends Service {
         try {
             Features.set(c, KeepAlivePolicy.KEY, false);
             Features.set(c, KeepAlivePolicy.BLOCKED_KEY, true);
-            String m = e == null ? "" : String.valueOf(e.getMessage());
-            Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US).format(new java.util.Date()) + "  " + (m.length() > 160 ? m.substring(0, 160) : m));
+            String m = e == null ? "" : String.valueOf(e.getMessage()).replaceAll("\\s+", " ");   // one flat line
+            Features.setString(c, KeepAlivePolicy.BLOCKED_WHY_KEY, new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US).format(new java.util.Date()) + "  " + (m.length() > 120 ? m.substring(0, 120) : m));
         } catch (Throwable ignored) { }
     }
     private static boolean mayRun(Context c) { return KeepAlivePolicy.shouldRun(enabled(c), CrashGuard.wasTripped(c), blocked(c)); }
@@ -83,7 +83,8 @@ public final class KeepAliveService extends Service {
         }
         // KA1: tj_ic_blank is now a fully transparent PNG (it was an EMPTY vector drawable, which the tablet's MediaTek SystemUI could not turn into an icon: "Couldn't create icon", then Android crashed us).
         // The test key makes the icon one that does not exist (emulator test of the fuse only; it is off unless a test writes it into our private preferences).
-        int bad = Features.getInt(this, KeepAlivePolicy.TEST_BAD_ICON_KEY, 0);   // 0 = normal, 1 = an icon resource that does not exist (SystemUI cannot draw it: the tablet's crash), 2 = no icon at all (Android refuses it at once)
+        boolean debuggable = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;   // the knob exists only in the emulator's debug build: a release APK can never be told to crash itself
+        int bad = debuggable ? Features.getInt(this, KeepAlivePolicy.TEST_BAD_ICON_KEY, 0) : 0;   // 0 = normal, 1 = an icon resource that does not exist (SystemUI cannot draw it: the tablet's crash), 2 = no icon at all (Android refuses it at once)
         int icon = bad == 1 ? 0x7f0e7777 : bad == 2 ? 0 : R.drawable.tj_ic_blank;
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(icon)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
@@ -108,7 +109,7 @@ public final class KeepAliveService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         // START_STICKY: Android restarts us (and with us the process) if it is ever killed. A restart request after the rules said "off" ends at once.
-        if (!KeepAlivePolicy.honourRestart(enabled(this), CrashGuard.wasTripped(this), blocked(this))) { stopSelf(); return START_NOT_STICKY; }
+        if (!mayRun(this)) { stopSelf(); return START_NOT_STICKY; }
         try { goForeground(); running = true; }
         catch (Throwable t) {
             // a start made with startForegroundService() that never reaches startForeground() crashes the whole app after ~5 s: if going foreground fails, end the service instead (review of 2026-11-05)

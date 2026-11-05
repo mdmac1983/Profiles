@@ -18,6 +18,9 @@ public final class CrashGuard {
     /** CBR1: the versionCode that tripped the breaker (absent = tripped by a version older than this logic). */
     static final String TRIP_VERSION_KEY = "trip_version";
 
+    /** CBR1: shown in Launcher control after an automatic clear (kept in the crash preferences, which "Restore everything" does not touch). */
+    static final String CLEARED_NOTE_KEY = "cleared_note";
+
     private CrashGuard() {}
 
     /** Pure decision (JVM-testable): given previous crash times (ms) and now, how many are inside the window, including this one. */
@@ -31,6 +34,9 @@ public final class CrashGuard {
     public static boolean shouldAutoClear(boolean tripped, int tripVersion, int installedVersion) {
         return tripped && installedVersion > tripVersion;
     }
+
+    /** Pure (CBR1): the version to remember as "the one that tripped the breaker": the installed one, or "never clear automatically" when it could not be read (0 is reserved for "tripped before this logic existed"). */
+    public static int tripVersionToStore(int installed) { return installed > 0 ? installed : Integer.MAX_VALUE; }
 
     public static void install(final Context app) {
         final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
@@ -53,7 +59,7 @@ public final class CrashGuard {
         if (n >= LIMIT) {
             Mode.set(app, Mode.QUICKSTEP);
             RestoreStore.restoreAll(app);
-            p.edit().putBoolean("tripped", true).putInt(TRIP_VERSION_KEY, installedVersion(app)).commit();
+            p.edit().putBoolean("tripped", true).putInt(TRIP_VERSION_KEY, tripVersionToStore(installedVersion(app))).commit();
         }
     }
 
@@ -63,7 +69,7 @@ public final class CrashGuard {
 
     public static void clearTripped(Context c) {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false)
-                .putLong("t1", 0).putLong("t2", 0).putLong("t3", 0).putInt(TRIP_VERSION_KEY, 0).commit();
+                .putLong("t1", 0).putLong("t2", 0).putLong("t3", 0).putInt(TRIP_VERSION_KEY, 0).remove(CLEARED_NOTE_KEY).commit();
     }
 
     /** CBR1: called once per process start (TjApplication). Cheap: one preference read unless the breaker is tripped. Never throws. */
@@ -74,10 +80,14 @@ public final class CrashGuard {
             int installed = installedVersion(app);
             if (shouldAutoClear(true, p.getInt(TRIP_VERSION_KEY, 0), installed)) {
                 clearTripped(app);
+                p.edit().putString(CLEARED_NOTE_KEY, "The crash breaker was cleared when version " + installed + " was installed: the new version gets a fair try (three more crashes within two minutes would trip it again). If the launcher is still in Quickstep, switch to the custom launcher above when you want it.").commit();
                 android.util.Log.i("TjCrash", "crash breaker cleared at start-up: version " + installed + " is newer than the one that tripped it");
             }
         } catch (Throwable ignored) { }
     }
+
+    /** CBR1: the note to show after an automatic clear, or "". */
+    public static String clearedNote(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CLEARED_NOTE_KEY, ""); }
 
     /** The installed versionCode, or 0 if it cannot be read (then nothing is ever auto-cleared). */
     static int installedVersion(Context c) {

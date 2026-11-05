@@ -1123,9 +1123,9 @@ adb logcat -b crash -d > "$OUT/ka-fuse-crash.txt" 2>&1
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-fuse-features.txt"
 adb shell "run-as $PKG cat shared_prefs/tj_crash.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-fuse-crashprefs.txt"
 adb shell dumpsys activity services "$PKG" > "$OUT/ka-fuse-services.txt" 2>&1
-info "KA1 fuse: crashes in the crash buffer: $(grep -c 'FATAL EXCEPTION' $OUT/ka-fuse-crash.txt); 'Bad notification' lines: $(grep -c 'Bad notification' $OUT/ka-fuse-crash.txt); features: $(grep -oE 'name=\"(keep_alive|keep_alive_blocked|lock_number)\" value=\"[a-z]*\"' $OUT/ka-fuse-features.txt | tr '\n' ' '); crash prefs: $(tr '\n' ' ' < $OUT/ka-fuse-crashprefs.txt | cut -c1-200)"
+info "KA1 fuse: crashes of $PKG in the crash buffer: $(grep -c "Process: $PKG," $OUT/ka-fuse-crash.txt); 'Bad notification' lines: $(grep -c 'Bad notification' $OUT/ka-fuse-crash.txt); features: $(grep -oE 'name=\"(keep_alive|keep_alive_blocked|lock_number)\" value=\"[a-z]*\"' $OUT/ka-fuse-features.txt | tr '\n' ' '); crash prefs: $(tr '\n' ' ' < $OUT/ka-fuse-crashprefs.txt | cut -c1-200)"
 check "KA1: a notification SystemUI cannot draw makes Android crash the launcher (the real tablet's crash is reproduced)" grep -q 'Bad notification' "$OUT/ka-fuse-crash.txt"
-check "KA1: it happened exactly ONCE (the sticky restart did not post the notification again)" bash -c "[ \"\$(grep -c 'FATAL EXCEPTION' $OUT/ka-fuse-crash.txt)\" -eq 1 ]"
+check "KA1: it happened exactly ONCE (the sticky restart did not post the notification again)" bash -c "[ \"\$(grep -c 'Process: $PKG,' $OUT/ka-fuse-crash.txt)\" -eq 1 ]"
 check "KA1: the fuse switched keep-alive OFF" grep -q 'name="keep_alive" value="false"' "$OUT/ka-fuse-features.txt"
 check "KA1: the fuse marked keep-alive as blocked (it stays off until Tj switches it on again)" grep -q 'name="keep_alive_blocked" value="true"' "$OUT/ka-fuse-features.txt"
 check "KA1: the 3-crash breaker did NOT trip over it" bash -c "! grep -q 'tripped.*true' $OUT/ka-fuse-crashprefs.txt"

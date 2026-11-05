@@ -266,6 +266,7 @@ public class ControlActivity extends Activity {
 
                 + "\nWill open: " + describeTarget());
         if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
+        if (!CrashGuard.clearedNote(this).isEmpty()) note(CrashGuard.clearedNote(this));
     }
 
     private String describeTarget() {

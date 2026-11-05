@@ -30,8 +30,6 @@ public final class KeepAlivePolicy {
         return switchOn && !crashTripped && !fuseBlown;
     }
 
-    public static boolean shouldRun(boolean switchOn, boolean crashTripped) { return shouldRun(switchOn, crashTripped, false); }
-
     /**
      * The quietest notification Android allows for a foreground service. We ask for IMPORTANCE_MIN (1) and the secret lock-screen visibility (-1); Android raises it to LOW (2) and ignores the
      * lock-screen request (apps cannot set it) - measured on the Android 10 emulator, run 79. The numbers are pinned here so a test can check them without Android.
@@ -46,11 +44,6 @@ public final class KeepAlivePolicy {
         return contentDescription != null && contentDescription.toString().contains(TITLE);
     }
 
-    /** Pure: a restart request for a service that was killed (START_STICKY) is honoured only while the rule above still says run. */
-    public static boolean honourRestart(boolean switchOn, boolean crashTripped, boolean fuseBlown) { return shouldRun(switchOn, crashTripped, fuseBlown); }
-
-    public static boolean honourRestart(boolean switchOn, boolean crashTripped) { return honourRestart(switchOn, crashTripped, false); }
-
     // ------------------------------------------------------------------ the KA1 fuse (pure part)
     /** The class Android uses to crash an app from outside ({@code ActivityThread.scheduleCrash}). */
     public static final String REMOTE_SERVICE_EXCEPTION = "android.app.RemoteServiceException";
@@ -58,12 +51,12 @@ public final class KeepAlivePolicy {
     /**
      * Pure: is a crash with this exception class and message the system killing us over the keep-alive notification? Seen on the real tablet (Android 10, MediaTek SystemUI):
      * {@code RemoteServiceException: Bad notification(tag=null, id=7471) posted from package com.tj.launcher, crashing app(uid=10243, pid=9473): Couldn't create icon: StatusBarIcon(...)}.
-     * The other Android wording for the same family is "Bad notification for startForeground: ..." and, on older releases, "Context.startForegroundService() did not then call Service.startForeground()".
-     * The keep-alive service is the ONLY thing in this app that posts a notification, so any of them is its.
+     * The other Android wording for the same family is "Bad notification for startForeground: ..." (it also starts with "Bad notification") and, on older Android releases, the exact phrase
+     * "did not then call Service.startForeground()". The keep-alive service is the ONLY thing in this app that posts a notification, so any of them is its; a bare "startForeground" in some other message is NOT matched.
      */
     public static boolean isBadNotificationCrash(String exceptionClass, String message) {
         if (!REMOTE_SERVICE_EXCEPTION.equals(exceptionClass) || message == null) return false;
-        return message.contains("Bad notification") || message.contains("startForeground");
+        return message.contains("Bad notification") || message.contains("did not then call Service.startForeground()");
     }
 
     /** Pure: the same test over an exception and its causes (a few levels at most). */
