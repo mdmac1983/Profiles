@@ -1209,11 +1209,12 @@ ensurehome
 beat "before GC"
 setfeat; setmode custom; home; sleep 2
 STEPS=phoneguide/src/main/assets/steps.txt
-GCN=0; GCBAD=0
+GCN=0; GCBAD=0; GCSKIP=0
 gcrun(){ # gcrun <kind> <command line>
   local kind="$1" c="$2" o rc
-  case "$c" in *PATH*) return;; esac                       # the two-step placeholder, not a command
-  o="$(adb shell "$c" 2>&1)"; rc=$?
+  case "$c" in *PATH*) GCSKIP=$((GCSKIP+1)); return;; esac  # the two-step placeholder, not a command
+  # </dev/null: `adb shell` forwards ITS stdin to the device, and here stdin is the steps file the while-loop below is reading: run 99 ran 2 of ~60 lines because the first command swallowed the rest of the file
+  o="$(adb shell "$c" </dev/null 2>&1)"; rc=$?
   case "$c" in *ShellServer*) case "$c" in *pkill*|*grep*|*ShellProbe*) ;; *) sleep 4;; esac;; esac
   GCN=$((GCN+1))
   case "$c" in
@@ -1229,7 +1230,9 @@ gcrun(){ # gcrun <kind> <command line>
 while IFS= read -r L; do case "$L" in cmd:*|alt:*) gcrun "${L%%:*}" "$(echo "${L#*:}" | sed 's/^ *//')";; esac; done < "$STEPS"
 info "GC the helper line started the helper: $(adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" | tr -d '\r\n') process(es); permissions now: $(adb shell dumpsys package $PKG | grep -c 'granted=true') granted"
 while IFS= read -r L; do case "$L" in undo:*) U="$(echo "${L#*:}" | sed 's/^ *//')"; case "$U" in pm\ *|cmd\ *|settings\ *|dumpsys\ *|pkill\ *|am\ *) gcrun undo "$U";; esac;; esac; done < "$STEPS"
-info "GC ran $GCN guide command lines, $GCBAD problem(s)"
+GCWANT=$(( $(grep -cE '^(cmd|alt):' "$STEPS") + $(grep -E '^undo:' "$STEPS" | sed 's/^undo: *//' | grep -cE '^(pm|cmd|settings|dumpsys|pkill|am) ') ))
+info "GC ran $GCN guide command lines ($GCSKIP placeholder lines skipped) of $GCWANT in the file, $GCBAD problem(s)"
+check "AA5: the loops reached EVERY phone-guide command line (ran $GCN + skipped $GCSKIP of $GCWANT)" bash -c "[ $((GCN+GCSKIP)) = $GCWANT ]"
 check "AA5: every phone-guide command line (cmd, alt, undo) ran without an error in the device shell" bash -c "[ $GCBAD = 0 ]"
 adb shell settings delete global policy_control >/dev/null 2>&1; adb shell settings put global device_demo_mode 0 >/dev/null 2>&1; adb shell pm enable com.android.browser >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
