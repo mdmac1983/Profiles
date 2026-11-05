@@ -291,7 +291,7 @@ def facts_markdown(rep, source, when):
     logt = rep.get("logcat -d -v time")
     if logt is not None:
         lines = [l for l in logt.splitlines() if l.strip()]
-        errs = [l for l in lines if re.search(r"\sE\s|FATAL|Exception", l)]
+        errs = [l for l in lines if re.search(r"\sE[/\s]|FATAL|Exception", l)]   # "-v time" writes the level as "E/Tag(", "-v threadtime" as " E Tag:" (code review, 2026-11-05: the first form was never matched)
         locks = [l for l in lines if "AT LOCK" in l]
         row("Launcher log (tail)", "%d line(s); %d error-looking; last clean-up: %s" % (len(lines), len(errs), (locks[-1][:200] if locks else "none in the tail")), "logcat -d -s Tj*")
         if errs:
