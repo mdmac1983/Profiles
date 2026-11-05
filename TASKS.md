@@ -536,3 +536,14 @@ Add whatever is needed to the phone guide. Try to make the phone guide simple an
 - [ ] AC8 "8) if possible, prepare the custom launcher invisibly when the lock screen is on, so it can open fast. I think there is a setting for this in the launcher, but it opens solitaire also. I turned the solitaire setting off, so it shouldn't load it under the lock screen."
 - [ ] AC9 "9) even though the custom launcher is prepared to open on the lock screen, if I do the gesture for quickstep, always open quickstep"
 - Claude, 2026-11-05 ~22:20: REL072 (v0.7.2, Tj's earlier request, KA1+CBR1+UX1) is coded + code-reviewed and stays FIRST in line (finish its CI gate, ship it); AC1-AC9 are researched in the code in parallel while CI runs and shipped as the NEXT version (L10: no unproven change goes into the v0.7.2 gate). Every AC answer will be given to Tj in one reply and re-listed until closed.
+- AC BUILD PLAN (v0.7.3; spec in `research/AC_DESIGN_2026-11-05.md`; product code waits until the v0.7.2 `android.yml` run has checked out main):
+  - [ ] AC-A (AC2, AC8) the "Open Solitaire" switch gates EVERY automatic open: `ReturnReset.startTargetBehindLock` + `openApp` (root cause: only `TjHooks` read it); Control label/subtitle; emulator: switch off + lock/wake = no Solitaire task.
+  - [ ] AC-B1 (AC1) plain unlock ends a Quickstep session WITHOUT `profile_end_on_lock`; paused only by breaker / "Restore everything" (new `CrashGuard` paused flag).
+  - [ ] AC-B2 (AC8) custom home prepared behind the lock on every locked wake (home only, Solitaire only if AC-A allows); `profile_prearm` stays an OFF-ramp, default ON.
+  - [ ] AC-B3 (AC9, AC7) a handshake starts the stock home behind the lock at once whatever `profile_prearm` says, and the unlock verifies + re-starts (+0.6 s, +1.5 s).
+  - [ ] AC-B4 (AC7) the pad latch survives a wrong PIN (`RETRY_GRACE_MS` 20 s), `VALID_PAD_MS` 20 s; JVM tests in `UnlockMethodsTest`.
+  - [ ] AC-B5 persistent decision log `LockLog` (key CLASSES only) in the report + Control; JVM test for trimming and for "no digit ever logged".
+  - [ ] AC-B6 (second priority) reconcile after a late bind via `UsageStatsManager` KEYGUARD events.
+  - [ ] AC-C (AC3) `BatterySaverGuard` (ContentObserver on `low_power` in `TjApplication`, check in `Mode.set(CUSTOM)`, rate limit, switch default ON, Quickstep untouched); JVM `BatterySaverPolicyTest`; emulator section proves custom: `low_power 1` -> 0 within 3 s, quickstep: stays 1.
+  - [ ] AC-D1..D4 (AC6) V5 dim for the patch, keyguard dim for the model, card geometry from the panel, cable-free node dump in the report; AC-D5 permanent patch behind a default-OFF switch, only after a measurement (needs Tj's cable time).
+  - [ ] AC-E (AC4, AC5) answers in chat; `research/ADB_LOCKMENU_PROBE.md`.
