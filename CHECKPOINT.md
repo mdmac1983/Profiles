@@ -1,13 +1,13 @@
-# CHECKPOINT 296 — read me first, then TASKS.md
+# CHECKPOINT 297 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T02:30:23Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-8b1c3755-1tp147` · **builds on:** `51f5a41` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T02:34:19Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-8b1c3755-1tp147` · **builds on:** `12d6e35` (this checkpoint is the commit after it)
 
 ## Just done
-Docs written: research/SAFETY, EFFICIENCY, BUTTONMAPPER (section 3 has RS3_KEYRAW_PLACEHOLDER to replace with the rs3 b0 numbers); guide +2 cards; CLAUDE.md: cheap result reading + YAML warning; TASKS progress block; kgAt memo reset in lockReceiver; 218 unit tests green. Emulator runs in flight (main @ ckpt 295): pf 41955118593, ka,rt,gc 41955121787, rb 41955125158, rs3 41955128770, rs4 (newest in_progress). Run 85 (y2,b6,b4,t) PASSED, run 83 (pf) had 1 unknown FAIL (B1-B3 passed), run 84 (ka,rt,gc) FAILED unknown
+Run 93 (pf) = 22 PASS 1 FAIL: PF-P1 was a TEST ORDER bug (uiautomator dump unbinds accessibility services, the pencil cover count was read after a dump); run 95 (rb) FAILed because my wait read boot_completed=1 from the still-shutting-down old system (device stuck at FallbackHome, a11y/keep-alive not yet bound because the PIN was never entered): both fixed in tools/emulator_scenario.sh (rb now waits for shutdown, boot, then enters the PIN up to 4 times). CI log reading: new local action .github/actions/results prints the compact RESULTS block in its POST step so it is the last thing before checkout's post (tail ~45 lines is enough from now on)
 
 ## Do this next
-read the 5 runs with list_workflow_jobs + get_job_logs tail 80 (RESULTS block at the end); fix FAILs; BUTTONMAPPER placeholder; OPEN_BUT_HIDDEN doc from rs4; tick TASKS AA1-AA6/AB1-AB5; bump 0.7.0/17; HANDOFF 0b; full run (empty sections) as gate; ship.sh; android.yml full_build; record-release; tell Tj the OTG recipe
+dispatch pf ; ka,rt,gc ; rb again; read rs3 (run 41955128770) and rs4 logs the long way once (tail ~190) for the BUTTONMAPPER placeholder and OPEN_BUT_HIDDEN doc
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read the 5 runs with list_workflow_jobs + get_job_logs tail 80 (RESULTS block at
 
 ## Last ten checkpoints
 ```
+  0a056c3 ckpt 296: Docs written: research/SAFETY, EFFICIENCY, BUTTONMAPPER (section 3 has RS3_KEY
   2bc758c ckpt 295: emulator.yml was INVALID after ckpt 294 (a colon inside a step name made the f
   9143e70 ckpt 294: AB1/AB5: section rb (restart with PIN + hidden status bar + one tile + keep-al
   05ac9f8 ckpt 293: AB3: CI-only :testnotifier module (flavours quick/ctl), emulator.yml builds it
@@ -25,8 +26,7 @@ read the 5 runs with list_workflow_jobs + get_job_logs tail 80 (RESULTS block at
   da09334 ckpt 289: AA1 (ImmersiveProfile: policy_control immersive.status=* per mode, merge/resto
   11306b2 ckpt 288: AA2 built: KeepAliveService (foreground, min-importance silent notification) +
   cbf34e0 ckpt 287: Added emulator research section rs (info lines only): R1 policy_control immers
-  b62dbca ckpt 286: Tj: build #2 (policy_control immersive), #3 (keep-alive service), #4 (helper t
 ```
 
-(7 automatic checkpoint(s) since the last deliberate one — the
+(8 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
