@@ -1088,6 +1088,7 @@ check "AA3: the custom account's tasks were remembered when it began" grep -q "s
 for APP in com.android.gallery3d com.android.email com.android.contacts; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 adb shell am start -n com.android.contacts/.activities.PeopleActivity -f 0x18000000 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
 info "RT during Quickstep: $(rec)"
+info "RT task ids during Quickstep (just before the lock): $(tl)"
 CONTACTS_TASKS_BEFORE=$(adb shell dumpsys activity recents 2>/dev/null | grep -c 'Recent #.*\(contacts\)')
 adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session ends; the helper cleans up before any wake
