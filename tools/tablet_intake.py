@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """tablet_intake.py - save what Tj sends from the tablet INTO THE PROJECT and turn it into one facts file Claude reads first.
 
-  python3 -I tools/tablet_intake.py <tablet-report.txt | folder | zip> [--label NAME] [--out research/tablet] [--date YYYY-MM-DD] [--keep-images]
+  python3 -I tools/tablet_intake.py <tablet-report.txt | folder | zip | -> [--label NAME] [--out research/tablet] [--date YYYY-MM-DD] [--keep-images]
 
 Why (Tj, 2026-11-05: "make sure claude can save and use all necessary information from the tablet"): the tablet report is the only way Claude sees the real tablet. A report that stays in a chat
 is lost with the session, and one that is committed raw could carry a serial number, an address or an e-mail address into a repository that may be public. So:
@@ -67,7 +67,10 @@ def safe_name(rel):
 
 def entries(path):
     """Yield (relative path, size, reader) for every file; reader(limit) returns bytes. Never writes anything."""
-    if os.path.isdir(path):
+    if path == "-":
+        data = sys.stdin.buffer.read(MAX_TEXT + 1)
+        yield "tablet-report.txt", len(data), (lambda limit, data=data: data[:limit])
+    elif os.path.isdir(path):
         for root, dirs, files in os.walk(path, followlinks=False):
             dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
             for f in sorted(files):
@@ -93,6 +96,8 @@ def entries(path):
 def sha256_of(reader_path, rel, path):
     """sha256 of one entry without writing it anywhere."""
     h = hashlib.sha256()
+    if path == "-":
+        return h.hexdigest()
     if os.path.isdir(path):
         with open(os.path.join(path, rel), "rb") as f:
             for chunk in iter(lambda: f.read(1 << 20), b""):
@@ -244,14 +249,20 @@ def facts_markdown(rep, source, when):
     row("LineageOS?", rep.first_line("ro.lineage.version") or "no (property empty)", "getprop ro.lineage.version")
     row("Low-RAM (Go) device", rep.first_line("ro.config.low_ram") or kv.get("low-RAM (Go) device"), "")
     mem = rep.get("head -3 /proc/meminfo")
-    row("Memory", " | ".join(x.strip() for x in mem.splitlines()[:3]) if mem else None, "/proc/meminfo")
+    row("Memory", " | ".join(" ".join(x.split()) for x in mem.splitlines()[:3]) if mem else None, "/proc/meminfo")
     row("A real second Android user possible?", (rep.first_line("pm get-max-users") or "") + ("; users now: %d" % nusers if nusers else ""), "pm get-max-users, pm list users")
     row("Encryption (helper before first unlock?)", "type=%s state=%s" % (rep.first_line("ro.crypto.type") or "?", rep.first_line("ro.crypto.state") or "?"), "getprop ro.crypto.*")
     listening = rep.first_line("netstat", "grep -c")
     row("ADB over the network kept across restarts?", "service.adb.tcp.port='%s' persist.adb.tcp.port='%s'; listening on :555x now: %s" % (rep.first_line("service.adb.tcp.port") or "", rep.first_line("persist.adb.tcp.port") or "", listening if listening is not None else "?"), "getprop, netstat count")
     pma = rep.first_line("power_menu_actions")
     lin = rep.get("content://lineagesettings/secure")
-    row("ROM's own power-menu setting (hide Screenshot natively?)", "power_menu_actions=%s; lineage settings lines: %d" % (pma or "null", len((lin or "").splitlines())), "settings get secure power_menu_actions")
+    if lin is None:
+        lin_txt = "(not in the report)"
+    elif not lin.strip() or "Error" in lin or "No result" in lin:
+        lin_txt = "no LineageOS settings provider answered (this is not LineageOS, or nothing matched)"
+    else:
+        lin_txt = "%d line(s) of LineageOS power/button settings" % len(lin.splitlines())
+    row("ROM's own power-menu setting (hide Screenshot natively?)", "power_menu_actions=%s; %s" % (pma or "null", lin_txt), "settings get secure power_menu_actions")
     row("Side key: which input device", power_key_device(rep), "getevent -pl")
     if key:
         row("Side-key test (Power menu v2)", "%s; normal menu appeared while the flag was held: %s" % (key[:300], kv.get("keytest_menu", "(not answered)")), "KEYTEST + Tj's answer")
@@ -260,7 +271,7 @@ def facts_markdown(rep, source, when):
     row("Status bar customised? (policy_control)", rep.first_line("settings get global policy_control") or kv.get("status-bar hiding"), "settings get global policy_control")
     row("Recents format check", ("the launcher's reader parsed %d task(s)" % sc_tasks) if sc_tasks is not None else None, "PARSER SELF-CHECK")
     row("Notification format check", mn.group(1).strip() if mn else None, "PARSER SELF-CHECK")
-    row("Keep-alive", "running=%s; services: %s" % (kv.get("keep-alive service running", "?"), "; ".join((rep.get("dumpsys activity services com.tj.launcher") or "").splitlines()[:3])), "state + dumpsys")
+    row("Keep-alive", "running=%s; services: %s" % (kv.get("keep-alive service running", "?"), "; ".join(" ".join(x.split()) for x in (rep.get("dumpsys activity services com.tj.launcher") or "").splitlines()[:3])), "state + dumpsys")
     adj = rep.get("dumpsys activity processes")
     row("Launcher process priority", "; ".join(x.strip() for x in (adj or "").splitlines()[:3]) if adj else None, "dumpsys activity processes")
     row("Compiled ahead of time?", "; ".join(x.strip() for x in (rep.get("dexopt") or "").splitlines()[:3]), "dumpsys package ... dexopt")
@@ -298,7 +309,7 @@ def next_dir(base, date):
 
 
 def run(src, out_base, label, date, keep_images):
-    if not os.path.exists(src):
+    if src != "-" and not os.path.exists(src):
         print("not found: %s" % src)
         return 2
     notes, kept, skipped, apks = [], [], [], []
@@ -369,7 +380,7 @@ def run(src, out_base, label, date, keep_images):
             os.path.basename(src.rstrip("/")), label, date, ", ".join(kept), redactions or "none", "\n".join("  " + s for s in skipped) or "  (nothing)"))
     latest = os.path.join(out_base, "LATEST.md")
     with open(latest, "w", encoding="utf-8") as f:
-        f.write("# Latest tablet intake: %s\n\nSaved in `%s/`. Raw report and screen files are next to FACTS.md. Older intakes stay in their own folders.\n\n" % (os.path.basename(dest), os.path.relpath(dest)))
+        f.write("# Latest tablet intake: %s\n\nSaved in the folder `%s/` next to this file (its raw report and screen files sit beside its FACTS.md). Older intakes stay in their own folders.\n\n" % (os.path.basename(dest), os.path.basename(dest)))
         f.write(md.split("\n", 1)[1])
     print("saved %s  (kept: %s; redactions: %s; %d red flag(s))" % (dest, ", ".join(kept), redactions or "none", len(flags)))
     for fl in flags:
