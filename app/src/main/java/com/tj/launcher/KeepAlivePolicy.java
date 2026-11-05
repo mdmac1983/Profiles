@@ -16,7 +16,7 @@ public final class KeepAlivePolicy {
     public static final String BLOCKED_KEY = "keep_alive_blocked";
     /** KA1: when and why the fuse blew (shown in the report and in Launcher control). */
     public static final String BLOCKED_WHY_KEY = "keep_alive_blocked_why";
-    /** KA1, EMULATOR TEST ONLY (default off, like patch_test_skew): makes the service use an icon that does not exist, so Android crashes the app exactly as it did on the tablet and the fuse can be proven end to end. */
+    /** KA1, EMULATOR TEST ONLY (an int, default 0 = off, like patch_test_skew): 1 makes the service use an icon that does not exist, 2 no icon at all, so Android crashes the app the way it did on the tablet and the fuse can be proven end to end. */
     public static final String TEST_BAD_ICON_KEY = "keep_alive_test_bad_icon";
 
     private KeepAlivePolicy() {}

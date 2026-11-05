@@ -83,7 +83,8 @@ public final class KeepAliveService extends Service {
         }
         // KA1: tj_ic_blank is now a fully transparent PNG (it was an EMPTY vector drawable, which the tablet's MediaTek SystemUI could not turn into an icon: "Couldn't create icon", then Android crashed us).
         // The test key makes the icon one that does not exist (emulator test of the fuse only; it is off unless a test writes it into our private preferences).
-        int icon = Features.get(this, KeepAlivePolicy.TEST_BAD_ICON_KEY, false) ? 0x7f0e7777 : R.drawable.tj_ic_blank;
+        int bad = Features.getInt(this, KeepAlivePolicy.TEST_BAD_ICON_KEY, 0);   // 0 = normal, 1 = an icon resource that does not exist (SystemUI cannot draw it: the tablet's crash), 2 = no icon at all (Android refuses it at once)
+        int icon = bad == 1 ? 0x7f0e7777 : bad == 2 ? 0 : R.drawable.tj_ic_blank;
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(icon)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
                 .setContentTitle(KeepAlivePolicy.TITLE)
