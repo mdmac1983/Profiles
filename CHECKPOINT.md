@@ -1,13 +1,13 @@
-# CHECKPOINT 349 — read me first, then TASKS.md
+# CHECKPOINT 350 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T18:54:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `ec20d98` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T19:00:00Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `5d04a4b` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0_a243, group sdcard_rw) and copied it to Downloads/launcher-probe: MBX1 viable in the app->shell direction; step 8 sent: helper liveness (started 1:31) + tj.log + a shell-writes-into-the-app-folder test
+tablet intake 2026-11-05: Tj's first real report saved (3 red flags); the crash breaker tripped = the launcher is in QUICKSTEP (stock behaviour) since the 3 crashes at 12:48; keep-alive off, accessibility helper not bound, helper dead by 13:47 (HLP1 confirmed), MediaTek DuraSpeed suspect; facts + ACC1/CBR1 in TASKS.md
 
 ## Do this next
-WAIT for Tj's step 8 screenshot (ps count, tj.log, ls -l of the probe folder with from-shell.txt: owner/mode); then tell Tj he can unplug and send tablet-report.txt from Downloads/launcher-probe later (Files app share or 2b); then intake it: bash tools/tablet-intake.sh <file>, read research/tablet/LATEST.md; v0.7.2 = KA1 + MBX1 + UX1 + PG5/PG6 + RS1 (+ HLP1 if the helper died)
+WAIT for Tj's step 8 screenshot (cable back): helper alive?, duraspeed values, accessibility bound/crashed lines, tj.log, shell-write test (ls -l of the probe folder); then tell Tj the custom launcher is OFF (breaker) and how to switch it back; v0.7.2 = KA1 + MBX1 + UX1 + ACC1 + CBR1 + PG5/PG6 + RS1 (+ HLP1)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ WAIT for Tj's step 8 screenshot (ps count, tj.log, ls -l of the probe folder wit
 
 ## Last ten checkpoints
 ```
+  cedcd7c ckpt 349: Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0
   ec20d98 ckpt 348: Tj's step 6 photo: the app-side report works without the helper (31 KB, in the
   a9cef92 ckpt 347: Tj's step 5 (1:47): SELinux Enforcing, build = MediaTek alps user/release-keys
   f04ea27 ckpt 346: Tj's crash log (1:39): the first-open crash = the keep-alive notification (id 
@@ -26,5 +27,7 @@ WAIT for Tj's step 8 screenshot (ps count, tj.log, ls -l of the probe folder wit
   97cb41f ckpt 342: Tj's step 1 screenshot (1:31 phone clock): helper restarted OK ([1] 12440, uni
   000d69b ckpt 341: Tj says the launcher crashed when first opened on the tablet and now seems to 
   c87f389 ckpt 340: Tj's 3rd screenshots: the helper starts fine (unix up for uid 10243, tcp 47631
-  bf2b0c8 ckpt 339: Tj's 2nd screenshot (1:02): helper start attempt 1 left no process, attempt 2 
 ```
+
+(3 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
