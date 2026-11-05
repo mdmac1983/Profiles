@@ -69,7 +69,7 @@ checked against the repo at that date; where it can go stale it says where to lo
     `list_workflow_jobs(resource_id=<run id>)` → job id → `get_job_logs(job_id, tail_lines=60)` for any run. **Run ids and job ids are different numbers** (a 404 = wrong kind). Logs exist only
     after the job ends; a hung scenario can be cancelled and its RESULTS block still prints, showing the last `RT progress`-style marker it reached.
   - **Every run listing echoes the head commit's message** — keep `ckpt` messages short (a 2 KB message costs 2 KB on every query). A dispatch right after a push can run on the OLD commit — check `head_sha`.
-  - A run can show **failure with 0 FAILs** if the scenario hit its `timeout` (that happened at 1000 s; now 2100 s). Check the tail of `results.txt`.
+  - A run can show **failure with 0 FAILs** if the scenario hit its `timeout` (that happened at 1000 s, then at 2100 s in run 124 on 2026-11-05; now 2700 s). Check the tail of `results.txt` and the last section that printed an INFO line.
   - **Known emulator flakes (don't chase, rerun the section):** qemu dying; a rare native SIGSEGV of our process inside Android's libz/libhwui (one per ~full run;
     `heal()` in the scenario detects it, logs `INFO NATIVE CRASH`, restores the default home — FAILs within ~15 s after that line are caused by it).
   - **Test-writing lessons:** `adb shell input keyevent` is injected and bypasses the accessibility key filter, so hardware-key behaviour is NOT provable on the emulator
