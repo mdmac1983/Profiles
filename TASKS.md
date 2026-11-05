@@ -376,3 +376,17 @@ Now do the handoff and tell me when i can switch to the other Claude account. In
 - [x] IDEA1 (research/answer, no code yet) re-examine each goal with fresh/creative ideas; write research/REEXAMINE_2026-11-05.md; bring the genuinely new, safe ones to Tj before building
   **PROOF:** research/REEXAMINE_2026-11-05.md written (per-goal, tagged NEW/DONE/RULED-OUT/PROBE, ranked, no-adb-first). Genuinely new: policy_control immersive.status to seal the custom shade; keep-alive foreground service for instant unlock; helper task-id Recents removal; Direct-Boot-aware handshake (first-boot screen); self-adb over TCP (reboot-proof helper); device-owner setPersistentPreferredActivity (crash-proof home, high risk). Awaiting Tj's pick; nothing built.
 
+
+## Tj, 2026-11-05 (build 2, 3, 4; he has the OTG cable only once), verbatim
+"I will have the otg cable soon, but i want to be ready.
+Build numbers 2, 3, and 4.
+You said "a truly seamless second "profile," keeping Quickstep apps open-but-hidden" may be possible with deeper adb. Consider if they are practical without breaking anything.
+I will only have the otg cable one time, so make sure I'm doing all the necessary commands.
+I will run the otg probe later"
+(numbers refer to research/REEXAMINE_2026-11-05.md "What I'd build first": 2 = policy_control immersive.status in custom, 3 = keep-alive foreground service, 4 = helper task-id Recents removal)
+- [ ] AA1 build #2: `policy_control` immersive.status per mode (custom only), snapshot+restore, switch in Launcher control, Restore turns it off, JVM test + emulator proof of what it REALLY does (status bar hidden? shade still reachable? lock screen untouched? restored on mode switch); tell Tj honestly if it is a look option and not a hard seal (a sealed shade would also remove the rotation tile he wants in custom)
+- [ ] AA2 build #3: keep-alive foreground service (silent, min-importance) so the launcher process stays in RAM -> faster unlock; started at boot/first start, stopped by Restore; switch in Launcher control; emulator proof (service foreground, process survives `am kill-all`, oom_score_adj) + before/after unlock ms
+- [ ] AA3 build #4: helper job that removes exactly the Quickstep-origin TASKS (by task id, not force-stop of the package) at lock/return: no UI, no cover, custom's own tasks untouched; JVM + emulator proof (same package open from both worlds: only the Quickstep task goes)
+- [ ] AA4 research/answer: is "keep Quickstep apps open-but-hidden" / a truly seamless second profile practical with DEEPER adb without breaking anything? Measure the candidates on the emulator, give a verdict per candidate with its failure modes
+- [ ] AA5 ONE-TIME-CABLE audit: PhoneGuide list (steps.txt = ADB_PHONE_COMMANDS.txt), adb-all.sh/.bat, ADB_TODO.md complete and in a sensible order for ONE session: every permission/appop/whitelist incl. what AA1-AA3 need, the helper line, compile, browser, read-only probe + the persistence questions (adb tcp port, max users, power_menu_actions, demo mode), EMERGENCY undo lines (policy_control, demo mode, tiles), nothing risky
+- [ ] AA6 ship v0.7.0 (gates, android.yml full_build, record-release), HANDOFF/CHECKPOINT current, tell Tj the exact one-session recipe
