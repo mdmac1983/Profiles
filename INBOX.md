@@ -716,3 +716,8 @@ Done
 ```
 Back
 ```
+
+## 2026-11-05T20:18:08Z
+```
+I don't know i just want to set up the custom launcher permissions while i have this cable
+```
