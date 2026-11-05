@@ -885,7 +885,12 @@ if [ "$#" -ge 4 ]; then
     MC="$(convert "$OUT/83-lock-closed-patch-off.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
     MO="$(convert "$OUT/82-lock-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
     info "V5: mean colour of the strip next to the menu: closed ($MC) vs open ($MO): the open menu's scrim keeps $(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "R %.3f G %.3f B %.3f", $5/$1, $6/$2, $7/$3}') of the closed brightness"
-    check "V2: the part of the old menu below our short card shows exactly the lock wallpaper (MAE < 0.5 %)" awk -v m="$MAEF" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+    # V5 (v0.7.3): the patch is dimmed like the stock dialog's scrim, so the slot must match the CLOSED lock screen multiplied by the brightness the strip next to the menu keeps (measured just above)
+    KO="$(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "%.4f", ($5/$1+$6/$2+$7/$3)/3}')"
+    [ -n "$KO" ] && { convert "$OUT/83-lock-closed-patch-off.png" -crop "$FREE" +repage -channel RGB -evaluate Multiply "$KO" +channel "$OUT/v-closed-slot-dimmed.png" 2>/dev/null; convert "$OUT/82-lock-menu-open.png" -crop "$FREE" +repage "$OUT/v-open-slot.png" 2>/dev/null; }
+    MAED="$(compare -metric MAE "$OUT/v-open-slot.png" "$OUT/v-closed-slot-dimmed.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+    info "V5: the freed slot of the open menu vs the closed lock screen dimmed by the measured $KO: MAE $MAED (the undimmed comparison above is $MAEF)"
+    check "V5: the part of the old menu below our short card matches the lock screen dimmed like the stock menu's scrim (MAE < 1.5 %)" awk -v m="$MAED" 'BEGIN{exit !(m!="" && m+0 < 0.015)}'
     check "V1: our card is shorter than the stock menu rectangle (stock item size, no Screenshot slot)" bash -c "[ $(( $4 - $2 )) -lt $(( $(echo $FULL | cut -d' ' -f4) - $(echo $FULL | cut -d' ' -f2) )) ]"
   else info "V1: no card area in the log"; check "V1: the short card area was logged" false; fi
 else info "V1: no CARD line in the log"; check "V1: the card was shown on the lock screen" false; fi

@@ -138,6 +138,13 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String PATCH_DIM_KEY = "patch_dim_pct";
     /** AC6: how much of its brightness the real lock screen keeps: MEASURED on the Android 10 emulator (run 74: (173,96,20) on screen vs (229,122,26) in the wallpaper = 0.755 / 0.787 / 0.77). A first estimate for the tablet's MtkSystemUI. */
     static final float DIM_KEYGUARD = 0.77f;
+    /** AC6 / V5: how much brightness the screen around the open stock power menu keeps (the dialog's own scrim). MEASURED on the Android 10 emulator, run 136: the strip next to the menu keeps 0.791 / 0.791 / 0.789 of the closed lock screen. Our patch sits ABOVE that scrim, so it is dimmed the same. */
+    static final float DIM_OPEN = 0.79f;
+    /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Launcher control) scales it. */
+    private float lockPatchDim(boolean photo) {
+        float k = (photo ? DIM_OPEN : DIM_KEYGUARD * DIM_OPEN) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        return Math.max(0.3f, Math.min(1f, k));
+    }
     private View patchView;
     private android.graphics.Bitmap wallpaperBmp;
     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
@@ -391,12 +398,11 @@ public class TjAccessibilityService extends AccessibilityService {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
             @Override protected void onDraw(android.graphics.Canvas c) {
-                if (patchLockMode && lockShot != null) { p.setColorFilter(null); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
+                if (patchLockMode && lockShot != null) { setDim(p, lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
-                if (patchLockMode) { float k = Math.max(0.3f, Math.min(1f, DIM_KEYGUARD * (1f + Features.getInt(TjAccessibilityService.this, PATCH_DIM_KEY, 0) / 100f))); p.setColorFilter(new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP)); }
-                else p.setColorFilter(null);
+                if (patchLockMode) setDim(p, lockPatchDim(false)); else p.setColorFilter(null);
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
@@ -418,6 +424,11 @@ public class TjAccessibilityService extends AccessibilityService {
         patchView = v; patchAt.set(r); patchRot = rotation();
         patchStatus("active over " + r.toShortString());
         Log.i(TAG, "PATCH shown " + r.toShortString());
+    }
+
+    /** AC6: draws with brightness {@code k} (1 = unchanged): a black SRC_ATOP layer of alpha 1-k. */
+    private static void setDim(android.graphics.Paint p, float k) {
+        p.setColorFilter(k >= 0.999f ? null : new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP));
     }
 
     private void removePatch() {
