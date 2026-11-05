@@ -182,6 +182,18 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.keyTestSummary(null).contains("no answer"));
         assertTrue(ShellProtocol.keyTestSummary("  ").contains("no answer"));
     }
+    @Test public void nothingFromGeteventIsNotReportedAsNotPressed() {
+        // 0 lines in all means the shell could not read the input devices: "the key was not pressed" would be a false comfort and could end the Power menu v2 idea for the wrong reason
+        String s = ShellProtocol.keyTestSummary("KEYTEST-START\nKEYTEST-END\nKEYTEST-LINES 0\nuid=2000\ndisable2(0x8) -> OK\ncleared\n");
+        assertTrue(s, s.contains("could NOT read the input devices"));
+        assertFalse(s, s.contains("was NOT seen"));
+        assertTrue(s, s.contains("MAY switch the normal power menu off"));
+        String some = ShellProtocol.keyTestSummary("KEYTEST-START\nadd device 1: /dev/input/event0\nKEYTEST-END\nKEYTEST-LINES 14\nuid=2000\ndisable2(0x8) -> OK\ncleared\n");
+        assertTrue(some, some.contains("14 input lines were read, so getevent works"));
+        assertTrue(some, some.contains("was NOT seen"));
+        String pressed = ShellProtocol.keyTestSummary("KEYTEST-START\n[ 5.0] /dev/input/event2: EV_KEY KEY_POWER DOWN\n[ 6.0] /dev/input/event2: EV_KEY KEY_POWER UP\nKEYTEST-END\nKEYTEST-LINES 9\ndisable2(0x8) -> OK\n");
+        assertTrue(pressed, pressed.contains("side key WAS seen (held 1.0 s)"));
+    }
     @Test public void aKeyWithoutATimestampStillCounts() {
         assertTrue(ShellProtocol.keyTestSummary("/dev/input/event3: EV_KEY KEY_POWER DOWN").contains("side key WAS seen"));
     }

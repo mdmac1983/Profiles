@@ -133,6 +133,17 @@ check "red flag: side key not seen"                       'grep -q "side key was
 check "red flag: shell refused to switch the menu off"    'grep -q "did not get a clean OK" "$F"'
 check "red flag: normal menu still appeared"              'grep -q "NORMAL power menu still appeared" "$F"'
 check "red flag: a crash log line"                        'grep -q "crash log has" "$F"'
+# the shell could not read the input devices at all (getevent printed nothing): a different, stronger flag than "not pressed"
+python3 -I - "$SAMPLE" "$T/badin/tablet-report.txt" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+a = "keytest_summary: the side key WAS seen (held 1.5 s); the shell MAY switch the normal power menu off"
+assert a in s
+s = s.replace(a, "keytest_summary: the shell could NOT read the input devices (getevent printed nothing), so this test cannot say whether the side key is readable; the shell MAY switch the normal power menu off")
+open(sys.argv[2], "w").write(s)
+PY
+$INTAKE "$T/badin" --out "$T/outbad2" --date 2026-11-05 >/dev/null 2>&1
+check "red flag: the shell could not read the input devices at all" 'grep -q "could NOT read the input devices at all" "$T/outbad2/2026-11-05/FACTS.md" && ! grep -q "side key was NOT seen by the helper" "$T/outbad2/2026-11-05/FACTS.md"'
 check "the red flags come BEFORE the table"               '[ "$(grep -n "## Red flags" "$F" | cut -d: -f1)" -lt "$(grep -n "## Answers" "$F" | cut -d: -f1)" ]'
 
 # ---------------------------------------------------------------- the guide tells Tj to send the file this tool reads
