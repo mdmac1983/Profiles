@@ -1,13 +1,17 @@
-# CHECKPOINT 321 — read me first, then TASKS.md
+# CHECKPOINT 322 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T06:56:29Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `05c10f9` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T07:01:46Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `338efa0` (this checkpoint is the commit after it)
 
 ## Just done
-dispatched emulator sections on main at 05c10f9: run 119 (id 41983710605, probably x) and run 120 (id 41983713997, probably g,gc)
+gated v0.7.1 (code 18) and pushed it: the handoff self-test, the full unit suite + lint
+and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
 
 ## Do this next
-read runs 119 + 120 (~4 min after 06:56Z): list_workflow_jobs resource_id=<run id> filter latest, then get_job_logs job_id tail 60; the RESULTS block says 'INFO sections:' which is which; fix any FAIL; then bump versionCode (v0.7.1 = code 18) + phoneguide version, ship.sh, android.yml full_build, record-release v0.7.1
+TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
+android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
+confirm the Release is published (get_release_by_tag is enough) and then run:
+  bash tools/record-release.sh v0.7.1 "v0.7.1: PhoneGuide 1.2 (short-cable plan: 3 parts, next-step button, ticks that stay); tablet report now holds the launcher's own state, a parser self-check, the side-key test (Power menu v2 readiness) and a short text summary (setup button 2b); tools/tablet-intake.sh saves it for Claude"
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +20,7 @@ read runs 119 + 120 (~4 min after 06:56Z): list_workflow_jobs resource_id=<run i
 
 ## Last ten checkpoints
 ```
+  3029356 ckpt 321: dispatched emulator sections on main at 05c10f9: run 119 (id 41983710605, prob
   05c10f9 ckpt 320: finished the cut-off change: KEYTEST-LINES (getevent silent is not 'key not pr
   181f88b ckpt 319: PG3: short summary as text (TabletReport.summary + setup button 2b + share she
   cc68086 ckpt 318: STEP D code: emulator sections g (new guide order, collapse, tick, next-step) 
@@ -26,3 +31,6 @@ read runs 119 + 120 (~4 min after 06:56Z): list_workflow_jobs resource_id=<run i
   77726ab ckpt 313: Tj asked what Power menu v2 and the standing items are: answered in chat; his 
   3de52f1 ckpt 312: v0.7.0 RELEASED: https://github.com/tjshea90/Launcher/releases/tag/v0.7.0 (Lau
 ```
+
+(3 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
