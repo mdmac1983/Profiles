@@ -801,6 +801,7 @@ check "PG3: the key was not pressed on the emulator, so no KEY_POWER line is cla
 rm -rf "$OUT/x-intake"
 python3 -I tools/tablet_intake.py "$OUT/x-report.txt" --out "$OUT/x-intake" --date 2026-01-01 --label emulator > "$OUT/x-intake-console.txt" 2>&1; RCI=$?
 info "PG3: intake of the real report: exit $RCI; $(head -c 400 "$OUT/x-intake-console.txt" | tr '\n' '|')"
+info "PG3: notification records in the real report: $(grep -o 'NotificationRecord(0x[0-9a-fA-F]*: pkg=[^ ]* user=[^ ]*' "$OUT/x-report.txt" 2>/dev/null | sed 's/NotificationRecord(0x[0-9a-fA-F]*: //' | sort | uniq -c | tr -s ' ' | tr '\n' ';' | head -c 240) | the launcher's reader says:$(grep -m1 '^Apps with a notification now' "$OUT/x-report.txt" 2>/dev/null | cut -d: -f2- | cut -c1-120)"
 XF="$OUT/x-intake/2026-01-01/FACTS.md"
 check "PG3: the intake tool read the REAL report (exit 0, FACTS.md and LATEST.md written)" bash -c "[ $RCI = 0 ] && [ -f $XF ] && [ -f $OUT/x-intake/LATEST.md ]"
 check "PG3: FACTS.md answers from the real report (version, tablet, Recents check, notification check, side-key row)" bash -c "grep -qE 'Launcher version / mode \| [0-9]+\.[0-9]+' $XF && grep -q 'Android 10' $XF && grep -q 'Recents format check | the launcher.s reader parsed' $XF && ! grep -q 'Notification format check | (not in the report)' $XF && grep -q 'Side-key test (Power menu v2) | the side key' $XF"
