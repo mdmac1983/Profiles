@@ -1229,7 +1229,7 @@ STEPS=phoneguide/src/main/assets/steps.txt
 GCN=0; GCBAD=0; GCSKIP=0
 gcrun(){ # gcrun <kind> <command line>
   local kind="$1" c="$2" o rc
-  case "$c" in *PATH*) GCSKIP=$((GCSKIP+1)); return;; esac  # the two-step placeholder, not a command
+  case "$c" in *CLASSPATH=PATH*) GCSKIP=$((GCSKIP+1)); return;; esac  # the two-step placeholder (the word PATH to be replaced by hand), not a command. NOT *PATH*: "CLASSPATH=" contains it, which skipped every helper-start and probe line until run 110
   # </dev/null: `adb shell` forwards ITS stdin to the device, and here stdin is the steps file the while-loop below is reading: run 99 ran 2 of ~60 lines because the first command swallowed the rest of the file
   # the guide offers the forms of the start line as ALTERNATIVES, not as a sequence: each is tried from a stopped helper, and must leave it running
   local starts=0; case "$c" in *ShellServer*) case "$c" in *pkill*|*grep*|*ShellProbe*) ;; *) starts=1;; esac;; esac
