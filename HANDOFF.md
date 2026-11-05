@@ -75,6 +75,11 @@ checked against the repo at that date; where it can go stale it says where to lo
   - **Test-writing lessons:** `adb shell input keyevent` is injected and bypasses the accessibility key filter, so hardware-key behaviour is NOT provable on the emulator
     (only the JVM `KeySeq` tests prove it). Section-only runs have no default home → every section starts with `ensurehome`. Fixed sleeps are fragile; poll.
     `adb logcat -c` also ends the streaming logcat. Quote carefully: use the existing `setfeat`/`vfeat` pattern for writing prefs through `run-as`.
+  - **UI dumps list only what is on screen (runs 117/118, 2026-11-05):** a check that swipes blindly and taps "the first Done in the dump" can tick the wrong card (or none) and fail for a reason that is not in the app.
+    Find the node instead: `tools/uinode.py <dump> --contains TEXT [--exact] [--row-of TITLE] [--attr checked]` (pinned by `tools/test_uinode.sh`) with `gseek` in section `g` (dump, swipe one step, look again),
+    and print an `info` line that says what was found, so a red check explains itself.
+  - **Local background jobs:** the "completed (exit code 0)" notice of a `run_in_background` command is the exit of its LAST command (a `tail`, or a wrapper that detached a subshell with `&`), not Gradle's.
+    Read Gradle's own `BUILD SUCCESSFUL` / `EXIT n` line and the `app/build/test-results` XML before saying tests passed.
   - **What CANNOT be proven without Tj's tablet:** real hardware keys (volume/side), rotation/shake/knock sensors, a real restart, MediaTek-specific behaviour,
     demo-mode/INTERNET/power-menu quirks on his ROM. Say so honestly; ask Tj to test and report.
 
