@@ -769,10 +769,20 @@ check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/
 # PG2 / PG3 (Tj, 2026-11-05: "make sure claude can save and use all necessary information from the tablet"): the REAL report this app just wrote on a real Android 10 system (not the invented sample)
 rep_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-report.txt" || return 1; done; }
 kt_all(){ local l p; l=$(grep '^keytest:' "$OUT/x-autorun-done.txt"); for p in "$@"; do printf '%s' "$l" | grep -qF -- "$p" || return 1; done; }
-# the setup screen: scroll through it (a dump only lists what is on screen) and look for the five numbered steps
-: > "$OUT/x-setup-ui.xml"
-for i in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/sx.xml >/dev/null 2>&1; adb shell cat /sdcard/sx.xml >> "$OUT/x-setup-ui.xml" 2>/dev/null; echo >> "$OUT/x-setup-ui.xml"; adb shell input swipe 300 800 300 300 300; sleep 1; done
+# the setup screen: go to its top, then scroll down in SMALL, slow steps until the page stops changing (a dump only lists what is on screen, and eight fast 500 px swipes flung past a whole button: run 119, 2026-11-05)
+for i in 1 2 3 4 5 6; do adb shell input swipe 300 250 300 900 150; done; sleep 1
+: > "$OUT/x-setup-ui.xml"; XLAST=""; XPAGES=0
+for i in $(seq 1 24); do
+  adb shell uiautomator dump /sdcard/sx.xml >/dev/null 2>&1; adb shell cat /sdcard/sx.xml > "$OUT/x-sx.tmp" 2>/dev/null
+  cat "$OUT/x-sx.tmp" >> "$OUT/x-setup-ui.xml"; echo >> "$OUT/x-setup-ui.xml"; XPAGES=$i
+  XCUR=$(grep -o 'text="[^"]*"' "$OUT/x-sx.tmp" | md5sum | cut -c1-12)
+  [ "$XCUR" = "$XLAST" ] && break
+  XLAST="$XCUR"
+  adb shell input swipe 300 750 300 450 900; sleep 1
+done
 ui_all(){ local p; for p in "$@"; do grep -qF -- "$p" "$OUT/x-setup-ui.xml" || return 1; done; }
+XMISS=""; for p in '1. Do everything that is missing' '2. Collect the tablet report' '2b. Share a SHORT summary' '3. Side-key test' '4. Collect EVERYTHING'; do grep -qF -- "$p" "$OUT/x-setup-ui.xml" || XMISS="$XMISS [$p]"; done
+info "PG2: setup screen scan: $XPAGES page(s) to the end; numbered steps not found:${XMISS:- none}"
 check "PG2: the setup screen offers the numbered steps (1 do everything, 2 collect, 2b short summary, 3 side-key test, 4 everything)" ui_all '1. Do everything that is missing' '2. Collect the tablet report' '2b. Share a SHORT summary' '3. Side-key test' '4. Collect EVERYTHING'
 adb pull "$SHARE/summary.txt" "$OUT/x-summary.txt" >/dev/null 2>&1
 sum_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-summary.txt" || return 1; done; }
