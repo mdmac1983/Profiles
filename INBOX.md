@@ -721,3 +721,8 @@ Back
 ```
 I don't know i just want to set up the custom launcher permissions while i have this cable
 ```
+
+## 2026-11-05T20:20:39Z
+```
+I just made the custom launcher the default home app
+```
