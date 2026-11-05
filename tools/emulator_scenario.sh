@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 ka rt last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 ka rt im last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1118,6 +1118,88 @@ adb shell locksettings clear --old 1234 > "$OUT/rt-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; home
 fi # section rt
+if want im; then # section im
+ensurehome
+# ---- AA1: the status-bar switch (Settings.Global policy_control = immersive.status=*) follows the launcher: hidden in the custom launcher, the ORIGINAL value (here a pre-existing one) back in Quickstep;
+#      the lock screen and a plain PIN still work with it on.
+beat "before IM"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+imfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"profile_hide_status_bar\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+sbready(){ adb shell dumpsys window windows 2>/dev/null | awk '/Window #[0-9]+ Window\{[^}]* StatusBar\}/{f=1;c=0} f{ if ($0 ~ /isReadyForDisplay/) {print; exit} c++; if (c>60) exit}' | grep -o 'isReadyForDisplay()=[a-z]*' | head -1; }
+adb shell settings delete global policy_control >/dev/null 2>&1
+adb shell settings put global policy_control "immersive.preconfirms=*"        # a value somebody else set: it must survive and come back
+imfeat true; setmode quickstep; rebind; home; sleep 2
+adb shell locksettings set-pin 1234 > "$OUT/im-setpin.txt" 2>&1
+lockpad; pad d d 1 2 3 4 e; sleep 7                                            # handshake -> Quickstep (Mode.set applies the QUICKSTEP value)
+adb shell settings get global policy_control > "$OUT/im-quickstep.txt" 2>&1
+info "IM Quickstep: policy_control='$(tr -d '\r\n' < $OUT/im-quickstep.txt)', status bar $(sbready)"
+check "AA1: in Quickstep the original policy_control value is untouched" bash -c "[ \"\$(tr -d '\r\n' < $OUT/im-quickstep.txt)\" = 'immersive.preconfirms=*' ]"
+check "AA1: in Quickstep the status bar is shown" bash -c "[ \"\$(echo '$(sbready)')\" = 'isReadyForDisplay()=true' ]"
+adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" >/dev/null 2>&1; sleep 6   # back to custom: Mode.set(CUSTOM) applies the hidden bar
+adb shell settings get global policy_control > "$OUT/im-custom.txt" 2>&1
+info "IM custom: policy_control='$(tr -d '\r\n' < $OUT/im-custom.txt)', status bar $(sbready)"
+check "AA1: in the custom launcher policy_control = the original entry + immersive.status=*" bash -c "[ \"\$(tr -d '\r\n' < $OUT/im-custom.txt)\" = 'immersive.preconfirms=*:immersive.status=*' ]"
+check "AA1: in the custom launcher the status bar is hidden" bash -c "[ \"\$(echo '$(sbready)')\" = 'isReadyForDisplay()=false' ]"
+shot 130-im-custom-home
+adb shell input swipe 300 2 300 350 150; sleep 1.5
+adb shell input swipe 300 2 300 350 150; sleep 1.5
+adb shell dumpsys window windows 2>/dev/null | awk '/Window #[0-9]+ Window\{[^}]* StatusBar\}/{f=1;c=0} f{ if ($0 ~ /mFrame=/) {print; exit} c++; if (c>60) exit}' | tr -s ' ' > "$OUT/im-frame.txt"
+check "AA1: it is a quieter look, NOT a lock: a second swipe from the top still opens the panel (so the rotation tile stays reachable)" grep -q '\[0,0\]\[600,976\]' "$OUT/im-frame.txt"
+adb shell cmd statusbar collapse; sleep 1.5
+lockpad; pad 1 2 3 4 e; sleep 6                                                  # the lock screen + a plain PIN with the bar hidden
+resumed > "$OUT/im-unlock.txt"
+check "AA1: the lock screen and a plain PIN still work with the bar hidden (custom stack in front)" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/im-unlock.txt"
+lockpad; pad d d 1 2 3 4 e; sleep 7                                             # handshake again -> Quickstep: the original comes back
+adb shell settings get global policy_control > "$OUT/im-quickstep2.txt" 2>&1
+check "AA1: back in Quickstep the original value is restored exactly" bash -c "[ \"\$(tr -d '\r\n' < $OUT/im-quickstep2.txt)\" = 'immersive.preconfirms=*' ]"
+adb shell settings delete global policy_control >/dev/null 2>&1
+adb shell locksettings clear --old 1234 > "$OUT/im-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+setfeat; setmode custom; home
+fi # section im
+if want rs3; then # section rs3
+ensurehome
+# ---- RESEARCH 3 (info lines only): (a) the corrected 'am stack move-task' into the HOME stack (b) a REAL power-key press written into the emulator's "Power Button" device by the emulator console:
+#      does the shell (getevent) see it BEFORE the stock menu appears, and with DISABLE2_GLOBAL_ACTIONS set does the key still arrive while NO stock menu opens?
+beat "before RS3"
+setfeat; setmode custom; home; sleep 2
+probe(){ adb shell "CLASSPATH=\$(pm path $PKG | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe $*"; }
+recents(){ adb shell dumpsys activity recents 2>/dev/null | grep -E 'Recent #[0-9]+:' | sed 's/^ *//' | cut -c1-95 | tr '\n' '|' | cut -c1-600; }
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+adb shell am stack list > "$OUT/rs3-stacks.txt" 2>&1
+awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:/{t=$1; sub(/taskId=/,"",t); sub(/:/,"",t); print sid, t, $2}' "$OUT/rs3-stacks.txt" > "$OUT/rs3-tasks.txt"
+CT=$(grep 'com.android.contacts' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'com.tj.launcher|com.android.launcher3' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $1}')
+info "RS3 a am stack help: $(adb shell am stack help 2>&1 | head -12 | tr -s ' ' | tr '\n' '|' | cut -c1-500)"
+if [ -n "$CT" ] && [ -n "$HS" ]; then
+  P0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
+  adb shell am stack move-task "$CT" "$HS" true > "$OUT/rs3-movetask.txt" 2>&1; sleep 2
+  info "RS3 a 'am stack move-task $CT $HS true' (contacts into the HOME stack) -> [$(tr '\n' ' ' < $OUT/rs3-movetask.txt | cut -c1-300)]; Recents after: $(recents); pid $P0 -> $(adb shell pidof com.android.contacts | tr -d '\r\n')"
+  adb shell am stack list 2>&1 | grep -E 'Stack id=|taskId=' | sed 's/^ *//' | cut -c1-90 | tr '\n' '|' > "$OUT/rs3-stacks-after.txt"; info "RS3 a stacks after: $(cat $OUT/rs3-stacks-after.txt | cut -c1-500)"
+else info "RS3 a skipped (contacts task=$CT home stack=$HS)"; fi
+adb shell am force-stop com.android.contacts; home
+POWERDEV=$(adb shell getevent -pl 2>&1 | awk '/add device/{d=$4} /KEY_POWER/{print d; exit}')
+info "RS3 b power device: $POWERDEV; emulator console: $(adb emu help 2>&1 | head -3 | tr '\n' ' ' | cut -c1-200)"
+presskey(){ # presskey <hold seconds>: a real kernel-level power key press through the emulator console
+  adb emu event send EV_KEY:KEY_POWER:1 EV_SYN:SYN_REPORT:0 > "$OUT/rs3-emu-down.txt" 2>&1; sleep "$1"; adb emu event send EV_KEY:KEY_POWER:0 EV_SYN:SYN_REPORT:0 > "$OUT/rs3-emu-up.txt" 2>&1; }
+if [ -n "$POWERDEV" ]; then
+  adb logcat -c
+  ( adb shell "timeout 12 getevent -lt $POWERDEV" > "$OUT/rs3-getevent.txt" 2>&1 & ) ; sleep 2
+  presskey 1.4; sleep 2; shot 131-rs3-power-console
+  adb shell uiautomator dump /sdcard/rs3.xml >/dev/null 2>&1
+  adb logcat -d -v epoch -s TjA11y:I 2>/dev/null | grep 'menuOpen=true' | head -1 | cut -c1-120 > "$OUT/rs3-menu-seen.txt"
+  info "RS3 b1 console said [$(cat $OUT/rs3-emu-down.txt $OUT/rs3-emu-up.txt | tr '\n' ' ' | cut -c1-160)]; getevent saw: $(grep -E 'KEY_POWER' $OUT/rs3-getevent.txt | tr -s ' ' | tr '\n' '|' | cut -c1-260); our helper saw the stock menu at: $(cat $OUT/rs3-menu-seen.txt); menu items on screen: $(adb shell cat /sdcard/rs3.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"
+  adb shell input keyevent KEYCODE_BACK; sleep 2
+  ( probe statusbar 0 0x8 22 > "$OUT/rs3-sb.txt" 2>&1 & ) ; sleep 5
+  ( adb shell "timeout 10 getevent -lt $POWERDEV" > "$OUT/rs3-getevent2.txt" 2>&1 & ) ; sleep 1.5
+  presskey 1.4; sleep 2; shot 132-rs3-power-console-disabled
+  adb shell uiautomator dump /sdcard/rs3b.xml >/dev/null 2>&1
+  info "RS3 b2 with DISABLE2_GLOBAL_ACTIONS: probe said [$(tr '\n' ' ' < $OUT/rs3-sb.txt | cut -c1-200)]; getevent saw: $(grep -E 'KEY_POWER' $OUT/rs3-getevent2.txt | tr -s ' ' | tr '\n' '|' | cut -c1-260); menu items on screen: $(adb shell cat /sdcard/rs3b.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"
+  adb shell input keyevent KEYCODE_BACK; sleep 16
+  info "RS3 b3 after the probe ended the stock menu is back: $(adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; adb shell uiautomator dump /sdcard/rs3c.xml >/dev/null 2>&1; adb shell cat /sdcard/rs3c.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"
+  adb shell input keyevent KEYCODE_BACK; sleep 1
+else info "RS3 b skipped: no device lists KEY_POWER"; fi
+setfeat; setmode custom; home
+fi # section rs3
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
