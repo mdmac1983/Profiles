@@ -111,3 +111,16 @@ pm path com.android.packageinstaller
 pm path com.android.inputmethod.latin
 pm list packages -s | head -150
 getprop | grep -iE 'ro.product|ro.build.flavor|ro.build.description|ro.build.tags|ro.vendor.build' | head -30
+## v0.7 on THIS ROM: the samples the clean-up and the panel rules read (the launcher's own readers are also run on the real output in PARSER SELF-CHECK)
+dumpsys activity recents | grep -E 'Recent #|realActivity=|affinity=' | head -40
+dumpsys notification | grep 'NotificationRecord(' | cut -c1-160 | head -8
+settings get global policy_control
+dumpsys activity services com.tj.launcher | grep -E 'ServiceRecord|isForeground' | head -6
+dumpsys activity service com.android.systemui/.SystemUIService | grep -oE '[A-Za-z]+Tile:' | sort -u
+## the side key (Power menu v2): which input device carries it
+getevent -pl | grep -E 'add device|name:|KEY_POWER'
+## adb over the network: a count only, no addresses
+netstat -ltn | grep -c ':555'
+## how the launcher has been doing: its crashes, then its own log
+logcat -b crash -d -v time | grep -A12 'com.tj.launcher' | head -60
+logcat -d -v time -s TjReset:I TjTasks:I TjA11y:I TjKeepAlive:I TjImmersive:I TjRouter:I TjHooks:I TjKeyboard:I TjRecentsGuard:I | tail -250
