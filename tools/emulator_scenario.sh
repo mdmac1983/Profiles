@@ -769,6 +769,17 @@ check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/
 # PG2 / PG3 (Tj, 2026-11-05: "make sure claude can save and use all necessary information from the tablet"): the REAL report this app just wrote on a real Android 10 system (not the invented sample)
 rep_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-report.txt" || return 1; done; }
 kt_all(){ local l p; l=$(grep '^keytest:' "$OUT/x-autorun-done.txt"); for p in "$@"; do printf '%s' "$l" | grep -qF -- "$p" || return 1; done; }
+# the setup screen: scroll through it (a dump only lists what is on screen) and look for the five numbered steps
+: > "$OUT/x-setup-ui.xml"
+for i in 1 2 3 4 5 6 7 8; do adb shell uiautomator dump /sdcard/sx.xml >/dev/null 2>&1; adb shell cat /sdcard/sx.xml >> "$OUT/x-setup-ui.xml" 2>/dev/null; echo >> "$OUT/x-setup-ui.xml"; adb shell input swipe 300 800 300 300 300; sleep 1; done
+ui_all(){ local p; for p in "$@"; do grep -qF -- "$p" "$OUT/x-setup-ui.xml" || return 1; done; }
+check "PG2: the setup screen offers the numbered steps (1 do everything, 2 collect, 2b short summary, 3 side-key test, 4 everything)" ui_all '1. Do everything that is missing' '2. Collect the tablet report' '2b. Share a SHORT summary' '3. Side-key test' '4. Collect EVERYTHING'
+adb pull "$SHARE/summary.txt" "$OUT/x-summary.txt" >/dev/null 2>&1
+sum_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-summary.txt" || return 1; done; }
+check "PG3: the SHORT summary (for pasting or sharing when the file cannot be attached) was written, is under 12 KB, and holds the state and the parser self-check" bash -c "[ -s $OUT/x-summary.txt ] && [ \$(wc -c < $OUT/x-summary.txt) -lt 12000 ]" 
+check "PG3: the short summary has the same section titles the intake tool reads" sum_all 'TABLET SUMMARY' 'THE LAUNCHER ON THIS TABLET' 'PARSER SELF-CHECK' "this launcher's permissions" '^model: '
+python3 -I tools/tablet_intake.py - --out "$OUT/x-intake-sum" --date 2026-01-01 --label summary < "$OUT/x-summary.txt" > "$OUT/x-intake-sum-console.txt" 2>&1; RCS=$?
+check "PG3: the intake tool reads the short summary too (exit 0, FACTS.md says it is the short one)" bash -c "[ $RCS = 0 ] && grep -q 'SHORT summary' $OUT/x-intake-sum/2026-01-01/FACTS.md"
 info "PG2: report $(wc -c < "$OUT/x-report.txt" 2>/dev/null) bytes, $(wc -l < "$OUT/x-report.txt" 2>/dev/null) lines; keytest: $(grep '^keytest:' "$OUT/x-autorun-done.txt" | cut -c1-330)"
 check "PG2: the report holds the launcher's own state (version, mode, helper, accessibility, crash breaker)" rep_all 'THE LAUNCHER ON THIS TABLET' '^launcher version: ' '^mode: ' '^shell helper reachable: yes' '^accessibility helper bound: ' '^crash breaker tripped: '
 check "PG2: the report ran the launcher's own readers on this system (PARSER SELF-CHECK: Recents tasks, apps with a notification)" rep_all 'PARSER SELF-CHECK' '^Recents tasks parsed: [0-9]' '^Apps with a notification now'
