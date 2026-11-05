@@ -547,3 +547,10 @@ check the emulator results
 ```
 Check
 ```
+
+## 2026-11-05T00:47:04Z
+```
+Go through this entire project goals again and think harder and more creative and outside the box for possible ways, whether adb or accessibility service or otherwise, to accomplish the goals of this project:
+
+Two separate "profiles" by launcher,  hidden screenshot button without delay, as fast as possible launcher startup (if it can be kept in ram or preloaded or prepped that is fine, even if it can be prepped ahead of time on the lock screen invisibly or inside the quickstep launcher), rotation only quick settings tile with hidden pencil in the custom launcher with custom settings app that looks and behaves identically to stock settings app but can have settings removed and customized,  customizable quick settings tiles in the quickstep launcher while permanently maintaining the single tile in custom launcher,  only showing custom launcher opened apps in the custom launcher recents list,  plus the other features of the custom launcher.  The custom launcher should retain all these settings and functionality even through tablet restarts
+```
