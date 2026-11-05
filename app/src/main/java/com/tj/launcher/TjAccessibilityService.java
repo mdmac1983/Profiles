@@ -1448,9 +1448,9 @@ public class TjAccessibilityService extends AccessibilityService {
         int action = PowerMenuRule.decide(mode, custom, locked, menuOpen, found);
         if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
-            showOverlay(shot);
-            Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
+            Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);   // AC6: stored BEFORE the card is built, so the very first open already uses the measured panel and pitch
             if (lastPitch > 0) Features.setString(this, itemKey(), String.valueOf(lastPitch));
+            showOverlay(shot);
             handler.removeCallbacks(recheck);
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
