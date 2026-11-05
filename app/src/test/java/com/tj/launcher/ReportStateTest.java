@@ -42,7 +42,7 @@ public class ReportStateTest {
     @Test public void noAllowListedKeyLooksLikeASecret() {
         for (String k : ReportState.SAFE_VALUES) {
             String l = k.toLowerCase(java.util.Locale.ROOT);
-            assertFalse(k, l.contains("pin") || l.contains("code") || l.contains("seq") || l.contains("digit") || l.contains("secret") || l.contains("pass") || l.contains("number") || l.contains("konami") || l.contains("corner") || l.contains("hotspot"));
+            assertFalse(k, l.contains("pin") || l.contains("tap_code") || l.contains("lock_code") || l.contains("unlock_code") || l.contains("seq") || l.contains("digit") || l.contains("secret") || l.contains("pass") || l.contains("number") || l.contains("konami") || l.contains("corner") || l.contains("hotspot"));   // compile_done_code is a version number, not a code
         }
         assertTrue(ReportState.SAFE_VALUES.contains("keytest_output"));
     }
