@@ -52,12 +52,16 @@ public class TjAccessibilityService extends AccessibilityService {
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
+        if (event != null && EventNoise.isNoise(event.getEventType(), event.getPackageName())) {   // AB2: another app's content change: it cannot open the power menu, the shade or the PIN pad
+            if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }   // only the (rare, 10-minute) Solitaire probe wants those
+            return;
+        }
         scheduleLockUpdate();
         scheduleLayerRefresh();
         schedulePencil(event);
         trackDirty(event);
         trackUnlockKey(event);
-        try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); }
+        if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
             if (overlay != null) removeOverlay();
@@ -73,6 +77,17 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private long lastEvalMs = 0;
+
+    /** AB2: is the Solitaire probe running? Read from the preferences at most once a second instead of on every event. */
+    private long probeUntilCache = 0, probeCacheAt = -10_000;
+    private boolean probeWanted() {
+        long up = android.os.SystemClock.uptimeMillis();
+        if (up - probeCacheAt > 1000) {
+            probeCacheAt = up;
+            try { probeUntilCache = Long.parseLong(Features.getString(this, FailsafeKeys.PROBE_UNTIL_KEY, "0")); } catch (NumberFormatException e) { probeUntilCache = 0; }
+        }
+        return probeUntilCache != 0;
+    }
 
     private static final String CARD_KEY = "power_card_rect";
 
@@ -188,7 +203,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Launcher control. */
     private boolean lockPatchWanted() {
-        return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && Mode.isCustom(this) && keyguardLocked();
+        return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && Mode.isCustom(this) && keyguardLockedFast();
     }
 
     private Rect patchTarget() {
@@ -434,6 +449,15 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean keyguardLocked() {
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         return km != null && km.isKeyguardLocked();
+    }
+
+    /** AB2: the same answer, remembered for 250 ms. Only for the per-event early-outs (each real call is a binder round trip to system_server); screen on/off and unlock broadcasts re-check at once. */
+    private long kgAt = -10_000; private boolean kgVal = false;
+    private boolean keyguardLockedFast() {
+        long up = android.os.SystemClock.uptimeMillis();
+        if (up - kgAt < 250) return kgVal;
+        kgVal = keyguardLocked(); kgAt = up;
+        return kgVal;
     }
 
     private long lastPadKeyAt = 0;
@@ -878,7 +902,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Called on every accessibility event: leading edge at once (the number must go the moment the PIN pad appears), plus one trailing check. */
     private void scheduleLockUpdate() {
-        if (!LockNumber.enabled(this) && lockView == null && !keyguardLocked()) return;   // number off, nothing on screen and not on the lock screen: zero cost
+        if (!LockNumber.enabled(this) && lockView == null && !keyguardLockedFast()) return;   // number off, nothing on screen and not on the lock screen: zero cost
         long now = android.os.SystemClock.uptimeMillis();
         if (now - lastLockEvalMs >= 60) { lastLockEvalMs = now; updateLockNumber(); }
         if (!lockEvalPending) { lockEvalPending = true; handler.postDelayed(lockEval, 120); }
@@ -1303,13 +1327,16 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean menuOpen = false, found = false;
         if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
             List<AccessibilityWindowInfo> windows = getWindows();
-            if (menuSeenMs == 0 && dialogWindowPresent(windows)) menuSeenMs = android.os.SystemClock.uptimeMillis();
+            final boolean dialogUp = dialogWindowPresent(windows);
+            if (menuSeenMs == 0 && dialogUp) menuSeenMs = android.os.SystemClock.uptimeMillis();
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
-                if (cached != null && dialogWindowPresent(windows)) showOverlay(cached);   // instant: no node scan yet
+                if (cached != null && dialogUp) showOverlay(cached);   // instant: no node scan yet
             }
             if (windows != null) {
                 for (AccessibilityWindowInfo w : windows) {
+                    CharSequence wt = w.getTitle();
+                    if (!EventNoise.mayHoldPowerMenu(dialogUp, wt != null && wt.toString().contains("ActionsDialog"), w.getType())) continue;   // AB2: never fetch + search the foreground app's own tree
                     AccessibilityNodeInfo root = w.getRoot();
                     if (root == null) continue;
                     if (getPackageName().contentEquals(root.getPackageName() == null ? "" : root.getPackageName())) { root.recycle(); continue; }

@@ -33,8 +33,12 @@ public final class Mode {
     public static long failOpenUntil(Context c) { return prefs(c).getLong("failOpenUntil", 0); }
     public static void markFailOpen(Context c, long untilMs) { prefs(c).edit().putLong("failOpenUntil", untilMs).commit(); }
 
+    // AB2: one handle per process (see Features.p)
+    private static volatile SharedPreferences cached;
     private static SharedPreferences prefs(Context c) {
-        return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        SharedPreferences s = cached;
+        if (s == null) { s = c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); cached = s; }
+        return s;
     }
 
     public static String get(Context c) {

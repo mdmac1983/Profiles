@@ -16,7 +16,13 @@ public final class Features {
 
     private Features() {}
 
-    private static SharedPreferences p(Context c) { return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
+    // AB2: one handle per process. Context.getSharedPreferences takes a global lock and a map lookup on every call, and the accessibility helper reads these settings several times per event.
+    private static volatile SharedPreferences sp;
+    private static SharedPreferences p(Context c) {
+        SharedPreferences s = sp;
+        if (s == null) { s = c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); sp = s; }
+        return s;
+    }
 
     public static boolean get(Context c, String key, boolean def) { return p(c).getBoolean(key, def); }
     public static void set(Context c, String key, boolean on) { p(c).edit().putBoolean(key, on).commit(); }
