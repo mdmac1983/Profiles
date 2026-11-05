@@ -1095,6 +1095,9 @@ adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session end
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
 info "RT after the lock: $(rec)"
 info "RT the clean-up said: $(grep 'AT LOCK' $OUT/rt-log-lock.txt | tail -1 | cut -c1-420)"
+info "RT the plan (base | now | stop | remove by id | spared): $(grep 'session end' $OUT/rt-log-lock.txt | tail -1 | sed 's/^.*session end: //' | cut -c1-600)"
+info "RT task ids after the lock: $(tl)"
+info "RT helper log tail: $(adb shell tail -n 6 /data/local/tmp/tjshell.log 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' > "$OUT/rt-recents-after.txt"; adb shell dumpsys activity recents 2>/dev/null | grep 'Recent #' | sed 's/^ *//' | cut -c1-100 > "$OUT/rt-recents-headers-after.txt"
 check "AA3: the lock-time clean-up used the task list (it reports the new/closed/removed/spared counts)" grep -q "tasks: [0-9]* new since the session began" "$OUT/rt-log-lock.txt"
 check "AA3: Gallery (only opened in Quickstep) is gone from Recents" bash -c "! grep -qi 'gallery' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
