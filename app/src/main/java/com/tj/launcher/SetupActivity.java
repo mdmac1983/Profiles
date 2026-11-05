@@ -230,16 +230,23 @@ public class SetupActivity extends Activity {
         Features.setString(this, "keytest_menu", "");
         say("SIDE-KEY TEST: within the next 8 seconds hold the SIDE key (power) for about 1.5 seconds, then let go. Never hold it longer than 3 seconds.");
         new Thread(new Runnable() { public void run() {
-            String out = ShellHelper.keyTest();
-            if (out == null) { say("side-key test FAILED (is the helper running?)"); return; }
-            String res = out.trim();
-            // the one-line verdict is computed from the WHOLE answer and stored on its own: the report cuts long values, and the flag line comes after up to 40 key lines
-            Features.setString(SetupActivity.this, "keytest_summary", ShellProtocol.keyTestSummary(res));
-            Features.setString(SetupActivity.this, "keytest_output", res.length() > 1500 ? res.substring(0, 1500) : res);
-            Features.setString(SetupActivity.this, "keytest_at", new java.util.Date().toString());
+            String res = runKeyTest();
+            if (res == null) { say("side-key test FAILED (is the helper running?)"); return; }
             say("side-key test: " + ShellProtocol.keyTestSummary(res));
             ui.post(new Runnable() { public void run() { build(); } });
         } }, "tj-setup-keytest").start();
+    }
+
+    /** The helper's KEYTEST (about 13 s, blocking: call off the main thread) and where its result is remembered, so the screen AND the tablet report show it. Returns the raw answer, or null if the helper did not answer. */
+    private String runKeyTest() {
+        String out = ShellHelper.keyTest();
+        if (out == null) return null;
+        String res = out.trim();
+        // the one-line verdict is computed from the WHOLE answer and stored on its own: the report cuts long values, and the flag line comes after up to 40 key lines
+        Features.setString(this, "keytest_summary", ShellProtocol.keyTestSummary(res));
+        Features.setString(this, "keytest_output", res.length() > 1500 ? res.substring(0, 1500) : res);
+        Features.setString(this, "keytest_at", new java.util.Date().toString());
+        return res;
     }
 
     private void keyAnswer(String a) {
@@ -287,6 +294,9 @@ public class SetupActivity extends Activity {
                 String out = it.job.equals("A11YON") ? ShellHelper.a11yOn() : shellJob(it.job);
                 b.append(it.job).append(out == null ? " FAILED" : " ok").append('\n');
             }
+            // the side-key test first, so the report written next holds its verdict (the emulator test reads both)
+            String kt = runKeyTest();
+            b.append("keytest: ").append(kt == null ? "FAILED" : kt.replace('\n', '|')).append('\n');
             File f = TabletReport.write(SetupActivity.this);
             b.append("report ").append(f.length()).append(" bytes\n");
             ShellHelper.run("MKDIR_PUBLISH");
@@ -295,8 +305,6 @@ public class SetupActivity extends Activity {
             b.append("shots: ").append(shots == null ? "FAILED" : shots.trim().replace('\n', ' ')).append('\n');
             String apks = ShellHelper.apks();
             b.append("apks: ").append(apks == null ? "FAILED" : apks.trim().replace('\n', ' ')).append('\n');
-            String kt = ShellHelper.keyTest();
-            b.append("keytest: ").append(kt == null ? "FAILED" : kt.trim().replace('\n', '|')).append('\n');
             for (Item it : items) b.append("state ").append(it.title).append(": ").append(done(it) ? "done" : "TODO").append('\n');
             try (java.io.FileOutputStream os = new java.io.FileOutputStream(new File(TabletReport.shareDir(SetupActivity.this), "autorun-done.txt"))) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
             ui.post(new Runnable() { public void run() { build(); } });
