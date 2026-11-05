@@ -78,7 +78,11 @@ public final class KeepAliveService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         // START_STICKY: Android restarts us (and with us the process) if it is ever killed. A restart request after the rules said "off" ends at once.
         if (!KeepAlivePolicy.honourRestart(enabled(this), CrashGuard.wasTripped(this))) { stopSelf(); return START_NOT_STICKY; }
-        try { goForeground(); running = true; } catch (Throwable t) { Log.e(TAG, "keep-alive refresh failed", t); }
+        try { goForeground(); running = true; }
+        catch (Throwable t) {
+            // a start made with startForegroundService() that never reaches startForeground() crashes the whole app after ~5 s: if going foreground fails, end the service instead (review of 2026-11-05)
+            Log.e(TAG, "keep-alive refresh failed, stopping", t); running = false; stopSelf(); return START_NOT_STICKY;
+        }
         return START_STICKY;
     }
 
