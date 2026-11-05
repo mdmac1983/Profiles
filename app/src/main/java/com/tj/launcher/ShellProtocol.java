@@ -219,15 +219,24 @@ public final class ShellProtocol {
     public static final int KEYTEST_FLAG_SECONDS = 12, KEYTEST_READ_SECONDS = 9;
     private static final Pattern KEY_TIME = Pattern.compile("^\\[\\s*([0-9]+\\.[0-9]+)\\]");
 
-    /** From the raw lines of {@code getevent -lt}: the device list and every KEY_ event (not the touch-screen noise), at most 40 lines. */
+    /** Caps for {@link #keyTestLines}, counted SEPARATELY: getevent lists every input device (two lines each) before any event, so on a tablet with many of them a shared cap would be used up by the list and the
+     *  KEY_POWER lines dropped, which would read as a false "side key NOT seen" and could end the Power menu v2 idea for the wrong reason (code review of 2026-11-05). */
+    static final int KEYTEST_MAX_DEVICE_LINES = 24, KEYTEST_MAX_KEY_LINES = 40;
+
+    /** From the raw lines of {@code getevent -lt}: the device list (at most 24 lines) and every KEY_ event (not the touch-screen noise; at most 40 lines). */
     public static List<String> keyTestLines(List<String> raw) {
         List<String> out = new ArrayList<>();
         if (raw == null) return out;
+        int devices = 0, keys = 0;
         for (String l : raw) {
             if (l == null) continue;
             String t = l.trim();
             if (t.isEmpty()) continue;
-            if (t.startsWith("add device") || t.startsWith("name:") || t.contains("KEY_")) { out.add(t.length() > 160 ? t.substring(0, 160) : t); if (out.size() >= 40) break; }
+            boolean device = t.startsWith("add device") || t.startsWith("name:");
+            if (device && devices < KEYTEST_MAX_DEVICE_LINES) devices++;
+            else if (!device && t.contains("KEY_") && keys < KEYTEST_MAX_KEY_LINES) keys++;
+            else continue;
+            out.add(t.length() > 160 ? t.substring(0, 160) : t);
         }
         return out;
     }
