@@ -13,10 +13,7 @@
 
 **With a PHONE running an adb app (ADB OTG etc.) instead of a computer:** see `research/ADB_PHONE.txt`. You paste ONE line (the helper line, no "adb shell" prefix); everything else is done by the launcher itself in Launcher control > Tablet setup & report, and the results are published to the tablet's Downloads / launcher-probe folder.
 
-Optional experiment E1 (do it after the fast path; 1 minute): the notification panel's **pencil and gear** can be hidden by Android itself with no delay.
-- [ ] `adb shell settings put global device_demo_mode 1` then pull down the notification panel twice: the pencil and gear should be gone. Look for anything odd (lock screen, power menu, Settings).
-- [ ] Undo at once if anything is odd: `adb shell settings put global device_demo_mode 0`
-- If it looks clean, turn on Launcher control > Quick settings > "Hide the pencil AND the gear natively (experimental)": the launcher then switches it on only while the custom launcher is active. (On the emulator the lock screen, power menu and shade were unchanged with the flag on.)
+~~Optional experiment E1 (hide the pencil and gear with `device_demo_mode`)~~ **REMOVED 2026-11-05 (safety audit AB1): do NOT do this.** Android's retail-demo flag makes the system create a demo user and switch to it at boot (AOSP retail-mode documentation). The launcher hides the pencil with an accessibility cover instead. If you ever switched it on, `settings put global device_demo_mode 0` puts it back (also in the phone guide, section 10).
 
 The sections below explain every command one by one (this is what the scripts run).
 
