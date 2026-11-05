@@ -1322,8 +1322,8 @@ check "PF-S3: no Wi-Fi or Bluetooth tile in the panel" bash -c "! grep -qiE 'con
 check "PF-S4: the rotation tile is in the panel" grep -qiE 'content-desc="[^"]*(auto-rotate|portrait|landscape)' "$OUT/pf-shade1.xml"
 adb shell cmd statusbar collapse; sleep 1.5
 adb shell cmd statusbar expand-settings; sleep 3; shot 141-pf-qs-full
+adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pf-pencil-windows.txt" 2>&1     # BEFORE the uiautomator dump: a dump connects UiAutomation, which makes Android unbind every accessibility service for a moment (the cover goes with it)
 pf_dump qs
-adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pf-pencil-windows.txt" 2>&1
 check "PF-P1: a cover window sits over the pencil while the full quick settings are open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pf-pencil-windows.txt)\" -ge 1 ]"
 check "PF-P2: still no Wi-Fi or Bluetooth tile in the full quick settings" bash -c "! grep -qiE 'content-desc=\"(wi-?fi|bluetooth)' $OUT/pf-qs.xml"
 adb shell cmd statusbar collapse; sleep 1.5
