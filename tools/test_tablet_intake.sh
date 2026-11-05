@@ -173,6 +173,32 @@ $INTAKE "$T/sysin" --out "$T/outsys" --date 2026-11-05 >/dev/null 2>&1
 $INTAKE "$T/shapein" --out "$T/outshape" --date 2026-11-05 >/dev/null 2>&1
 check "no notification mismatch flag when the sample holds only the system's pkg=android records" '[ -f "$T/outsys/2026-11-05/FACTS.md" ] && ! grep -q "PARSER MISMATCH: the notification sample" "$T/outsys/2026-11-05/FACTS.md"'
 check "a notification record shape the reader cannot parse is still a mismatch" 'grep -q "PARSER MISMATCH: the notification sample" "$T/outshape/2026-11-05/FACTS.md"'
+
+# code review of 2026-11-05: (1) logcat "-v time" writes the level as "E/Tag(", which the error detector used to miss
+python3 -I - "$SAMPLE" "$T/logerr/tablet-report.txt" <<'PY'
+import os, sys
+s = open(sys.argv[1]).read()
+a = "11-05 06:01:11.201 I/TjReset( 4242): AT LOCK: cleaned 6 apps in 412 ms"
+assert a in s
+os.makedirs(os.path.dirname(sys.argv[2]), exist_ok=True)
+open(sys.argv[2], "w").write(s.replace(a, a + "\n11-05 06:02:00.000 E/TjReset( 4242): boom"))
+PY
+$INTAKE "$T/logerr" --out "$T/outlogerr" --date 2026-11-05 >/dev/null 2>&1
+check "an E/ line in the launcher's log (logcat -v time) is counted as an error and flagged" 'grep -q "log tail has 1 error-looking line" "$T/outlogerr/2026-11-05/FACTS.md"'
+check "the unchanged sample log has no error-looking line" 'grep -q "0 error-looking" "$T/outf/2026-11-05/FACTS.md"'
+# (2) IPv6 addresses are redacted; things that only look like one (::1, std::string, a time of day) are left alone
+{ cat "$SAMPLE"; printf '%s\n' "link: fe80::a1b2:c3d4:e5f6:7a8b%wlan0 and 2001:db8:85a3::8a2e:370:7334 and 2001:0db8:0000:0000:0000:ff00:0042:8329 end" "loopback ::1 and std::string and the time 06:49:20 end"; } > "$T/v6.txt"
+$INTAKE "$T/v6.txt" --out "$T/outv6" --date 2026-11-05 >/dev/null 2>&1
+V6="$T/outv6/2026-11-05/tablet-report.txt"
+check "IPv6 addresses are redacted (three of them, nothing left of the digits)" '[ -f "$V6" ] && ! grep -qE "fe80::a1b2|2001:db8:85a3|2001:0db8:0000" "$V6" && [ "$(grep -o "<ipv6>" "$V6" | wc -l)" = 3 ]'
+check "what only looks like an address is left alone (::1, std::string, a time of day)" 'grep -q "loopback ::1 and std::string and the time 06:49:20 end" "$V6"'
+# (3) two reports sent together (a browser numbers the second download " (1)"): the newest is read, both are kept, and INTAKE.txt says so
+mkdir -p "$T/two"
+sed 's/Acme Tab10/OldTabX/g' "$SAMPLE" > "$T/two/tablet-report.txt"
+sed 's/Acme Tab10/NewTabY/g' "$SAMPLE" > "$T/two/tablet-report (1).txt"
+$INTAKE "$T/two" --out "$T/outtwo" --date 2026-11-05 >/dev/null 2>&1
+check "with two reports FACTS.md comes from the newest (' (1)'), not the alphabetically first" 'grep -q "NewTabY" "$T/outtwo/2026-11-05/FACTS.md" && ! grep -q "OldTabX" "$T/outtwo/2026-11-05/FACTS.md"'
+check "both reports are kept and INTAKE.txt names the one that was read" '[ -f "$T/outtwo/2026-11-05/tablet-report.txt" ] && [ -f "$T/outtwo/2026-11-05/tablet-report__1_.txt" ] && grep -q "read: FACTS.md was written from tablet-report__1_.txt (the newest of 2" "$T/outtwo/2026-11-05/INTAKE.txt"'
 check "the red flags come BEFORE the table"               '[ "$(grep -n "## Red flags" "$F" | cut -d: -f1)" -lt "$(grep -n "## Answers" "$F" | cut -d: -f1)" ]'
 
 # ---------------------------------------------------------------- the guide tells Tj to send the file this tool reads
