@@ -208,6 +208,48 @@ public final class ShellProtocol {
     /** SHOTS and APKS are fixed routines inside the helper (loops over fixed lists, nothing from the caller). */
     public static boolean isShots(String line) { return line != null && line.trim().equals("SHOTS"); }
     public static boolean isApks(String line) { return line != null && line.trim().equals("APKS"); }
+
+    // ------------------------------------------------------------------ "Power menu v2" readiness test (Tj, 2026-11-05: "add whatever is needed to the phone guide")
+    /**
+     * "KEYTEST": a fixed routine inside the helper (nothing from the caller). It holds the status-bar flag that keeps Android's power menu away for {@link #KEYTEST_FLAG_SECONDS} seconds (the same
+     * ShellProbe call the guide's 3-second card uses; Android clears the flag by itself when that process ends) and, meanwhile, reads the key events of every input device for
+     * {@link #KEYTEST_READ_SECONDS} seconds. Two questions are answered at once: may the shell read the side key on THIS tablet, and does the flag keep the normal menu away.
+     */
+    public static boolean isKeyTest(String line) { return line != null && line.trim().equals("KEYTEST"); }
+    public static final int KEYTEST_FLAG_SECONDS = 12, KEYTEST_READ_SECONDS = 9;
+    private static final Pattern KEY_TIME = Pattern.compile("^\\[\\s*([0-9]+\\.[0-9]+)\\]");
+
+    /** From the raw lines of {@code getevent -lt}: the device list and every KEY_ event (not the touch-screen noise), at most 40 lines. */
+    public static List<String> keyTestLines(List<String> raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null) return out;
+        for (String l : raw) {
+            if (l == null) continue;
+            String t = l.trim();
+            if (t.isEmpty()) continue;
+            if (t.startsWith("add device") || t.startsWith("name:") || t.contains("KEY_")) { out.add(t.length() > 160 ? t.substring(0, 160) : t); if (out.size() >= 40) break; }
+        }
+        return out;
+    }
+
+    /** One plain sentence about the side key from the helper's answer (the key events and the flag line). Never throws. */
+    public static String keyTestSummary(String output) {
+        if (output == null || output.trim().isEmpty()) return "no answer from the helper (is it running?)";
+        double down = -1, up = -1;
+        boolean seen = false;
+        for (String l : output.split("\\n")) {
+            if (!l.contains("KEY_POWER")) continue;
+            seen = true;
+            Matcher m = KEY_TIME.matcher(l.trim());
+            double ts = m.find() ? Double.parseDouble(m.group(1)) : -1;
+            if (l.contains("DOWN") && down < 0) down = ts;
+            else if (l.contains("UP") && down >= 0 && up < 0) up = ts;
+        }
+        String key = !seen ? "the side key was NOT seen (no KEY_POWER event in " + KEYTEST_READ_SECONDS + " s: it was not pressed, or the shell cannot read it)"
+                : (down >= 0 && up >= down ? String.format(java.util.Locale.US, "the side key WAS seen (held %.1f s)", up - down) : "the side key WAS seen");
+        String flag = output.contains("disable2(0x8) -> OK") ? "the shell MAY switch the normal power menu off" : output.contains("REFUSED") ? "the shell was REFUSED when it tried to switch the normal power menu off" : "no answer about switching the normal power menu off";
+        return key + "; " + flag;
+    }
     public static final String PUBLISH_DIR = "/sdcard/Download/launcher-probe";
     /** The Settings pages photographed (public android.settings.* actions). */
     public static final String[] SHOT_PAGES = { "SETTINGS", "WIFI_SETTINGS", "BLUETOOTH_SETTINGS", "DISPLAY_SETTINGS", "SOUND_SETTINGS", "APPLICATION_SETTINGS", "INTERNAL_STORAGE_SETTINGS",
