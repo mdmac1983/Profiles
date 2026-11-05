@@ -237,7 +237,9 @@ public final class ShellProtocol {
         if (output == null || output.trim().isEmpty()) return "no answer from the helper (is it running?)";
         double down = -1, up = -1;
         boolean seen = false;
+        int lines = -1;   // how many lines getevent printed in all ("KEYTEST-LINES n"); 0 = it printed nothing, so "not seen" would be a false comfort
         for (String l : output.split("\\n")) {
+            if (l.startsWith("KEYTEST-LINES ")) { try { lines = Integer.parseInt(l.substring(14).trim()); } catch (NumberFormatException ignored) { } continue; }
             if (!l.contains("KEY_POWER")) continue;
             seen = true;
             Matcher m = KEY_TIME.matcher(l.trim());
@@ -245,7 +247,8 @@ public final class ShellProtocol {
             if (l.contains("DOWN") && down < 0) down = ts;
             else if (l.contains("UP") && down >= 0 && up < 0) up = ts;
         }
-        String key = !seen ? "the side key was NOT seen (no KEY_POWER event in " + KEYTEST_READ_SECONDS + " s: it was not pressed, or the shell cannot read it)"
+        String key = lines == 0 ? "the shell could NOT read the input devices (getevent printed nothing), so this test cannot say whether the side key is readable"
+                : !seen ? "the side key was NOT seen (" + (lines > 0 ? lines + " input lines were read, so getevent works, but " : "") + "no KEY_POWER event in " + KEYTEST_READ_SECONDS + " s: it was not pressed in time, or the shell cannot read it)"
                 : (down >= 0 && up >= down ? String.format(java.util.Locale.US, "the side key WAS seen (held %.1f s)", up - down) : "the side key WAS seen");
         String flag = output.contains("disable2(0x8) -> OK") ? "the shell MAY switch the normal power menu off" : output.contains("REFUSED") ? "the shell was REFUSED when it tried to switch the normal power menu off" : "no answer about switching the normal power menu off";
         return key + "; " + flag;

@@ -236,8 +236,10 @@ def facts_markdown(rep, source, when):
     if key:
         seen = ("WAS seen" in ksum) if ksum else ("KEY_POWER" in kout)
         refused = ("REFUSED" in ksum or "no answer about switching" in ksum) if ksum else ("REFUSED" in kout)
-        if not seen:
-            flags.append("Side-key test: the side key was NOT seen by the helper (not pressed, or the shell cannot read it). Power menu v2 would not work as designed unless it is repeated and seen.")
+        if "could NOT read the input devices" in ksum:
+            flags.append("Side-key test: the shell could NOT read the input devices at all (getevent printed nothing): Power menu v2 through getevent is not possible on this tablet as it stands.")
+        elif not seen:
+            flags.append("Side-key test: the side key was NOT seen by the helper (not pressed in time, or the key is not on a device the shell can read). Repeat it once with the key held 1.5 s inside the 8 seconds before deciding.")
         if refused:
             flags.append("Side-key test: the shell did not get a clean OK when it tried to switch the normal power menu off.")
         if kv.get("keytest_menu") == "shown":

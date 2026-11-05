@@ -211,6 +211,7 @@ public final class ShellServer {
             List<String> copy; synchronized (raw) { copy = new java.util.ArrayList<>(raw); }
             for (String l : ShellProtocol.keyTestLines(copy)) out.println(l);
             out.println("KEYTEST-END");
+            out.println("KEYTEST-LINES " + copy.size());   // everything getevent printed (touch noise included): 0 means the shell could not read the devices at all, which "not seen" must not hide
             synchronized (probeOut) { out.print(probeOut); }
             out.flush();
         } catch (Throwable t) {
