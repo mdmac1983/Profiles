@@ -746,3 +746,8 @@ The number is there
 ```
 Tell me everything else i need to do right now with the otg cable. I'm not going to have it much longer
 ```
+
+## 2026-11-05T20:39:22Z
+```
+I'll have the cable later to do this. Can i use the launcher settings now
+```
