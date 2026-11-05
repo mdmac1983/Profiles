@@ -2,11 +2,17 @@
 # Format: "## group", "@ card title", then why: / cmd: / alt: / undo: / note: / special: a11y.  "cmd:" is the line as typed in an ADB OTG shell (no "adb", no "adb shell").
 # SAFETY RULES for this list: read-only, or a change that only affects com.tj.launcher, or reversible with an undo line below. Never: uninstall, wipe, reset, reboot, change the lock, accounts, Wi-Fi, or overwrite a settings list without merging.
 ## Before you start (nothing to type yet)
+@ If you only have a minute with the cable
+why: Do ONLY three things: allow adb on the tablet, connect the phone (the next two cards), then type the ONE line in section 4, "Start the helper". Unplug. On the TABLET open Launcher control > Tablet setup & report: with the helper running it does every other step for you (permissions, background settings, accessibility, compile, browser). The cards below do the same steps by hand so nothing is left for a second cable session; do as many as you can.
+note: Everything is safe to repeat. Every change has an undo line in section 10.
 @ On the TABLET: install the launcher update
 why: Open the tablet's browser, go to https://github.com/tjshea90/Launcher/releases/latest and tap the file named Launcher-v....apk (not the phone-guide file). Open it and tap Install (it updates in place). Then switch the accessibility helper OFF and ON once (Settings > Accessibility > Launcher power-menu helper) so the new key access loads.
 note: Skip the install if the newest version is already on the tablet.
 @ On the TABLET: allow adb
 why: Settings > About tablet > tap Build number 7 times > back > System > Developer options > USB debugging ON.
+@ Optional, on the TABLET (no cable needed): "ADB over network"
+why: In Settings > System > Developer options, if there is a switch named "ADB over network" (LineageOS has one), turn it ON and leave it on. It does not change anything you see. It lets a later launcher update start its own helper after every restart, so the cable is never needed again. If the switch does not exist, skip this card; section 7 has a read-only question that tells Claude what this tablet offers.
+note: To undo: switch it off again in the same place.
 @ Connect the phone to the tablet
 why: Phone: install an "ADB OTG" shell app. Plug the OTG cable into the PHONE, then the data cable to the TABLET. In the app tap Connect and, on the TABLET, tick "Always allow" and tap Allow. Open the app's shell (the place where you type commands). The cards below are typed there, one line at a time.
 ## 1. Check the connection (read-only)
@@ -108,6 +114,17 @@ alt: getprop ro.crypto.state
 @ Is adb over Wi-Fi kept across restarts? (decides whether the launcher could start its own helper)
 cmd: getprop service.adb.tcp.port
 alt: getprop persist.adb.tcp.port
+@ Is adb listening on the network right now?
+why: Prints a line with :5555 if "ADB over network" is on. Prints nothing if it is off.
+cmd: netstat -ltn | grep ':555'
+alt: getprop init.svc.adbd
+@ Which input device is the power key? (for a possible instant power menu)
+cmd: getevent -pl | grep -E 'add device|name:|KEY_POWER'
+@ Is the status bar already customised on this ROM?
+why: Normally prints null. If it prints something, tell Claude: the launcher keeps it and puts it back.
+cmd: settings get global policy_control
+@ How does this ROM list the open apps?
+cmd: dumpsys activity recents | grep -E 'Recent #|realActivity=' | head -24
 @ Does this ROM have its own power-menu setting?
 why: If it prints a list, Claude can hide Screenshot with no overlay at all.
 cmd: settings get secure power_menu_actions
@@ -127,6 +144,11 @@ note: Everything lands in the tablet's Downloads > launcher-probe folder. Zip th
 why: Pull the notification panel down twice and look: pencil and gear should be gone. If anything looks odd (lock screen, power menu), run the undo line at once.
 cmd: settings put global device_demo_mode 1
 undo: settings put global device_demo_mode 0
+@ Can the shell switch the stock power menu off for 3 seconds? (answers a design question)
+why: Runs a tiny test program from the launcher: it asks Android to disable the power menu for 3 seconds and prints the answer ("OK" or "REFUSED ..."). Nothing lasts: Android removes the setting when the program ends. If you press the power key during these 3 seconds the menu may not appear.
+cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3
+alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3'
+note: Skip if the app cannot do $( ). The reply is 3 lines; send them to Claude.
 ## 10. Undo everything (only if something looks odd)
 @ Stop the helper
 cmd: pkill -f com.tj.launcher.ShellServer
@@ -134,6 +156,14 @@ cmd: pkill -f com.tj.launcher.ShellServer
 cmd: pm enable com.android.browser
 @ Demo-mode experiment off
 cmd: settings put global device_demo_mode 0
+@ Status bar back (if the launcher hid it and something went wrong)
+why: Removes Android's immersive setting. Harmless if it was never set.
+cmd: settings delete global policy_control
+@ Quick-settings tiles back to the system's own list
+why: Only if the tiles look wrong after you switched launchers. Android rebuilds its default list.
+cmd: settings delete secure sysui_qs_tiles
+@ Launcher "compiled" state back to normal
+cmd: cmd package compile --reset com.tj.launcher
 @ Take the permissions back (one card per permission is in section 2; the launcher keeps working without them, those features just switch off)
 why: Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
 note: Accessibility: switch the helper off in the tablet's Settings > Accessibility.
