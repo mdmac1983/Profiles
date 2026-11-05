@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc pf last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1261,6 +1261,89 @@ adb shell cmd statusbar collapse; sleep 1
 adb shell cmd notification cancel tagx >/dev/null 2>&1; adb shell cmd notification disallow_dnd com.android.shell >/dev/null 2>&1; adb shell settings put global zen_mode 0 >/dev/null 2>&1
 setfeat; setmode custom; home
 fi # section rs4
+if want pf; then # section pf
+ensurehome
+# ---- AB3 (Tj, 2026-11-05): "I want the notification panel to work normally in the custom launcher, but to always only have the one settings tile, regardless of the tiles i set for quickstep. I also want it
+#      to hide the pencil or remove it, never show wifi or Bluetooth, and never show notifications from apps opened in the quickstep launcher."
+#      Two CI-only test apps post a notification every time they are opened: "quick" (com.tj.testnotifier) is the app Tj opens in Quickstep, "ctl" (com.tj.testnotifier.ctl) is an app only the custom launcher
+#      opened, whose notification must STAY. Pass A: an app only Quickstep opened. Pass B: an app BOTH launchers use (opened in custom first, then again in Quickstep).
+beat "before PF"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+QN=com.tj.testnotifier; CN=com.tj.testnotifier.ctl
+adb install -r -g testnotifier/build/outputs/apk/quick/debug/testnotifier-quick-debug.apk > "$OUT/pf-install-quick.txt" 2>&1
+adb install -r -g testnotifier/build/outputs/apk/ctl/debug/testnotifier-ctl-debug.apk > "$OUT/pf-install-ctl.txt" 2>&1
+check "PF0: both test apps are installed" bash -c "grep -q Success $OUT/pf-install-quick.txt && grep -q Success $OUT/pf-install-ctl.txt"
+pf_notifs(){ adb shell dumpsys notification 2>/dev/null | grep 'NotificationRecord(' | grep -o 'pkg=[A-Za-z0-9_.]* user=UserHandle{[0-9]*}' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
+pf_has(){ adb shell dumpsys notification 2>/dev/null | grep 'NotificationRecord(' | grep -q "pkg=$1 user="; }
+pf_hasnt(){ ! pf_has "$1"; }
+pf_tiles(){ adb shell dumpsys activity service com.android.systemui/.SystemUIService 2>/dev/null | grep -oE '[A-Za-z]+Tile:' | sort -u | tr '\n' ' '; }
+pf_dump(){ adb shell uiautomator dump /sdcard/tjpf.xml >/dev/null 2>&1; adb shell cat /sdcard/tjpf.xml 2>/dev/null | tr '>' '\n' > "$OUT/pf-$1.xml"; }
+# "tracked": the steady state after the first return (the one-time "first run closes every non-custom app" is not what is under test)
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
+setfeat; setmode custom; rebind; home; sleep 2
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
+adb shell locksettings set-pin 1234 > "$OUT/pf-setpin.txt" 2>&1
+adb shell monkey -p $CN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1     # the custom account's own app: its notification must stay
+info "PF custom account before Quickstep: notifications [$(pf_notifs)]"
+check "PF0b: the custom-only test app posted its notification" pf_has $CN
+# ---------------- pass A: an app only Quickstep opened
+lockpad; pad d d 1 2 3 4 e; sleep 7                                   # the default handshake -> Quickstep
+getmode > "$OUT/pf-mode-a.txt"
+check "PF-A0: a Quickstep session began" grep -q quickstep "$OUT/pf-mode-a.txt"
+adb shell settings put secure sysui_qs_tiles "wifi,bt,rotation,flashlight,airplane" >/dev/null 2>&1   # Tj arranges Quickstep's tiles with the pencil: here, written directly
+adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1
+info "PF A in Quickstep: notifications [$(pf_notifs)]"
+check "PF-A1: the Quickstep app posted its notification (so the test means something)" pf_has $QN
+adb logcat -c
+adb shell input keyevent KEYCODE_POWER; sleep 10                      # LOCK: the session ends; the clean-up runs behind the lock screen
+adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/pf-log-a.txt" 2>&1
+info "PF A after the lock: notifications [$(pf_notifs)]; the clean-up said: $(grep 'AT LOCK' $OUT/pf-log-a.txt | tail -1 | cut -c1-420)"
+check "PF-A2: the notification of the app opened in Quickstep is GONE" pf_hasnt $QN
+check "PF-A3: the notification of the app opened only in the custom launcher STAYS" pf_has $CN
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 5
+getmode > "$OUT/pf-mode-a2.txt"
+check "PF-A4: the custom launcher is active again" grep -q custom "$OUT/pf-mode-a2.txt"
+# ---------------- the panel in the custom launcher
+adb shell settings get secure sysui_qs_tiles > "$OUT/pf-tiles-setting.txt" 2>&1
+pf_tiles > "$OUT/pf-tiles-live.txt"
+info "PF custom: tile setting '$(tr -d '\r\n' < $OUT/pf-tiles-setting.txt)', SystemUI tiles: $(cat $OUT/pf-tiles-live.txt)"
+check "PF-T1: whatever Quickstep's tiles were (wifi,bt,rotation,flashlight,airplane), the custom setting is just rotation" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pf-tiles-setting.txt)\" = rotation ]"
+check "PF-T2: SystemUI shows the rotation tile and no Wi-Fi / Bluetooth / flashlight / airplane tile" bash -c "grep -q RotationLockTile $OUT/pf-tiles-live.txt && ! grep -qE 'WifiTile|BluetoothTile|FlashlightTile|AirplaneModeTile' $OUT/pf-tiles-live.txt"
+adb shell input swipe 300 3 300 700 350; sleep 2.5                    # ONE swipe from the top edge
+pf_dump shade1; shot 140-pf-shade-one-swipe
+check "PF-S1: one swipe opens the panel and the custom app's notification is in it" grep -q "text=\"NOTIFIER $CN\"" "$OUT/pf-shade1.xml"
+check "PF-S2: the Quickstep app's notification is not in the panel" bash -c "! grep -q 'text=\"NOTIFIER $QN\"' $OUT/pf-shade1.xml"
+check "PF-S3: no Wi-Fi or Bluetooth tile in the panel" bash -c "! grep -qiE 'content-desc=\"(wi-?fi|bluetooth)' $OUT/pf-shade1.xml"
+check "PF-S4: the rotation tile is in the panel" grep -qiE 'content-desc="[^"]*(auto-rotate|portrait|landscape)' "$OUT/pf-shade1.xml"
+adb shell cmd statusbar collapse; sleep 1.5
+adb shell cmd statusbar expand-settings; sleep 3; shot 141-pf-qs-full
+pf_dump qs
+adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pf-pencil-windows.txt" 2>&1
+check "PF-P1: a cover window sits over the pencil while the full quick settings are open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pf-pencil-windows.txt)\" -ge 1 ]"
+check "PF-P2: still no Wi-Fi or Bluetooth tile in the full quick settings" bash -c "! grep -qiE 'content-desc=\"(wi-?fi|bluetooth)' $OUT/pf-qs.xml"
+adb shell cmd statusbar collapse; sleep 1.5
+# ---------------- pass B: an app BOTH launchers use
+adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1   # opened in the CUSTOM launcher first
+check "PF-B0: the shared app posted a notification in the custom launcher" pf_has $QN
+lockpad; pad d d 1 2 3 4 e; sleep 7                                   # Quickstep session 2
+adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1   # and again in Quickstep
+info "PF B in Quickstep: notifications [$(pf_notifs)]; pid of the shared app: $(adb shell pidof $QN | tr -d '\r\n')"
+adb logcat -c
+adb shell input keyevent KEYCODE_POWER; sleep 10
+adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/pf-log-b.txt" 2>&1
+info "PF B after the lock: notifications [$(pf_notifs)]; the clean-up said: $(grep 'AT LOCK' $OUT/pf-log-b.txt | tail -1 | cut -c1-520)"
+check "PF-B1: the shared app's notification is GONE (it is an app opened in Quickstep)" pf_hasnt $QN
+check "PF-B2: the clean-up says it closed a shared app because of its notification" grep -q 'shared app(s) closed because they have a notification' "$OUT/pf-log-b.txt"
+check "PF-B3: the custom-only app's notification still STAYS" pf_has $CN
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 4
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb shell locksettings clear --old 1234 > "$OUT/pf-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb uninstall $QN >/dev/null 2>&1; adb uninstall $CN >/dev/null 2>&1       # the test apps and their notifications go
+setfeat; setmode custom; home
+fi # section pf
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
