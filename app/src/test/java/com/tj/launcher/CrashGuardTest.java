@@ -27,11 +27,15 @@ public class CrashGuardTest {
     }
 
     // ---- AC1 (v0.7.3): the launcher's own lock-screen automation is paused by the breaker OR by "Restore everything" / an update that cleared the breaker
-    @Test public void automationIsOffWhenTrippedOrPaused() {
-        assertTrue(CrashGuard.automationOff(true, false));
-        assertTrue(CrashGuard.automationOff(false, true));
-        assertTrue(CrashGuard.automationOff(true, true));
-        assertFalse(CrashGuard.automationOff(false, false));
+    @Test public void automationIsOffWhenTrippedOrPausedInQuickstep() {
+        assertTrue(CrashGuard.automationOff(true, false, false));
+        assertTrue(CrashGuard.automationOff(false, true, false));    // paused and in Quickstep
+        assertTrue(CrashGuard.automationOff(true, true, false));
+        assertFalse(CrashGuard.automationOff(false, false, false));
+    }
+    @Test public void aStalePauseInTheCustomLauncherSuppressesNothing() {
+        assertFalse(CrashGuard.automationOff(false, true, true));    // paused flag left over while custom is active
+        assertTrue(CrashGuard.automationOff(true, true, true));      // the breaker is never stale: it always wins
     }
 
     @Test public void oldCrashesDoNotCount() {

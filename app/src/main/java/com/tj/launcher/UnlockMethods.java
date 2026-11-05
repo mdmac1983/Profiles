@@ -99,6 +99,8 @@ public final class UnlockMethods {
     // ---- the latch
     private Method armed = null;
     private long armedAt = 0;
+    private long armedFirstAt = 0;                          // AC7: when the gesture's OWN Enter happened (a retry's grace counts from here, never from a later retry)
+    private boolean inheritedOnce = false;                  // AC7: a gesture survives ONE plain retry, not an endless chain of them
     private boolean armedAtPad = false;                     // pad methods latch at Enter, free methods at once
     private Method padMatch = null;                         // the pad method the CURRENT pad entry matches so far (decided at Enter)
     private boolean screenOn = true;
@@ -119,7 +121,7 @@ public final class UnlockMethods {
 
     private void disarm() {
         boolean was = armed != null;
-        armed = null; armedAt = 0; armedAtPad = false; padMatch = null;
+        armed = null; armedAt = 0; armedAtPad = false; padMatch = null; armedFirstAt = 0; inheritedOnce = false;
         if (was && listener != null) listener.onDisarmed();
     }
 
@@ -182,8 +184,8 @@ public final class UnlockMethods {
         pad.setLength(0); volUpBeforeErase = false;
         if (m != null) arm(m, now, true);
         else if (armedAtPad) {
-            if (now - armedAt <= RETRY_GRACE_MS) armedAt = now;   // AC7: the retry after a wrong PIN inherits the gesture (a correct PIN would have unlocked within a second or two)
-            else disarm();                                        // a plain attempt long after the gesture withdraws the pad latch; free latches (volume, side key, peek) stay
+            if (!inheritedOnce && now - armedFirstAt <= RETRY_GRACE_MS) { armedAt = now; inheritedOnce = true; }   // AC7: the FIRST retry after a wrong PIN inherits the gesture (a correct PIN would have unlocked within a second or two)
+            else disarm();                                        // a second retry, or one long after the gesture, withdraws the pad latch; free latches (volume, side key, peek) stay
         }
         return m;
     }
@@ -263,7 +265,7 @@ public final class UnlockMethods {
 
     // ------------------------------------------------------------------ latch
     private void arm(Method m, long now, boolean padLatch) {
-        armed = m; armedAt = now; armedAtPad = padLatch;
+        armed = m; armedAt = now; armedAtPad = padLatch; armedFirstAt = now; inheritedOnce = false;
         if (listener != null) listener.onArmed(m, padLatch);
     }
 

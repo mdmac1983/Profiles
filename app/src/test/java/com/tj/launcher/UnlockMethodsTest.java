@@ -54,6 +54,20 @@ public class UnlockMethodsTest {
         keys(u, late, N, N); u.onEnter(late + 600);
         assertNull(u.consume(late + 1500));
     }
+    @Test public void aSecondPlainRetryWithdrawsTheGesture() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+        keys(u, 1000, N); u.onEnter(3000);                           // first retry: inherited
+        keys(u, 3000, N); u.onEnter(5000);                           // second retry: the gesture is gone (no endless chain)
+        assertNull(u.consume(5500));
+    }
+    @Test public void theRetryGraceCountsFromTheGestureNotFromTheLastRetry() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+        long late = 1000 + UnlockMethods.RETRY_GRACE_MS + 1;
+        keys(u, late, N); u.onEnter(late + 100);                     // the first retry comes too late
+        assertNull(u.consume(late + 600));
+    }
     @Test public void theInheritedGestureStillExpiresWhenTheUnlockNeverComes() {
         UnlockMethods u = only(UnlockMethods.Method.ERASE2);
         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);

@@ -74,8 +74,11 @@ public final class CrashGuard {
      */
     static final String PAUSED_KEY = "paused";
 
-    /** Pure: is the launcher's own automation paused? */
-    public static boolean automationOff(boolean tripped, boolean paused) { return tripped || paused; }
+    /**
+     * Pure: is the launcher's own automation off? The breaker tripped, or the launcher is paused AND in Quickstep. A pause that is still set while the custom launcher is active (code review of v0.7.3: some route
+     * to custom that does not call {@link #clearTripped}) is stale and must not silently switch off the pre-arm, the battery saver guard and the rest.
+     */
+    public static boolean automationOff(boolean tripped, boolean paused, boolean customMode) { return tripped || (paused && !customMode); }
 
     public static boolean isPaused(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(PAUSED_KEY, false);
@@ -84,7 +87,7 @@ public final class CrashGuard {
     /** The one answer the automation rules read (breaker tripped OR paused). */
     public static boolean automationOff(Context c) {
         SharedPreferences p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        return automationOff(p.getBoolean("tripped", false), p.getBoolean(PAUSED_KEY, false));
+        return automationOff(p.getBoolean("tripped", false), p.getBoolean(PAUSED_KEY, false), Mode.isCustom(c));
     }
 
     /** "Restore everything": nothing of ours switches launchers for you until you go back to the custom launcher on purpose. */
