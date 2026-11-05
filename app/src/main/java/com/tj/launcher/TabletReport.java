@@ -178,7 +178,7 @@ public final class TabletReport {
         b.append("===== TABLET SUMMARY (short: the full report is the file tablet-report.txt) ").append(new java.util.Date()).append('\n');
         deviceFacts(b, c);
         permissions(b, c);
-        b.append(ReportState.section(c, helper));
+        b.append(ReportState.section(c, helper, false));
         b.append(selfCheck(helper));
         b.append(ownLog(40));
         return b.toString();

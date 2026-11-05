@@ -52,7 +52,10 @@ public final class ReportState {
     }
 
     /** The whole "how is the launcher doing" section. Safe to call from any thread. {@code helperReachable} is passed in because asking the helper blocks. */
-    public static String section(Context c, boolean helperReachable) {
+    public static String section(Context c, boolean helperReachable) { return section(c, helperReachable, true); }
+
+    /** {@code full} = the whole report file (40 lock-log lines, the whole power-menu dump); false = the SHORT summary that gets pasted into a chat (25 lines, a cut dump). */
+    public static String section(Context c, boolean helperReachable, boolean full) {
         StringBuilder b = new StringBuilder("\n===== THE LAUNCHER ON THIS TABLET (its state when this report was written)\n");
         b.append("report written: ").append(new java.util.Date()).append('\n');
         try {
@@ -76,10 +79,12 @@ public final class ReportState {
         b.append("\n----- the launcher's switches and last results (an allow-list: nothing secret is read)\n");
         b.append(format(Features.all(c)));
         try {
-            String log = LockLog.tail(c, 40);
-            b.append("\n----- the lock screen log (last 40 events; key KINDS only, never a digit)\n").append(log.isEmpty() ? "(empty: lock and unlock the tablet once)\n" : log);
+            int n = full ? 40 : 25;
+            String log = LockLog.tail(c, n);
+            b.append("\n----- the lock screen log (last ").append(n).append(" events; key KINDS only, never a digit)\n").append(log.isEmpty() ? "(empty: lock and unlock the tablet once)\n" : log);
             String dump = PowerMenuDump.read(c);
-            if (dump.length() > 6000) dump = dump.substring(0, 6000) + "...\n";
+            int cap = full ? 12000 : 3500;
+            if (dump.length() > cap) dump = dump.substring(0, cap) + "...\n";
             b.append("\n----- the stock power menu as the accessibility helper saw it (open the power menu once in the custom launcher with the cover on; empty = not seen yet)\n").append(dump.isEmpty() ? "(none yet)\n" : dump);
         } catch (Throwable t) { /* not available */ }
         return b.toString();
