@@ -31,6 +31,8 @@ public final class Features {
     public static int getInt(Context c, String key, int def) { return p(c).getInt(key, def); }
     public static void setInt(Context c, String key, int v) { p(c).edit().putInt(key, v).commit(); }
     public static void allOff(Context c) { p(c).edit().clear().commit(); }
+    /** Every stored preference. Only {@link ReportState} reads this, and only through its allow-list. */
+    public static java.util.Map<String, ?> all(Context c) { return p(c).getAll(); }
 
     public static String powerMode(Context c) {
         String m = getString(c, POWER_MODE, POWER_OFF);

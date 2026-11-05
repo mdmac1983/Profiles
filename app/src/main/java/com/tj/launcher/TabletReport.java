@@ -126,12 +126,48 @@ public final class TabletReport {
         return b.toString();
     }
 
-    /** Builds the whole report (app side + helper probe when it runs) and writes it. Blocking: call off the main thread. Returns the file. */
+    /**
+     * The launcher's OWN readers run on this ROM's real output. If a vendor ROM prints Recents or notifications in another shape the clean-up would silently do less; this shows it at once
+     * (Tj, 2026-11-05: the report must hold everything Claude needs, so nothing has to be copied by hand).
+     */
+    static String selfCheck(boolean helper) {
+        StringBuilder b = new StringBuilder("\n===== PARSER SELF-CHECK (the launcher's own readers, run on THIS ROM's real output)\n");
+        if (!helper) return b.append("(the shell helper is not running: start it, then collect again)\n").toString();
+        java.util.LinkedHashMap<Integer, String> tasks = ShellHelper.listTasks();
+        if (tasks == null) b.append("Recents tasks parsed: (the helper did not answer)\n");
+        else {
+            b.append("Recents tasks parsed: ").append(tasks.size()).append('\n');
+            for (java.util.Map.Entry<Integer, String> e : tasks.entrySet()) b.append("  task ").append(e.getKey()).append("  ").append(e.getValue()).append('\n');
+        }
+        java.util.Set<String> n = ShellHelper.notifPackages();
+        b.append("Apps with a notification now (as the clean-up sees them): ").append(n == null ? "(the helper did not answer)" : n.isEmpty() ? "(none)" : n.toString()).append('\n');
+        return b.toString();
+    }
+
+    /** The launcher's own log lines, as far as the app itself may read them (an app sees only its own lines; the shell helper's probe adds the rest when it runs). */
+    private static String ownLog() {
+        StringBuilder b = new StringBuilder("\n\n===== THE LAUNCHER'S OWN LOG (what the app itself may read)\n");
+        try {
+            Process p = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "TjReset:I", "TjTasks:I", "TjA11y:I", "TjKeepAlive:I", "TjImmersive:I", "TjRouter:I", "TjHooks:I", "TjKeyboard:I", "TjRecentsGuard:I").redirectErrorStream(true).start();
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
+            java.util.ArrayDeque<String> last = new java.util.ArrayDeque<>();
+            String l;
+            while ((l = r.readLine()) != null) { last.add(l); if (last.size() > 200) last.removeFirst(); }
+            for (String s : last) b.append(s).append('\n');
+        } catch (Throwable t) { b.append("(not readable: ").append(t).append(")\n"); }
+        return b.toString();
+    }
+
+    /** Builds the whole report (app side + state + parser self-check + helper probe when it runs) and writes it. Blocking: call off the main thread. Returns the file. */
     public static File write(Context c) {
+        boolean helper = ShellHelper.reachable();
         StringBuilder b = new StringBuilder(appSide(c));
+        b.append(ReportState.section(c, helper));
+        b.append(selfCheck(helper));
         b.append("\n\n===== SHELL PROBE (read-only commands run by the helper)\n");
-        String probe = ShellHelper.reachable() ? ShellHelper.probe() : null;
+        String probe = helper ? ShellHelper.probe() : null;
         b.append(probe == null ? "(the shell helper is not running: start it with the adb line, then collect again for the full probe)\n" : probe);
+        if (probe == null) b.append(ownLog());
         File f = new File(shareDir(c), "tablet-report.txt");
         try (FileOutputStream os = new FileOutputStream(f)) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
         return f;
