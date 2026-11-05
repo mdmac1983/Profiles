@@ -756,3 +756,8 @@ I'll have the cable later to do this. Can i use the launcher settings now
 ```
 Release the next version. If i update it, will i need adb again
 ```
+
+## 2026-11-05T22:14:00Z
+```
+This session's worker process was restarted. If your previous turn was already complete, take no action and wait for the next event. Otherwise, continue from where you left off.
+```
