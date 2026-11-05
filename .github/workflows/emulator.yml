@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/results   # post step: the compact RESULTS block becomes the last lines of the log
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -67,15 +68,3 @@ jobs:
           path: emulator-out/
           retention-days: 14
           if-no-files-found: warn
-      - name: Results - compact (counts, every FAIL, every INFO)
-        if: always()
-        run: |
-          f=emulator-out/results.txt
-          if [ -f "$f" ]; then
-            echo "===== RESULTS: $(grep -c '^PASS' $f) PASS, $(grep -c '^FAIL' $f) FAIL, $(grep -c '^INFO' $f) INFO ====="
-            grep '^FAIL' $f | cut -c1-300 || true
-            grep '^INFO' $f | cut -c1-380 || true
-            echo "===== END RESULTS ====="
-          else
-            echo "===== NO results.txt (the scenario did not get that far) ====="
-          fi
