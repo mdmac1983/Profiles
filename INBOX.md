@@ -731,3 +731,8 @@ I just made the custom launcher the default home app
 ```
 The custom launcher is on but no serial number on the lock screen and the gesture from the lock screen to get to quickstep doesn't work
 ```
+
+## 2026-11-05T20:29:39Z
+```
+It's on
+```
