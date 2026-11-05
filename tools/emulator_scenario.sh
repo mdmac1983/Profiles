@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc pf last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc pf rb last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1348,6 +1348,56 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 adb uninstall $QN >/dev/null 2>&1; adb uninstall $CN >/dev/null 2>&1       # the test apps and their notifications go
 setfeat; setmode custom; home
 fi # section pf
+if want rb; then # section rb
+ensurehome
+# ---- AB1 (Tj, 2026-11-05: "It is important that this project doesn't break anything or require me to factory reset my tablet"): the tablet RESTARTS with the riskiest options on (PIN set, hidden status bar,
+#      one tile, keep-alive service, helper enabled) and comes back normally: boots, ONE user (no surprise demo user), no demo flag, the lock screen + PIN work, Home works, no crash, crash breaker not tripped.
+beat "before RB"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"profile_hide_status_bar\\\" value=\\\"true\\\" /><boolean name=\\\"keep_alive\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
+setmode custom; rebind; home; sleep 2
+adb shell locksettings set-pin 1234 > "$OUT/rb-setpin.txt" 2>&1
+lockpad; pad d d 1 2 3 4 e; sleep 7                                        # handshake -> Quickstep
+adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" >/dev/null 2>&1; sleep 6   # back to custom: Mode.set applies the tiles + the status-bar setting
+adb shell settings get secure sysui_qs_tiles > "$OUT/rb-tiles-before.txt" 2>&1
+adb shell settings get global policy_control > "$OUT/rb-policy-before.txt" 2>&1
+adb shell pm list users > "$OUT/rb-users-before.txt" 2>&1
+info "RB before the restart: tiles '$(tr -d '\r\n' < $OUT/rb-tiles-before.txt)', policy_control '$(tr -d '\r\n' < $OUT/rb-policy-before.txt)', users: $(grep -c 'UserInfo' $OUT/rb-users-before.txt), mode: $(getmode)"
+adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-before.txt"
+adb reboot >/dev/null 2>&1
+sleep 20
+RBOOT=0
+for i in $(seq 1 60); do if [ "$(command adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = 1 ]; then RBOOT=1; break; fi; sleep 5; done
+info "RB the tablet came back after the restart: $([ $RBOOT = 1 ] && echo yes || echo NO) (waited about $((20 + i * 5)) s)"
+check "RB1: the tablet boots again with every option on" [ "$RBOOT" = 1 ]
+( command adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I >> "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null   # the stream died with the restart
+sleep 15
+adb shell pm list users > "$OUT/rb-users-after.txt" 2>&1
+check "RB2: exactly one user exists after the restart (no demo user was created)" bash -c "[ \"\$(grep -c 'UserInfo' $OUT/rb-users-after.txt)\" = 1 ]"
+adb shell settings get global device_demo_mode > "$OUT/rb-demo-after.txt" 2>&1
+check "RB3: the retail-demo flag is off" bash -c "v=\$(tr -d ' \r\n' < $OUT/rb-demo-after.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+shot 150-rb-lock-after-restart
+pad 1 2 3 4 e; sleep 8                                                      # the PIN unlock after a restart, with the helper enabled and the status bar setting on
+resumed > "$OUT/rb-resumed.txt"
+adb shell dumpsys window windows 2>/dev/null | grep -c 'Window{[^}]* Keyguard' > /dev/null 2>&1
+check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
+adb shell dumpsys accessibility > "$OUT/rb-a11y.txt" 2>&1
+check "RB5: the accessibility helper is bound again by itself after the restart" bash -c "grep -q 'TjAccessibilityService' $OUT/rb-a11y.txt && grep -qE 'Bound services:.*TjAccessibilityService|bound.*TjAccessibilityService' $OUT/rb-a11y.txt || grep -A3 'Bound services' $OUT/rb-a11y.txt | grep -q TjAccessibilityService"
+adb shell settings get secure sysui_qs_tiles > "$OUT/rb-tiles-after.txt" 2>&1
+check "RB6: the one-tile list survived the restart" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-tiles-after.txt)\" = \"\$(tr -d ' \r\n' < $OUT/rb-tiles-before.txt)\" ]"
+adb shell dumpsys activity services "$PKG" > "$OUT/rb-services.txt" 2>&1
+check "RB7: the keep-alive service is running again after the restart" grep -q KeepAliveService "$OUT/rb-services.txt"
+adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-after.txt"
+check "RB8: the crash breaker did not trip during the restart" bash -c "! grep -q 'tripped.*true' $OUT/rb-crash-after.txt"
+command adb logcat -d -b crash 2>/dev/null | grep -c "com.tj.launcher" > "$OUT/rb-crashes.txt"
+check "RB9: the launcher did not crash while the tablet started up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-crashes.txt)\" = 0 ]"
+info "RB after the restart: tiles '$(tr -d '\r\n' < $OUT/rb-tiles-after.txt)', policy_control '$(adb shell settings get global policy_control | tr -d '\r\n')', mode: $(getmode), resumed: $(cut -c1-120 $OUT/rb-resumed.txt)"
+adb shell locksettings clear --old 1234 > "$OUT/rb-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell settings delete global policy_control >/dev/null 2>&1
+setfeat; setmode custom; rebind; home
+fi # section rb
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
