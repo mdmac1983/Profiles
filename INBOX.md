@@ -629,3 +629,10 @@ This session's worker process was restarted. If your previous turn was already c
 ```
 What is power menu v2 and the standing items
 ```
+
+## 2026-11-05T05:38:24Z
+```
+Close g3d.
+
+Add whatever is needed to the phone guide. Try to make the phone guide simple and intuitive and in a logical order in case i have limited time with the otg cable,  but also make sure claude can save and use all necessary information from the tablet when connected
+```
