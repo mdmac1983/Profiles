@@ -137,6 +137,23 @@ public final class ShellServer {
             }
             out.flush(); return;
         }
+        if (ShellProtocol.isListTasks(line)) {
+            out.println("OK");
+            for (java.util.Map.Entry<Integer, String> e : ShellProtocol.parseTasks(recentsDump()).entrySet()) out.println(e.getKey() + " " + e.getValue());
+            out.flush(); return;
+        }
+        List<Integer> rmIds = ShellProtocol.removeTaskIds(line);
+        if (rmIds != null) {
+            // the deny-list is enforced HERE, on the package the system itself reports for each id: an id can never be used to close the system, the keyboard, this app or the stock launcher
+            java.util.Map<Integer, String> now = ShellProtocol.parseTasks(recentsDump());
+            int removed = 0, skipped = 0;
+            for (int id : rmIds) {
+                String pkg = now.get(id);
+                if (pkg == null || !ShellProtocol.allowed(pkg)) { skipped++; continue; }
+                if (removeTask(id)) removed++; else skipped++;
+            }
+            out.println("OK " + removed + " " + skipped); return;
+        }
         List<String> pkgs = ShellProtocol.forceStopTargets(line);
         if (pkgs == null) { out.println("ERR unknown command"); return; }
         int stopped = forceStop(pkgs);
@@ -151,15 +168,22 @@ public final class ShellServer {
     private static synchronized int removeRecentTasks(List<String> pkgs) {
         int n = 0;
         try {
+            for (int id : ShellProtocol.recentTaskIds(recentsDump(), pkgs)) if (removeTask(id)) n++;
+        } catch (Throwable t) { System.out.println("tj-shell: removing recents failed: " + t); }
+        return n;
+    }
+
+    /** The text of `dumpsys activity recents` (the shell user may run it). Empty on any problem. */
+    private static String recentsDump() {
+        try {
             Process pr = new ProcessBuilder("dumpsys", "activity", "recents").redirectErrorStream(true).start();
             StringBuilder sb = new StringBuilder();
             BufferedReader r = new BufferedReader(new InputStreamReader(pr.getInputStream()));
             String l;
             while ((l = r.readLine()) != null) sb.append(l).append('\n');
             pr.waitFor();
-            for (int id : ShellProtocol.recentTaskIds(sb.toString(), pkgs)) if (removeTask(id)) n++;
-        } catch (Throwable t) { System.out.println("tj-shell: removing recents failed: " + t); }
-        return n;
+            return sb.toString();
+        } catch (Throwable t) { System.out.println("tj-shell: dumpsys failed: " + t); return ""; }
     }
 
     private static boolean removeTask(int id) {

@@ -111,6 +111,28 @@ public final class ShellHelper {
         return up;
     }
 
+    /** AA3: id -> package of every task Android lists in Recents (the helper reads `dumpsys activity recents`), or null if the helper cannot be reached. Blocking: call off the main thread. */
+    public static java.util.LinkedHashMap<Integer, String> listTasks() {
+        String r = askLong("LISTTASKS", 20_000);
+        if (r == null) return null;
+        java.util.LinkedHashMap<Integer, String> out = new java.util.LinkedHashMap<>();
+        for (String l : r.split("\\n")) {
+            String[] w = l.trim().split("\\s+");
+            if (w.length == 2) { try { out.put(Integer.parseInt(w[0]), w[1]); } catch (NumberFormatException ignored) { } }
+        }
+        return out;
+    }
+
+    /** AA3: removes exactly these Recents tasks (the helper re-checks the deny-list per id). @return how many were removed, or -1 if the helper could not be reached. Blocking. */
+    public static int removeTasks(Collection<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return 0;
+        StringBuilder sb = new StringBuilder("RMTASKS");
+        for (Integer i : ids) sb.append(' ').append(i);
+        String r = ask(sb.toString(), 25_000);
+        if (r == null || !r.startsWith("OK")) return -1;
+        try { return Integer.parseInt(r.substring(2).trim().split("\\s+")[0]); } catch (NumberFormatException e) { return 0; }
+    }
+
     /** Force-stops the packages (the helper re-checks its deny-list). @return how many it stopped, or -1 if the helper could not be reached. Blocking: call off the main thread. */
     public static int forceStop(Collection<String> pkgs) {
         if (pkgs == null || pkgs.isEmpty()) return 0;

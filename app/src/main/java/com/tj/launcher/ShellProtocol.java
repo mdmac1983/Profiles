@@ -109,6 +109,62 @@ public final class ShellProtocol {
         return out;
     }
 
+    // ------------------------------------------------------------------ AA3 (Tj, 2026-11-05: "Build number 4"): task-precise Recents clean-up
+    private static final Pattern REAL_ACTIVITY = Pattern.compile("realActivity=([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)/");
+    private static final Pattern INTENT_CMP = Pattern.compile("intent=\\{[^}]*?cmp=([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)/");
+    private static final Pattern HEADER_I = Pattern.compile(" I=([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)/");
+    private static final Pattern HEADER_A = Pattern.compile(" A=([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)[ :}]");
+
+    /**
+     * id -> package of every task in the text of `dumpsys activity recents`, in the order Android lists them. The package is the one of the task's ROOT activity: realActivity=, else the intent's cmp=,
+     * else the header's I=, else (last resort) the affinity A= (many system apps use an affinity that is NOT a package name, e.g. "android.task.contacts": the first research run of 2026-11-05 tripped on that).
+     * HOME-type tasks (our launcher, the stock launcher) are listed too: callers filter them with {@link #allowed}.
+     */
+    public static java.util.LinkedHashMap<Integer, String> parseTasks(String dump) {
+        java.util.LinkedHashMap<Integer, String> out = new java.util.LinkedHashMap<>();
+        if (dump == null) return out;
+        int id = -1;
+        String real = null, cmp = null, hdrI = null, hdrA = null;
+        for (String line : dump.split("\\n")) {
+            Matcher h = TASK_HEADER.matcher(line);
+            if (h.find()) {
+                put(out, id, real, cmp, hdrI, hdrA);
+                try { id = Integer.parseInt(h.group(1)); } catch (NumberFormatException e) { id = -1; }
+                real = cmp = hdrI = hdrA = null;
+                Matcher i = HEADER_I.matcher(line); if (i.find()) hdrI = i.group(1);
+                Matcher a = HEADER_A.matcher(line); if (a.find()) hdrA = a.group(1);
+                continue;
+            }
+            if (id < 0) continue;
+            if (real == null) { Matcher m = REAL_ACTIVITY.matcher(line); if (m.find()) real = m.group(1); }
+            if (cmp == null) { Matcher m = INTENT_CMP.matcher(line); if (m.find()) cmp = m.group(1); }
+        }
+        put(out, id, real, cmp, hdrI, hdrA);
+        return out;
+    }
+
+    private static void put(java.util.Map<Integer, String> out, int id, String real, String cmp, String hdrI, String hdrA) {
+        if (id < 0) return;
+        String pkg = real != null ? real : cmp != null ? cmp : hdrI != null ? hdrI : hdrA;
+        if (pkg != null) out.put(id, pkg);
+    }
+
+    public static boolean isListTasks(String line) { return line != null && line.trim().equals("LISTTASKS"); }
+
+    /** "RMTASKS 12 14" -> [12, 14]: positive numbers only, at most MAX_PACKAGES, no duplicates; null if the line is not an RMTASKS line. Anything that is not a plain number is dropped. */
+    public static List<Integer> removeTaskIds(String line) {
+        if (line == null) return null;
+        String[] w = line.trim().split("\\s+");
+        if (w.length < 1 || !"RMTASKS".equals(w[0])) return null;
+        List<Integer> out = new ArrayList<>();
+        for (int i = 1; i < w.length && out.size() < MAX_PACKAGES; i++) {
+            if (!w[i].matches("[0-9]{1,9}")) continue;
+            int v = Integer.parseInt(w[i]);
+            if (v > 0 && !out.contains(v)) out.add(v);
+        }
+        return out;
+    }
+
     // ------------------------------------------------------------------ S2 (Tj, 2026-11-04: "do everything in one session"): a fixed list of jobs the helper runs FOR the launcher
     /** id -> the exact shell line. Nothing from the caller is ever put into a line: only these ids exist. Each one is either a grant for THIS app or a read-only look. */
     public static final String[][] RUN = {
