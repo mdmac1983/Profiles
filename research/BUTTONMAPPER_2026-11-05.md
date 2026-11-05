@@ -20,7 +20,44 @@
 
 ## 3. Our own measurement (emulator, Android 10, section `rs3`, step b0)
 
-RS3_KEYRAW_PLACEHOLDER
+**Measured, and what it does NOT prove**
+
+* `rs3` b0 (run 102): the helper's key filter was set to log every key code it is handed; one volume-up press (the control) and one power press were injected through the emulator console. **Nothing was logged, not even for the volume-up control.** The route did not work, so this run is *inconclusive*: it says nothing, for or against, about the power key.
+* `rs3` b1 (same run): the console-injected power press did not open the stock menu even with no flag set, so it is not a stand-in for a real power press either. Only `input keyevent --longpress KEYCODE_POWER` opens the stock menu on the emulator (it goes through the same `PhoneWindowManager.interceptKeyBeforeQueueing` as a hardware key).
+* `rs2` a1 (run 79, as recorded in checkpoint 289) and `rs3` b2/b3 (run 102), with that same injection: while the shell held `DISABLE2_GLOBAL_ACTIONS` (0x8; `getDisableFlags` answered `[0, 8]`) no menu items were on screen; once the holder had ended, the stock menu was back ("Power off", "Restart", "Screenshot", run 102 b3).
+
+**Read in the Android 10 sources (tag `android-10.0.0_r47`, fetched 2026-11-05)**
+
+1. [`PhoneWindowManager.interceptKeyBeforeQueueing`](https://github.com/aosp-mirror/platform_frameworks_base/blob/android-10.0.0_r47/services/core/java/com/android/server/policy/PhoneWindowManager.java), line 3893. The power key is handled right there and is *not* marked "pass to user":
+   ```java
+   case KeyEvent.KEYCODE_POWER: {
+       ...
+       // Any activity on the power button stops the accessibility shortcut
+       cancelPendingAccessibilityShortcutAction();
+       result &= ~ACTION_PASS_TO_USER;
+       isWakeKey = false; // wake-up will be handled separately
+       if (down) { interceptPowerKeyDown(event, interactive); } else { interceptPowerKeyUp(event, interactive, canceled); }
+       break;
+   }
+   ```
+   and `interceptPowerKeyDown` itself starts the long-press timer: `mHandler.sendMessageDelayed(msg, ViewConfiguration.get(mContext).getDeviceGlobalActionKeyTimeout())` with `msg = MSG_POWER_LONG_PRESS`, which ends in `showGlobalActions()`.
+2. [`AccessibilityInputFilter.onInputEvent`](https://github.com/aosp-mirror/platform_frameworks_base/blob/android-10.0.0_r47/services/accessibility/java/com/android/server/accessibility/AccessibilityInputFilter.java), line 196. The filter that feeds `AccessibilityService.onKeyEvent` hands an event on untouched when it is not marked "pass to user":
+   ```java
+   if ((policyFlags & WindowManagerPolicy.FLAG_PASS_TO_USER) == 0) {
+       state.reset();
+       clearEventsForAllEventHandlers(eventSource);
+       super.onInputEvent(event, policyFlags);
+       return;
+   }
+   ```
+3. [`GlobalActionsImpl`](https://github.com/aosp-mirror/platform_frameworks_base/blob/android-10.0.0_r47/packages/SystemUI/src/com/android/systemui/globalactions/GlobalActionsImpl.java) (stock SystemUI): `disable()` copies `DISABLE2_GLOBAL_ACTIONS` into `mDisabled`, and `showGlobalActions()` begins with `if (mDisabled) return;`. That is the reason the flag in section 4 works.
+
+**What this adds up to**
+
+* By the source, 1 + 2: the power key never reaches an accessibility service's key hook. Neither Button Mapper nor our own helper can see it, stop it or pre-empt the power menu through the accessibility API. This is the answer to TASKS PWR2 (can accessibility see or stop the power key? **No**). It rests on the source reading; the emulator run that was meant to confirm it (b0) failed its own control, so it is *not* measured.
+* The one lever the shell does have is the status-bar flag (3), and the emulator shows it works for the injected key.
+* Not proven on the tablet: its SystemUI and PhoneWindowManager are the vendor's builds (Alps). The guide's read-only probe card (section 9) checks the flag there before anything is built on it.
+* Caveat on the order inside the native `InputDispatcher::notifyKey` (policy interception first, then the input filter with the flags the policy produced): the native source could not be fetched in this session. It is from memory and fits the explicit `FLAG_PASS_TO_USER` test in item 2, but it is not quoted here.
 
 ## 4. What would work: "Power menu v2" (not built; needs Tj's decision)
 
