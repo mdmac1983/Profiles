@@ -1,23 +1,23 @@
-# CHECKPOINT 313 — read me first, then TASKS.md
+# CHECKPOINT 314 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T05:32:33Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `3d241d8` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T05:40:13Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `19d37e4` (this checkpoint is the commit after it)
 
 ## Just done
-Tj asked what Power menu v2 and the standing items are: answered in chat; his question + the 5 decisions that wait on him recorded in TASKS.md and HANDOFF section 6
+Tj: close G3d (done) + phone guide: simple, logical order for a short OTG session, add what is needed, and make sure Claude can save and use everything from the tablet. Written into TASKS.md as PG0-PG4
 
 ## Do this next
-Nothing to build until Tj decides. v0.7.0 is released (https://github.com/tjshea90/Launcher/releases/tag/v0.7.0). If he says yes to the v0.7.1 guide card: add a getevent read-test card to phoneguide steps.txt (and research/ADB_PHONE_COMMANDS.txt, identical), run emulator sections gc and g, ship v0.7.1
+audit first: read phoneguide/src/main/assets/steps.txt fully, the phoneguide Activity code, app/src/main/resources/probe-commands.txt, TabletReport/SetupActivity (what 'Do everything' and 'Collect EVERYTHING' save), tools/adb-all.sh; list what Claude still cannot answer without the tablet; then restructure steps.txt (copy to research/ADB_PHONE_COMMANDS.txt), add cards/probe lines, write the intake script + doc, prove with test_handoff + emulator gc,g,y2,x, ship v0.7.1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M HANDOFF.md
      M TASKS.md
 
 ## Last ten checkpoints
 ```
+  77726ab ckpt 313: Tj asked what Power menu v2 and the standing items are: answered in chat; his 
   3de52f1 ckpt 312: v0.7.0 RELEASED: https://github.com/tjshea90/Launcher/releases/tag/v0.7.0 (Lau
   245c684 ckpt 311: v0.7.0 gated by ship.sh (handoff 29/29, unit 220 green, lint clean) and pushed
   2a547f6 ckpt 310: gated v0.7.0 (code 17) and pushed it: the handoff self-test, the full unit sui
@@ -27,7 +27,6 @@ Nothing to build until Tj decides. v0.7.0 is released (https://github.com/tjshea
   61c2d76 ckpt 306: HANDOFF.md refreshed for v0.7.0 (state block, architecture rows, decisions, re
   dc1c928 ckpt 305: gc harness bug: *PATH* skipped every CLASSPATH= line (helper start + ShellProb
   c8077b8 ckpt 304: gc harness: process evidence for the helper check; rt PASSES (run 108: 18 PASS
-  2e195a9 ckpt 303: rt: run 106 showed Android's Recents DROPS the older same-affinity task when a
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
