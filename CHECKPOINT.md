@@ -1,13 +1,13 @@
-# CHECKPOINT 347 — read me first, then TASKS.md
+# CHECKPOINT 348 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T18:48:59Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `f04ea27` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T18:51:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `a9cef92` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's step 5 (1:47): SELinux Enforcing, build = MediaTek alps user/release-keys Android 10 (not LineageOS), app files folder does not exist yet; step 6 sent: tap '2. Collect the tablet report' on the tablet (creates the folder + the app-side report)
+Tj's step 6 photo: the app-side report works without the helper (31 KB, in the app folder), the publish to Downloads needs the helper and the DONE line then misleads; buttons 1, 3, 4 greyed; UX1 added; step 7 sent: copy the report to Downloads by hand from the phone and ls -l both folders (MBX1 evidence)
 
 ## Do this next
-WAIT for Tj to say the report finished; then step 7 (phone): ls -l /sdcard/Android/data/com.tj.launcher/files/probe (MBX1: can the shell see what the app wrote?); then how to get the report to Claude: tablet button '2b. Share a SHORT summary' (which share targets exist?); then optionally the side-key read test from the phone for Power menu v2; v0.7.2 = KA1 + MBX1 + PG5/PG6 + RS1
+WAIT for Tj's screenshot of the cp + ls -l line: if the copy worked, the shell CAN read what the app writes there (MBX1 viable) and the report is in Downloads/launcher-probe; then tell Tj to unplug (or offer ONE more cable test: the side-key read test) and to send tablet-report.txt later from the tablet (Files app share, or 2b); then v0.7.2 = KA1 + MBX1 + UX1 + PG5/PG6 + RS1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ WAIT for Tj to say the report finished; then step 7 (phone): ls -l /sdcard/Andro
 
 ## Last ten checkpoints
 ```
+  a9cef92 ckpt 347: Tj's step 5 (1:47): SELinux Enforcing, build = MediaTek alps user/release-keys
   f04ea27 ckpt 346: Tj's crash log (1:39): the first-open crash = the keep-alive notification (id 
   6accd5d ckpt 345: Tj's step 3 result (1:37): grants, app-ops, battery whitelist and speed compil
   cbfb881 ckpt 344: Tj's step 3 screenshot (1:33): with a LIVE helper the launcher's log says unix
@@ -26,5 +27,4 @@ WAIT for Tj to say the report finished; then step 7 (phone): ls -l /sdcard/Andro
   c87f389 ckpt 340: Tj's 3rd screenshots: the helper starts fine (unix up for uid 10243, tcp 47631
   bf2b0c8 ckpt 339: Tj's 2nd screenshot (1:02): helper start attempt 1 left no process, attempt 2 
   336c9e7 ckpt 338: Tj is in the CABLE SESSION (screenshot 12:59 phone clock): shell uid 2000 OK, 
-  63a17ba ckpt 337: v0.7.1 RELEASED (android.yml run 20 green, signed): https://github.com/tjshea9
 ```
