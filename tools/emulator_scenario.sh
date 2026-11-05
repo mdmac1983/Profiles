@@ -785,7 +785,9 @@ check "PG2: the report holds the launcher's own state (version, mode, helper, ac
 check "PG2: the report ran the launcher's own readers on this system (PARSER SELF-CHECK: Recents tasks, apps with a notification)" rep_all 'PARSER SELF-CHECK' '^Recents tasks parsed: [0-9]' '^Apps with a notification now'
 check "PG2: the probe list added the samples (notification records, side-key device, policy_control, crash log, the launcher's log)" rep_all 'NotificationRecord\(' 'getevent -pl' 'settings get global policy_control' 'logcat -b crash' 'TjReset:I'
 check "PG2: the side-key routine ran end to end in the emulator (KEYTEST markers, the 'no power menu' flag answered OK, then cleared)" kt_all 'KEYTEST-START' 'KEYTEST-END' 'disable2(0x8) -> OK' 'cleared'
-check "PG3: the report carries the key-test verdict on ONE line (it survives the report's length cut)" rep_all '^keytest_summary: the side key'
+check "PG2: getevent's output reached the helper through the pipe (KEYTEST-LINES n with n above 0: the shell can read the input devices here)" bash -c "grep '^keytest:' $OUT/x-autorun-done.txt | grep -qE 'KEYTEST-LINES [1-9]'"
+check "PG3: the report carries the key-test verdict on ONE line (it survives the report's length cut) and says getevent works" rep_all '^keytest_summary: the side key was NOT seen \([0-9]+ input lines were read, so getevent works'
+check "PG3: the key was not pressed on the emulator, so no KEY_POWER line is claimed" bash -c "! grep '^keytest:' $OUT/x-autorun-done.txt | grep -q 'KEY_POWER'"
 rm -rf "$OUT/x-intake"
 python3 -I tools/tablet_intake.py "$OUT/x-report.txt" --out "$OUT/x-intake" --date 2026-01-01 --label emulator > "$OUT/x-intake-console.txt" 2>&1; RCI=$?
 info "PG3: intake of the real report: exit $RCI; $(head -c 400 "$OUT/x-intake-console.txt" | tr '\n' '|')"
