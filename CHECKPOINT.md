@@ -1,22 +1,22 @@
-# CHECKPOINT 314 — read me first, then TASKS.md
+# CHECKPOINT 315 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T05:40:13Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `19d37e4` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T05:49:46Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `3d624d1` (this checkpoint is the commit after it)
 
 ## Just done
-Tj: close G3d (done) + phone guide: simple, logical order for a short OTG session, add what is needed, and make sure Claude can save and use everything from the tablet. Written into TASKS.md as PG0-PG4
+PG1 done: phone guide redesigned for a short cable session. New order: PART 1 tablet prep, PART 2 cable (ONE must line: start the helper), PART 3 buttons on the tablet (Do everything, Collect report, Side-key test, Send), then FALLBACK / EXTRAS / UNDO closed until tapped. Guide app: plan box, jump buttons, next-step button, star on must cards, GuideParser (pure) + 7 structure tests
 
 ## Do this next
-audit first: read phoneguide/src/main/assets/steps.txt fully, the phoneguide Activity code, app/src/main/resources/probe-commands.txt, TabletReport/SetupActivity (what 'Do everything' and 'Collect EVERYTHING' save), tools/adb-all.sh; list what Claude still cannot answer without the tablet; then restructure steps.txt (copy to research/ADB_PHONE_COMMANDS.txt), add cards/probe lines, write the intake script + doc, prove with test_handoff + emulator gc,g,y2,x, ship v0.7.1
+STEP B (tablet capture, v0.7.1): probe-commands.txt new read-only lines (notification/recents samples, power-key device, policy_control, keep-alive services, crash + own log tail); ReportState (safe allow-list) + TabletReport state/parser self-check/own-log; KEYTEST job in ShellProtocol.RUN + SetupActivity labels '1. Do everything / 2. Collect report / 3. Side-key test / 4. Collect EVERYTHING' + answer buttons; unit tests; emulator x asserts. Then STEP C intake (tools/tablet-intake.sh + tablet_facts.py + research/tablet/README.md + test), STEP D prove + ship v0.7.1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  35fada6 ckpt 314: Tj: close G3d (done) + phone guide: simple, logical order for a short OTG sess
   77726ab ckpt 313: Tj asked what Power menu v2 and the standing items are: answered in chat; his 
   3de52f1 ckpt 312: v0.7.0 RELEASED: https://github.com/tjshea90/Launcher/releases/tag/v0.7.0 (Lau
   245c684 ckpt 311: v0.7.0 gated by ship.sh (handoff 29/29, unit 220 green, lint clean) and pushed
@@ -26,8 +26,7 @@ audit first: read phoneguide/src/main/assets/steps.txt fully, the phoneguide Act
   7027460 ckpt 307: gate B (run 113): 75 PASS 1 FAIL; the one FAIL is section last 'card Restart p
   61c2d76 ckpt 306: HANDOFF.md refreshed for v0.7.0 (state block, architecture rows, decisions, re
   dc1c928 ckpt 305: gc harness bug: *PATH* skipped every CLASSPATH= line (helper start + ShellProb
-  c8077b8 ckpt 304: gc harness: process evidence for the helper check; rt PASSES (run 108: 18 PASS
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(4 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
