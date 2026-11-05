@@ -1154,7 +1154,8 @@ ensurehome
 # ---- RESEARCH 3 (info lines only): (a) the corrected 'am stack move-task' into the HOME stack (b) a REAL power-key press written into the emulator's "Power Button" device by the emulator console:
 #      does the shell (getevent) see it BEFORE the stock menu appears, and with DISABLE2_GLOBAL_ACTIONS set does the key still arrive while NO stock menu opens?
 beat "before RS3"
-setfeat; setmode custom; home; sleep 2
+rawfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"raw_key_log\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+rawfeat; setmode custom; rebind; home; sleep 2
 probe(){ adb shell "CLASSPATH=\$(pm path $PKG | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe $*"; }
 recents(){ adb shell dumpsys activity recents 2>/dev/null | grep -E 'Recent #[0-9]+:' | sed 's/^ *//' | cut -c1-95 | tr '\n' '|' | cut -c1-600; }
 adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
@@ -1176,7 +1177,10 @@ presskey(){ # presskey <hold seconds>: a real kernel-level power key press throu
 if [ -n "$POWERDEV" ]; then
   adb logcat -c
   ( adb shell "timeout 12 getevent -lt $POWERDEV" > "$OUT/rs3-getevent.txt" 2>&1 & ) ; sleep 2
+  adb emu event send 1:115:1 0:0:0 >/dev/null 2>&1; sleep 0.3; adb emu event send 1:115:0 0:0:0 >/dev/null 2>&1; sleep 1      # control: a volume-up key does reach the accessibility key filter
   presskey 1.4; sleep 2; shot 131-rs3-power-console
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep KEYRAW | sed 's/.*KEYRAW/KEYRAW/' | sort | uniq -c | tr -s ' ' | tr '\n' '|' > "$OUT/rs3-keyraw.txt"
+  info "RS3 b0 key codes the accessibility helper's key filter was handed (volume-up control + the real power press): $(cat $OUT/rs3-keyraw.txt)"
   adb shell uiautomator dump /sdcard/rs3.xml >/dev/null 2>&1
   adb logcat -d -v epoch -s TjA11y:I 2>/dev/null | grep 'menuOpen=true' | head -1 | cut -c1-120 > "$OUT/rs3-menu-seen.txt"
   info "RS3 b1 console said [$(cat $OUT/rs3-emu-down.txt $OUT/rs3-emu-up.txt | tr '\n' ' ' | cut -c1-160)]; getevent saw: $(grep -E 'KEY_POWER' $OUT/rs3-getevent.txt | tr -s ' ' | tr '\n' '|' | cut -c1-260); our helper saw the stock menu at: $(cat $OUT/rs3-menu-seen.txt); menu items on screen: $(adb shell cat /sdcard/rs3.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"

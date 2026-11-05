@@ -500,6 +500,7 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     @Override protected boolean onKeyEvent(android.view.KeyEvent ev) {
         try {
+            if (ev != null && Features.get(this, "raw_key_log", false)) Log.i(TAG, "KEYRAW " + android.view.KeyEvent.keyCodeToString(ev.getKeyCode()) + " action=" + ev.getAction());   // research only (AB5, default off): which keys does Android's key filter ever hand a service?
             if (ev == null || ev.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
             int rc = ev.getRepeatCount();
             int code = ev.getKeyCode();
