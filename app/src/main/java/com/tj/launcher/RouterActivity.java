@@ -67,6 +67,12 @@ public class RouterActivity extends Activity {
             Mode.set(this, Mode.CUSTOM);
             returnedByDoubleHome = true;
         }
+        // AC1 safety net: a Home press in a Quickstep session that outlived a lock (the helper was away at the unlock, so nobody ended it): the plain-PIN rule applies now.
+        if (!prearm && !Mode.isCustom(this) && UsageGap.sessionEndedWhileAway(this)) {
+            LockLog.add(this, "RECONCILE", "Home press: the keyguard was shown after the Quickstep session began and no handshake was confirmed: ending the session like a plain unlock");
+            Mode.set(this, Mode.CUSTOM);
+            returnedByDoubleHome = true;   // the same clean-up as any return: Quickstep's apps closed, notifications cleared, radios off
+        }
         if (prearm || Mode.isCustom(this)) {
             int flags = Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS;   // V4: also excluded (belt and braces)
             // B1 (switch, default ON: Tj's decision, 2026-11-04): an IMPLICIT MAIN + SECONDARY_HOME intent (no component) makes Android create a HOME-type task, which is never listed in Recents (not even as the

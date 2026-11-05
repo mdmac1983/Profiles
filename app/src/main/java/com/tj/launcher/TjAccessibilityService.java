@@ -127,6 +127,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { KeepAliveService.ensure(this); } catch (Throwable t) { Log.e(TAG, "keep-alive failed", t); }   // AA2: after a restart / update the helper reconnects first: bring the service back
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
+        handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
     }
 
@@ -701,6 +702,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (!front) startRouter("stock");
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
+                Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: this lock ended in a handshake, so the safety net below must not end this Quickstep session
                 LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
                 verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
                 return;
@@ -720,6 +722,23 @@ public class TjAccessibilityService extends AccessibilityService {
                 LockLog.add(app, "UNLOCK", "plain, mode " + Mode.get(app) + (CrashGuard.automationOff(app) ? " (automation paused: the mode is left alone)" : "") + ", Enter to unlock " + sinceEnter + " ms");
             }
         } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
+    }
+
+    /**
+     * AC1 safety net ({@link UsageGap}): if the helper was not running when the tablet was unlocked, nothing saw the plain PIN and Android showed Quickstep. Now that it is back: the keyguard was shown after the
+     * Quickstep session began and no handshake was confirmed, so the session ended at that unlock - the custom launcher takes the tablet, exactly like a plain unlock does. Cheap when nothing is wrong
+     * (a few preference reads; the usage query only runs in Quickstep mode).
+     */
+    private void reconcileAfterGap(String why) {
+        try {
+            android.content.Context app = getApplicationContext();
+            if (!UsageGap.sessionEndedWhileAway(app)) return;
+            LockLog.add(app, "RECONCILE", why + ": the keyguard was shown after the Quickstep session began and no handshake was confirmed: ending the session like a plain unlock");
+            Mode.set(app, Mode.CUSTOM);
+            startRouter("custom");
+            ReturnReset.run(app);
+            Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (the helper was away at the unlock; corrected when it came back)");
+        } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
     }
 
     private long lastEnterAt = 0;   // when the last PIN-pad Enter was tapped (for the lock log's "Enter to unlock" time)
