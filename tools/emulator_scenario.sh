@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 ka last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 ka rt last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1071,6 +1071,53 @@ adb shell settings delete global overlay_display_devices >/dev/null 2>&1; sleep 
 adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.calendar
 setfeat; setmode custom; home
 fi # section rs2
+if want rt; then # section rt
+ensurehome
+# ---- AA3: the task-precise clean-up. With the shell helper running when a Quickstep session BEGINS, the tasks that exist then belong to the custom account. At the lock that ends the session only the NEW
+#      tasks go: apps that exist only in Quickstep are closed as before, an app the custom account also has (Contacts here) is spared and loses only Quickstep's own extra task.
+beat "before RT"
+setfeat; setmode custom; rebind; home; sleep 2
+adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
+rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE 'realActivity=[A-Za-z0-9_.]+' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
+# the custom account's world: Calendar (the target app here) and Contacts, both open before Quickstep begins
+for APP in com.android.contacts com.android.calendar; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+info "RT custom account before Quickstep: $(rec)"
+adb shell locksettings set-pin 1234 > "$OUT/rt-setpin.txt" 2>&1
+adb logcat -c
+lockpad; pad d d 1 2 3 4 e; sleep 7                      # the default handshake -> a Quickstep session BEGINS (Mode.set -> TaskOrigin.sessionStart)
+getmode > "$OUT/rt-mode.txt"
+adb logcat -d -s TjTasks:I TjA11y:I > "$OUT/rt-log-start.txt" 2>&1
+info "RT session start: $(grep 'TjTasks' $OUT/rt-log-start.txt | tail -1 | cut -c1-300)"
+check "AA3: a Quickstep session began (the handshake worked)" grep -q quickstep "$OUT/rt-mode.txt"
+check "AA3: the custom account's tasks were remembered when it began" grep -q "session start: .* task(s) belong to the custom account" "$OUT/rt-log-start.txt"
+# inside Quickstep: two apps that exist only here, Contacts again (resumes the custom account's own task), and a SECOND Contacts task if Android allows one
+for APP in com.android.gallery3d com.android.email com.android.contacts; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
+adb shell am start -n com.android.contacts/.activities.PeopleActivity -f 0x18000000 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
+info "RT during Quickstep: $(rec)"
+CONTACTS_TASKS_BEFORE=$(adb shell dumpsys activity recents 2>/dev/null | grep -c 'realActivity=com.android.contacts')
+adb logcat -c
+adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session ends; the helper cleans up before any wake
+adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
+info "RT after the lock: $(rec)"
+info "RT the clean-up said: $(grep 'AT LOCK' $OUT/rt-log-lock.txt | tail -1 | cut -c1-420)"
+adb shell dumpsys activity recents 2>/dev/null | grep -oE 'realActivity=[A-Za-z0-9_.]+' > "$OUT/rt-recents-after.txt"
+check "AA3: the lock-time clean-up used the task list (it reports the new/closed/removed/spared counts)" grep -q "tasks: [0-9]* new since the session began" "$OUT/rt-log-lock.txt"
+check "AA3: Gallery (only opened in Quickstep) is gone from Recents" bash -c "! grep -q 'com.android.gallery3d' $OUT/rt-recents-after.txt"
+check "AA3: Email (only opened in Quickstep) is gone from Recents" bash -c "! grep -q 'com.android.email' $OUT/rt-recents-after.txt"
+check "AA3: Contacts, which the custom account had open before Quickstep began, is SPARED (still in Recents)" grep -q 'com.android.contacts' "$OUT/rt-recents-after.txt"
+check "AA3: Solitaire (Calendar here), the target, is untouched" grep -q 'com.android.calendar' "$OUT/rt-recents-after.txt"
+CONTACTS_TASKS_AFTER=$(grep -c 'com.android.contacts' "$OUT/rt-recents-after.txt")
+info "RT Contacts tasks: before the lock $CONTACTS_TASKS_BEFORE, after $CONTACTS_TASKS_AFTER (a second one existed only if Android allowed it)"
+if [ "${CONTACTS_TASKS_BEFORE:-0}" -ge 2 ]; then check "AA3: Quickstep's own SECOND Contacts task was removed by id, the custom account's one stays" bash -c "[ $CONTACTS_TASKS_AFTER = 1 ]"; fi
+getmode > "$OUT/rt-mode-after.txt"
+check "AA3: the custom account is active again behind the lock screen" grep -q custom "$OUT/rt-mode-after.txt"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 4
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb shell locksettings clear --old 1234 > "$OUT/rt-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+setfeat; setmode custom; home
+fi # section rt
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
