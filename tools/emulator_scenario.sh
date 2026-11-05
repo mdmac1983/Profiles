@@ -1392,6 +1392,8 @@ for try in 1 2 3 4; do
 done
 info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
+for i in $(seq 1 20); do adb shell dumpsys accessibility 2>/dev/null | grep -q 'Service\[label=' && break; sleep 2; done   # Android binds the helper a few seconds after the unlock
+sleep 3
 adb shell dumpsys accessibility > "$OUT/rb-a11y.txt" 2>&1
 adb shell settings get secure enabled_accessibility_services > "$OUT/rb-a11y-list.txt" 2>&1
 check "RB5a: the accessibility helper is still switched on after the restart (the list survived)" grep -q 'com.tj.launcher/' "$OUT/rb-a11y-list.txt"
