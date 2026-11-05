@@ -1095,9 +1095,9 @@ for APP in com.android.gallery3d com.android.email com.android.contacts; do adb 
 # a REAL second task of the shared test app: another activity with its own task affinity (a relaunch with MULTIPLE_TASK is not it: Android then drops the OLDER task of the same affinity from Recents, run 106)
 adb shell am start -n $SN/com.tj.testnotifier.SecondActivity >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
 info "RT during Quickstep: $(rec)"
-TLB=$(tl); SB=$(echo "$TLB" | tr ' ' '\n' | grep ":$SN\$" | grep -v "^$SA:" | head -1 | cut -d: -f1)
+TLB=$(tl); SB=$(echo "$TLB" | tr ' ' '\n' | grep ":$SN\.two\$" | head -1 | cut -d: -f1)      # SecondActivity's task: its affinity is <package>.two
 info "RT task ids during Quickstep (just before the lock): $TLB (test app: custom task ${SA:-none}, Quickstep's second task ${SB:-none})"
-check "AA3-S0: Android created a SECOND task of the shared test app (so the test means something)" bash -c "[ -n '$SA' ] && [ -n '$SB' ]"
+check "AA3-S0: the shared test app has TWO tasks side by side in Recents (so the test means something)" bash -c "[ -n '$SA' ] && [ -n '$SB' ] && [ '$SA' != '$SB' ] && echo '$TLB' | tr ' ' '\n' | grep -q '^$SA:'"
 SPID0=$(adb shell pidof $SN | tr -d '\r\n'); CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n'); CT0=$(echo "$TLB" | tr ' ' '\n' | grep ':android.task.contacts$' | head -1 | cut -d: -f1)
 info "RT progress: about to lock, +${SECONDS}s (Contacts task ${CT0:-none}, processes: test app ${SPID0:-none}, Contacts ${CPID0:-none})"
 adb logcat -c
