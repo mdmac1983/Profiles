@@ -567,3 +567,40 @@ I will only have the otg cable one time, so make sure I'm doing all the necessar
 
 I will run the otg probe later
 ```
+
+## 2026-11-05T01:48:23Z
+```
+It is important that this project doesn't break anything or require me to factory reset my tablet.  Review the code for the launcher for efficiency. It should be well coded and optimized for the hardware,  armv7 mt8168 2gb ram android 10 go. 
+Once everything is complete, make sure the adb commands guide app you already made for my host phone covers all the adb commands needed in a logical order
+I want the notification panel to work normally in the custom launcher, but to always only have the one settings tile, regardless of the tiles i set for quickstep. I also want it to hide the pencil or remove it, never show wifi or Bluetooth, and never show notifications from apps opened in the quickstep launcher
+When you are done,  research and determine the viability of the following:
+
+Since you must use the physical side key and do not have root access, you cannot physically delete the screenshot button from the system code. However, you can achieve a seamless transition by using a dedicated button-remapping app that hijacks the physical button before the stock system menu can render.
+The trick to stopping the "flashing" or delay is granting a specific system-level permission to a remapping app using ADB. This elevates the app's priority above the standard accessibility layer.
+Here is the exact method to do this using Button Mapper (by flar2):
+
+Step 1: Install the Remapper App
+
+1. Download Button Mapper: Remap your keys from the Play Store or F-Droid onto your phone.
+2. Open the app and follow the on-screen prompts to enable its basic Accessibility Service when requested.
+
+Step 2: Bypass the System Delay via ADB
+
+To allow the app to intercept the physical Power/Side key instantly without rendering the stock menu first, you must grant it a special write permission:
+1. Connect your phone to your computer with USB Debugging turned on.
+2. Open your command prompt or terminal on your PC and run this command:bash
+adb shell pm grant flar2.homebutton android.permission.WRITE_SECURE_SETTINGS
+Use code with caution.
+(Note: This grants the app the right to handle system-level button events immediately.)
+
+Step 3: Configure the Physical Side Button
+
+1. Inside the Button Mapper app, tap on Add Buttons.
+2. Tap the physical side button (Power button) when prompted to register it.
+3. Select the newly added button and check Customize.
+4. Set the Long Press action to open "Custom Power Menu" or choose individual actions (like Power Off / Restart) if the app provides a tailored layout.
+
+Why this fixes your issue
+
+By utilizing WRITE_SECURE_SETTINGS via ADB, the application hooks deeply into the hardware button listeners. When you hold the physical side key, the app catches the signal instantly and fires its own clean menu or shortcut, blocking the stock LineageOS menu from ever drawing or flashing on your screen.
+```
