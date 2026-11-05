@@ -661,3 +661,8 @@ What two diagnostics
 ```
 This is way too much information for my short time with the cable. Give me short step by step tasks and wait for me 
 ```
+
+## 2026-11-05T18:27:18Z
+```
+I don't know if it matters but when I first opened launcher it crashed, now it seems to work
+```
