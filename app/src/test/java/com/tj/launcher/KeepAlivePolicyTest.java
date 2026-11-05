@@ -8,14 +8,10 @@ import org.junit.Test;
 
 /** AA2: the keep-alive rules. The service itself needs a device; the emulator section "ka" proves it is a foreground service and what it does to the process. */
 public class KeepAlivePolicyTest {
-    @Test public void runsWhenTheSwitchIsOnAndNothingCrashed() { assertTrue(KeepAlivePolicy.shouldRun(true, false)); }
-    @Test public void neverWhenTheSwitchIsOff() { assertFalse(KeepAlivePolicy.shouldRun(false, false)); }
-    @Test public void neverWhileTheCrashBreakerIsTripped() { assertFalse(KeepAlivePolicy.shouldRun(true, true)); assertFalse(KeepAlivePolicy.shouldRun(false, true)); }
-    @Test public void aStickyRestartFollowsTheSameRule() {
-        assertTrue(KeepAlivePolicy.honourRestart(true, false));
-        assertFalse(KeepAlivePolicy.honourRestart(false, false));
-        assertFalse(KeepAlivePolicy.honourRestart(true, true));
-    }
+    @Test public void runsWhenTheSwitchIsOnAndNothingCrashed() { assertTrue(KeepAlivePolicy.shouldRun(true, false, false)); }
+    @Test public void neverWhenTheSwitchIsOff() { assertFalse(KeepAlivePolicy.shouldRun(false, false, false)); }
+    @Test public void neverWhileTheCrashBreakerIsTripped() { assertFalse(KeepAlivePolicy.shouldRun(true, true, false)); assertFalse(KeepAlivePolicy.shouldRun(false, true, false)); }
+    // (one rule only: ensure(), onCreate() and onStartCommand() all ask KeepAliveService.mayRun, which is this method; there is no second overload that could ignore the fuse)
     @Test public void theNotificationIsAsQuietAsAndroidAllows() {
         // android.app.NotificationManager.IMPORTANCE_MIN == 1 (no sound, no status-bar icon), android.app.Notification.VISIBILITY_SECRET == -1 (hidden on the lock screen)
         assertEquals(1, KeepAlivePolicy.IMPORTANCE_MIN);
@@ -34,7 +30,7 @@ public class KeepAlivePolicyTest {
     @Test public void keepAliveIsOffByDefaultUntilItIsProvenOnTheRealTablet() { assertFalse(KeepAlivePolicy.DEFAULT_ON); }
     @Test public void aBlownFuseStopsItWhateverTheSwitchSays() {
         assertFalse(KeepAlivePolicy.shouldRun(true, false, true));
-        assertFalse(KeepAlivePolicy.honourRestart(true, false, true));
+        assertFalse(KeepAlivePolicy.shouldRun(true, true, true));
         assertTrue(KeepAlivePolicy.shouldRun(true, false, false));
     }
     @Test public void theFuseKeysAreStable() {
@@ -54,6 +50,7 @@ public class KeepAlivePolicyTest {
         assertFalse(KeepAlivePolicy.isBadNotificationCrash("java.lang.NullPointerException", "Bad notification in a made-up NPE"));   // not the system's crash class
         assertFalse(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", "Some other remote crash"));
         assertFalse(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", null));
+        assertFalse(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", "Foreground service type mismatch in startForeground"));   // the bare word is not enough
         assertFalse(KeepAlivePolicy.isBadNotificationCrash((Throwable) null));
         assertFalse(KeepAlivePolicy.isBadNotificationCrash(new RuntimeException("Bad notification(tag=null, id=7471)")));   // right words, wrong class
         assertFalse(KeepAlivePolicy.isBadNotificationCrash(new IllegalStateException("x", new RuntimeException("y"))));

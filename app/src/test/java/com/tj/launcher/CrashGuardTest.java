@@ -19,6 +19,12 @@ public class CrashGuardTest {
     @Test public void theSameOrAnOlderVersionNeverClearsIt() { assertFalse(CrashGuard.shouldAutoClear(true, 19, 19)); assertFalse(CrashGuard.shouldAutoClear(true, 20, 19)); }
     @Test public void anUnreadableVersionNeverClearsIt() { assertFalse(CrashGuard.shouldAutoClear(true, 0, 0)); }
     @Test public void aBreakerThatIsNotTrippedIsNothingToClear() { assertFalse(CrashGuard.shouldAutoClear(false, 0, 19)); }
+    @Test public void theTrippingVersionIsRememberedAndAnUnreadableOneNeverClearsAutomatically() {
+        assertEquals(19, CrashGuard.tripVersionToStore(19));
+        assertEquals(Integer.MAX_VALUE, CrashGuard.tripVersionToStore(0));      // 0 means "tripped before this logic existed", so an unreadable version must not use it
+        assertEquals(Integer.MAX_VALUE, CrashGuard.tripVersionToStore(-1));
+        assertFalse(CrashGuard.shouldAutoClear(true, CrashGuard.tripVersionToStore(0), 19));
+    }
 
     @Test public void oldCrashesDoNotCount() {
         long now = 1_000_000;
