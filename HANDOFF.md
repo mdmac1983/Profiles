@@ -61,10 +61,13 @@ checked against the repo at that date; where it can go stale it says where to lo
   emulator at 600×1024/170 dpi. It writes `results.txt` (`PASS/FAIL/INFO` lines, ends with `failed checks: N`) + screenshots + logs into an artifact.
   - **Run only the sections you need:** input `sections` (comma list). Names: `base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v last`; empty = everything
     (the release gate, **~25 min**, scenario timeout 2100 s). A single feature section is 3-8 min. Two different section strings may run side by side.
-  - **Read results:** `actions_get get_workflow_run <id>` → when `completed`: `actions_list list_workflow_run_artifacts <id>` → `actions_get download_workflow_run_artifact <artifact id>`
-    → `curl` the signed URL into the scratchpad → `unzip` → `grep -n '^FAIL\|NATIVE CRASH' results.txt`. Look at the PNGs and the per-check log files.
-  - **`list_workflow_runs` returns HUGE output** (it ignores `per_page`). Use `workflow_runs_filter` (`{"branch":"...","created":">2026-11-04T21:00:00Z"}`) and, once you know
-    the run id, only `get_workflow_run`. A dispatch right after a push can run on the OLD commit — check `head_sha` of the run.
+  - **Read results (current method, 2026-11-05; the old "download the artifact and curl the signed URL" is BLOCKED by a hook, do not work around it):** the last step of the
+    workflow prints a compact block into the JOB LOG: `===== RESULTS: n PASS, m FAIL, k INFO =====`, every FAIL, every INFO (cut at 380 chars, so put the numbers FIRST in an `info` line),
+    `===== END RESULTS =====`. Find the run with `actions_list list_workflow_runs`, `resource_id: emulator.yml`, `workflow_runs_filter {"branch":"main","event":"workflow_dispatch"}`, `perPage: 4`
+    (this filters; runs are dispatched on `main`, the mirror). Then `get_job_logs(run_id, failed_only=true, return_content=true, tail_lines=60)` for a failed run, or
+    `list_workflow_jobs(resource_id=<run id>)` → job id → `get_job_logs(job_id, tail_lines=60)` for any run. **Run ids and job ids are different numbers** (a 404 = wrong kind). Logs exist only
+    after the job ends; a hung scenario can be cancelled and its RESULTS block still prints, showing the last `RT progress`-style marker it reached.
+  - **Every run listing echoes the head commit's message** — keep `ckpt` messages short (a 2 KB message costs 2 KB on every query). A dispatch right after a push can run on the OLD commit — check `head_sha`.
   - A run can show **failure with 0 FAILs** if the scenario hit its `timeout` (that happened at 1000 s; now 2100 s). Check the tail of `results.txt`.
   - **Known emulator flakes (don't chase, rerun the section):** qemu dying; a rare native SIGSEGV of our process inside Android's libz/libhwui (one per ~full run;
     `heal()` in the scenario detects it, logs `INFO NATIVE CRASH`, restores the default home — FAILs within ~15 s after that line are caused by it).
@@ -128,6 +131,9 @@ truth for the look**: open `stock-home.png`/`stock-drawer.png` and measure befor
   `bash -n` the script AND diff the touched lines against `git show <good-commit>:file`.
 - Don't tick a `TASKS.md` box before a named test proves it; name the test in the line.
 - A full emulator run takes 25 min; plan the order so most failures are found by 5-minute section runs first. Don't ship on "should work": a lost-Enter race only showed up in a long run.
-- Reading `list_workflow_runs` unfiltered floods the context. Don't.
+- Reading `list_workflow_runs` unfiltered floods the context. Don't (use the branch + event + `perPage` filter in section 3).
+- `adb shell …` inside a `while read … < file` loop EATS the loop's stdin: the guide-command section ran 2 of ~60 lines and still reported success until it got a coverage check. Always `</dev/null` and assert the count.
+- Android's Recents drops an OLDER task with the same affinity (or same intent) when a newer one is added (also with `FLAG_ACTIVITY_MULTIPLE_TASK`): "two tasks of one app" in a test needs two activities with DIFFERENT task affinities (the CI test app's `SecondActivity`). `removeTask` also kills the app's process unless another task of it is still in Recents.
+- The emulator console's `event send` key injection does not reach the policy (no power menu, not even the volume control reached the key filter): only `input keyevent` is a usable key test, and it bypasses the accessibility filter. A restarted tablet's PIN screen takes the PIN as key events (`input text`), not as taps at the pad's usual coordinates.
 - When Tj says "?" he means "report status now" — answer with the newest run/release state, then continue.
 - Tj's tablet may run an OLDER version than the repo; always state which version a statement refers to.
