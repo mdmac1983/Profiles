@@ -1,22 +1,24 @@
-# CHECKPOINT 344 — read me first, then TASKS.md
+# CHECKPOINT 345 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T18:36:11Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `0b4b40c` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T18:39:07Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `a6409d9` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's step 3 screenshot (1:33): with a LIVE helper the launcher's log says unix Permission denied + TCP EPERM = no socket channel works on this ROM (HLP3 answered); MBX1 (file mailbox transport) added; sent step 3 = one line with the guide's grants + appops + deviceidle + granted check incl. INTERNET + accessibility get + compile
+Tj's step 3 result (1:37): grants, app-ops, battery whitelist and speed compile all done by hand on the tablet (INTERNET granted=true, accessibility helper already on, compile Success); rule added to CLAUDE.md: one short step per message, commands in the LAST message of the turn
 
 ## Do this next
-WAIT for Tj's screenshot of the end of that line (granted lines, services, Success); then step 4: logcat -d -b crash | tail -40 for CR1; then tap '2. Collect the tablet report' on the tablet (app side only) and share it; then ls -l of /sdcard/Android/data/com.tj.launcher/files/probe on the phone (MBX1 evidence); afterwards MBX1 as v0.7.2
+step 4 sent: logcat -d -b crash | tail -40 (the first-open crash, CR1); WAIT for the screenshot; then step 5: on the tablet tap '2. Collect the tablet report' (app side only), then on the phone ls -l /sdcard/Android/data/com.tj.launcher/files/probe/ and getenforce (MBX1 evidence); MBX1 as v0.7.2 afterwards
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M CLAUDE.md
      M TASKS.md
 
 ## Last ten checkpoints
 ```
+  cbfb881 ckpt 344: Tj's step 3 screenshot (1:33): with a LIVE helper the launcher's log says unix
   0b4b40c ckpt 343: Tj: the tablet says Shell helper NOT running right after a fresh restart (help
   97cb41f ckpt 342: Tj's step 1 screenshot (1:31 phone clock): helper restarted OK ([1] 12440, uni
   000d69b ckpt 341: Tj says the launcher crashed when first opened on the tablet and now seems to 
@@ -26,5 +28,7 @@ WAIT for Tj's screenshot of the end of that line (granted lines, services, Succe
   63a17ba ckpt 337: v0.7.1 RELEASED (android.yml run 20 green, signed): https://github.com/tjshea9
   e06b833 ckpt 336: v0.7.0 experiment (run 129) = identical legacy-alone failure on 2a547f6: the n
   4686fda ckpt 335: ship.sh gates passed again for v0.7.1 (code 18; handoff, unit, lint green; pus
-  ee16860 ckpt 334: gated v0.7.1 (code 18) and pushed it: the handoff self-test, the full unit sui
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)

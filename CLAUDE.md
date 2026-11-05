@@ -71,6 +71,8 @@ Rules that make the ladder work:
 
 If Tj sends several messages while a task is running: **keep doing what you are already doing**, add each new message as the next step (write it into `TASKS.md` in his words, `ckpt`), **never drop or forget one**, and **answer every one of them**, including ones from earlier in the conversation that are still open (re-list them at the end of a reply until they are done). Before ending a turn, scan `INBOX.md`/`TASKS.md` for any message of his that has no answer yet.
 
+**Live cable session (Tj, 2026-11-05, permanent):** when Tj is at the tablet with the OTG cable and time is short, send ONE short step per message and wait for the reply: no findings, no options, no explanations in the step message. Put every command in the LAST message of the turn: text written before a tool call can be missed on Tj's screen (twice Tj asked for a line that sat earlier in the same turn), so do the bookkeeping tool calls first and the step text last, with no tool call after it.
+
 ## Files from the tablet (Tj, 2026-11-05, permanent)
 
 Tj: "make sure claude can save and use all necessary information from the tablet when connected." When he sends `tablet-report.txt` (or the `launcher-probe` folder, or a zip, or pastes the report text):
