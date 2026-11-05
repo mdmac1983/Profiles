@@ -1401,7 +1401,7 @@ check "RB6: the one-tile list survived the restart" bash -c "[ \"\$(tr -d ' \r\n
 adb shell dumpsys activity services "$PKG" > "$OUT/rb-services.txt" 2>&1
 check "RB7: the keep-alive service is running again after the restart" grep -q KeepAliveService "$OUT/rb-services.txt"
 adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-after.txt"
-check "RB7b: the launcher\'s own data is readable again after the unlock (so RB8 / RB9 mean something)" bash -c "[ -n \"\$(adb shell run-as $PKG ls shared_prefs 2>/dev/null | head -1)\" ]"
+check "RB7b: the launcher data is readable again after the unlock (so RB8 and RB9 mean something)" bash -c "[ -n \"\$(adb shell run-as $PKG ls shared_prefs 2>/dev/null | head -1)\" ]"
 check "RB8: the crash breaker did not trip during the restart" bash -c "! grep -q 'tripped.*true' $OUT/rb-crash-after.txt"
 command adb logcat -d -b crash 2>/dev/null | grep -c "com.tj.launcher" > "$OUT/rb-crashes.txt"
 check "RB9: the launcher did not crash while the tablet started up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-crashes.txt)\" = 0 ]"
