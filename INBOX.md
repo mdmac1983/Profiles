@@ -726,3 +726,8 @@ I don't know i just want to set up the custom launcher permissions while i have 
 ```
 I just made the custom launcher the default home app
 ```
+
+## 2026-11-05T20:24:30Z
+```
+The custom launcher is on but no serial number on the lock screen and the gesture from the lock screen to get to quickstep doesn't work
+```
