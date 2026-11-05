@@ -43,6 +43,9 @@ check "a Done box with no title row at the same height is not matched" 'out=$(U 
 check "an unreadable file exits 1"                       'U "$T/missing.xml" --contains x; [ $? = 1 ]'
 check "a file that is not XML exits 1"                   'echo "not xml" > "$T/bad.xml"; U "$T/bad.xml" --contains x; [ $? = 1 ]'
 check "an unknown option exits 2"                        'U "$T/dump.xml" --bogus; [ $? = 2 ]'
+check "a missing --contains exits 2 (it would match EVERY node and the first would be taken for the wanted one)" 'out=$(U "$T/dump.xml" --attr checked 2>/dev/null); rc=$?; [ -z "$out" ] && [ "$rc" = 2 ]'
+check "a --nth that is not a number from 1 up exits 2 (no traceback)" 'for v in x 0 -1 1.5; do U "$T/dump.xml" --contains Done --nth "$v" >/dev/null 2>&1; [ $? = 2 ] || exit 1; done'
+check "a file that cannot be read says so on stderr (so it is not mistaken for 'not found')" '[ -n "$(U "$T/bad.xml" --contains x 2>&1 >/dev/null)" ] && U "$T/bad.xml" --contains x 2>&1 >/dev/null | grep -q "cannot read"'
 # the dumper may print a status line after the document, and a half-scrolled node is reported with the clipped bounds it has
 { cat "$T/dump.xml"; echo "UI hierchary dumped to: /sdcard/gui.xml"; } > "$T/tail.xml"
 check "text printed after </hierarchy> is ignored"       '[ "$(U "$T/tail.xml" --contains "Take me to")" = "10 300 590 360" ]'
