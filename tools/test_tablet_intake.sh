@@ -66,6 +66,15 @@ check "zip: nothing from the zip was extracted to disk"  '[ -z "$(find "$T/outz"
 # ---------------------------------------------------------------- a single file, and the report text on standard input (Tj pasted it into the chat)
 $INTAKE "$SAMPLE" --out "$T/outf" --date 2026-11-05 >/dev/null 2>&1
 check "a single file works"                              '[ -f "$T/outf/2026-11-05/FACTS.md" ]'
+cp "$SAMPLE" "$T/emulator report (1).txt"
+$INTAKE "$T/emulator report (1).txt" --out "$T/outw" --date 2026-11-05 >/dev/null 2>&1; RCW=$?
+check "a single file works under ANY name (a browser adds ' (1)'; the emulator test passes x-report.txt)" '[ "$RCW" = 0 ] && [ -f "$T/outw/2026-11-05/tablet-report.txt" ] && grep -q "Acme Tab10" "$T/outw/2026-11-05/FACTS.md"'
+head -c 3000 /dev/urandom > "$T/binary.bin"
+$INTAKE "$T/binary.bin" --out "$T/outbin" --date 2026-11-05 >/dev/null 2>&1; RCBIN=$?
+check "a single binary file is refused as not text (exit 3, nothing saved)" '[ "$RCBIN" = 3 ] && [ -z "$(find "$T/outbin" -type f 2>/dev/null)" ]'
+mkdir -p "$T/dl"; cp "$SAMPLE" "$T/dl/tablet-report (1).txt"; echo "== adb-all" > "$T/dl/status 2026-11-05.txt"; echo "x" > "$T/dl/notes.txt"
+$INTAKE "$T/dl" --out "$T/outdl" --date 2026-11-05 >/dev/null 2>&1
+check "a folder member named 'tablet-report (1).txt' is read (saved with a safe name); unrelated .txt files are skipped" '[ -f "$T/outdl/2026-11-05/tablet-report__1_.txt" ] && [ -f "$T/outdl/2026-11-05/status_2026-11-05.txt" ] && [ ! -f "$T/outdl/2026-11-05/notes.txt" ] && grep -q "Acme Tab10" "$T/outdl/2026-11-05/FACTS.md"'
 $INTAKE - --out "$T/outs" --date 2026-11-05 < "$SAMPLE" >/dev/null 2>&1
 check "standard input works and says where it came from" '[ -f "$T/outs/2026-11-05/FACTS.md" ] && grep -q "pasted text" "$T/outs/2026-11-05/FACTS.md" && ! grep -rE "$PRIVATE" "$T/outs"'
 
