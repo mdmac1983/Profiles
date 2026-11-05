@@ -794,7 +794,7 @@ public class TjAccessibilityService extends AccessibilityService {
             String cur = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
             if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
             ComponentName stock = StockLauncher.find(this);
-            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) { RecentsDirty.mark(this); AppOrigin.markQuickstep(this, e.getPackageName().toString()); }
+            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) { RecentsDirty.mark(this); AppOrigin.markQuickstep(this, e.getPackageName().toString()); LockLog.add(getApplicationContext(), "DIRTY", e.getPackageName() + " was marked as opened in Quickstep (window " + e.getClassName() + ")"); }
         } catch (Throwable t) { Log.e(TAG, "dirty tracking failed", t); }
     }
 

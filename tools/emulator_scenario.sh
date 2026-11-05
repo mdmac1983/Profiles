@@ -1609,6 +1609,9 @@ adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10                      # LOCK: the session ends; the clean-up runs behind the lock screen
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/pf-log-a.txt" 2>&1
 info "PF A after the lock: notifications [$(pf_notifs)]; the clean-up said: $(grep 'AT LOCK' $OUT/pf-log-a.txt | tail -1 | cut -c1-420)"
+adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -45 > "$OUT/pf-lock-events.txt"; adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "string|tracked" | tr '\n' ' ' > "$OUT/pf-origin.txt"
+info "PF A lock log (what the helper saw, newest last): $(cut -c1-110 $OUT/pf-lock-events.txt | tail -22 | tr '\n' '|' | cut -c1-1500)"
+info "PF A tj_origin.xml: $(cut -c1-300 $OUT/pf-origin.txt)"
 check "PF-A2: the notification of the app opened in Quickstep is GONE" pf_hasnt $QN
 check "PF-A3: the notification of the app opened only in the custom launcher STAYS" pf_has $CN
 adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
