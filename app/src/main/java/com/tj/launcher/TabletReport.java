@@ -58,10 +58,8 @@ public final class TabletReport {
         } catch (PackageManager.NameNotFoundException e) { b.append(p).append("  (not installed)\n"); }
     }
 
-    /** What the app can read by itself. */
-    public static String appSide(Context c) {
-        StringBuilder b = new StringBuilder();
-        b.append("===== TABLET REPORT (app side) ").append(new java.util.Date()).append('\n');
+    /** The device facts at the top of the report: model, Android, build, the few properties that matter, memory, screen. */
+    private static void deviceFacts(StringBuilder b, Context c) {
         line(b, "model", Build.MANUFACTURER + " " + Build.MODEL + " / " + Build.DEVICE);
         line(b, "android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + "), patch " + Build.VERSION.SECURITY_PATCH);
         line(b, "fingerprint", Build.FINGERPRINT);
@@ -75,6 +73,13 @@ public final class TabletReport {
         line(b, "memory class MB", am == null ? "?" : am.getMemoryClass());
         android.util.DisplayMetrics dm = c.getResources().getDisplayMetrics();
         line(b, "screen", dm.widthPixels + "x" + dm.heightPixels + " @" + dm.densityDpi + " dpi, font scale " + c.getResources().getConfiguration().fontScale);
+    }
+
+    /** What the app can read by itself. */
+    public static String appSide(Context c) {
+        StringBuilder b = new StringBuilder();
+        b.append("===== TABLET REPORT (app side) ").append(new java.util.Date()).append('\n');
+        deviceFacts(b, c);
         PackageManager pm = c.getPackageManager();
         b.append("\n===== system features that matter\n");
         for (android.content.pm.FeatureInfo f : pm.getSystemAvailableFeatures()) {
@@ -99,10 +104,14 @@ public final class TabletReport {
         names(b, c, "secure", Settings.Secure.CONTENT_URI);
         names(b, c, "global", Settings.Global.CONTENT_URI);
         names(b, c, "system", Settings.System.CONTENT_URI);
+        permissions(b, c);
+        return b.toString();
+    }
+
+    private static void permissions(StringBuilder b, Context c) {
         b.append("\n===== this launcher's permissions\n");
         for (String p : new String[] { "WRITE_SECURE_SETTINGS", "DUMP", "CHANGE_CONFIGURATION", "READ_EXTERNAL_STORAGE", "INTERNET", "VIBRATE" })
             b.append(p).append(": ").append(c.checkSelfPermission("android.permission." + p) == PackageManager.PERMISSION_GRANTED ? "granted" : "NOT granted").append('\n');
-        return b.toString();
     }
 
     /** Copies the tablet's own Settings / SystemUI / stock launcher / framework APKs into the share folder (readable by the app: system apps are world-readable). Returns a summary. */
@@ -145,16 +154,31 @@ public final class TabletReport {
     }
 
     /** The launcher's own log lines, as far as the app itself may read them (an app sees only its own lines; the shell helper's probe adds the rest when it runs). */
-    private static String ownLog() {
+    private static String ownLog(int maxLines) {
         StringBuilder b = new StringBuilder("\n\n===== THE LAUNCHER'S OWN LOG (what the app itself may read)\n");
         try {
             Process p = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "TjReset:I", "TjTasks:I", "TjA11y:I", "TjKeepAlive:I", "TjImmersive:I", "TjRouter:I", "TjHooks:I", "TjKeyboard:I", "TjRecentsGuard:I").redirectErrorStream(true).start();
             java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
             java.util.ArrayDeque<String> last = new java.util.ArrayDeque<>();
             String l;
-            while ((l = r.readLine()) != null) { last.add(l); if (last.size() > 200) last.removeFirst(); }
+            while ((l = r.readLine()) != null) { last.add(l); if (last.size() > maxLines) last.removeFirst(); }
             for (String s : last) b.append(s).append('\n');
         } catch (Throwable t) { b.append("(not readable: ").append(t).append(")\n"); }
+        return b.toString();
+    }
+
+    /**
+     * A SHORT version of the report (a few KB, no shell probe): small enough to paste into a chat or send as a text message when the file cannot be attached. It uses the SAME section titles as the full
+     * report, so {@code tools/tablet-intake.sh -} reads it too (its probe rows then say "(not in the report)"). Blocking when the helper runs (the parser self-check asks it): call off the main thread.
+     */
+    public static String summary(Context c, boolean helper) {
+        StringBuilder b = new StringBuilder();
+        b.append("===== TABLET SUMMARY (short: the full report is the file tablet-report.txt) ").append(new java.util.Date()).append('\n');
+        deviceFacts(b, c);
+        permissions(b, c);
+        b.append(ReportState.section(c, helper));
+        b.append(selfCheck(helper));
+        b.append(ownLog(40));
         return b.toString();
     }
 
@@ -167,7 +191,7 @@ public final class TabletReport {
         b.append("\n\n===== SHELL PROBE (read-only commands run by the helper)\n");
         String probe = helper ? ShellHelper.probe() : null;
         b.append(probe == null ? "(the shell helper is not running: start it with the adb line, then collect again for the full probe)\n" : probe);
-        if (probe == null) b.append(ownLog());
+        if (probe == null) b.append(ownLog(200));
         File f = new File(shareDir(c), "tablet-report.txt");
         try (FileOutputStream os = new FileOutputStream(f)) { os.write(b.toString().getBytes("UTF-8")); } catch (Throwable ignored) { }
         return f;

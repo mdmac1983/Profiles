@@ -174,6 +174,7 @@ public class SetupActivity extends Activity {
         all.setEnabled(canRun && !missing.isEmpty());
         page.addView(all);
         page.addView(button("2. Collect the tablet report (small, about a minute) - SEND THIS FILE", new Runnable() { public void run() { collect(false); } }));
+        page.addView(button("2b. Share a SHORT summary as text (if you cannot attach the file)", new Runnable() { public void run() { shareSummary(); } }));
         Button key = button("3. Side-key test (optional, 15 seconds)", new Runnable() { public void run() { keyTest(); } });
         key.setEnabled(canRun);
         page.addView(key);
@@ -286,6 +287,25 @@ public class SetupActivity extends Activity {
         } }, "tj-setup-report").start();
     }
 
+    /** The short summary (a few KB of text) goes through Android's share sheet, so Tj picks where it goes (a message to himself, e-mail, a chat); it is also copied. Nothing is sent by this app itself. */
+    private void shareSummary() {
+        say("making the short summary...");
+        new Thread(new Runnable() { public void run() {
+            final String text = TabletReport.summary(SetupActivity.this, ShellHelper.reachable());
+            ui.post(new Runnable() { public void run() {
+                try {
+                    ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("tablet summary", text));
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("text/plain");
+                    send.putExtra(Intent.EXTRA_SUBJECT, "Tablet summary (launcher)");
+                    send.putExtra(Intent.EXTRA_TEXT, text);
+                    startActivity(Intent.createChooser(send, "Send the short summary to Claude"));
+                    say("short summary: " + text.length() + " characters, also copied to the clipboard");
+                } catch (Throwable t) { say("could not open the share sheet (" + t.getClass().getSimpleName() + "); the summary is on the clipboard: paste it into the chat"); }
+            } });
+        } }, "tj-setup-summary").start();
+    }
+
     /** Emulator test: everything, then the report, then a marker file the test reads. */
     private void autorun() {
         new Thread(new Runnable() { public void run() {
@@ -299,6 +319,10 @@ public class SetupActivity extends Activity {
             b.append("keytest: ").append(kt == null ? "FAILED" : kt.replace('\n', '|')).append('\n');
             File f = TabletReport.write(SetupActivity.this);
             b.append("report ").append(f.length()).append(" bytes\n");
+            try (java.io.FileOutputStream os = new java.io.FileOutputStream(new File(TabletReport.shareDir(SetupActivity.this), "summary.txt"))) {
+                os.write(TabletReport.summary(SetupActivity.this, ShellHelper.reachable()).getBytes("UTF-8"));
+                b.append("summary written\n");
+            } catch (Throwable t) { b.append("summary FAILED ").append(t).append('\n'); }
             ShellHelper.run("MKDIR_PUBLISH");
             b.append("publish report: ").append(ShellHelper.run("PUBLISH_REPORT") == null ? "FAILED" : "ok").append('\n');
             String shots = ShellHelper.shots();
