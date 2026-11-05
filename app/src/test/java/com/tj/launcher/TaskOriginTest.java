@@ -130,4 +130,71 @@ public class TaskOriginTest {
         TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"), tasks(8, "com.android.calendar"), Arrays.asList("org.window.only"), new HashSet<String>(), "com.android.calendar", GUARD);
         assertEquals(new LinkedHashSet<>(Arrays.asList("org.window.only")), p.stopPackages);
     }
+
+    // ---------------------------------------------------------------- AB3: a shared app with a notification is closed after all
+    private static final String NOTIF_DUMP = ""
+            + "Current Notification Manager state:\n"
+            + "  Notification List:\n"
+            + "    NotificationRecord(0x0aa30a1f: pkg=com.android.contacts user=UserHandle{0} id=1 tag=null importance=3 key=0|com.android.contacts|1|null|10080: Notification(channel=missed pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x10 color=0x00000000 vis=PRIVATE))\n"
+            + "      uid=10080 userId=0\n"
+            + "    NotificationRecord(0x0b7733c2: pkg=com.example.work user=UserHandle{10} id=4 tag=x importance=2 key=10|com.example.work|4|x|1010080: Notification(channel=a pri=0))\n"
+            + "    NotificationRecord(0x0c1d44a0: pkg=com.tj.launcher user=UserHandle{0} id=7471 tag=null importance=2 key=0|com.tj.launcher|7471|null|10095: Notification(channel=tj_keep_alive pri=0))\n"
+            + "  mArchive (last 5 removed notifications):\n"
+            + "    StatusBarNotification(pkg=com.android.email user=UserHandle{0} id=2 tag=null key=0|com.android.email|2|null|10071: Notification(channel=mail pri=0))\n";
+
+    @Test public void theNotificationParserReadsOnlyActiveRecordsOfUserZero() {
+        Set<String> got = ShellProtocol.parseNotifPackages(NOTIF_DUMP);
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts", "com.tj.launcher")), got);   // not the work profile, not the archive
+        assertTrue(ShellProtocol.parseNotifPackages(null).isEmpty());
+        assertTrue(ShellProtocol.parseNotifPackages("nothing here").isEmpty());
+        assertTrue(ShellProtocol.isNotifPkgs("NOTIFPKGS")); assertTrue(ShellProtocol.isNotifPkgs(" NOTIFPKGS \n")); assertFalse(ShellProtocol.isNotifPkgs("NOTIFPKGS x")); assertFalse(ShellProtocol.isNotifPkgs(null));
+    }
+
+    @Test public void aSharedAppWithANotificationIsClosedNotSpared() {
+        // Contacts is in the custom account AND was opened again in Quickstep (new task 12) and has a notification
+        LinkedHashMap<Integer, String> base = tasks(8, "com.android.calendar", 10, "com.android.contacts");
+        LinkedHashMap<Integer, String> now = tasks(12, "com.android.contacts", 8, "com.android.calendar", 10, "com.android.contacts");
+        Set<String> notified = new HashSet<>(Arrays.asList("com.android.contacts"));
+        TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.contacts"), new HashSet<String>(), "com.android.calendar", GUARD, notified);
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts")), p.stopPackages);
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts")), p.notificationStops);
+        assertTrue("its task goes with the force-stop, no separate removal", p.removeIds.isEmpty());
+        assertTrue(p.spared.isEmpty());
+    }
+
+    @Test public void aSharedAppWithoutANotificationIsStillSpared() {
+        LinkedHashMap<Integer, String> base = tasks(8, "com.android.calendar", 10, "com.android.contacts");
+        LinkedHashMap<Integer, String> now = tasks(12, "com.android.contacts", 8, "com.android.calendar", 10, "com.android.contacts");
+        for (Set<String> notified : Arrays.<Set<String>>asList(null, new HashSet<String>(), new HashSet<>(Arrays.asList("com.example.other")))) {
+            TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.contacts"), new HashSet<String>(), "com.android.calendar", GUARD, notified);
+            assertTrue(p.stopPackages.isEmpty());
+            assertEquals(Arrays.asList(12), p.removeIds);
+            assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts")), p.spared);
+            assertTrue(p.notificationStops.isEmpty());
+        }
+    }
+
+    @Test public void theTargetAndTheProtectedAppsKeepTheirNotifications() {
+        // Solitaire (the target), the keyboard, this app and the stock launcher are never closed, whatever the notification list says
+        LinkedHashMap<Integer, String> base = tasks(8, "com.android.calendar", 6, "com.tj.launcher", 5, "com.android.launcher3");
+        LinkedHashMap<Integer, String> now = tasks(14, "com.android.calendar", 15, "com.tj.launcher", 16, "com.android.launcher3", 8, "com.android.calendar", 6, "com.tj.launcher", 5, "com.android.launcher3");
+        Set<String> notified = new HashSet<>(Arrays.asList("com.android.calendar", "com.tj.launcher", "com.android.launcher3", "com.android.inputmethod.latin"));
+        TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.calendar", "com.tj.launcher", "com.android.inputmethod.latin"), new HashSet<String>(), "com.android.calendar", GUARD, notified);
+        assertTrue(p.stopPackages.isEmpty()); assertTrue(p.removeIds.isEmpty()); assertTrue(p.notificationStops.isEmpty());
+    }
+
+    @Test public void anAppOnlyQuickstepOpenedIsClosedWhetherOrNotItHasANotification() {
+        TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"), tasks(20, "com.android.email", 8, "com.android.calendar"), Arrays.asList("com.android.email"), new HashSet<String>(), "com.android.calendar", GUARD,
+                new HashSet<>(Arrays.asList("com.android.email")));
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.email")), p.stopPackages);
+        assertTrue("it was never shared, so it is not counted as a notification stop", p.notificationStops.isEmpty());
+    }
+
+    @Test public void aCustomLauncherStartedAppOpenedAgainInQuickstepWithANotificationIsClosed() {
+        // the custom launcher started Contacts itself (AppOrigin.custom), the session began without a Contacts task, Quickstep opened a task and it posted a notification
+        TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"), tasks(12, "com.android.contacts", 8, "com.android.calendar"), Collections.<String>emptyList(),
+                new HashSet<>(Arrays.asList("com.android.contacts")), "com.android.calendar", GUARD, new HashSet<>(Arrays.asList("com.android.contacts")));
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts")), p.stopPackages);
+        assertTrue(p.removeIds.isEmpty());
+    }
 }
