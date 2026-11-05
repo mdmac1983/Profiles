@@ -29,6 +29,8 @@ MAX_IMG_TOTAL = 4 * 1024 * 1024
 REDACTIONS = [
     ("email", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}"), "<email>"),
     ("mac", re.compile(r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b"), "<mac>"),
+    # IPv6: only the forms that cannot be mistaken for something else (8 groups, or a "::" with a hex group before it), so a time like 06:49:20, "::1" and "std::x" are left alone
+    ("ipv6", re.compile(r"(?i)(?<![0-9a-z:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}|(?:[0-9a-f]{1,4}:){1,7}:)(?![0-9a-z:])"), "<ipv6>"),
     ("ip", re.compile(r"\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)(?:\d{1,3}\.){3}\d{1,3}\b"), lambda m: "<ip>" if all(int(x) <= 255 for x in m.group(0).split(".")) else m.group(0)),
     ("ssid", re.compile(r"(?i)(\bSSID\b\s*[:=]\s*)\"?[^\"\n]+\"?"), r"\1<redacted>"),
     ("serial", re.compile(r"(?im)(\b(?:ro\.serialno|ro\.boot\.serialno|serialno|serial number|serial|imei|meid|android_id|bluetooth_address|bdaddr|wifi_mac)\b[\]\[: =]*)[^\s\]]+"), r"\1<redacted>"),
