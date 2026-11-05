@@ -1238,12 +1238,14 @@ gcrun(){ # gcrun <kind> <command line>
   if [ "$starts" = 1 ]; then
     sleep 4
     local n; n=$(adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" </dev/null 2>&1 | tr -d '\r\n ')
-    info "GC after the $kind start line [$(echo "$c" | cut -c1-60)...] the helper processes running: ${n:-?}"
+    info "GC after the $kind start line [$(echo "$c" | cut -c1-60)...] the helper processes running: ${n:-?} ($(adb shell 'ps -A -o PID,PPID,STAT,ARGS | grep -iE "app_process|[S]hellServer" | grep -v grep' </dev/null 2>&1 | tr -s ' ' | cut -c1-90 | tr '\n' '|' | cut -c1-230))"
     [ "${n:-0}" -ge 1 ] 2>/dev/null || { GCBAD=$((GCBAD+1)); check "AA5: the guide's $kind start line left the helper running (processes: ${n:-?}; the line printed: $(echo "$o" | head -2 | tr '\n' ' ' | cut -c1-120))" false; }
   fi
   GCN=$((GCN+1))
   case "$c" in
-    *"grep -c '[S]hellServer'"*) [ "$(echo "$o" | tr -d '\r\n ')" -ge 1 ] 2>/dev/null || { GCBAD=$((GCBAD+1)); check "AA5: the guide's 'Is the helper running?' card printed 1 after its start line (printed: $o)" false; }; return;;
+    *"grep -c '[S]hellServer'"*) [ "$(echo "$o" | tr -d '\r\n ')" -ge 1 ] 2>/dev/null || { GCBAD=$((GCBAD+1)); check "AA5: the guide's 'Is the helper running?' card printed 1 after its start line (printed: $o)" false
+         info "GC helper gone: processes now: $(adb shell 'ps -A -o PID,PPID,STAT,ARGS | grep -iE "app_process|[S]hellServer" | grep -v grep' </dev/null 2>&1 | tr -s ' ' | cut -c1-90 | tr '\n' '|' | cut -c1-230)"
+         info "GC helper gone: log: $(adb logcat -d -b all 2>/dev/null | grep -iE 'ShellServer|app_process|lowmemorykiller|am_kill' | tail -4 | cut -c1-150 | tr '\n' '|' | cut -c1-330)"; }; return;;
     *"compile -m speed"*) echo "$o" | grep -qi success || { GCBAD=$((GCBAD+1)); check "AA5: the guide's compile card ended with Success (printed: $(echo "$o" | head -1 | cut -c1-120))" false; }; return;;
     *"ShellProbe statusbar"*) echo "$o" | grep -q 'disable2(0x8) -> OK' || { GCBAD=$((GCBAD+1)); check "AA5: the ShellProbe card answered OK (printed: $(echo "$o" | head -3 | tr '\n' ' ' | cut -c1-200))" false; }; return;;
   esac
