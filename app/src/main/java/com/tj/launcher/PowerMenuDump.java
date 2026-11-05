@@ -42,11 +42,17 @@ public final class PowerMenuDump {
     /** Pure: item pitch (distance between the tops of two neighbouring entries) from the tops of the first and the last of {@code n} equally spaced entries; -1 when it cannot be told. */
     public static int pitch(int firstTop, int lastTop, int n) { return n >= 2 && lastTop > firstTop ? (lastTop - firstTop) / (n - 1) : -1; }
 
-    /** Pure: the card of OUR menu from the stock panel: the panel minus its last entry (the third item, Screenshot). {@code pitch} < 1 falls back to one third of the panel. */
-    public static int[] cardFromPanel(int left, int top, int right, int bottom, int pitch) {
+    /**
+     * Pure: the card of OUR menu from the stock panel = everything ABOVE the Screenshot entry. {@code cut} is the top of the Screenshot entry (-1 = unknown): when it lies inside the panel (between 40 % and 87.5 % of its
+     * height) the card ends there, which also stays right if the panel has more entries below Screenshot. Otherwise the panel minus one entry {@code pitch} (a pitch outside 20-40 % of the panel is not believed),
+     * otherwise two thirds of the panel.
+     */
+    public static int[] cardFromPanel(int left, int top, int right, int bottom, int pitch, int cut) {
         int h = bottom - top;
-        int drop = pitch > 0 && pitch < h ? pitch : h / 3;
-        return new int[] { left, top, right, bottom - drop };
+        int cardBottom;
+        if (cut > top + h * 2 / 5 && cut < bottom - h / 8) cardBottom = cut;
+        else cardBottom = bottom - (pitch >= h / 5 && pitch <= h * 2 / 5 ? pitch : h / 3);
+        return new int[] { left, top, right, cardBottom };
     }
 
     /** Walks {@code root} (the power menu's window) breadth-limited and returns the text block; never throws. */

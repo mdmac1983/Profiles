@@ -25,13 +25,22 @@ public class PowerMenuDumpTest {
         assertEquals(-1, PowerMenuDump.pitch(357, 357, 3));
         assertEquals(-1, PowerMenuDump.pitch(357, 559, 1));
     }
-    @Test public void ourCardIsTheStockPanelMinusItsLastEntry() {
-        // the emulator's real panel [485,339][596,642] with a measured pitch of 101: the card ends one pitch above the bottom
-        assertArrayEquals(new int[] { 485, 339, 596, 541 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 101));
+    @Test public void ourCardEndsWhereTheScreenshotEntryBegins() {
+        // the emulator's real panel [485,339][596,642]: the Screenshot entry begins at 547 (run 136: CARD area=[485,339][596,547])
+        assertArrayEquals(new int[] { 485, 339, 596, 547 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 95, 547));
+    }
+    @Test public void aPanelWithMoreEntriesBelowScreenshotStillEndsAtTheScreenshotEntry() {
+        assertArrayEquals(new int[] { 0, 0, 100, 210 }, PowerMenuDump.cardFromPanel(0, 0, 100, 400, 100, 210));
+    }
+    @Test public void withoutAUsableCutTheCardIsThePanelMinusOnePitch() {
+        assertArrayEquals(new int[] { 485, 339, 596, 547 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 95, -1));
+        assertArrayEquals(new int[] { 485, 339, 596, 547 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 95, 300));   // a cut near the top of the panel is not believed
+        assertArrayEquals(new int[] { 485, 339, 596, 547 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 95, 640));   // nor one at the very bottom
     }
     @Test public void withoutAPitchTheCardIsTwoThirdsOfThePanel() {
-        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, -1));
-        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 0));
-        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 999));   // a pitch bigger than the panel cannot be right
+        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, -1, -1));
+        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 0, -1));
+        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 999, -1));   // a pitch bigger than the panel cannot be right
+        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 20, -1));    // nor one that small
     }
 }

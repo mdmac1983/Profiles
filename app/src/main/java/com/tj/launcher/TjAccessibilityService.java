@@ -153,6 +153,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
     private long lastOffTop = -1, lastItemH = -1;
     private int lastPitch = -1;   // AC6: distance between the tops of neighbouring menu entries (Power off -> Restart), measured on every scan
+    private int lastCut = -1;     // AC6: where the Screenshot entry begins (its top), measured on every scan
     // V4: auto-calibration of the lock-screen patch against a real screenshot (shell helper). Final lock-patch scale = lockCalM * (1 + Tj's nudge %); shifts add.
     public static final String LOCK_CAL_KEY = "lock_cal";
     public static final String CAL_STATUS_KEY = "lock_cal_status";
@@ -163,7 +164,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private android.graphics.Bitmap lockShot; private int lockShotDx, lockShotDy; private volatile boolean lockShotFresh = false; private long lastShotTry = 0;
     private final Runnable calTrigger = new Runnable() { @Override public void run() { try { maybeCalibrateLock(); } catch (Throwable t) { Log.e(TAG, "calibrate trigger failed", t); } } };
     private float testSkew() { return 1f + Features.getInt(this, "patch_test_skew", 0) / 100f; }   // emulator test only: a deliberately wrong model the calibration must correct
-    private String itemKey() { return "power_item_r" + rotation(); }
+    private String itemKey() { return "power_geo_r" + rotation(); }   // AC6 (v0.7.3): "pitch/cut" of the stock panel; the old "power_item_r<N>" ("top,height") is no longer read or written
     private final Rect patchAt = new Rect();
     private int patchRot = -1;
     private boolean patchWatching = false;
@@ -1438,9 +1439,10 @@ public class TjAccessibilityService extends AccessibilityService {
                             offItem.getBoundsInScreen(ob); lastOffTop = ob.top; lastItemH = ob.height();   // V1: the stock item size, so our menu is "stock minus Screenshot"
                             clickableAncestor(sc.get(0)).getBoundsInScreen(scr);
                             // AC6: the entry PITCH (not the height of one clickable node: the entries have margins), so our two-entry card is "the stock panel minus its last entry"
-                            lastPitch = -1;
+                            lastPitch = -1; lastCut = scr.top > ob.top ? scr.top : -1;
                             List<AccessibilityNodeInfo> rst = root.findAccessibilityNodeInfosByText("Restart");
                             if (rst != null && !rst.isEmpty()) { Rect rb = new Rect(); clickableAncestor(rst.get(0)).getBoundsInScreen(rb); if (rb.top > ob.top) lastPitch = rb.top - ob.top; }
+                            if (rst != null) for (AccessibilityNodeInfo rn : rst) { try { rn.recycle(); } catch (Throwable ignored) { } }
                             if (lastPitch <= 0 && scr.top > ob.top) lastPitch = (scr.top - ob.top) / 2;
                             AccessibilityNodeInfo t = offItem;
                             for (int i = 0; i < 6 && t != null; i++) {
@@ -1460,7 +1462,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);   // AC6: stored BEFORE the card is built, so the very first open already uses the measured panel and pitch
-            if (lastPitch > 0) Features.setString(this, itemKey(), String.valueOf(lastPitch));
+            Features.setString(this, itemKey(), lastPitch > 0 || lastCut > 0 ? lastPitch + "/" + lastCut : "");   // a failed measurement CLEARS the stored value: a stale one from another layout must never be reused
             showOverlay(shot);
             handler.removeCallbacks(recheck);
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
@@ -1746,11 +1748,11 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!PowerMenuDump.due(locked)) return;
             android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
             ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
-            int[] card = PowerMenuDump.cardFromPanel(panel.left, panel.top, panel.right, panel.bottom, lastPitch);
+            int[] card = PowerMenuDump.cardFromPanel(panel.left, panel.top, panel.right, panel.bottom, lastPitch, lastCut);
             StringBuilder h = new StringBuilder();
             h.append("written ").append(now()).append(" in the ").append(Mode.isCustom(this) ? "CUSTOM" : "Quickstep").append(" launcher, ").append(locked ? "on the LOCK SCREEN" : "unlocked").append('\n');
             h.append("display ").append(dm.widthPixels).append('x').append(dm.heightPixels).append(" px, rotation ").append(rotation()).append(", density ").append(dm.density).append(" (").append(dm.densityDpi).append(" dpi), font scale ").append(getResources().getConfiguration().fontScale).append('\n');
-            h.append("stock panel ").append(panel.toShortString()).append(" (").append(panel.width()).append('x').append(panel.height()).append("), first entry top ").append(lastOffTop).append(" height ").append(lastItemH).append(", entry pitch ").append(lastPitch).append('\n');
+            h.append("stock panel ").append(panel.toShortString()).append(" (").append(panel.width()).append('x').append(panel.height()).append("), first entry top ").append(lastOffTop).append(" height ").append(lastItemH).append(", entry pitch ").append(lastPitch).append(", Screenshot entry top ").append(lastCut).append('\n');
             h.append("our card would be [").append(card[0]).append(',').append(card[1]).append("][").append(card[2]).append(',').append(card[3]).append("] (").append(card[2] - card[0]).append('x').append(card[3] - card[1]).append(")\n");
             h.append("patch: ").append(Features.getString(this, PATCH_STATUS_KEY, "?")).append(" | calibration: ").append(Features.getString(this, CAL_STATUS_KEY, "?")).append(" | brightness nudge ").append(Features.getInt(this, PATCH_DIM_KEY, 0)).append(" % | patch nudges dx ").append(Features.getInt(this, PATCH_DX_KEY, 0)).append(" dy ").append(Features.getInt(this, PATCH_DY_KEY, 0)).append(" size ").append(Features.getInt(this, PATCH_SCALE_KEY, 0)).append(" %\n");
             h.append("tree of the menu window (class #id 'label' [left,top][right,bottom] click):\n");
@@ -1856,8 +1858,9 @@ public class TjAccessibilityService extends AccessibilityService {
         if (patchView == null) return full;
         try {
             String v = Features.getString(this, itemKey(), "");
-            int pitch = v.isEmpty() || v.contains(",") ? -1 : Integer.parseInt(v.trim());   // an old "top,height" value from before v0.7.3 is ignored: the fallback is one third of the panel
-            int[] c = PowerMenuDump.cardFromPanel(full.left, full.top, full.right, full.bottom, pitch);
+            int sl = v.indexOf('/'), pitch = -1, cut = -1;
+            if (sl > 0) { pitch = Integer.parseInt(v.substring(0, sl).trim()); cut = Integer.parseInt(v.substring(sl + 1).trim()); }
+            int[] c = PowerMenuDump.cardFromPanel(full.left, full.top, full.right, full.bottom, pitch, cut);
             if (c[3] - c[1] < full.height() / 2) return full;                                  // nonsense geometry: keep the whole rectangle
             return new Rect(c[0], c[1], c[2], c[3]);
         } catch (NumberFormatException e) { return full; }
