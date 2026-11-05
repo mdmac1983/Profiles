@@ -430,6 +430,8 @@ def run(src, out_base, label, date, keep_images):
         f.write("# Latest tablet intake: %s\n\nSaved in the folder `%s/` next to this file (its raw report and screen files sit beside its FACTS.md). Older intakes stay in their own folders.\n\n" % (os.path.basename(dest), os.path.basename(dest)))
         f.write(md.split("\n", 1)[1])
     print("saved %s  (kept: %s; redactions: %s; %d red flag(s))" % (dest, ", ".join(kept), redactions or "none", len(flags)))
+    if "newest of" in reading:
+        print("  note: " + reading)
     for fl in flags:
         print("  RED FLAG: " + fl)
     print("next: read %s, then `git add research/tablet && bash tools/ckpt.sh \"tablet intake %s\" \"...\"`" % (os.path.join(dest, "FACTS.md"), date))
