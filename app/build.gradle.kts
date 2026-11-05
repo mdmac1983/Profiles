@@ -17,8 +17,8 @@ android {
         // the app is ever to run on a newer phone.
         minSdk = 29
         targetSdk = 28   // AOSP Launcher3 Go value; <=28 lets the kill switch toggle Wi-Fi/Bluetooth (BRIEF.md)
-        versionCode = 16
-        versionName = "0.6.0"
+        versionCode = 17
+        versionName = "0.7.0"
     }
 
     // The keystore is NOT in git (BRIEF.md). Signing is wired only when the file exists, so
