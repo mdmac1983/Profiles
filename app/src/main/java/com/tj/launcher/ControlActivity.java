@@ -272,6 +272,7 @@ public class ControlActivity extends Activity {
                 + "\nWill open: " + describeTarget());
         if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
         if (!CrashGuard.clearedNote(this).isEmpty()) note(CrashGuard.clearedNote(this));
+        if (!Features.getString(this, SwitchMigration.NOTE_KEY, "").isEmpty()) note(Features.getString(this, SwitchMigration.NOTE_KEY, ""));
         if (CrashGuard.isPaused(this)) note("Automatic switching is PAUSED: while you are in Quickstep nothing switches back to the custom launcher by itself (after \"Restore everything\", or after an update cleared the crash breaker). Press \"Switch to the custom launcher\" above when you want it back.");
     }
 

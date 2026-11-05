@@ -23,7 +23,7 @@ public final class ReportState {
             "power_mode", "return_app_label", "qs_tiles_applied_mode", "qs_tiles_custom", "qs_tiles_quickstep",
             "unlock_pick_last", "unlock_speed", "reset_last", "failsafe_last", "profile_last", "power_latency",
             "guard_count", "guard_last", "keyboard_status", "wallpaper_patch_status", "lock_cal_status",
-            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why", "battery_saver_last"));
+            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why", "battery_saver_last", "migrate_note"));
 
     /** Pure: the "key: value" lines for the preferences in {@code all}: every Boolean, plus the allow-listed text and number values; sorted, values flattened to one line and cut to 600 characters. */
     public static String format(Map<String, ?> all) {
