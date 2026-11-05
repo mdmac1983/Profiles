@@ -51,7 +51,8 @@ def main(argv):
             start = max(text.find("<hierarchy"), 0)
         end = text.rfind("</hierarchy>")                 # uiautomator may print a status line after the document
         root = ET.fromstring(text[start:end + len("</hierarchy>")] if end >= 0 else text[start:])
-    except Exception:
+    except Exception as e:                           # exit 1 = the dump could not be read (a caller can tell it from "not found", which is exit 0 with no output)
+        print("uinode: cannot read %s: %s" % (path, e), file=sys.stderr)
         return 1
     nodes = [n for n in root.iter("node") if bounds(n)]
     want = opt["contains"] or ""
