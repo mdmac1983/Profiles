@@ -620,22 +620,20 @@ tiles_now > "$OUT/t-custom-systemui.txt"
 info "O5: custom: setting '$(tr -d '\r\n' < $OUT/t-custom-setting.txt)', SystemUI tiles: $(cat $OUT/t-custom-systemui.txt)"
 check "O5: in the custom launcher the tile setting is just rotation" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/t-custom-setting.txt)\" = rotation ]"
 check "O5: SystemUI really shows only the rotation tile (no Wi-Fi, no Bluetooth)" bash -c "grep -q RotationLockTile $OUT/t-custom-systemui.txt && ! grep -q WifiTile $OUT/t-custom-systemui.txt && ! grep -q BluetoothTile $OUT/t-custom-systemui.txt"
-# Q3: the native pencil/gear switch (opt-in): the flag follows the mode, and the lock screen still works with it on
+# AB1 (safety audit): Android's RETAIL-DEMO flag (device_demo_mode) is never turned on by the launcher any more (AOSP: it makes the system create a demo user and switch to it at boot).
+#      A leftover from the retired option (its switch in the prefs + the flag on) is put back when the helper connects, and the flag stays off through a Quickstep session and back.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_hide_pencil_native\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"
-setmode quickstep; rebind; home; sleep 1
-lockpad; pad d d 1 2 3 4 e; sleep 7                                      # handshake -> Quickstep: the flag must be OFF
-adb shell settings get global device_demo_mode > "$OUT/t-demo-quickstep.txt" 2>&1
-adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" >/dev/null 2>&1; sleep 6   # back to custom: the flag must be ON
+adb shell settings put global device_demo_mode 1 >/dev/null 2>&1                      # as if the old option had left it on
+setmode quickstep; rebind; home; sleep 3                                              # the helper connects: the one-time cleanup runs
+adb shell settings get global device_demo_mode > "$OUT/t-demo-cleanup.txt" 2>&1
+check "AB1: a retail-demo flag left on by the retired option is put back to 0 when the helper connects" bash -c "v=\$(tr -d ' \r\n' < $OUT/t-demo-cleanup.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
+lockpad; pad d d 1 2 3 4 e; sleep 7                                      # handshake -> Quickstep
+adb shell am start -n "$PKG/com.tj.launcher.BackToCustomActivity" >/dev/null 2>&1; sleep 6   # back to custom
 adb shell settings get global device_demo_mode > "$OUT/t-demo-custom.txt" 2>&1
-check "Q3: in Quickstep the demo flag is off (the pencil and gear are there)" bash -c "v=\$(tr -d ' \r\n' < $OUT/t-demo-quickstep.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
-check "Q3: in the custom launcher the demo flag is on (pencil and gear hidden natively)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/t-demo-custom.txt)\" = 1 ]"
-adb shell cmd statusbar expand-settings; sleep 3
-adb shell uiautomator dump /sdcard/tjq.xml >/dev/null 2>&1; adb shell cat /sdcard/tjq.xml 2>/dev/null | tr '>' '\n' > "$OUT/t-demo-qs.xml"; shot 77-qs-native-hide
-check "Q3: the quick-settings panel really has no pencil in the custom launcher" bash -c "! grep -q 'resource-id=\"android:id/edit\"' $OUT/t-demo-qs.xml"
-adb shell cmd statusbar collapse; sleep 1
-lockpad; pad 1 2 3 4 e; sleep 6                                             # the lock screen + a plain PIN with the flag on
+check "AB1: after a Quickstep session and back in the custom launcher the retail-demo flag is still off" bash -c "v=\$(tr -d ' \r\n' < $OUT/t-demo-custom.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
+lockpad; pad 1 2 3 4 e; sleep 6                                             # the lock screen + a plain PIN
 resumed > "$OUT/t-demo-unlock.txt"
-check "Q3: the lock screen and a plain PIN still work with the flag on (custom stack in front)" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/t-demo-unlock.txt"
+check "AB1: the lock screen and a plain PIN work (custom stack in front)" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/t-demo-unlock.txt"
 # the guard: something adds a tile while the custom account is active -> it is taken out again
 adb shell settings put secure sysui_qs_tiles "rotation,flashlight" >/dev/null 2>&1; sleep 4
 adb shell settings get secure sysui_qs_tiles > "$OUT/t-guard-setting.txt" 2>&1
@@ -721,16 +719,9 @@ adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>
 setfeat; setmode quickstep; home; sleep 2
 pdump(){ adb shell uiautomator dump /sdcard/tjp.xml >/dev/null 2>&1; adb shell cat /sdcard/tjp.xml 2>/dev/null | tr '>' '\n' > "$OUT/p-$1.xml"; echo "edit(pencil) nodes: $(grep -c 'resource-id="android:id/edit"' $OUT/p-$1.xml) visible-bounds: $(grep 'resource-id="android:id/edit"' $OUT/p-$1.xml | grep -o 'bounds="[^"]*"' | head -1); settings_button nodes: $(grep -c 'settings_button' $OUT/p-$1.xml); user switch nodes: $(grep -c 'multi_user' $OUT/p-$1.xml)"; }
 adb shell cmd statusbar expand-settings; sleep 3
-info "P1 baseline (device_demo_mode=$(adb shell settings get global device_demo_mode | tr -d '\r\n')): $(pdump base)"; shot 73-qs-baseline
+info "P1 baseline: $(pdump base)"; shot 73-qs-baseline
 adb shell cmd statusbar collapse; sleep 1.5
-adb shell settings put global device_demo_mode 1 > "$OUT/p-demo-put.txt" 2>&1; sleep 2
-adb shell cmd statusbar expand-settings; sleep 3
-info "P2 with device_demo_mode=1 -> [$(tr '\n' ' ' < $OUT/p-demo-put.txt)]: $(pdump demo)"; shot 74-qs-demomode
-adb shell cmd statusbar collapse; sleep 1.5
-adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 75-power-menu-demomode
-adb shell uiautomator dump /sdcard/tjp2.xml >/dev/null 2>&1; info "P3 power menu in demo mode: $(adb shell cat /sdcard/tjp2.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot|Emergency|Lockdown)"' | tr '\n' ' ')"
-adb shell input keyevent KEYCODE_BACK; sleep 1
-adb shell settings put global device_demo_mode 0 >/dev/null 2>&1; sleep 1
+# (the device_demo_mode experiment that stood here was REMOVED by the AB1 safety audit: that flag can make Android create a demo user at boot)
 info "P4 statusbar commands on this Android: $(adb shell cmd statusbar help 2>&1 | grep -oE '^  [a-z-]+' | tr -d ' ' | tr '\n' ' ' | head -c 300)"
 info "P5 system services the shell user can see: $(adb shell service list 2>/dev/null | grep -oE '(statusbar|activity_task|input|window|overlay|notification|user)[^ :]*' | sort -u | tr '\n' ' ' | head -c 300)"
 setfeat; setmode custom; home

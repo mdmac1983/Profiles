@@ -140,10 +140,6 @@ cmd: cmd overlay list
 why: On the tablet open Launcher control (it is only there in Quickstep mode) > Tablet setup & report. The top must say Shell helper: RUNNING. Tap "Do everything that is missing". Then tap "Collect EVERYTHING" and keep the screen on for 2-4 minutes: it writes the full report, photographs the stock Settings pages and copies the tablet's own Settings / SystemUI / launcher / framework apps.
 note: Everything lands in the tablet's Downloads > launcher-probe folder. Zip that folder and send it to Claude (from the tablet).
 ## 9. Optional experiment (skip unless Claude asks)
-@ Hide the notification panel's pencil and gear natively
-why: Pull the notification panel down twice and look: pencil and gear should be gone. If anything looks odd (lock screen, power menu), run the undo line at once.
-cmd: settings put global device_demo_mode 1
-undo: settings put global device_demo_mode 0
 @ Can the shell switch the stock power menu off for 3 seconds? (answers a design question)
 why: Runs a tiny test program from the launcher: it asks Android to disable the power menu for 3 seconds and prints the answer ("OK" or "REFUSED ..."). Nothing lasts: Android removes the setting when the program ends. If you press the power key during these 3 seconds the menu may not appear.
 cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3
@@ -154,7 +150,8 @@ note: Skip if the app cannot do $( ). The reply is 3 lines; send them to Claude.
 cmd: pkill -f com.tj.launcher.ShellServer
 @ Browser back on
 cmd: pm enable com.android.browser
-@ Demo-mode experiment off
+@ Retail-demo flag off (only if you ever switched the old "hide the pencil natively" option on)
+why: That old option was removed: Android's retail-demo flag can make the system create a demo user at boot. This line makes sure it is off. Harmless if it already is.
 cmd: settings put global device_demo_mode 0
 @ Status bar back (if the launcher hid it and something went wrong)
 why: Removes Android's immersive setting. Harmless if it was never set.
