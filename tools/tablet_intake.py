@@ -30,7 +30,7 @@ TEXT_NAMES = ("tablet-report.txt", "launcher-probe.txt", "status.txt")
 REDACTIONS = [
     ("email", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}"), "<email>"),
     ("mac", re.compile(r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b"), "<mac>"),
-    ("ip", re.compile(r"\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)(?:\d{1,3}\.){3}\d{1,3}\b"), "<ip>"),
+    ("ip", re.compile(r"\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)(?:\d{1,3}\.){3}\d{1,3}\b"), lambda m: "<ip>" if all(int(x) <= 255 for x in m.group(0).split(".")) else m.group(0)),
     ("ssid", re.compile(r"(?i)(\bSSID\b\s*[:=]\s*)\"?[^\"\n]+\"?"), r"\1<redacted>"),
     ("serial", re.compile(r"(?im)(\b(?:ro\.serialno|ro\.boot\.serialno|serialno|serial number|serial|imei|meid|android_id|bluetooth_address|bdaddr|wifi_mac)\b[\]\[: =]*)[^\s\]]+"), r"\1<redacted>"),
     ("digits", re.compile(r"\b\d{14,19}\b"), "<digits>"),
@@ -43,9 +43,16 @@ def redact(text):
     """-> (text, {kind: count}). Order matters: e-mail and MAC before the number patterns."""
     counts = {}
     for kind, rx, repl in REDACTIONS:
-        text, n = rx.subn(repl, text)
-        if n:
-            counts[kind] = counts.get(kind, 0) + n
+        n = [0]
+
+        def sub(m, repl=repl, n=n):
+            out = repl(m) if callable(repl) else m.expand(repl)
+            if out != m.group(0):
+                n[0] += 1
+            return out
+        text = rx.sub(sub, text)
+        if n[0]:
+            counts[kind] = counts.get(kind, 0) + n[0]
     return text, counts
 
 
