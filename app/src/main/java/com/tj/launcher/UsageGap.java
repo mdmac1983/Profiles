@@ -17,6 +17,8 @@ public final class UsageGap {
     /** Never look further back than this (a query over days of events is heavy and no session lives that long). */
     public static final long MAX_LOOKBACK_MS = 12L * 3600_000L;
 
+    private static long queriedUpTo = 0, queriedRef = 0;   // per process: the last look found no lock event after this session reference, up to this time
+
     private UsageGap() {}
 
     /** Pure: was the keyguard shown AFTER the Quickstep session began (the later of the mode change and the last confirmed handshake unlock)? A reference of 0 = unknown = never. */
@@ -65,7 +67,13 @@ public final class UsageGap {
             android.os.PowerManager pm = (android.os.PowerManager) c.getSystemService(Context.POWER_SERVICE);
             boolean locked = km != null && km.isKeyguardLocked(), interactive = pm != null && pm.isInteractive();
             if (locked || !interactive) return false;
-            long shown = lastKeyguardShown(c, queryFrom(ref, System.currentTimeMillis()));
+            long now = System.currentTimeMillis();
+            long from = queryFrom(ref, now);
+            synchronized (UsageGap.class) {
+                if (queriedRef == ref && queriedUpTo > from) from = queriedUpTo - 1000;   // incremental: only the events since the last look (a Home press in a long Quickstep session stays cheap)
+            }
+            long shown = lastKeyguardShown(c, from);
+            synchronized (UsageGap.class) { if (shown <= ref) { queriedRef = ref; queriedUpTo = now; } }
             return shouldEndSession(false, false, locked, interactive, shown, ref);
         } catch (Throwable t) { return false; }
     }
