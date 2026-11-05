@@ -1,0 +1,1 @@
+2026-11-05T17:47:20.349Z | launcher, v0.7.1, phone guide, tablet intake, release gate, emulator gate, reset2, rs1, side-key test, power menu v2, uinode, handoff, android 10 go, keytest | Goal: resume Tj's Android 10 Go launcher (repo tjshea90/Launcher, com.tj.launcher) after usage-cap cut-off without losin | 2026-11-05/handoff-2026-11-05T17-47-20-349Z.md
