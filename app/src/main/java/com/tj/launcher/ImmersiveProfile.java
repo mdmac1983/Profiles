@@ -64,14 +64,15 @@ public final class ImmersiveProfile {
     public static void apply(Context c, String mode) {
         try {
             if (!permitted(c)) return;
-            boolean on = enabled(c), hiddenNow = active(c);
-            // the original is on disk BEFORE the first change. While we are not the one holding the changed value, whatever is there IS the original (also when another tool changed it since the last time).
-            if (on && !hiddenNow) RestoreStore.resnapshotGlobal(c, SETTING);
+            boolean on = enabled(c), hiddenNow = active(c), have = RestoreStore.hasGlobalSnapshot(c, SETTING);
+            // the original is on disk BEFORE the first change. While we are not the one holding the changed value, whatever is there IS the original (also when another tool changed it since the last time);
+            // the very first snapshot is taken whatever the value looks like (it may already contain our entry: then that IS the user's original).
+            if (on && (!hiddenNow || !have)) { RestoreStore.resnapshotGlobal(c, SETTING); have = true; }
             String original = RestoreStore.globalSnapshot(c, SETTING, null);
             String want = valueFor(on, mode, original);
             if (NOTHING.equals(want)) {
                 // switched off: if WE had hidden the bar, put the original back
-                if (mayUndoWhenOff(RestoreStore.hasGlobalSnapshot(c, SETTING), hiddenNow)) { Settings.Global.putString(c.getContentResolver(), SETTING, original); Log.i(TAG, "switched off: policy_control back to " + original); }
+                if (mayUndoWhenOff(have, hiddenNow)) { Settings.Global.putString(c.getContentResolver(), SETTING, original); Log.i(TAG, "switched off: policy_control back to " + original); }
                 return;
             }
             String cur = Settings.Global.getString(c.getContentResolver(), SETTING);
