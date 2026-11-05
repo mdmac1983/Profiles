@@ -15,7 +15,7 @@ SAMPLE="$D/tools/testdata/tablet-sample/tablet-report.txt"
 INTAKE="bash $D/tools/tablet-intake.sh"
 PRIVATE='R52N90ABCDE|192\.168\.1\.77|aa:bb:cc:dd:ee:ff|a@example\.com|356938035643809|HomeNet-5G'
 
-check "the sample report exists and holds the planted private strings" '[ "$(grep -cE "$PRIVATE" "$SAMPLE")" -ge 3 ]'
+check "the sample report exists and holds all six planted private strings" '[ "$(grep -oE "$PRIVATE" "$SAMPLE" | sort -u | wc -l)" = 6 ]'
 
 # ---------------------------------------------------------------- a folder (the PC route / the Downloads folder): text kept + redacted, apk and png listed or dropped
 mkdir -p "$T/in/shots" "$T/in/apk"
