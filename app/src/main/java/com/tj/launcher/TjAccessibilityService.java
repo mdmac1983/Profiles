@@ -496,7 +496,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 lastEnterAt = now;
                 UnlockMethods.Method m = unlock.onEnter(now);
                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
-                LockLog.add(getApplicationContext(), "ENTER", "lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
+                LockLog.add(getApplicationContext(), "ENTER", "lag=" + Math.max(0, android.os.SystemClock.uptimeMillis() - e.getEventTime()) + "ms lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
                 if (m == null) coverAtEnter();
             } else unlock.onKey(k, now);
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
