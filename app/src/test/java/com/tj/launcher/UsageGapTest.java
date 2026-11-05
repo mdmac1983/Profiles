@@ -23,7 +23,8 @@ public class UsageGapTest {
     @Test public void theSameInstantIsNotAfter() { assertFalse(UsageGap.lockedSince(REF, REF)); }
     @Test public void theQueryNeverLooksBackMoreThanTwelveHours() {
         assertEquals(REF, UsageGap.queryFrom(REF, NOW));
-        assertEquals(NOW - UsageGap.MAX_LOOKBACK_MS, UsageGap.queryFrom(1, NOW));
+        long later = 100_000_000L;   // far more than twelve hours after a reference of 1
+        assertEquals(later - UsageGap.MAX_LOOKBACK_MS, UsageGap.queryFrom(1, later));
     }
     @Test public void theEventTypeIsAndroidsKeyguardShown() { assertEquals(17, UsageGap.KEYGUARD_SHOWN); }
 }
