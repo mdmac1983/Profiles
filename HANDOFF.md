@@ -60,8 +60,8 @@ checked against the repo at that date; where it can go stale it says where to lo
   Build traps: `BRIEF.md` (never blank `JAVA_TOOL_OPTIONS`, one Gradle at a time, long builds in the background).
 - **Emulator check (the integration test):** `.github/workflows/emulator.yml`, manual dispatch only, runs `tools/emulator_scenario.sh` on an Android 10 x86
   emulator at 600×1024/170 dpi. It writes `results.txt` (`PASS/FAIL/INFO` lines, ends with `failed checks: N`) + screenshots + logs into an artifact.
-  - **Run only the sections you need:** input `sections` (comma list). Names: `base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v last`; empty = everything
-    (the release gate, **~25 min**, scenario timeout 2100 s). A single feature section is 3-8 min. Two different section strings may run side by side.
+  - **Run only the sections you need:** input `sections` (comma list). Names, in run order: `base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs ka rs2 rt im rs3 gc rs4 pf rb last`; empty = everything
+    (**about 42 min, do NOT use it as the gate**: run 124 on 2026-11-05 was cut at 2100 s inside `rs4`; the step limit is now 2700 s; the gate is the two runs A + B, see the release-gate note below). A single feature section is 3-8 min. Two different section strings may run side by side.
   - **Read results (current method, 2026-11-05; the old "download the artifact and curl the signed URL" is BLOCKED by a hook, do not work around it):** the last step of the
     workflow prints a compact block into the JOB LOG: `===== RESULTS: n PASS, m FAIL, k INFO =====`, every FAIL, every INFO (cut at 380 chars, so put the numbers FIRST in an `info` line),
     `===== END RESULTS =====`. Find the run with `actions_list list_workflow_runs`, `resource_id: emulator.yml`, `workflow_runs_filter {"branch":"main","event":"workflow_dispatch"}`, `perPage: 4`
