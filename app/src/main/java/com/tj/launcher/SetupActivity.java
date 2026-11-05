@@ -232,6 +232,8 @@ public class SetupActivity extends Activity {
             String out = ShellHelper.keyTest();
             if (out == null) { say("side-key test FAILED (is the helper running?)"); return; }
             String res = out.trim();
+            // the one-line verdict is computed from the WHOLE answer and stored on its own: the report cuts long values, and the flag line comes after up to 40 key lines
+            Features.setString(SetupActivity.this, "keytest_summary", ShellProtocol.keyTestSummary(res));
             Features.setString(SetupActivity.this, "keytest_output", res.length() > 1500 ? res.substring(0, 1500) : res);
             Features.setString(SetupActivity.this, "keytest_at", new java.util.Date().toString());
             say("side-key test: " + ShellProtocol.keyTestSummary(res));
