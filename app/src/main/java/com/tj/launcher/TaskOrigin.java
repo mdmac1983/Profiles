@@ -177,6 +177,8 @@ public final class TaskOrigin {
             if (notified != null && !notified.isEmpty()) plan = plan(base, now, oldList, AppOrigin.custom(app), target, guard, notified);
         }
         List<String> stop = new ArrayList<>(plan.stopPackages);
+        // the evidence a failed emulator check needs (2026-11-05, run 99: the custom account's Contacts task vanished although it was "spared"): package names and task ids only, no personal data
+        android.util.Log.i("TjTasks", "session end: base " + encode(base) + " | now " + encode(now) + " | stop " + plan.stopPackages + " | remove by id " + plan.removeIds + " | spared " + plan.spared);
         return new Outcome(stop, plan.removeIds, "tasks: " + plan.newTasks + " new since the session began, " + plan.stopPackages.size() + " app(s) closed, " + plan.removeIds.size()
                 + " task(s) removed by id, " + plan.spared.size() + " app(s) spared because the custom account has a task of its own" + (plan.spared.isEmpty() ? "" : " " + plan.spared)
                 + (plan.notificationStops.isEmpty() ? "" : ", " + plan.notificationStops.size() + " shared app(s) closed because they have a notification " + plan.notificationStops));
