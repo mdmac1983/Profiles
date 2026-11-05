@@ -16,7 +16,7 @@
 
 * The accessibility `onKeyEvent` hook lets a service consume a key or let it continue, but it "will not be able to inject key events or modify the observed ones" (AOSP commit text, mirrored e.g. in [/e/OS frameworks_base](https://gitlab.e.foundation/e/os/android_frameworks_base/-/commit/ca4dca12e5356657fad10149a076540b105d6e9e) and discussed in [this write-up](https://blog.joshsoftware.com/2018/03/28/android-accessibility-service-customization-for-keypress-event/)).
 * `PhoneWindowManager.interceptKeyBeforeQueueing` has a `KEYCODE_POWER` branch of its own and runs in system_server before the event is queued ([commit logging that branch](https://gitlab.e.foundation/e/os/android_frameworks_base/-/commit/24201e6ec62a1d8ead600a1ad75fe41c23267844)).
-* **Gap, said plainly:** no search result states outright that the accessibility key filter is bypassed for `KEYCODE_POWER`. The statement above is the reading of the code path plus our own measurement (next section), not a quotation.
+* **Gap, said plainly:** no web page found states outright that the accessibility key filter is bypassed for `KEYCODE_POWER`. It follows from two Android 10 source excerpts (next section: the power key is not marked "pass to user", and the filter skips events that are not). Our own emulator measurement of it (`rs3` b0) was inconclusive, so the claim rests on the source reading.
 
 ## 3. Our own measurement (emulator, Android 10, section `rs3`, step b0)
 
