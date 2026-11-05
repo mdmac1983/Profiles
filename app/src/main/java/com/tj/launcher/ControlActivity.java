@@ -240,6 +240,10 @@ public class ControlActivity extends Activity {
             Features.set(ControlActivity.this, DemoModeProfile.KEY, v);
             DemoModeProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
         } });
+        toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", ImmersiveProfile.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, ImmersiveProfile.KEY, v);
+            ImmersiveProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+        } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
         tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
         tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);

@@ -65,6 +65,7 @@ public final class RestoreStore {
         Features.set(c, ProfileSession.PRECLEAN_KEY, false);
         Features.set(c, KeepAlivePolicy.KEY, false);   // AA2: restore = the process is no longer held in memory by us
         KeepAliveService.stop(c);
+        Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off
         Features.set(c, DemoModeProfile.KEY, false);   // the pencil/gear flag was put back above (snapshot); the switch itself is off   // O4: restore = nothing of ours closes apps for you
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
