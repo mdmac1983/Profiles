@@ -143,10 +143,10 @@ public final class TaskOrigin {
         Context app = c.getApplicationContext();
         LinkedHashMap<Integer, String> base = base(app);
         clearBase(app);                                            // one-shot: a snapshot is only ever valid for the session it was taken for
-        List<String> none = new ArrayList<>();
-        if (base == null) return new Outcome(oldList, none, "tasks: no start-of-session snapshot (the helper was not running when Quickstep began): package-based clean-up only");
+        List<Integer> noIds = new ArrayList<>();
+        if (base == null) return new Outcome(oldList, noIds, "tasks: no start-of-session snapshot (the helper was not running when Quickstep began): package-based clean-up only");
         LinkedHashMap<Integer, String> now = ShellHelper.listTasks();
-        if (now == null) return new Outcome(oldList, new ArrayList<Integer>() == null ? null : none, "tasks: the helper could not list Recents: package-based clean-up only").withIds(new ArrayList<Integer>());
+        if (now == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only");
         Plan plan = plan(base, now, oldList, AppOrigin.custom(app), target, protectedPkgs);
         List<String> stop = new ArrayList<>(plan.stopPackages);
         return new Outcome(stop, plan.removeIds, "tasks: " + plan.newTasks + " new since the session began, " + plan.stopPackages.size() + " app(s) closed, " + plan.removeIds.size()
