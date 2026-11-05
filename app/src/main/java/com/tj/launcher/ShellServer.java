@@ -97,7 +97,9 @@ public final class ShellServer {
         if (ShellProtocol.isA11yOn(line)) {
             String cur = runShell("settings get secure enabled_accessibility_services", 5_000).trim();
             String merged = ShellProtocol.mergeA11y(cur);
-            runShell("settings put secure enabled_accessibility_services " + merged, 5_000);
+            String quoted = ShellProtocol.quoteForShell(merged);   // AB1: single-quoted, so "$Inner" in another service's name is never expanded by the shell; an odd list is left alone
+            if (quoted == null) { out.println("ERR the accessibility list has an unusual character; nothing was changed"); out.flush(); return; }
+            runShell("settings put secure enabled_accessibility_services " + quoted, 5_000);
             runShell("settings put secure accessibility_enabled 1", 5_000);
             out.println("OK"); out.println("accessibility services now: " + runShell("settings get secure enabled_accessibility_services", 5_000).trim()); out.flush(); return;
         }

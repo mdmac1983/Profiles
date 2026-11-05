@@ -102,6 +102,25 @@ public class ShellProtocolTest {
         assertEquals("a.b/c.D:" + ShellProtocol.A11Y, ShellProtocol.mergeA11y("a.b/c.D"));
         assertEquals("a.b/c.D:" + ShellProtocol.A11Y, ShellProtocol.mergeA11y("a.b/c.D:" + ShellProtocol.A11Y));
     }
+
+    @Test public void aNestedClassNameIsQuotedSoTheShellNeverExpandsIt() {
+        // AB1: unquoted, "$Inner" would become "" and silently disable another accessibility service
+        String list = "com.talk.back/com.talk.back.Svc$Inner:" + ShellProtocol.A11Y;
+        assertEquals("'" + list + "'", ShellProtocol.quoteForShell(list));
+        assertEquals("'" + ShellProtocol.A11Y + "'", ShellProtocol.quoteForShell(ShellProtocol.A11Y));
+    }
+
+    @Test public void anUnusualAccessibilityListIsNeverWritten() {
+        assertNull(ShellProtocol.quoteForShell(null));
+        assertNull(ShellProtocol.quoteForShell(""));
+        assertNull(ShellProtocol.quoteForShell("a.b/c.D'; reboot; '"));
+        assertNull(ShellProtocol.quoteForShell("a.b/c.D e.f/g.H"));
+        assertNull(ShellProtocol.quoteForShell("a.b/c.D\nx"));
+        assertNull(ShellProtocol.quoteForShell("a.b/`id`"));
+        assertNull(ShellProtocol.quoteForShell("a.b/c.D;x"));
+        StringBuilder big = new StringBuilder(); for (int i = 0; i < 4001; i++) big.append('a');
+        assertNull(ShellProtocol.quoteForShell(big.toString()));
+    }
     @Test public void parsesTheProbeFileAndSkipsItsNotes() {
         String f = "## Read-only probe commands. note\n## Used by tools\n## build and device\ngetprop ro.build.fingerprint\n\n## users\npm list users\n";
         java.util.List<ShellProtocol.ProbeLine> l = ShellProtocol.parseProbeList(f);

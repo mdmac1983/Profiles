@@ -225,6 +225,21 @@ public final class ShellProtocol {
         return c + ":" + A11Y;
     }
 
+    /**
+     * AB1 (safety): a value to be put on a `sh -c` command line inside single quotes, or null if it cannot be done safely. The list of accessibility services can hold nested class names
+     * ("pkg/pkg.Outer$Inner"): unquoted, the shell would expand "$Inner" to nothing and the write would silently disable ANOTHER accessibility service (TalkBack, a switch-access app ...).
+     * Only the characters Android itself uses in component names are accepted; anything else (a quote, a space, a semicolon, a newline, a backtick) returns null and the caller writes nothing.
+     */
+    public static String quoteForShell(String value) {
+        if (value == null || value.isEmpty() || value.length() > 4000) return null;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            boolean ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == '/' || ch == ':' || ch == '$' || ch == '-';
+            if (!ok) return null;
+        }
+        return "'" + value + "'";
+    }
+
     /** One line of probe-commands.txt: a section title ("## ...") or a command; blank lines are dropped. */
     public static final class ProbeLine {
         public final boolean title; public final String text;
