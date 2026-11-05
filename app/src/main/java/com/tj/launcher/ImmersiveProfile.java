@@ -54,16 +54,24 @@ public final class ImmersiveProfile {
         try { String v = Settings.Global.getString(c.getContentResolver(), SETTING); return v != null && v.contains(OURS); } catch (Throwable t) { return false; }
     }
 
+    /**
+     * Pure rule (JVM-tested): may the switched-OFF launcher put the saved original back? Only when it has a snapshot (it took ownership of the setting at some point) AND the bar is hidden right now.
+     * Without a snapshot the value is somebody else's (an adb setup, another tool), and deleting it would be a change the user never asked for (review of 2026-11-05).
+     */
+    public static boolean mayUndoWhenOff(boolean hasSnapshot, boolean hiddenNow) { return hasSnapshot && hiddenNow; }
+
     /** Writes the value for this mode. Cheap and exception-safe; does nothing when switched off or without the adb grant. */
     public static void apply(Context c, String mode) {
         try {
             if (!permitted(c)) return;
-            if (enabled(c)) RestoreStore.snapshotGlobal(c, SETTING);   // the original is on disk BEFORE the first change
+            boolean on = enabled(c), hiddenNow = active(c);
+            // the original is on disk BEFORE the first change. While we are not the one holding the changed value, whatever is there IS the original (also when another tool changed it since the last time).
+            if (on && !hiddenNow) RestoreStore.resnapshotGlobal(c, SETTING);
             String original = RestoreStore.globalSnapshot(c, SETTING, null);
-            String want = valueFor(enabled(c), mode, original);
+            String want = valueFor(on, mode, original);
             if (NOTHING.equals(want)) {
-                // switched off: if we had hidden the bar, put the original back
-                if (active(c)) { Settings.Global.putString(c.getContentResolver(), SETTING, original); Log.i(TAG, "switched off: policy_control back to " + original); }
+                // switched off: if WE had hidden the bar, put the original back
+                if (mayUndoWhenOff(RestoreStore.hasGlobalSnapshot(c, SETTING), hiddenNow)) { Settings.Global.putString(c.getContentResolver(), SETTING, original); Log.i(TAG, "switched off: policy_control back to " + original); }
                 return;
             }
             String cur = Settings.Global.getString(c.getContentResolver(), SETTING);
