@@ -751,3 +751,8 @@ Tell me everything else i need to do right now with the otg cable. I'm not going
 ```
 I'll have the cable later to do this. Can i use the launcher settings now
 ```
+
+## 2026-11-05T20:41:55Z
+```
+Release the next version. If i update it, will i need adb again
+```
