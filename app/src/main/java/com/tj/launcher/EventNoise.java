@@ -12,11 +12,13 @@ public final class EventNoise {
     /** android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED */
     public static final int TYPE_WINDOW_CONTENT_CHANGED = 0x00000800;
     public static final String SYSTEM_UI = "com.android.systemui";
+    /** The package of windows that system_server itself owns (some ROMs host dialogs there). It is quiet, so it is kept rather than risk missing a system dialog. */
+    public static final String ANDROID = "android";
 
-    /** True for the events that cannot matter: a content change inside an app that is not SystemUI. */
+    /** True for the events that cannot matter: a content change inside an app that is neither SystemUI nor the system's own windows. */
     public static boolean isNoise(int eventType, CharSequence packageName) {
         if (eventType != TYPE_WINDOW_CONTENT_CHANGED) return false;
-        return packageName == null || !SYSTEM_UI.contentEquals(packageName);
+        return packageName == null || !(SYSTEM_UI.contentEquals(packageName) || ANDROID.contentEquals(packageName));
     }
 
     /** android.view.accessibility.AccessibilityWindowInfo types */
