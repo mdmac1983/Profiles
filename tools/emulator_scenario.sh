@@ -786,6 +786,7 @@ done
 ui_all(){ local p; for p in "$@"; do grep -qF -- "$p" "$OUT/x-setup-ui.xml" || return 1; done; }
 XMISS=""; for p in '1. Do everything that is missing' '2. Collect the tablet report' '2b. Share a SHORT summary' '3. Side-key test' '4. Collect EVERYTHING'; do grep -qF -- "$p" "$OUT/x-setup-ui.xml" || XMISS="$XMISS [$p]"; done
 info "PG2: setup screen scan: $XPAGES page(s) to the end; numbered steps not found:${XMISS:- none}"
+[ -n "$XMISS" ] && info "PG2: what the scan saw instead: $(grep -o 'text="[^"]\{3,60\}"' "$OUT/x-setup-ui.xml" | head -6 | tr '\n' ' ') | in front: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | cut -c1-120)"
 check "PG2: the setup screen offers the numbered steps (1 do everything, 2 collect, 2b short summary, 3 side-key test, 4 everything)" ui_all '1. Do everything that is missing' '2. Collect the tablet report' '2b. Share a SHORT summary' '3. Side-key test' '4. Collect EVERYTHING'
 adb pull "$SHARE/summary.txt" "$OUT/x-summary.txt" >/dev/null 2>&1
 sum_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-summary.txt" || return 1; done; }
