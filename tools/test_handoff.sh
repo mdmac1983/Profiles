@@ -33,6 +33,22 @@ PY
   then ok; else bad "$(basename "$W") has a non-tag push trigger (would burn Actions minutes)"; fi
 done
 
+# A workflow file that does not parse silently LOSES its triggers (GitHub then says "Workflow does not have 'workflow_dispatch' trigger"): 2026-11-05 a colon inside a step name did exactly that.
+if python3 -I -c "import yaml" >/dev/null 2>&1; then
+  for W in "$D"/.github/workflows/*.yml; do
+    if python3 -I - "$W" <<'PY'
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1]))
+on = d.get(True, d.get('on')) or {}
+name = sys.argv[1].rsplit('/', 1)[-1]
+if name in ('emulator.yml', 'android.yml') and 'workflow_dispatch' not in on:
+    sys.exit(1)
+sys.exit(0)
+PY
+    then ok; else bad "$(basename "$W") does not parse as YAML or lost its workflow_dispatch trigger (a colon inside a step name does that)"; fi
+  done
+fi
+
 # ---------------------------------------------------------------- fixture repo + fake remote
 git init -q --bare "$T/remote.git"
 git clone -q "$T/remote.git" "$T/work" 2>/dev/null
