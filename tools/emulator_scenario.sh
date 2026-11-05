@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -885,6 +885,80 @@ check "Y2: the permissions section with its pm grant commands is reachable by sc
 adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell am force-stop com.tj.phoneguide; home
 fi # section g
+if want rs; then # section rs
+ensurehome
+# ---- RESEARCH (info lines only, no PASS/FAIL): AA1 what policy_control really does on Android 10, the development-level permissions, AA4 the "hide a task but keep it alive" candidates.
+beat "before RS"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+setfeat; setmode custom; home; sleep 2
+mae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+sbstate(){ adb shell dumpsys window windows 2>/dev/null | awk '/Window #[0-9]+ Window\{[^}]* StatusBar\}/{f=1;c=0} f{ if ($0 ~ /mFrame=|Frames:|[ (]frame=|mViewVisibility|isReadyForDisplay|mHasSurface/) print; c++; if (c>60) f=0 }' | head -5 | tr -s ' ' | tr '\n' ';' | cut -c1-330; }
+# --- R1: Settings.Global policy_control = immersive.status=*  (the idea: hide the status bar while the custom launcher is active)
+adb shell settings delete global policy_control >/dev/null 2>&1; sleep 1
+shot 100-rs-home-baseline
+info "R1 baseline (no policy_control): StatusBar window: $(sbstate)"
+adb shell settings put global policy_control "immersive.status=*"; sleep 3
+shot 101-rs-home-immersive
+info "R1 immersive.status=* -> setting '$(adb shell settings get global policy_control | tr -d '\r\n')': status-bar strip changed by MAE $(mae 100-rs-home-baseline 101-rs-home-immersive 600x30+0+0) (0 = identical), the rest of the screen by MAE $(mae 100-rs-home-baseline 101-rs-home-immersive 600x900+0+100); StatusBar window: $(sbstate)"
+adb shell input swipe 300 2 300 350 150; sleep 1.5; shot 102-rs-swipe1
+info "R1 after ONE swipe down from the top edge: strip vs baseline MAE $(mae 100-rs-home-baseline 102-rs-swipe1 600x30+0+0), whole screen vs immersive MAE $(mae 101-rs-home-immersive 102-rs-swipe1 600x1024+0+0); StatusBar window: $(sbstate)"
+adb shell input swipe 300 2 300 350 150; sleep 1.5; shot 103-rs-swipe2
+info "R1 after a SECOND swipe: whole screen vs immersive MAE $(mae 101-rs-home-immersive 103-rs-swipe2 600x1024+0+0); StatusBar window: $(sbstate)"
+adb shell cmd statusbar collapse; sleep 1.5
+adb shell cmd statusbar expand-settings; sleep 2.5; shot 104-rs-expand-cmd
+info "R1 'cmd statusbar expand-settings' under immersive: whole screen vs immersive MAE $(mae 101-rs-home-immersive 104-rs-expand-cmd 600x1024+0+0); StatusBar window: $(sbstate)"
+adb shell cmd statusbar collapse; sleep 1.5
+# an app opened while immersive is on
+adb shell settings delete global policy_control >/dev/null 2>&1; sleep 1
+adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 4; shot 105-rs-app-baseline
+adb shell settings put global policy_control "immersive.status=*"; sleep 3; shot 106-rs-app-immersive
+info "R1 an app (Calendar) with immersive.status=*: top strip changed by MAE $(mae 105-rs-app-baseline 106-rs-app-immersive 600x30+0+0), content below by MAE $(mae 105-rs-app-baseline 106-rs-app-immersive 600x900+0+100)"
+home
+# the lock screen with the setting on / off (L10: nothing may change there)
+adb shell locksettings set-pin 1234 >/dev/null 2>&1
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; shot 107-rs-lock-immersive
+adb shell input swipe 300 900 300 300 300; sleep 1.5; adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 3
+adb shell settings delete global policy_control >/dev/null 2>&1; sleep 2
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; shot 108-rs-lock-baseline
+info "R1 lock screen with immersive.status=* vs without: strip MAE $(mae 107-rs-lock-immersive 108-rs-lock-baseline 600x30+0+0), rest MAE $(mae 107-rs-lock-immersive 108-rs-lock-baseline 600x900+0+100) (0 = the lock screen is untouched)"
+adb shell input swipe 300 900 300 300 300; sleep 1.5; adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 3
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell settings delete global policy_control >/dev/null 2>&1
+# --- R2: the permissions the shell may grant to an app that DECLARES them (protectionLevel contains "development"): they must be in the manifest BEFORE the cable session
+adb shell pm list permissions -f 2>/dev/null | awk '/permission:/{n=$0; sub(/.*permission:/,"",n)} /protectionLevel:/ && /development/{print n}' > "$OUT/rs-dev-permissions.txt"
+info "R2 development-level permissions on this Android 10 ($(wc -l < $OUT/rs-dev-permissions.txt)): $(tr '\n' ' ' < $OUT/rs-dev-permissions.txt | cut -c1-2800)"
+# --- R3: the commands the shell has for tasks / stacks / displays, and the "hide a task but keep it alive" candidates
+info "R3 am task/stack/display commands: $(adb shell am help 2>&1 | grep -E '^ +am (task|stack|display)' | sed 's/^ *//' | cut -c1-70 | tr '\n' '|' | cut -c1-900)"
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #[0-9]+:" | sed 's/^ *//' | cut -c1-150 > "$OUT/rs-recents-before.txt"
+info "R3 Recents now: $(tr '\n' '|' < $OUT/rs-recents-before.txt | cut -c1-700)"
+CTASK=$(grep 'A=com.android.contacts' "$OUT/rs-recents-before.txt" | head -1 | grep -o ' #[0-9]* ' | tr -d ' #')
+CSTACK=$(grep 'A=com.android.contacts' "$OUT/rs-recents-before.txt" | head -1 | grep -o 'StackId=[0-9]*' | cut -d= -f2)
+adb shell am stack list > "$OUT/rs-stacks.txt" 2>&1
+HOMESTACK=$(awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:.*(com.tj.launcher|com.android.launcher3)/{print sid; exit}' "$OUT/rs-stacks.txt")
+info "R3 contacts task=$CTASK stack=$CSTACK, the stack holding our launcher=$HOMESTACK; stacks: $(grep -E 'Stack id=|taskId=' $OUT/rs-stacks.txt | sed 's/^ *//' | cut -c1-90 | tr '\n' '|' | cut -c1-900)"
+CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
+if [ -n "$CTASK" ] && [ -n "$HOMESTACK" ]; then
+  adb shell am stack movetask "$CTASK" "$HOMESTACK" true > "$OUT/rs-movetask.txt" 2>&1; sleep 2
+  adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #[0-9]+:" | sed 's/^ *//' | cut -c1-150 > "$OUT/rs-recents-after-move.txt"
+  info "R3a 'am stack movetask $CTASK $HOMESTACK' -> [$(tr '\n' ' ' < $OUT/rs-movetask.txt | cut -c1-300)]; contacts still in Recents: $(grep -c 'A=com.android.contacts' $OUT/rs-recents-after-move.txt), pid before/after: $CPID0 / $(adb shell pidof com.android.contacts | tr -d '\r\n')"
+else info "R3a skipped (no contacts task or no home stack id found)"; fi
+adb shell settings put global overlay_display_devices "600x1024/170"; sleep 4
+adb shell dumpsys activity activities 2>/dev/null | grep -E "^ *Display #[0-9]+" | sed 's/^ *//' | cut -c1-80 > "$OUT/rs-displays.txt"
+info "R3b simulated secondary display: $(tr '\n' '|' < $OUT/rs-displays.txt)"
+NEWD=$(grep -o 'Display #[0-9]*' "$OUT/rs-displays.txt" | grep -v '#0' | head -1 | tr -d 'Display #')
+CSTACK2=$(adb shell dumpsys activity recents 2>/dev/null | grep 'A=com.android.calendar' | head -1 | grep -o 'StackId=[0-9]*' | cut -d= -f2)
+if [ -n "$NEWD" ] && [ -n "$CSTACK2" ]; then
+  adb shell am display move-stack "$CSTACK2" "$NEWD" > "$OUT/rs-movestack.txt" 2>&1; sleep 3
+  adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #[0-9]+:" | sed 's/^ *//' | cut -c1-150 > "$OUT/rs-recents-after-display.txt"
+  info "R3b 'am display move-stack $CSTACK2 $NEWD' -> [$(tr '\n' ' ' < $OUT/rs-movestack.txt | cut -c1-300)]; calendar still in Recents: $(grep -c 'A=com.android.calendar' $OUT/rs-recents-after-display.txt), alive: $(adb shell pidof com.android.calendar | tr -d '\r\n')"
+  shot 109-rs-secondary-display
+else info "R3b skipped (no second display or no calendar stack)"; fi
+adb shell settings delete global overlay_display_devices >/dev/null 2>&1; sleep 3
+adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.calendar
+setfeat; setmode custom; home
+fi # section rs
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
