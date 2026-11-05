@@ -1113,7 +1113,26 @@ adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-restored.txt" 2>&
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-prefs-restored.txt"
 info "KA after Restore everything: foreground service present: $(grep -c 'isForeground=true' $OUT/ka-services-restored.txt), keep_alive pref: $(grep -o 'keep_alive[^/]*' $OUT/ka-prefs-restored.txt | head -1)"
 check "AA2: Restore everything stopped the keep-alive service" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-restored.txt"
-setfeat; setmode custom; home
+# ---- KA1 (v0.7.2): the FUSE, end to end on the real Android crash path. On the real tablet SystemUI could not draw the keep-alive notification's icon, so Android crashed the launcher over it ("Bad notification ... Couldn't create
+#      icon") three times in seven seconds, the breaker tripped and Tj's switches were wiped. Here the service posts an icon that does not exist (test key keep_alive_test_bad_icon = 1), which SystemUI cannot draw either, so Android crashes
+#      the app the same way. Expected: exactly ONE such crash, keep-alive switches ITSELF off and is marked blocked, the 3-crash breaker does NOT trip, Tj's other switches survive, no keep-alive service afterwards.
+kafuse(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"home_type_launcher\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"keep_alive\\\" value=\\\"true\\\" /><int name=\\\"keep_alive_test_bad_icon\\\" value=\\\"$1\\\" /><boolean name=\\\"lock_number\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map></map>\" > shared_prefs/tj_crash.xml'"; }
+adb shell am force-stop "$PKG"; setmode custom; kafuse 1; adb logcat -b crash -c
+rebind; home; sleep 16; home; sleep 4
+adb logcat -b crash -d > "$OUT/ka-fuse-crash.txt" 2>&1
+adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-fuse-features.txt"
+adb shell "run-as $PKG cat shared_prefs/tj_crash.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-fuse-crashprefs.txt"
+adb shell dumpsys activity services "$PKG" > "$OUT/ka-fuse-services.txt" 2>&1
+info "KA1 fuse: crashes in the crash buffer: $(grep -c 'FATAL EXCEPTION' $OUT/ka-fuse-crash.txt); 'Bad notification' lines: $(grep -c 'Bad notification' $OUT/ka-fuse-crash.txt); features: $(grep -oE 'name=\"(keep_alive|keep_alive_blocked|lock_number)\" value=\"[a-z]*\"' $OUT/ka-fuse-features.txt | tr '\n' ' '); crash prefs: $(tr '\n' ' ' < $OUT/ka-fuse-crashprefs.txt | cut -c1-200)"
+check "KA1: a notification SystemUI cannot draw makes Android crash the launcher (the real tablet's crash is reproduced)" grep -q 'Bad notification' "$OUT/ka-fuse-crash.txt"
+check "KA1: it happened exactly ONCE (the sticky restart did not post the notification again)" bash -c "[ \"\$(grep -c 'FATAL EXCEPTION' $OUT/ka-fuse-crash.txt)\" -eq 1 ]"
+check "KA1: the fuse switched keep-alive OFF" grep -q 'name="keep_alive" value="false"' "$OUT/ka-fuse-features.txt"
+check "KA1: the fuse marked keep-alive as blocked (it stays off until Tj switches it on again)" grep -q 'name="keep_alive_blocked" value="true"' "$OUT/ka-fuse-features.txt"
+check "KA1: the 3-crash breaker did NOT trip over it" bash -c "! grep -q 'tripped.*true' $OUT/ka-fuse-crashprefs.txt"
+check "KA1: Tj's other switches survived (the lock number is still on)" grep -q 'name="lock_number" value="true"' "$OUT/ka-fuse-features.txt"
+check "KA1: no keep-alive foreground service afterwards" bash -c "! grep -q 'isForeground=true' $OUT/ka-fuse-services.txt"
+adb logcat -b crash -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ka
 if want rs2; then # section rs2
 ensurehome
