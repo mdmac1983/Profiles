@@ -112,7 +112,10 @@ updates monthly. **Minutes are the scarce resource** — never add a `push:` bra
   tappable text on its own line, never in a code block. A tag *push* from a container is refused (403); GitHub
   creates the tag server-side.
 - Hand mechanical work to Actions instead of polling (builds, test runs, waiting on CI): trigger, end the turn or
-  do other work, read the result when it lands.
+  do other work, read the result when it lands. **To wait without spending tokens (2026-11-05):** `get_job_logs` answers 404 until the job ENDS, so polling it is
+  pure waste. Dispatch, then start a background timer (Bash `run_in_background`, `until [ "$(date -u +%H%M)" -ge 0743 ]; do sleep 20; done; echo ready`) and read the log when it fires
+  (one notification, no tokens meanwhile). Measured: a one-section run (`x`, `g,gc`) is done about **4.5 min** after dispatch, the FULL gate about **26 min**.
+  Never `curl` api.github.com for the status (a hook blocks it; do not work around it).
 - **The Emulator check is fast when you ask for a section** (N9, 2026-11-04): `emulator.yml` has a `sections` input (comma list: `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,last`; empty = everything, ~15 min, the release gate).
   A new feature runs only its own section (e.g. `{"sections":"n6"}`, measured 3.5-3.6 min end to end; an AVD cache + snapshot was tried and DROPPED: no measurable gain, and a snapshot boot changed the drawer order). Two section runs may go side by side (the sections are part of the concurrency group).
   Only the release run (empty) is the full gate.
