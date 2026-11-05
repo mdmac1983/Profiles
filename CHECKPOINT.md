@@ -1,13 +1,13 @@
-# CHECKPOINT 373 — read me first, then TASKS.md
+# CHECKPOINT 374 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T20:55:53Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `0bed2da` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T22:18:10Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-0e021d44-iyicti` · **builds on:** `85a3e6b` (this checkpoint is the commit after it)
 
 ## Just done
-REL072: code-review of v0.7.1..HEAD done (8 fixed, 2 declined); unit 245 green; ka run 130 (pre-fix code) running
+Tj sent 9 requests (AC1-AC9) written to TASKS.md
 
 ## Do this next
-read run 130 RESULTS (job log tail 60) for the ka section: the new KA1 checks; then push, re-run ka on the FINAL code (sections=ka), update HANDOFF/CLAUDE docs, dispatch gate A and gate B in parallel (A=base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x B=v,g,ka,rt,im,gc,pf,rb,last), then ship.sh + android.yml full_build + get_release_by_tag + record-release
+read run 130 ka results; research AC1-AC9 in code (RouterActivity/ProfileSession/UnlockPick/TjAccessibilityService/KeepAlive), then REL072 gate A+B
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ read run 130 RESULTS (job log tail 60) for the ka section: the new KA1 checks; t
 
 ## Last ten checkpoints
 ```
+  90bdfef ckpt 373: REL072: code-review of v0.7.1..HEAD done (8 fixed, 2 declined); unit 245 green
   e860f7e ckpt 372: REL072: KA1+CBR1+UX1 coded, unit 245 green, lint ok; ka scenario extended, CI 
   ce42d62 ckpt 371: Tj asked to release the next version + will an update need adb (answer: no); R
   fa8132b ckpt 370: Tj: cable later; asked if he can use Launcher control now: yes, with cautions 
@@ -26,7 +27,6 @@ read run 130 RESULTS (job log tail 60) for the ka section: the new KA1 checks; t
   0df7428 ckpt 366: step 19: double-erase handshake works on the real tablet (pad recognised), unl
   217aa31 ckpt 365: Tj: custom home live (default home ours, 0 crashes) but lock number missing + 
   b2464af ckpt 364: step 17: notification access null = a Go device refuses it (my audit was wrong
-  8d77e87 ckpt 363: Tj made the custom launcher the default Home himself: first live custom run; s
 ```
 
 (2 automatic checkpoint(s) since the last deliberate one — the
