@@ -7,7 +7,7 @@
    - Windows: `tools\adb-all.bat`
    (add `Launcher-v0.5.0.apk` after it to install/update the launcher first; add `--browser-off` to also disable the old Browser app; `--status` only shows what is granted and changes nothing.)
 3. It grants every permission and background setting (including the ones for future upgrades), turns the accessibility helper on, starts the invisible clean-up helper, reads everything useful (read-only), **copies the tablet's own Settings / SystemUI / stock launcher / framework apps**, takes screenshots of the stock Settings pages, and prints a status table of every permission command. Touch nothing on the tablet while the Settings screenshots are taken (about a minute).
-4. **Send me the folder `probe-out`** (zip it), or paste `probe-out/status.txt` and `probe-out/launcher-probe.txt`.
+4. **Send me the folder `probe-out`** (zip it), or paste `probe-out/status.txt` and `probe-out/launcher-probe.txt`. (Claude saves what you send with `bash tools/tablet-intake.sh`: redacted, summarised, kept in `research/tablet/` for every later session.)
 5. After every tablet RESTART run it again (or only the helper line, section C): the helper does not survive a restart.
 6. Later, with the helper running, the same things (and a fresh report) are one tap away inside the launcher: **Launcher control > Tablet setup & report**.
 
