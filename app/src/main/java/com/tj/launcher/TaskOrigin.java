@@ -21,6 +21,8 @@ import java.util.Set;
  *   - a task that is new since the beginning is Quickstep's;
  *   - an app that already had a task at the beginning (or that the custom launcher started) is NOT force-stopped, only its new task is removed, by id, so the custom account keeps its own;
  *   - an app that appears only in Quickstep is force-stopped as before (its notifications and process go too).
+ * AB3 (Tj: "never show notifications from apps opened in the quickstep launcher"): an app that BOTH worlds use and that has a notification in the shade is not spared after all: leaving its notification
+ * in the custom account's shade would show Quickstep's app there, so such an app is force-stopped (which also cancels its notifications). Apps without a notification are spared as before.
  * Without the helper nothing here runs and the old package-based clean-up does everything.
  */
 public final class TaskOrigin {
@@ -74,6 +76,8 @@ public final class TaskOrigin {
         public final List<Integer> removeIds = new ArrayList<>();
         /** Apps the old package list wanted to force-stop but that have a custom-account task: spared. */
         public final Set<String> spared = new LinkedHashSet<>();
+        /** AB3: shared apps that have a notification, closed after all (subset of stopPackages). */
+        public final Set<String> notificationStops = new LinkedHashSet<>();
         public int newTasks = 0;
     }
 
@@ -86,6 +90,11 @@ public final class TaskOrigin {
      * @param guard     false for packages that must never be touched (this app, the stock launcher, the keyboard, the system): decided by the caller with ResetPolicy
      */
     public static Plan plan(Map<Integer, String> base, Map<Integer, String> now, Collection<String> pending, Set<String> custom, String target, Guard guard) {
+        return plan(base, now, pending, custom, target, guard, null);
+    }
+
+    /** @param notified packages that have a notification in the shade now (null = not known: shared apps are spared as before) */
+    public static Plan plan(Map<Integer, String> base, Map<Integer, String> now, Collection<String> pending, Set<String> custom, String target, Guard guard, Set<String> notified) {
         Plan plan = new Plan();
         Set<String> basePkgs = new LinkedHashSet<>(base.values());
         for (Map.Entry<Integer, String> e : now.entrySet()) {
@@ -93,13 +102,25 @@ public final class TaskOrigin {
             String pkg = e.getValue();
             if (pkg == null || pkg.equals(target) || !guard.mayClose(pkg)) continue;
             plan.newTasks++;
-            if (basePkgs.contains(pkg) || custom.contains(pkg)) plan.removeIds.add(e.getKey());
+            if (basePkgs.contains(pkg) || custom.contains(pkg)) {
+                if (notified != null && notified.contains(pkg)) { plan.stopPackages.add(pkg); plan.notificationStops.add(pkg); }   // AB3: its notification must not stay behind
+                else plan.removeIds.add(e.getKey());
+            }
             else plan.stopPackages.add(pkg);
         }
         if (pending != null) for (String pkg : pending) {
             if (pkg == null || pkg.equals(target) || !guard.mayClose(pkg)) continue;
-            if (basePkgs.contains(pkg)) plan.spared.add(pkg);       // the old list would have closed an app the custom account is using
+            if (basePkgs.contains(pkg)) {
+                if (notified != null && notified.contains(pkg)) { plan.stopPackages.add(pkg); plan.notificationStops.add(pkg); }
+                else plan.spared.add(pkg);                           // the old list would have closed an app the custom account is using
+            }
             else plan.stopPackages.add(pkg);
+        }
+        // a task of an app that is being force-stopped goes with it: no separate removal
+        if (!plan.notificationStops.isEmpty()) {
+            List<Integer> keep = new ArrayList<>();
+            for (Integer id : plan.removeIds) { String pk = now.get(id); if (pk == null || !plan.stopPackages.contains(pk)) keep.add(id); }
+            plan.removeIds.clear(); plan.removeIds.addAll(keep);
         }
         return plan;
     }
@@ -151,8 +172,13 @@ public final class TaskOrigin {
         LinkedHashMap<Integer, String> now = ShellHelper.listTasks();
         if (now == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only");
         Plan plan = plan(base, now, oldList, AppOrigin.custom(app), target, guard);
+        if (!plan.spared.isEmpty() || !plan.removeIds.isEmpty()) {     // AB3: shared apps exist: do any of them have a notification? (one extra helper call, only then)
+            java.util.Set<String> notified = ShellHelper.notifPackages();
+            if (notified != null && !notified.isEmpty()) plan = plan(base, now, oldList, AppOrigin.custom(app), target, guard, notified);
+        }
         List<String> stop = new ArrayList<>(plan.stopPackages);
         return new Outcome(stop, plan.removeIds, "tasks: " + plan.newTasks + " new since the session began, " + plan.stopPackages.size() + " app(s) closed, " + plan.removeIds.size()
-                + " task(s) removed by id, " + plan.spared.size() + " app(s) spared because the custom account has a task of its own" + (plan.spared.isEmpty() ? "" : " " + plan.spared));
+                + " task(s) removed by id, " + plan.spared.size() + " app(s) spared because the custom account has a task of its own" + (plan.spared.isEmpty() ? "" : " " + plan.spared)
+                + (plan.notificationStops.isEmpty() ? "" : ", " + plan.notificationStops.size() + " shared app(s) closed because they have a notification " + plan.notificationStops));
     }
 }

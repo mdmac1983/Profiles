@@ -123,6 +123,15 @@ public final class ShellHelper {
         return out;
     }
 
+    /** AB3: every app that has a notification in the shade right now, or null if the helper cannot be reached. Blocking: call off the main thread. */
+    public static java.util.Set<String> notifPackages() {
+        String r = askLong("NOTIFPKGS", 20_000);
+        if (r == null) return null;
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (String l : r.split("\\n")) { String t = l.trim(); if (!t.isEmpty() && t.indexOf(' ') < 0) out.add(t); }
+        return out;
+    }
+
     /** AA3: removes exactly these Recents tasks (the helper re-checks the deny-list per id). @return how many were removed, or -1 if the helper could not be reached. Blocking. */
     public static int removeTasks(Collection<Integer> ids) {
         if (ids == null || ids.isEmpty()) return 0;

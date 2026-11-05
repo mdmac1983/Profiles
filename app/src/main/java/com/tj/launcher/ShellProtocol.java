@@ -151,6 +151,23 @@ public final class ShellProtocol {
 
     public static boolean isListTasks(String line) { return line != null && line.trim().equals("LISTTASKS"); }
 
+    /** AB3: "NOTIFPKGS" -> the helper answers with one package per line: every app that has a notification in the shade right now (read-only). */
+    public static boolean isNotifPkgs(String line) { return line != null && line.trim().equals("NOTIFPKGS"); }
+
+    private static final Pattern NOTIF_RECORD = Pattern.compile("NotificationRecord\\(0x[0-9a-fA-F]+: pkg=([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+) user=UserHandle\\{(\\d+)\\}");
+
+    /**
+     * The packages (of user 0) that have an ACTIVE notification, from the text of `dumpsys notification` (Android 10 prints each as "NotificationRecord(0x...: pkg=com.x user=UserHandle{0} id=..."). The "last removed"
+     * archive uses another shape ("StatusBarNotification(...)") and is not matched on purpose. Works on the whole dump or on just the lines that contain "NotificationRecord(".
+     */
+    public static java.util.Set<String> parseNotifPackages(String dump) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        if (dump == null) return out;
+        java.util.regex.Matcher m = NOTIF_RECORD.matcher(dump);
+        while (m.find()) if ("0".equals(m.group(2)) && out.size() < 200) out.add(m.group(1));
+        return out;
+    }
+
     /** "RMTASKS 12 14" -> [12, 14]: positive numbers only, at most MAX_PACKAGES, no duplicates; null if the line is not an RMTASKS line. Anything that is not a plain number is dropped. */
     public static List<Integer> removeTaskIds(String line) {
         if (line == null) return null;
