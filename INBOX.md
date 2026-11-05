@@ -691,3 +691,8 @@ I'll get the cable back in a few minutes. Should I send you the probe txt file n
 ```
 Should I turn duraspeed off
 ```
+
+## 2026-11-05T19:22:56Z
+```
+/active-memory:amhandoff 
+```
