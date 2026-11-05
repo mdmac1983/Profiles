@@ -222,26 +222,72 @@ public final class ReturnReset {
 
     private static volatile String cachedLabel, cachedPkg;
     private static volatile long cachedAt = 0;
+    private static volatile boolean refreshing = false;
+    private static final long TARGET_TTL_MS = 10 * 60_000;
 
-    /** Package of the app we open / keep in Recents (e.g. Solitaire), or null. Cached for 30 s: it is consulted on every app launch. */
+    /**
+     * Package of the app we open / keep in Recents (e.g. Solitaire), or null. AB2 (efficiency): finding it means asking Android for the label of EVERY launchable app (a resource lookup in each APK: on
+     * the MT8168 that is 100+ ms and it ran on the main thread every 30 s, on every return to the custom launcher and on every app launch). Now the answer is kept for 10 minutes, REMEMBERED in
+     * the preferences across process restarts (checked to still be installed), and re-checked on a background thread; only the very first lookup for a label scans on the calling thread.
+     */
     public static String targetPackage(Context c) {
-        long now = System.currentTimeMillis();
-        String label = appLabel(c);
-        if (cachedLabel != null && cachedLabel.equals(label) && now - cachedAt < 30_000) return cachedPkg;
+        final Context app = c.getApplicationContext();
+        final String label = appLabel(app);
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (cachedLabel != null && cachedLabel.equals(label)) {
+            if (now - cachedAt > TARGET_TTL_MS && !refreshing) refreshTargetAsync(app, label);
+            return cachedPkg;
+        }
+        String saved = Features.getString(app, "target_pkg_for_" + label.toLowerCase(java.util.Locale.ROOT), null);
+        if (saved != null && isInstalled(app, saved)) {
+            cachedLabel = label; cachedPkg = saved; cachedAt = now;
+            refreshTargetAsync(app, label);            // is there a better match now? (off the calling thread)
+            return saved;
+        }
+        return scanTarget(app, label);                  // the first time ever for this label
+    }
+
+    private static boolean isInstalled(Context c, String pkg) {
+        try { c.getPackageManager().getApplicationInfo(pkg, 0); return true; } catch (PackageManager.NameNotFoundException e) { return false; }
+    }
+
+    /** The slow, complete search; stores the answer in memory and in the preferences. */
+    private static String scanTarget(Context app, String label) {
+        long t0 = android.os.SystemClock.elapsedRealtime();
         List<String> labels = new ArrayList<>();
-        List<ResolveInfo> ris = launchables(c, labels);
+        List<ResolveInfo> ris = launchables(app, labels);
         int i = ResetPolicy.pickLabel(labels, label);
-        cachedPkg = i < 0 ? null : ris.get(i).activityInfo.packageName;
-        cachedLabel = label; cachedAt = now;
-        return cachedPkg;
+        String pkg = i < 0 ? null : ris.get(i).activityInfo.packageName;
+        cachedPkg = pkg; cachedLabel = label; cachedAt = android.os.SystemClock.elapsedRealtime();
+        Features.setString(app, "target_pkg_for_" + label.toLowerCase(java.util.Locale.ROOT), pkg == null ? "" : pkg);
+        Log.i(TAG, "target app for '" + label + "' = " + pkg + " (full scan of " + ris.size() + " apps took " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms)");
+        return pkg;
+    }
+
+    private static void refreshTargetAsync(final Context app, final String label) {
+        if (refreshing) return;
+        refreshing = true;
+        new Thread(new Runnable() { @Override public void run() {
+            try { scanTarget(app, label); } catch (Throwable t) { Log.e(TAG, "target refresh failed", t); } finally { refreshing = false; }
+        } }, "tj-target-scan").start();
+    }
+
+    /** The launchable activities of ONE package (a handful, not the whole phone) and the index of the one whose label best matches ours (0 if none does). */
+    private static List<ResolveInfo> launchablesOf(Context c, String pkg, List<String> labelsOut) {
+        PackageManager pm = c.getPackageManager();
+        List<ResolveInfo> ris = pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(pkg), 0);
+        for (ResolveInfo ri : ris) labelsOut.add(String.valueOf(ri.loadLabel(pm)));
+        return ris;
     }
 
     /** Label of the app we would open, or null if none is installed (used by Launcher control's status line). */
     public static String findAppLabel(Context c) {
+        String pkg = targetPackage(c);
+        if (pkg == null) return null;
         List<String> labels = new ArrayList<>();
-        List<ResolveInfo> ris = launchables(c, labels);
+        launchablesOf(c, pkg, labels);
         int i = ResetPolicy.pickLabel(labels, appLabel(c));
-        return i < 0 ? null : labels.get(i);
+        return labels.isEmpty() ? null : labels.get(i < 0 ? 0 : i);
     }
 
     private static List<ResolveInfo> launchables(Context c, List<String> labelsOut) {
@@ -253,10 +299,14 @@ public final class ReturnReset {
 
     /** N3: start the target app once, with no verification loop and no Home press: used while the lock screen still covers everything (the accessibility check cannot see behind it). */
     public static void startTargetBehindLock(Context c) {
+        Context app = c.getApplicationContext();
+        String pkg = targetPackage(app);
+        if (pkg == null) return;
         List<String> labels = new ArrayList<>();
-        List<ResolveInfo> ris = launchables(c.getApplicationContext(), labels);
-        int i = ResetPolicy.pickLabel(labels, appLabel(c));
-        if (i >= 0) launchOnce(c.getApplicationContext(), ris.get(i), 0);
+        List<ResolveInfo> ris = launchablesOf(app, pkg, labels);
+        if (ris.isEmpty()) return;
+        int i = ResetPolicy.pickLabel(labels, appLabel(app));
+        launchOnce(app, ris.get(i < 0 ? 0 : i), 0);
     }
 
     /** N3: might the return reset have anything to do (used to decide whether the black cover goes up at the Enter tap)? */
@@ -272,9 +322,12 @@ public final class ReturnReset {
 
     /** Starts the target app and makes sure it ends up in FRONT: re-starts it (harmless if already on top) up to 3 more times, checking with the accessibility helper when it is on. */
     private static void openApp(final Context c) {
+        final long t0 = android.os.SystemClock.elapsedRealtime();
         final List<String> labels = new ArrayList<>();
-        List<ResolveInfo> ris = launchables(c, labels);
-        int i = ResetPolicy.pickLabel(labels, appLabel(c));
+        String targetPkg = targetPackage(c);                       // AB2: cached, no label loading for every installed app
+        List<ResolveInfo> ris = targetPkg == null ? new ArrayList<ResolveInfo>() : launchablesOf(c, targetPkg, labels);
+        int i = ris.isEmpty() ? -1 : Math.max(0, ResetPolicy.pickLabel(labels, appLabel(c)));
+        Log.i(TAG, "openApp: target resolved in " + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
         if (i < 0) {
             Log.i(TAG, "no app matching '" + appLabel(c) + "' found"); report(c, "app: no app matching '" + appLabel(c) + "' is installed");
             // Nothing to put in front, so leave Recents / the shade ourselves (found by the E1 emulator test: Recents stayed open). No Solitaire start can race with this Home press.
