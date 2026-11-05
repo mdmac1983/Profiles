@@ -656,3 +656,8 @@ I think it says 1, but the tablet says helper not running
 ```
 What two diagnostics
 ```
+
+## 2026-11-05T18:17:18Z
+```
+This is way too much information for my short time with the cable. Give me short step by step tasks and wait for me 
+```
