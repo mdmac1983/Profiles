@@ -53,7 +53,7 @@ note: The answer is saved into the report. Tap "2. Collect the tablet report" on
 why: Also photographs the stock Settings pages and copies the tablet's own Settings, SystemUI and launcher apps (for the Settings screen). Big: 2 to 3 minutes. Keep the screen on and touch nothing until it says DONE.
 @ Send the files to Claude
 mark: must
-why: On the tablet open a file manager > Downloads > launcher-probe. Send tablet-report.txt to Claude first (it is small). If you pressed "4", zip the whole folder and send that as well. Do not restart the tablet before you have collected: the helper stops at a restart.
+why: On the tablet open a file manager > Downloads > launcher-probe and send tablet-report.txt to Claude first (it is small). Cannot attach a file? Tap "2b. Share a SHORT summary as text" on the setup screen and send that text instead. If you pressed "4", zip the whole folder and send it as well. Do not restart the tablet before you have collected: the helper stops at a restart.
 note: Claude saves what you send into the project (serial numbers, addresses and e-mail addresses are removed first) and reads it before anything else.
 ##- FALLBACK: if "Do everything" failed, do the same steps by hand from the phone (about 5 minutes)
 @ Permissions the launcher needs (4 lines)
