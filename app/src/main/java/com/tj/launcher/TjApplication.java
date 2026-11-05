@@ -9,6 +9,6 @@ public class TjApplication extends Application {
         try { CrashGuard.install(this); } catch (Throwable ignored) { }
         try { CrashGuard.clearIfNewer(this); } catch (Throwable ignored) { }   // CBR1: a tripped breaker is cleared by the first start of a NEWER version (a fair try)
         try { AnimationSpeedup.restoreIfPending(this); } catch (Throwable ignored) { }   // an interrupted reset must never leave the animations off
-        try { BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the process (one observer, no polling)
+        try { if (getPackageName().equals(Application.getProcessName())) BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the MAIN process (one observer, no polling; the short-lived :wallpaper_chooser process has no business reading the mode)
     }
 }
