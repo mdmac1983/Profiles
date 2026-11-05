@@ -1473,13 +1473,15 @@ if [ "$#" -ge 4 ]; then
   X=$(( ($1 + $3) / 2 )); Y=$(( $2 + ($4 - $2) * 3 / 4 ))
   echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
   adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|com.tj.launcher|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
-  adb shell input tap $X $Y; sleep 0.6   # the tap REBOOTS the emulator: read the log before the device goes away
-  adb logcat -d -s TjA11y:I > "$OUT/tja11y-full.txt" 2>&1
+  adb shell input tap $X $Y   # the tap REBOOTS the emulator: read the log before the device goes away. Poll (a single read after a fixed 0.6 s missed the line once, run 113)
+  for i in 1 2 3 4 5 6 7 8 9 10; do adb logcat -d -s TjA11y:I > "$OUT/tja11y-full.txt" 2>&1; grep -q "press 'Restart'" "$OUT/tja11y-full.txt" && break; sleep 0.25; done
   grep "press" "$OUT/tja11y-full.txt" >> "$OUT/press-restart.txt"
   adb shell dumpsys input 2>/dev/null | grep -iE 'TjA11y|com.tj.launcher|ActionsDialog' | head -8 >> "$OUT/press-restart.txt"
 else
   echo "no card rect found in log" | tee -a "$OUT/press-restart.txt"
 fi
+info "LAST what was found: $(tr '\n' '|' < "$OUT/press-restart.txt" | sed 's/[0-9][0-9]-[0-9][0-9] //g' | cut -c1-330)"
+info "LAST card log tail: $(grep -iE 'card|press|menu' "$OUT/tja11y-full.txt" 2>/dev/null | tail -4 | cut -c1-120 | tr '\n' '|' | cut -c1-330)"
 check "card's Restart pressed the real Restart button" grep -q "press 'Restart' -> true" "$OUT/press-restart.txt"
 fi # section last
 echo "failed checks: $FAILS" | tee -a "$OUT/results.txt"
