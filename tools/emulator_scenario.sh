@@ -756,6 +756,7 @@ for i in $(seq 1 60); do adb shell "[ -f $SHARE/autorun-done.txt ]" >/dev/null 2
 adb shell cat "$SHARE/autorun-done.txt" > "$OUT/x-autorun-done.txt" 2>&1
 adb shell ls -la "$SHARE" "$SHARE/apk" > "$OUT/x-share-ls.txt" 2>&1
 adb shell "head -c 3000 $SHARE/tablet-report.txt" > "$OUT/x-report-head.txt" 2>&1
+adb pull "$SHARE/tablet-report.txt" "$OUT/x-report.txt" >/dev/null 2>&1
 shot 76-setup-screen
 info "S2: autorun summary: $(tr '\n' '|' < $OUT/x-autorun-done.txt | head -c 700)"
 check "S2: the in-app Do-everything put the permissions back through the helper (DUMP + CHANGE_CONFIGURATION states: done)" bash -c "grep -q 'state Permission: read what is running (DUMP): done' $OUT/x-autorun-done.txt && grep -q 'state Permission: change configuration: done' $OUT/x-autorun-done.txt"
@@ -765,6 +766,23 @@ adb shell ls /sdcard/Download/launcher-probe /sdcard/Download/launcher-probe/sho
 check "T1: everything was published to Downloads/launcher-probe (report)" grep -q 'tablet-report.txt' "$OUT/x-publish-ls.txt"
 check "T1: the Settings screenshots + screen dumps were taken (at least 10 png)" bash -c "[ \$(grep -c '\.png' $OUT/x-publish-ls.txt) -ge 10 ]"
 check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/apk" grep -q 'com.android.settings.apk' "$OUT/x-publish-ls.txt"
+# PG2 / PG3 (Tj, 2026-11-05: "make sure claude can save and use all necessary information from the tablet"): the REAL report this app just wrote on a real Android 10 system (not the invented sample)
+rep_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-report.txt" || return 1; done; }
+kt_all(){ local l p; l=$(grep '^keytest:' "$OUT/x-autorun-done.txt"); for p in "$@"; do printf '%s' "$l" | grep -qF -- "$p" || return 1; done; }
+info "PG2: report $(wc -c < "$OUT/x-report.txt" 2>/dev/null) bytes, $(wc -l < "$OUT/x-report.txt" 2>/dev/null) lines; keytest: $(grep '^keytest:' "$OUT/x-autorun-done.txt" | cut -c1-330)"
+check "PG2: the report holds the launcher's own state (version, mode, helper, accessibility, crash breaker)" rep_all 'THE LAUNCHER ON THIS TABLET' '^launcher version: ' '^mode: ' '^shell helper reachable: yes' '^accessibility helper bound: ' '^crash breaker tripped: '
+check "PG2: the report ran the launcher's own readers on this system (PARSER SELF-CHECK: Recents tasks, apps with a notification)" rep_all 'PARSER SELF-CHECK' '^Recents tasks parsed: [0-9]' '^Apps with a notification now'
+check "PG2: the probe list added the samples (notification records, side-key device, policy_control, crash log, the launcher's log)" rep_all 'NotificationRecord\(' 'getevent -pl' 'settings get global policy_control' 'logcat -b crash' 'TjReset:I'
+check "PG2: the side-key routine ran end to end in the emulator (KEYTEST markers, the 'no power menu' flag answered OK, then cleared)" kt_all 'KEYTEST-START' 'KEYTEST-END' 'disable2(0x8) -> OK' 'cleared'
+check "PG3: the report carries the key-test verdict on ONE line (it survives the report's length cut)" rep_all '^keytest_summary: the side key'
+rm -rf "$OUT/x-intake"
+python3 -I tools/tablet_intake.py "$OUT/x-report.txt" --out "$OUT/x-intake" --date 2026-01-01 --label emulator > "$OUT/x-intake-console.txt" 2>&1; RCI=$?
+info "PG3: intake of the real report: exit $RCI; $(head -c 400 "$OUT/x-intake-console.txt" | tr '\n' '|')"
+XF="$OUT/x-intake/2026-01-01/FACTS.md"
+check "PG3: the intake tool read the REAL report (exit 0, FACTS.md and LATEST.md written)" bash -c "[ $RCI = 0 ] && [ -f $XF ] && [ -f $OUT/x-intake/LATEST.md ]"
+check "PG3: FACTS.md answers from the real report (version, tablet, Recents check, notification check, side-key row)" bash -c "grep -qE 'Launcher version / mode \| [0-9]+\.[0-9]+' $XF && grep -q 'Android 10' $XF && grep -q 'Recents format check | the launcher.s reader parsed' $XF && ! grep -q 'Notification format check | (not in the report)' $XF && grep -q 'Side-key test (Power menu v2) | the side key' $XF"
+check "PG3: no PARSER MISMATCH red flag on a stock Android 10 system (the readers match the real dump formats)" bash -c "! grep -q 'PARSER MISMATCH' $XF"
+check "PG3: no IPv4 address is left in the saved report (redaction)" bash -c "! grep -qP '\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\b' $OUT/x-intake/2026-01-01/tablet-report.txt"
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 setfeat; setmode custom; home
 fi # section x
@@ -852,28 +870,65 @@ check "U2: 'cmd package compile -m speed -f' succeeds as the shell user" grep -q
 setmode custom; home
 fi # section v
 if want g; then # section g
-# ---- Y2 (Tj, 2026-11-04): the PHONE-side adb guide app. Installed here only to prove it opens, lists the commands and has Copy buttons.
+# ---- Y2 / PG1 (Tj, 2026-11-04 and 2026-11-05): the PHONE-side adb guide app, ordered for a SHORT cable session. Installed here to prove it opens, shows the plan, the three parts in order, the helper start card with its
+#      Copy button, keeps FALLBACK / EXTRAS / UNDO closed until tapped (their pm grant lines stay hidden), remembers a tick across a restart, and that "Take me to my next step" scrolls to the first card not ticked yet.
 beat "before G"
 GAPK=phoneguide/build/outputs/apk/debug/phoneguide-debug.apk
 adb install -r "$GAPK" > "$OUT/g-install.txt" 2>&1
+adb shell pm clear com.tj.phoneguide >/dev/null 2>&1          # no ticks or switch left over from an earlier run
+gdump(){ adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$1" 2>/dev/null; }
+# gbounds <text part> <dump>: "x1 y1 x2 y2" of the first node whose text contains the part; gtap taps its centre (a node is only in the dump while it is on screen)
+gbounds(){ tr '>' '\n' < "$2" | grep -F "$1" | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' '; }
+gtap(){ local gb; gb=$(gbounds "$1" "$2"); set -- $gb; [ "$#" -ge 4 ] || return 1; adb shell input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 )); }
 adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
 shot 90-phoneguide-top
-adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-top.xml" 2>/dev/null
+gdump "$OUT/g-ui-top.xml"
 check "Y2: the phone guide installs" grep -qi success "$OUT/g-install.txt"
 check "Y2: the phone guide opens and shows its title" grep -q "Tablet adb guide" "$OUT/g-ui-top.xml"
-# uiautomator only lists what is on screen, so scroll one page at a time (up to 14 pages) and keep every dump; the Copy buttons / first command may sit below the first screen
+check "PG1: the top of the guide shows the plan" grep -q "Your plan" "$OUT/g-ui-top.xml"
+# uiautomator only lists what is on screen, so scroll one page at a time (up to 30 pages) and keep every dump; stop when the screen no longer changes (the end of the list)
 cp "$OUT/g-ui-top.xml" "$OUT/g-ui-p0.xml"
-for i in $(seq 1 14); do
+GLAST=""
+for i in $(seq 1 30); do
   adb shell input swipe 300 850 300 250 400; sleep 1
-  adb shell uiautomator dump /sdcard/gui.xml >/dev/null 2>&1; adb shell cat /sdcard/gui.xml > "$OUT/g-ui-p$i.xml" 2>/dev/null
+  gdump "$OUT/g-ui-p$i.xml"
   [ "$i" = 5 ] && shot 91-phoneguide-middle
-  grep -q 'pm grant' "$OUT/g-ui-p$i.xml" && grep -q 'Copy this line' "$OUT/g-ui-p$i.xml" && break
+  GCUR=$(grep -o 'text="[^"]*"' "$OUT/g-ui-p$i.xml" | md5sum | cut -c1-12)
+  [ "$GCUR" = "$GLAST" ] && break
+  GLAST="$GCUR"
 done
+shot 92-phoneguide-bottom
+cp "$OUT/g-ui-p$i.xml" "$OUT/g-ui-bottom.xml"
 cat "$OUT"/g-ui-p*.xml > "$OUT/g-ui-all.xml"
-info "Y2: scrolled $i page(s); 'Copy this line' seen $(grep -o 'Copy this line' "$OUT/g-ui-all.xml" | wc -l) time(s); 'pm grant' seen $(grep -o 'pm grant' "$OUT/g-ui-all.xml" | wc -l) time(s); sample texts: $(grep -o 'text="[^"]\{4,50\}"' "$OUT/g-ui-p1.xml" | head -8 | tr '\n' ' ')"
+info "Y2: scrolled $i page(s) to the end; 'Copy this line' seen $(grep -o 'Copy this line' "$OUT/g-ui-all.xml" | wc -l) time(s); stars $(grep -o '★' "$OUT/g-ui-all.xml" | wc -l); 'tap to open' $(grep -o 'tap to open' "$OUT/g-ui-all.xml" | wc -l); first texts: $(grep -o 'text="[^"]\{4,50\}"' "$OUT/g-ui-p1.xml" | head -6 | tr '\n' ' ')"
 check "Y2: the list has Copy buttons (labelled 'Copy this line')" grep -q 'Copy this line' "$OUT/g-ui-all.xml"
-check "Y2: the permissions section with its pm grant commands is reachable by scrolling" grep -q 'pm grant' "$OUT/g-ui-all.xml"
-adb shell input keyevent KEYCODE_BACK; sleep 1
+check "PG1: the 'Take me to my next step' button is there" grep -q 'Take me to my next step' "$OUT/g-ui-all.xml"
+G1=$(grep -b -o 'PART 1: BEFORE' "$OUT/g-ui-all.xml" | head -1 | cut -d: -f1); G2=$(grep -b -o 'PART 2: WITH' "$OUT/g-ui-all.xml" | head -1 | cut -d: -f1); G3=$(grep -b -o 'PART 3: AFTER' "$OUT/g-ui-all.xml" | head -1 | cut -d: -f1)
+check "PG1: PART 1 (before the cable), PART 2 (with the cable), PART 3 (after) appear in that order (offsets ${G1:-none} < ${G2:-none} < ${G3:-none})" bash -c "[ -n '$G1' ] && [ -n '$G2' ] && [ -n '$G3' ] && [ '$G1' -lt '$G2' ] && [ '$G2' -lt '$G3' ]"
+check "PG1: PART 2 has the helper start card (ShellServer) with a Copy button, marked with a star" bash -c "grep -q 'ShellServer' $OUT/g-ui-all.xml && grep -q '★' $OUT/g-ui-all.xml"
+check "PG1: FALLBACK, EXTRAS and UNDO are closed at first ('tap to open') and none of their pm grant lines is shown" bash -c "grep -q 'FALLBACK' $OUT/g-ui-all.xml && grep -q 'EXTRAS' $OUT/g-ui-all.xml && grep -q 'UNDO: take everything back' $OUT/g-ui-all.xml && grep -q 'tap to open' $OUT/g-ui-all.xml && ! grep -q 'pm grant' $OUT/g-ui-all.xml"
+# open FALLBACK by tapping its header (it is on the last page now): the permission commands appear
+gtap 'FALLBACK' "$OUT/g-ui-bottom.xml"; sleep 1
+gdump "$OUT/g-ui-fb1.xml"; adb shell input swipe 300 850 300 450 300; sleep 1; gdump "$OUT/g-ui-fb2.xml"
+cat "$OUT/g-ui-fb1.xml" "$OUT/g-ui-fb2.xml" > "$OUT/g-ui-fb.xml"
+shot 93-phoneguide-fallback-open
+check "PG1: tapping FALLBACK opens it and shows the permission commands (pm grant)" grep -q 'pm grant' "$OUT/g-ui-fb.xml"
+# the tick: restart the guide (back at the top), tick the first card, "Take me to my next step" must put the SECOND card at the top of the screen, and the tick must survive another restart
+adb shell am force-stop com.tj.phoneguide; sleep 1
+adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
+gdump "$OUT/g-ui-r1.xml"
+CARD1=$(grep -m1 '^@ ' phoneguide/src/main/assets/steps.txt | sed 's/^@ //'); CARD2=$(grep '^@ ' phoneguide/src/main/assets/steps.txt | sed -n 2p | sed 's/^@ //')
+gtap 'text="Done"' "$OUT/g-ui-r1.xml"; sleep 1
+gtap 'Take me to my next step' "$OUT/g-ui-r1.xml"; sleep 2
+gdump "$OUT/g-ui-r2.xml"
+shot 94-phoneguide-next-step
+GTOP=$(gbounds "$CARD2" "$OUT/g-ui-r2.xml" | awk '{print $2}')
+info "PG1: card 1 [$CARD1] ticked; after 'Take me to my next step' card 2 [$CARD2] has its top at y=${GTOP:-not on screen}"
+check "PG1: 'Take me to my next step' scrolled to the second card (its title is within the top 250 px)" bash -c "[ -n '$GTOP' ] && [ '$GTOP' -le 250 ]"
+adb shell am force-stop com.tj.phoneguide; sleep 1
+adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
+gdump "$OUT/g-ui-r3.xml"
+check "PG1: the tick on card 1 survived a restart of the guide" bash -c "tr '>' '\n' < $OUT/g-ui-r3.xml | grep -F 'text=\"Done\"' | head -1 | grep -q 'checked=\"true\"'"
 adb shell am force-stop com.tj.phoneguide; home
 fi # section g
 if want rs; then # section rs
