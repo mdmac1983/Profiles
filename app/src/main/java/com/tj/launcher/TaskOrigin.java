@@ -110,7 +110,7 @@ public final class TaskOrigin {
         }
         if (pending != null) for (String pkg : pending) {
             if (pkg == null || pkg.equals(target) || !guard.mayClose(pkg)) continue;
-            if (basePkgs.contains(pkg)) {
+            if (basePkgs.contains(pkg) || custom.contains(pkg)) {     // the same "shared" test as for new tasks above (AppOrigin.pending already leaves custom apps out; this keeps plan() consistent on its own)
                 if (notified != null && notified.contains(pkg)) { plan.stopPackages.add(pkg); plan.notificationStops.add(pkg); }
                 else plan.spared.add(pkg);                           // the old list would have closed an app the custom account is using
             }

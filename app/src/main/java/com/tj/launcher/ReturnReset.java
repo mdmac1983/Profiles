@@ -224,6 +224,7 @@ public final class ReturnReset {
     private static volatile long cachedAt = 0;
     private static volatile boolean refreshing = false;
     private static final long TARGET_TTL_MS = 10 * 60_000;
+    private static final long NO_TARGET_TTL_MS = 30_000;       // "no such app installed" is re-checked soon: it may be installed a minute later
 
     /**
      * Package of the app we open / keep in Recents (e.g. Solitaire), or null. AB2 (efficiency): finding it means asking Android for the label of EVERY launchable app (a resource lookup in each APK: on
@@ -235,8 +236,10 @@ public final class ReturnReset {
         final String label = appLabel(app);
         long now = android.os.SystemClock.elapsedRealtime();
         if (cachedLabel != null && cachedLabel.equals(label)) {
-            if (now - cachedAt > TARGET_TTL_MS && !refreshing) refreshTargetAsync(app, label);
-            return cachedPkg;
+            String known = cachedPkg;
+            if (known != null && !isInstalled(app, known)) return scanTarget(app, label);          // uninstalled since: look again now (the rare case; one cheap package lookup otherwise)
+            if (now - cachedAt > (known == null ? NO_TARGET_TTL_MS : TARGET_TTL_MS) && !refreshing) refreshTargetAsync(app, label);
+            return known;
         }
         String saved = Features.getString(app, "target_pkg_for_" + label.toLowerCase(java.util.Locale.ROOT), null);
         if (saved != null && isInstalled(app, saved)) {

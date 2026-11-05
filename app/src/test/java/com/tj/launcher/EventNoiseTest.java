@@ -28,6 +28,7 @@ public class EventNoiseTest {
     @Test public void systemUiContentChangesAreNeverNoise() {
         // the shade, the volume panel, the PIN pad and the power menu all live in SystemUI
         assertFalse(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.android.systemui"));
+        assertFalse(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "android"));      // system_server's own windows (some ROMs host dialogs there): quiet, so kept
     }
 
     @Test public void everyOtherEventTypeIsNeverNoiseWhoeverSendsIt() {
