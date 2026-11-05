@@ -666,3 +666,8 @@ This is way too much information for my short time with the cable. Give me short
 ```
 I don't know if it matters but when I first opened launcher it crashed, now it seems to work
 ```
+
+## 2026-11-05T18:32:42Z
+```
+Not running 
+```
