@@ -63,6 +63,9 @@ public final class TaskOrigin {
         return out;
     }
 
+    /** May this app be closed at all? (the caller's rule: never this app, the stock launcher, the keyboard, the system; the helper checks its own deny-list again) */
+    public interface Guard { boolean mayClose(String pkg); }
+
     /** What to do at the end of a session. */
     public static final class Plan {
         /** Apps that exist only in Quickstep: force-stop (process, notifications, cards). */
@@ -80,21 +83,21 @@ public final class TaskOrigin {
      * @param pending   the packages the accessibility-based tracking says Quickstep opened (AppOrigin.pending)
      * @param custom    packages the custom launcher itself started (AppOrigin.custom)
      * @param target    the app that must always stay (Solitaire)
-     * @param protectedPkgs packages that must never be touched (this app, the stock launcher, the keyboard): decided by the caller with ResetPolicy
+     * @param guard     false for packages that must never be touched (this app, the stock launcher, the keyboard, the system): decided by the caller with ResetPolicy
      */
-    public static Plan plan(Map<Integer, String> base, Map<Integer, String> now, Collection<String> pending, Set<String> custom, String target, Set<String> protectedPkgs) {
+    public static Plan plan(Map<Integer, String> base, Map<Integer, String> now, Collection<String> pending, Set<String> custom, String target, Guard guard) {
         Plan plan = new Plan();
         Set<String> basePkgs = new LinkedHashSet<>(base.values());
         for (Map.Entry<Integer, String> e : now.entrySet()) {
             if (base.containsKey(e.getKey())) continue;           // existed when the session began: the custom account's
             String pkg = e.getValue();
-            if (pkg == null || pkg.equals(target) || protectedPkgs.contains(pkg)) continue;
+            if (pkg == null || pkg.equals(target) || !guard.mayClose(pkg)) continue;
             plan.newTasks++;
             if (basePkgs.contains(pkg) || custom.contains(pkg)) plan.removeIds.add(e.getKey());
             else plan.stopPackages.add(pkg);
         }
         if (pending != null) for (String pkg : pending) {
-            if (pkg == null || pkg.equals(target) || protectedPkgs.contains(pkg)) continue;
+            if (pkg == null || pkg.equals(target) || !guard.mayClose(pkg)) continue;
             if (basePkgs.contains(pkg)) plan.spared.add(pkg);       // the old list would have closed an app the custom account is using
             else plan.stopPackages.add(pkg);
         }
@@ -139,7 +142,7 @@ public final class TaskOrigin {
      * The Quickstep session ends and the helper cleans up. Blocking (talks to the helper): call from the clean-up thread. Always returns a usable list: with no snapshot, or if the helper
      * cannot list the tasks, it is just {@code oldList} (the package-based clean-up) and the note says why.
      */
-    public static Outcome finish(Context c, List<String> oldList, String target, Set<String> protectedPkgs) {
+    public static Outcome finish(Context c, List<String> oldList, String target, Guard guard) {
         Context app = c.getApplicationContext();
         LinkedHashMap<Integer, String> base = base(app);
         clearBase(app);                                            // one-shot: a snapshot is only ever valid for the session it was taken for
@@ -147,7 +150,7 @@ public final class TaskOrigin {
         if (base == null) return new Outcome(oldList, noIds, "tasks: no start-of-session snapshot (the helper was not running when Quickstep began): package-based clean-up only");
         LinkedHashMap<Integer, String> now = ShellHelper.listTasks();
         if (now == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only");
-        Plan plan = plan(base, now, oldList, AppOrigin.custom(app), target, protectedPkgs);
+        Plan plan = plan(base, now, oldList, AppOrigin.custom(app), target, guard);
         List<String> stop = new ArrayList<>(plan.stopPackages);
         return new Outcome(stop, plan.removeIds, "tasks: " + plan.newTasks + " new since the session began, " + plan.stopPackages.size() + " app(s) closed, " + plan.removeIds.size()
                 + " task(s) removed by id, " + plan.spared.size() + " app(s) spared because the custom account has a task of its own" + (plan.spared.isEmpty() ? "" : " " + plan.spared));

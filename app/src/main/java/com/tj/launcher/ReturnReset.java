@@ -73,18 +73,32 @@ public final class ReturnReset {
         return out;
     }
 
+    /** AA3: what may be closed at all (never this app, the stock launcher, the keyboard, the system). */
+    private static TaskOrigin.Guard guard(final Context c) {
+        ComponentName stock = StockLauncher.find(c);
+        final String stockPkg = stock == null ? null : stock.getPackageName();
+        String cur = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
+        final String ime = (cur != null && cur.contains("/")) ? cur.substring(0, cur.indexOf('/')) : null;
+        final String self = c.getPackageName();
+        return new TaskOrigin.Guard() { @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, self, stockPkg, ime); } };
+    }
+
     /** Solitaire (or the target app) at once; the Quickstep apps are force-stopped BEHIND it: Recents cards, notifications and processes vanish with no shade, no Recents screen, no cover. */
     private static void runInvisible(final Context app) {
         final long t0 = android.os.SystemClock.uptimeMillis();
         final java.util.List<String> pkgs = invisibleTargets(app);
         final boolean first = !AppOrigin.tracked(app);
+        final String target = targetPackage(app);
+        final TaskOrigin.Guard guard = guard(app);
         new Thread(new Runnable() { @Override public void run() {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
-            int n = ShellHelper.forceStop(pkgs);
+            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard);   // AA3: ground truth from the helper's task list when a start-of-session snapshot exists
+            int n = ShellHelper.forceStop(oc.stop);
+            int m = (n >= 0 && !oc.removeIds.isEmpty()) ? ShellHelper.removeTasks(oc.removeIds) : 0;
             if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
             invisAt = 0;
-            String line = "INVISIBLE: " + (n < 0 ? "the shell helper stopped answering, " + pkgs.size() + " apps NOT stopped (next return uses the cover method)" : "force-stopped " + n + " of " + pkgs.size() + " apps"
-                    + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; no cover, no shade, no Recents screen");
+            String line = "INVISIBLE: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped (next return uses the cover method)" : "force-stopped " + n + " of " + oc.stop.size() + " apps"
+                    + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; no cover, no shade, no Recents screen; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : ""));
             report(app, line);
         } }, "tj-reset-invisible").start();
         try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
@@ -100,12 +114,16 @@ public final class ReturnReset {
         final long t0 = android.os.SystemClock.uptimeMillis();
         final java.util.List<String> pkgs = invisibleTargets(app);
         final boolean first = !AppOrigin.tracked(app);
+        final String target = targetPackage(app);
+        final TaskOrigin.Guard guard = guard(app);
         new Thread(new Runnable() { @Override public void run() {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
-            int n = ShellHelper.forceStop(pkgs);
+            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard);   // AA3
+            int n = ShellHelper.forceStop(oc.stop);
+            int m = (n >= 0 && !oc.removeIds.isEmpty()) ? ShellHelper.removeTasks(oc.removeIds) : 0;
             if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
             invisAt = 0;
-            report(app, "AT LOCK: " + (n < 0 ? "the shell helper stopped answering, " + pkgs.size() + " apps NOT stopped" : "force-stopped " + n + " of " + pkgs.size() + " apps" + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms")
+            report(app, "AT LOCK: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped" : "force-stopped " + n + " of " + oc.stop.size() + " apps" + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : "") + " ")
                     + "; the unlock has nothing left to close");
         } }, "tj-lock-clean").start();
         return true;

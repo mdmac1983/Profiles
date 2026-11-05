@@ -47,7 +47,9 @@ public final class Mode {
     /** commit() (not apply): the router reads this a moment later, possibly after our process is killed. */
     public static void set(Context c, String mode) {
         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
+        boolean quickstepBegins = QUICKSTEP.equals(m) && CUSTOM.equals(get(c));
         prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
+        if (quickstepBegins) TaskOrigin.sessionStart(c);   // AA3: remember which tasks are the custom account's BEFORE Quickstep opens anything (needs the shell helper; otherwise a no-op)
         KeyboardSwitch.apply(c, m);
         TileProfile.apply(c, m);
         DemoModeProfile.apply(c, m);   // Q3: pencil + gear hidden natively while custom is active (opt-in)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
