@@ -997,7 +997,7 @@ setmode quickstep; rebind; home; sleep 2
 adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3
 for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do adb shell input swipe 300 900 300 200 250; sleep 0.4; done
 tapapp "Restore everything" 300 900; sleep 2; shot 110-ka-restore-dialog
-tapapp "Restore" 420 600; sleep 3
+tapapp "Restore" 0 0; sleep 1; tapapp "RESTORE" 0 0; sleep 3      # the dialog button may be drawn in capitals
 adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-restored.txt" 2>&1
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-prefs-restored.txt"
 info "KA after Restore everything: foreground service present: $(grep -c 'isForeground=true' $OUT/ka-services-restored.txt), keep_alive pref: $(grep -o 'keep_alive[^/]*' $OUT/ka-prefs-restored.txt | head -1)"
