@@ -236,10 +236,6 @@ public class ControlActivity extends Activity {
 
         section("Quick settings");
         toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
-        toggle("Hide the pencil AND the gear natively (experimental)", DemoModeProfile.permitted(this) ? "No cover, no delay: Android's own panel is drawn without them while the custom launcher is active (uses the system's demo-mode flag, put back for Quickstep). Try the single adb line in research/ADB_TODO.md first. Needs the adb permission." : "Needs the adb permission (not granted yet).", DemoModeProfile.enabled(this), new Chg() { public void on(boolean v) {
-            Features.set(ControlActivity.this, DemoModeProfile.KEY, v);
-            DemoModeProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
-        } });
         toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", ImmersiveProfile.enabled(this), new Chg() { public void on(boolean v) {
             Features.set(ControlActivity.this, ImmersiveProfile.KEY, v);
             ImmersiveProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));

@@ -65,11 +65,13 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, true));      // done already this lock
     }
 
-    @Test public void demoFlagRuleCustomOnQuickstepOriginal() {
-        assertEquals("1", DemoModeProfile.valueFor(true, Mode.CUSTOM, "0"));
-        assertEquals("0", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, "0"));
-        assertEquals("0", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, null));
-        assertEquals("2", DemoModeProfile.valueFor(true, Mode.QUICKSTEP, "2"));      // whatever the system had before is put back
-        org.junit.Assert.assertNull(DemoModeProfile.valueFor(false, Mode.CUSTOM, "0")); // switched off: the system is left alone
+    @Test public void retiredDemoFlagCleanupOnlyUndoesWhatWasOurs() {
+        assertEquals("0", DemoModeProfile.undoValue("1", true, null));          // it was unset before: back to 0
+        assertEquals("0", DemoModeProfile.undoValue("1", true, "0"));
+        assertEquals("2", DemoModeProfile.undoValue("1", true, "2"));           // whatever it was before
+        org.junit.Assert.assertNull(DemoModeProfile.undoValue("1", false, null));   // not ours: never touched
+        org.junit.Assert.assertNull(DemoModeProfile.undoValue("0", true, null));    // already off
+        org.junit.Assert.assertNull(DemoModeProfile.undoValue(null, true, null));
+        org.junit.Assert.assertNull(DemoModeProfile.undoValue("1", true, "1"));     // it was on before we ever touched it: leave it
     }
 }

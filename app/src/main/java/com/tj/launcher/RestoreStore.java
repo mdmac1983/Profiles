@@ -33,6 +33,8 @@ public final class RestoreStore {
         sp.edit().putString("global:" + key, cur == null ? "\u0000null" : cur).commit();
     }
 
+    public static boolean hasGlobalSnapshot(Context c, String key) { return p(c).contains("global:" + key); }
+
     /** The snapshotted Settings.Global value, or {@code fallback} if none (or it was unset). */
     public static String globalSnapshot(Context c, String key, String fallback) {
         String v = p(c).getString("global:" + key, null);
@@ -66,7 +68,7 @@ public final class RestoreStore {
         Features.set(c, KeepAlivePolicy.KEY, false);   // AA2: restore = the process is no longer held in memory by us
         KeepAliveService.stop(c);
         Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off
-        Features.set(c, DemoModeProfile.KEY, false);   // the pencil/gear flag was put back above (snapshot); the switch itself is off   // O4: restore = nothing of ours closes apps for you
+        Features.set(c, DemoModeProfile.KEY, false);   // (the retired retail-demo option: the flag, if it was ever ours, was put back above)   // O4: restore = nothing of ours closes apps for you
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }
