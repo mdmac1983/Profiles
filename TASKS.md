@@ -115,7 +115,7 @@ Then consider even faster ways to hide the screenshot button. Can the accessibil
 - [x] L2/L6 HIDE1: hidden apps never in drawer or drawer search; apps installed after the baseline are hidden until Tj allows them one by one (chooser in Launcher control)  [DONE or superseded: see STATUS SNAPSHOT]
 - [x] LOCK1 (v0.3.0): Launcher control / hidden-apps chooser only visible+openable while Quickstep mode is on; our own icons never in the custom drawer
 - [ ] L3 SET1 (consider, then build): curated "Settings" clone — see research/SETTINGS_CLONE_2026-11-02.md
-- [ ] PWR2 research: can accessibility see the power key / prevent or pre-empt the power menu? (diagnostic in emulator, answer Tj)
+- [x] PWR2 research: can accessibility see the power key / prevent or pre-empt the power menu? (diagnostic in emulator, answer Tj) — ANSWER 2026-11-05: **No.** Android 10 `PhoneWindowManager` handles `KEYCODE_POWER` itself and clears `ACTION_PASS_TO_USER`; `AccessibilityInputFilter` skips events without `FLAG_PASS_TO_USER`, so `onKeyEvent` never gets it (quoted from `android-10.0.0_r47` in `research/BUTTONMAPPER_2026-11-05.md` section 3). Source-based: the emulator diagnostic (`rs3` b0) failed its own volume-up control, so it is NOT measured. The only shell lever is `DISABLE2_GLOBAL_ACTIONS` ("Power menu v2", not built, waits for Tj).
 
 ## Tj's v0.2.3 report, 2026-11-02 (verbatim)
 "The solitaire opened and the wifi turned off, but the opened apps did not close. The notification access feature says this feature is not available on this device. Maybe it can force stop apps or find another way to close apps, or at least hide the open apps from the recent apps menu. Can the launcher simply make it so it always shows only solitaire in the recent apps menu permanently?"
