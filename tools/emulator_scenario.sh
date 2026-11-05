@@ -1217,7 +1217,7 @@ acfeat true false true; setmode quickstep; rebind; home; sleep 2
 lockpad; pad 1 2 3 4 e; sleep 7
 getmode > "$OUT/ac1-mode.txt"; resumed > "$OUT/ac1-resumed.txt"
 check "AC1: a plain PIN after a Quickstep session ends it although the old switch is stored as off" grep -q custom "$OUT/ac1-mode.txt"
-check "AC1: and the custom launcher (not Quickstep) is on screen" grep -q "com.tj.launcher" "$OUT/ac1-resumed.txt"
+check "AC1: and the custom account (our launcher, or the stand-in app the return reset opens) is on screen, not Quickstep" bash -c "grep -qE 'calendar|com.tj.launcher' $OUT/ac1-resumed.txt && ! grep -q 'com.android.launcher3/' $OUT/ac1-resumed.txt"
 
 # ---- AC9: the pre-arm switch is OFF, the handshake still puts Quickstep behind the lock screen AT ONCE (a wrong PIN keeps the tablet locked, so the log is the evidence)
 acfeat false false true; setmode custom; rebind; home; sleep 2; adb logcat -c
