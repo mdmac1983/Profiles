@@ -112,7 +112,7 @@ checked against the repo at that date; where it can go stale it says where to lo
 
 ## 6. Waiting on Tj (as of this hand-off)
 0. **Tj's next physical step:** install the Release APK + the PhoneGuide APK (phone), then follow the guide with the OTG cable (he will have the cable only briefly, so the guide is deliberately complete). Result to ask for afterwards: the `probe-out`/`Downloads/launcher-probe` folder + the copied replies of guide section 7.
-1. Tablet testing of v0.5.0/v0.6.0: install over the old one, turn the accessibility helper off and on once, start the shell helper (adb line or `Launcher control > Tablet setup & report`),
+1. Tablet testing of v0.7.0 (and what v0.5.0/v0.6.0 left open): install over the old one, turn the accessibility helper off and on once, start the shell helper (adb line or `Launcher control > Tablet setup & report`),
    try the new lock-screen methods, the lock-screen power menu (nudges in Control if the patch is off), and report the unlock timing shown in Control ("Last unlock: …").
 2. **The probe output** (`probe-out/` from `bash tools/adb-all.sh`, or `Downloads/launcher-probe` from the phone route): answers max users / second user, ROM identity, whether the helper can start before
    first unlock, `power_menu_actions`, compile state, memory/process facts, and delivers the tablet's own Settings APK for SET1.
@@ -120,7 +120,7 @@ checked against the repo at that date; where it can go stale it says where to lo
 4. Optional housekeeping: delete the old branch `ccr-4ff66321-chzhhg`; Dependabot PRs re-open against `main`.
 
 ## 6b. Tj's open requests at hand-off time (all are in TASKS.md in his words)
-U1-U3 (lock-screen delay: measure + compile + stopwatch), V1-V4 (lock-screen wallpaper patch covering the whole 3-button menu, card = top two buttons, auto-calibration), W1-W2 (probe extras), P2 (keep Quickstep apps open but invisible: answered "not seamless", documented), Y1-Y5 (phone guide app + this hand-off). Check each box's PROOF line before assuming it is finished; anything `[ ]` is not proven.
+AA1-AA6 and AB1-AB5 (his 2026-11-05 messages: status-bar switch, keep-alive, task-precise clean-up, safety audit, efficiency, notification panel, guide completeness, Button Mapper; all built, proven or answered in v0.7.0 except AA6 = the tablet run and the release itself), U1-U3 (lock-screen delay: measure + compile + stopwatch), V1-V4 (lock-screen wallpaper patch covering the whole 3-button menu, card = top two buttons, auto-calibration), W1-W2 (probe extras), P2 (keep Quickstep apps open but invisible: answered "not seamless", documented), Y1-Y5 (phone guide app + this hand-off). Check each box's PROOF line before assuming it is finished; anything `[ ]` is not proven.
 
 ## 7. Backlog beyond what is shipped (see `TASKS.md` for exact wording)
 SET1 (curated Settings clone; plan in `research/SETTINGS_CLONE_2026-11-02.md` + `IDEAS_2026-11-04.md §4`), C4 gear→clone, L5 (tile strip partly covered by `TileProfile`),
