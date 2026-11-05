@@ -247,7 +247,14 @@ home; sleep 1
 beat "reset2: before double Home"
 adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 3; beat "reset2: +3s"; sleep 4; beat "reset2: +7s"; sleep 7; beat "reset2: +14s"
 shot 30-after-reset2; resumed > "$OUT/resumed-reset2.txt"
-adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-after.txt" 2>&1
+# Poll up to 20 s more instead of trusting the fixed 14 s: in run 125 (2026-11-05) a loaded runner had not cleared the notification in time, while the same code passed in run 124. The check is about WHETHER the
+# real shade clears it (no notification access), not how fast (the speed is measured separately, W1).
+NPOLL=0
+for k in 1 2 3 4 5 6 7 8 9 10; do
+  adb shell dumpsys notification --noredact | awk '/Notification List:/{f=1} /mArchive|Archived notifications/{f=0} f' | grep -c tjtag2 > "$OUT/notif2-after.txt" 2>&1
+  [ "$(tr -d ' \r\n' < $OUT/notif2-after.txt)" = 0 ] && break
+  NPOLL=$k; sleep 2
+done
 adb shell dumpsys activity recents | grep -cE 'Recent #' > "$OUT/recents-after.txt" 2>&1
 for APP in com.android.contacts com.android.gallery3d; do echo "$APP $(adb shell pidof $APP | tr -d '\r\n')" >> "$OUT/apps2-after.txt"; done
 adb logcat -d -s TjA11y:I | grep -E 'RESET|STRAY|LOCKNUM' > "$OUT/reset2-log.txt" 2>&1
