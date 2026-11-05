@@ -24,7 +24,6 @@ MAX_TEXT = 12 * 1024 * 1024        # one text file
 MAX_XML = 200 * 1024               # one screen-structure file
 MAX_IMG = 300 * 1024               # only with --keep-images
 MAX_IMG_TOTAL = 4 * 1024 * 1024
-TEXT_NAMES = ("tablet-report.txt", "launcher-probe.txt", "status.txt")
 
 # ---------------------------------------------------------------- redaction
 REDACTIONS = [
@@ -58,11 +57,16 @@ def redact(text):
 
 # ---------------------------------------------------------------- reading the input safely
 def safe_name(rel):
-    """A file name we are willing to write: the base name only, letters digits . _ - ; None if not."""
+    """A file name we are willing to write: the base name only (never a path), every character outside letters digits . _ - turned into _ ("tablet-report (1).txt" arrives like that), no leading dot; None if nothing is left."""
     base = os.path.basename(rel.replace("\\", "/"))
-    if not base or base in (".", "..") or not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", base):
+    base = re.sub(r"[^A-Za-z0-9._-]", "_", base).lstrip(".")[:120]
+    if not base or not re.search(r"[A-Za-z0-9]", base):
         return None
     return base
+
+
+# folder / zip members we read as the tablet's text: the report, the short summary, the PC route's probe and status (a browser may add " (1)" or a date to the name)
+TEXT_RX = re.compile(r"^(tablet-report|tablet-summary|launcher-probe|status)[A-Za-z0-9._-]*\.txt$", re.I)
 
 
 def entries(path):
@@ -326,15 +330,31 @@ def run(src, out_base, label, date, keep_images):
     images = {}
     redactions = {}
     img_total = 0
+    single = src == "-" or not (os.path.isdir(src) or zipfile.is_zipfile(src))
     for rel, size, reader in entries(src):
         if rel.startswith("UNSAFE:"):
             skipped.append("%s (unsafe path, ignored)" % rel[7:])
             continue
         name = safe_name(rel)
         low = (name or "").lower()
-        if name is None:
+        if single:
+            # the caller named ONE file on purpose: it is the report, whatever it is called, as long as it is text
+            if size > MAX_TEXT:
+                skipped.append("%s (%d bytes, over the text limit)" % (rel, size))
+                continue
+            raw = reader(MAX_TEXT + 1)
+            if b"\x00" in raw[:4096]:
+                skipped.append("%s (not a text file)" % rel)
+                continue
+            text = raw.decode("utf-8", "replace")
+            name = "tablet-summary.txt" if "TABLET SUMMARY (short" in text[:300] else "tablet-report.txt"
+            text, c = redact(text)
+            for k, v in c.items():
+                redactions[k] = redactions.get(k, 0) + v
+            staged[name] = text
+        elif name is None:
             skipped.append("%s (name not allowed)" % rel)
-        elif low in TEXT_NAMES:
+        elif TEXT_RX.match(name):
             if size > MAX_TEXT:
                 skipped.append("%s (%d bytes, over the text limit)" % (rel, size))
                 continue
@@ -357,13 +377,25 @@ def run(src, out_base, label, date, keep_images):
         else:
             skipped.append("%s (%d bytes: not a text report; images and system apps are not copied)" % (rel, size))
     if not staged:
-        print("no tablet-report.txt / launcher-probe.txt / status.txt found in %s" % src)
+        print("no tablet-report / tablet-summary / launcher-probe / status .txt file (a text file) found in %s" % src)
         return 3
     for name, text in staged.items():
         if CREDENTIALS.search(text):
             print("REFUSED: %s contains something shaped like a live credential. Nothing was saved. Remove it and run again." % name)
             return 4
-    report_text = staged.get("tablet-report.txt") or staged.get("launcher-probe.txt")
+    report_text = None
+    for cand in sorted(staged):                       # the full report first, then the PC route's probe, then the short summary (status.txt alone has no facts to parse)
+        if cand.lower().startswith("tablet-report"):
+            report_text = staged[cand]; break
+    if report_text is None:
+        for pref in ("launcher-probe", "tablet-summary"):
+            for cand in sorted(staged):
+                if cand.lower().startswith(pref):
+                    report_text = staged[cand]; break
+            if report_text is not None:
+                break
+    if report_text is None:
+        report_text = "\n".join(staged.values())
     dest = next_dir(out_base, date)
     os.makedirs(dest, exist_ok=True)
     for name, text in staged.items():
