@@ -69,6 +69,15 @@ check "a single file works"                              '[ -f "$T/outf/2026-11-
 $INTAKE - --out "$T/outs" --date 2026-11-05 < "$SAMPLE" >/dev/null 2>&1
 check "standard input works and says where it came from" '[ -f "$T/outs/2026-11-05/FACTS.md" ] && grep -q "pasted text" "$T/outs/2026-11-05/FACTS.md" && ! grep -rE "$PRIVATE" "$T/outs"'
 
+# ---------------------------------------------------------------- the SHORT summary Tj can share as text (no shell probe): the state rows still work, and FACTS.md says what is missing
+sed -n '1,/^===== SHELL PROBE/p' "$SAMPLE" | sed '$d' | sed '1s/.*/===== TABLET SUMMARY (short: the full report is the file tablet-report.txt) Thu Nov 05 06:10:00 GMT 2026/' > "$T/summary.txt"
+$INTAKE - --out "$T/outsum" --date 2026-11-05 --label summary < "$T/summary.txt" >/dev/null 2>&1; RCS=$?
+FS="$T/outsum/2026-11-05/FACTS.md"
+check "the short summary is read (exit 0)"                '[ "$RCS" = 0 ] && [ -f "$FS" ]'
+check "the short summary: FACTS.md says it has no probe"  'grep -q "SHORT summary" "$FS" && grep -q "(not in the report)" "$FS"'
+check "the short summary: the launcher state rows are filled in" 'grep -q "Launcher version / mode | 0.7.0 (code 17) / custom" "$FS" && grep -q "Side-key test (Power menu v2) | the side key WAS seen" "$FS" && grep -q "Recents format check | the launcher.s reader parsed 2" "$FS"'
+check "the short summary: private strings are redacted here too" '! grep -rE "$PRIVATE" "$T/outsum"'
+
 # ---------------------------------------------------------------- a credential: refuse the WHOLE intake, save nothing
 mkdir -p "$T/cred"
 { cat "$SAMPLE"; printf 'leaked: ghp_%s\n' "$(printf 'k%.0s' $(seq 1 36))"; } > "$T/cred/tablet-report.txt"
