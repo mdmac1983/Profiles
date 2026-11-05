@@ -217,11 +217,16 @@ def facts_markdown(rep, source, when):
     mn = re.search(r"Apps with a notification now \(as the clean-up sees them\): (.*)", rep.text)
     if mn and nsample and "NotificationRecord(" in nsample and mn.group(1).strip() in ("(none)", "[]"):
         flags.append("PARSER MISMATCH: the notification sample shows records but the launcher's own reader found no app. The 'shared app with a notification' rule does not work on this ROM.")
-    key = kv.get("keytest_output", "")
+    # The launcher stores a one-line verdict ("keytest_summary") computed from the WHOLE helper answer; the raw answer is cut by the report, so it is only a fallback for older reports.
+    ksum = kv.get("keytest_summary", "")
+    kout = kv.get("keytest_output", "")
+    key = ksum or kout
     if key:
-        if "KEY_POWER" not in key:
+        seen = ("WAS seen" in ksum) if ksum else ("KEY_POWER" in kout)
+        refused = ("REFUSED" in ksum or "no answer about switching" in ksum) if ksum else ("REFUSED" in kout)
+        if not seen:
             flags.append("Side-key test: the side key was NOT seen by the helper (not pressed, or the shell cannot read it). Power menu v2 would not work as designed unless it is repeated and seen.")
-        if "REFUSED" in key or "disable2(0x8) -> OK" not in key:
+        if refused:
             flags.append("Side-key test: the shell did not get a clean OK when it tried to switch the normal power menu off.")
         if kv.get("keytest_menu") == "shown":
             flags.append("Side-key test: the NORMAL power menu still appeared while the flag was held: on this tablet the flag does not keep it away (Power menu v2 as designed will not work).")
