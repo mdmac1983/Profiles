@@ -1,102 +1,101 @@
 # The phone guide's list. SAME FILE as research/ADB_PHONE_COMMANDS.txt (copy it after editing: tools/test_handoff.sh checks they are identical).
-# Format: "## group", "@ card title", then why: / cmd: / alt: / undo: / note: / special: a11y.  "cmd:" is the line as typed in an ADB OTG shell (no "adb", no "adb shell").
+# Format: "## group" (open) or "##- group" (closed until tapped; the text before the first ":" is the short name on the jump button), "@ card title" (no numbers: the app numbers the cards), then why: / cmd: / alt: / undo: (any number) / note: / mark: must / special: a11y.  "plan:" lines before the first group are the "Your plan" box.  "cmd:" is the line as typed in an ADB OTG shell (no "adb", no "adb shell").
 # SAFETY RULES for this list: read-only, or a change that only affects com.tj.launcher, or reversible with an undo line below. Never: uninstall, wipe, reset, reboot, change the lock, accounts, Wi-Fi, or overwrite a settings list without merging.
-## Before you start (nothing to type yet)
-@ If you only have a minute with the cable
-why: Do ONLY three things: allow adb on the tablet, connect the phone (the next two cards), then type the ONE line in section 4, "Start the helper". Unplug. On the TABLET open Launcher control > Tablet setup & report: with the helper running it does every other step for you (permissions, background settings, accessibility, compile, browser). The cards below do the same steps by hand so nothing is left for a second cable session; do as many as you can.
-note: Everything is safe to repeat. Every change has an undo line in section 10.
-@ On the TABLET: install the launcher update
-why: Open the tablet's browser, go to https://github.com/tjshea90/Launcher/releases/latest and tap the file named Launcher-v....apk (not the phone-guide file). Open it and tap Install (it updates in place). Then switch the accessibility helper OFF and ON once (Settings > Accessibility > Launcher power-menu helper) so the new key access loads.
-note: Skip the install if the newest version is already on the tablet.
-@ On the TABLET: allow adb
-why: Settings > About tablet > tap Build number 7 times > back > System > Developer options > USB debugging ON.
-@ Optional, on the TABLET (no cable needed): "ADB over network"
-why: In Settings > System > Developer options, if there is a switch named "ADB over network" (LineageOS has one), turn it ON and leave it on. It does not change anything you see. It lets a later launcher update start its own helper after every restart, so the cable is never needed again. If the switch does not exist, skip this card; section 7 has a read-only question that tells Claude what this tablet offers.
-note: To undo: switch it off again in the same place.
+# ORDER RULE (Tj, 2026-11-05: "limited time with the otg cable"): only what NEEDS the cable comes before "unplug", and of that only ONE line is a must. Everything else is a button on the tablet afterwards (PART 3), then the same steps by hand (FALLBACK), the read-only questions (EXTRAS) and the undo cards (UNDO), all closed until tapped. The tablet's report (PART 3) holds every answer the EXTRAS ask for, so nothing has to be copied by hand.
+plan: PART 1, on the TABLET, no cable (about 3 minutes): install the newest launcher and allow USB debugging.
+plan: PART 2, with the CABLE (about 2 minutes): connect the phone, then type ONE line that starts the helper. Then unplug.
+plan: PART 3, on the TABLET again (about 5 minutes, only buttons): "Do everything", "Collect the tablet report", send the file to Claude.
+plan: FALLBACK, EXTRAS and UNDO at the bottom are closed. Open them only if a step above failed, Claude asks, or something looks odd.
+## PART 1: BEFORE the cable, on the TABLET (about 3 minutes, no cable needed)
+@ Install the newest launcher
+why: On the tablet open the browser and go to https://github.com/tjshea90/Launcher/releases/latest . Tap the file called Launcher-v....apk (NOT the one called PhoneGuide), open it and tap Install. Then Settings > Accessibility > Launcher power-menu helper: switch it OFF and ON once.
+note: Skip the install if the newest version is already on the tablet. Do it BEFORE you plug in: the helper line in PART 2 starts the version that is installed.
+@ Allow USB debugging
+why: Settings > About tablet > tap "Build number" 7 times > go back > System > Developer options > turn "USB debugging" ON.
+@ Optional: "ADB over network" (only if the switch exists)
+why: In Developer options, if there is a switch called "ADB over network", turn it ON and leave it on. It changes nothing you can see. It may let a later launcher update restart its own helper after a tablet restart, so the cable is never needed again. No such switch? Skip this card.
+note: Undo: switch it off again in the same place.
+## PART 2: WITH the cable, on the PHONE (about 2 minutes: you type ONE line)
 @ Connect the phone to the tablet
-why: Phone: install an "ADB OTG" shell app. Plug the OTG cable into the PHONE, then the data cable to the TABLET. In the app tap Connect and, on the TABLET, tick "Always allow" and tap Allow. Open the app's shell (the place where you type commands). The cards below are typed there, one line at a time.
-## 1. Check the connection (read-only)
-@ Which Android is the tablet?
-why: Should print 10.
-cmd: getprop ro.build.version.release
-@ Am I talking to the tablet as the adb user?
-why: Should print uid=2000(shell).
+why: On the PHONE install an "ADB OTG" shell app. Plug the OTG cable into the PHONE, then the data cable into the TABLET. In the app tap Connect. On the TABLET tick "Always allow" and tap Allow. Open the app's shell (the place where you type commands). The cards below are typed there, one line at a time: tap Copy here, paste there, press Enter.
+@ Check the connection and the launcher
+why: The first line must print uid=2000(shell). The second must print package:/data/app/.../base.apk (that is the launcher). If either prints something else, stop and fix that first: cable, the Allow box on the tablet, USB debugging, or install the launcher (PART 1).
 cmd: id
-@ Is the launcher installed?
-why: Should print package:/data/app/.../base.apk. If it prints nothing, install the launcher first (see the first card).
 cmd: pm path com.tj.launcher
-## 2. Permissions for the launcher (only for this app; they survive updates; all listed in advance so a future update needs nothing new)
-@ Permission: change secure settings
-why: Lets the launcher switch the keyboard, the quick-settings tiles per launcher, the animation speed-up and (only if you turn that option on) the status-bar hiding.
+@ START THE HELPER (the one line that matters)
+mark: must
+why: Starts a small program that only the launcher can talk to. It prints nothing. It lets the tablet set itself up with buttons (PART 3). It survives unplugging the cable, but not a restart of the tablet.
+cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &
+alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+note: If the app says "not found" or does nothing, use the second form. If the app cannot do $( ) at all, use the two-step card right below.
+undo: pkill -f com.tj.launcher.ShellServer
+@ Two-step start (only if the card above did nothing)
+why: First copy the next line and run it; it prints package:/data/app/.../base.apk. Then take the second line and replace PATH by what was printed AFTER "package:" (the app does not do this for you).
+cmd: pm path com.tj.launcher
+alt: sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+@ Is the helper running?
+mark: must
+why: Must print 1. If it does, UNPLUG the cable now and go to PART 3: the helper keeps running until the tablet restarts. If it prints 0, go back to the card that starts the helper.
+cmd: ps -A -o ARGS | grep -c '[S]hellServer'
+## PART 3: AFTER unplugging, on the TABLET (about 5 minutes, only buttons)
+@ Open the setup screen
+why: Open Launcher control (it exists only while the tablet is in Quickstep mode) and tap "Tablet setup & report". The top line must say "Shell helper: RUNNING". If it says NOT running, go back to PART 2 and start the helper again.
+@ Tap "1. Do everything that is missing"
+why: It does by itself everything the by-hand cards at the bottom do: the permissions, the background and battery settings, the accessibility helper and the speed compile. Wait until the list turns green (about a minute).
+@ Tap "2. Collect the tablet report"
+mark: must
+why: Saves everything Claude needs into ONE small text file: the tablet's facts, how this launcher is doing, and the launcher's own log. It takes about a minute: wait for the line that says DONE.
+note: The file is Downloads > launcher-probe > tablet-report.txt on the tablet.
+@ Optional, 15 seconds: tap "3. Side-key test"
+why: Answers whether a quicker power menu is possible on this tablet. Tap the button, then within 8 seconds hold the SIDE key (the power key) for about 1.5 seconds and let go. Then tap the answer button: did the normal power menu appear, or not? (If it appears, press Back.) Never hold the key longer than 3 seconds.
+note: The answer is saved into the report. Tap "2. Collect the tablet report" once more afterwards so the report includes it.
+@ Optional, only if Claude asked: tap "4. Collect EVERYTHING"
+why: Also photographs the stock Settings pages and copies the tablet's own Settings, SystemUI and launcher apps (for the Settings screen). Big: 2 to 3 minutes. Keep the screen on and touch nothing until it says DONE.
+@ Send the files to Claude
+mark: must
+why: On the tablet open a file manager > Downloads > launcher-probe. Send tablet-report.txt to Claude first (it is small). If you pressed "4", zip the whole folder and send that as well. Do not restart the tablet before you have collected: the helper stops at a restart.
+note: Claude saves what you send into the project (serial numbers, addresses and e-mail addresses are removed first) and reads it before anything else.
+##- FALLBACK: if "Do everything" failed, do the same steps by hand from the phone (about 5 minutes)
+@ Permissions the launcher needs (4 lines)
+why: Only for this app; they survive updates. Lets the launcher switch the keyboard, the quick-settings tiles per launcher, the animation speed-up, the status-bar hiding, read what is in front, and (for the lock-screen patch) read the wallpaper.
 cmd: pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
-undo: pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
-@ Permission: read what is running
-why: Read-only look at which app is in front / in Recents.
 cmd: pm grant com.tj.launcher android.permission.DUMP
-undo: pm revoke com.tj.launcher android.permission.DUMP
-@ Permission: change configuration
-why: For later features (font size, orientation).
 cmd: pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION
-undo: pm revoke com.tj.launcher android.permission.CHANGE_CONFIGURATION
-@ Permission: read storage
-why: Needed for the wallpaper patch on the lock screen and the share folder.
 cmd: pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+undo: pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+undo: pm revoke com.tj.launcher android.permission.DUMP
+undo: pm revoke com.tj.launcher android.permission.CHANGE_CONFIGURATION
 undo: pm revoke com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
-@ Usage access
-why: Which app was used last (read-only).
+@ Background, usage and battery settings (5 lines)
+why: So Android does not freeze the helper on this low-memory tablet, and the clean-up still works with the screen off. Usage access: which app was used last (read-only). Modify system settings: for later features.
 cmd: cmd appops set com.tj.launcher GET_USAGE_STATS allow
-undo: cmd appops set com.tj.launcher GET_USAGE_STATS default
-@ Modify system settings
-why: For later features (brightness, screen timeout).
 cmd: cmd appops set com.tj.launcher WRITE_SETTINGS allow
-undo: cmd appops set com.tj.launcher WRITE_SETTINGS default
-@ Allowed to run in the background
-why: So Android does not freeze the helper on this low-memory tablet.
 cmd: cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow
-@ Allowed to run any time in the background
-why: Same.
 cmd: cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow
-@ Battery: not frozen while the screen is off
-why: The helper keeps working with the screen off (the lock-time clean-up).
 cmd: dumpsys deviceidle whitelist +com.tj.launcher
+undo: cmd appops set com.tj.launcher GET_USAGE_STATS default
+undo: cmd appops set com.tj.launcher WRITE_SETTINGS default
 undo: dumpsys deviceidle whitelist -com.tj.launcher
 @ Check the permissions took (read-only)
 why: Every line should end in granted=true (4 of them are ours).
 cmd: dumpsys package com.tj.launcher | grep granted=true
 note: If your app cannot use the | sign, skip this card; the launcher's own Tablet setup screen shows the same ticks.
-## 3. Turn the accessibility helper on (power menu, lock-screen secrets, return reset)
-@ Read what is on now
+@ Read which accessibility services are on now
 why: Prints the accessibility services that are already on (or null). The next card needs this reply so nothing already on is switched off.
 cmd: settings get secure enabled_accessibility_services
-@ Switch the launcher's helper on (keeps the others)
+@ Switch the launcher's accessibility helper on (keeps the others)
 why: Type the reply from the card above into the box. The app builds the exact line.
 special: a11y
 cmd: settings put secure accessibility_enabled 1
 note: Run the line built above FIRST, then the second line (accessibility_enabled 1). If anything looks wrong afterwards: Settings > Accessibility on the tablet shows the list and lets you switch it off.
-## 4. Start the invisible clean-up helper (do this AGAIN after every tablet restart)
-@ Start the helper
-why: Starts a small program that only the launcher can talk to. It prints nothing. It survives unplugging the cable but not a restart.
-cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &
-alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
-note: If the app cannot do $( ), use the two-step card right below instead.
-undo: pkill -f com.tj.launcher.ShellServer
-@ Two-step start (only if the card above did nothing)
-why: First copy the next card and run it; it prints package:/data/app/.../base.apk. Then take the second card and replace PATH by what was printed AFTER "package:" (the app does not do this for you).
-cmd: pm path com.tj.launcher
-alt: sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
-@ Is the helper running?
-why: Should print 1.
-cmd: ps -A -o ARGS | grep -c '[S]hellServer'
-## 5. Speed
-@ Compile the launcher ahead of time
+@ Speed: compile the launcher ahead of time
 why: Sideloaded apps run half-optimised until Android has time to compile them; this does it now (about a minute) so the launcher starts faster after an unlock. Should end with Success. Repeat after every launcher update.
 cmd: cmd package compile -m speed -f com.tj.launcher
-## 6. The old Browser app (optional, reversible)
-@ Switch the Browser app off
+@ Optional: switch the old Browser app off
 why: Nothing in Android needs it; links open in your other browser. It is only hidden, not deleted.
 cmd: pm disable-user --user 0 com.android.browser
 undo: pm enable com.android.browser
-## 7. Facts for Claude (read-only; select the reply in the app, copy it and send it to Claude)
+##- EXTRAS: read-only questions for Claude (the report already answers all of these; use them only if the helper would not start or Claude asks)
 @ Can the tablet have a second user?
 why: The first prints the maximum number of users, the second lists the users now.
 cmd: pm get-max-users
@@ -121,13 +120,17 @@ alt: getprop init.svc.adbd
 @ Which input device is the power key? (for a possible instant power menu)
 cmd: getevent -pl | grep -E 'add device|name:|KEY_POWER'
 @ Is Android's retail-demo flag off? (it must be)
-why: Should print 0 or null. If it prints 1, run the "Retail-demo flag off" card in section 10 and tell Claude.
+why: Should print 0 or null. If it prints 1, run the "Retail-demo flag off" card in the UNDO part and tell Claude.
 cmd: settings get global device_demo_mode
 @ Is the status bar already customised on this ROM?
 why: Normally prints null. If it prints something, tell Claude: the launcher keeps it and puts it back.
 cmd: settings get global policy_control
 @ How does this ROM list the open apps?
+why: The launcher's clean-up reads this list. Claude compares the lines with what the launcher expects.
 cmd: dumpsys activity recents | grep -E 'Recent #|realActivity=' | head -24
+@ How does this ROM list notifications? (do this while at least one notification is showing)
+why: The launcher closes a shared app only if it has a notification; it finds that in this list. It may print nothing if there is no notification at all.
+cmd: dumpsys notification | grep 'NotificationRecord(' | cut -c1-160 | head -8
 @ Does this ROM have its own power-menu setting?
 why: If it prints a list, Claude can hide Screenshot with no overlay at all.
 cmd: settings get secure power_menu_actions
@@ -138,17 +141,12 @@ cmd: head -3 /proc/meminfo
 alt: wm size
 @ Installed system overlays (long reply)
 cmd: cmd overlay list
-## 8. Finish ON THE TABLET (the cable can come out once the helper is running)
-@ Do everything that is missing, then collect everything
-why: On the tablet open Launcher control (it is only there in Quickstep mode) > Tablet setup & report. The top must say Shell helper: RUNNING. Tap "Do everything that is missing". Then tap "Collect EVERYTHING" and keep the screen on for 2-4 minutes: it writes the full report, photographs the stock Settings pages and copies the tablet's own Settings / SystemUI / launcher / framework apps.
-note: Everything lands in the tablet's Downloads > launcher-probe folder. Zip that folder and send it to Claude (from the tablet).
-## 9. Optional experiment (skip unless Claude asks)
-@ Can the shell switch the stock power menu off for 3 seconds? (answers a design question)
-why: Runs a tiny test program from the launcher: it asks Android to disable the power menu for 3 seconds and prints the answer ("OK" or "REFUSED ..."). Nothing lasts: Android removes the setting when the program ends. If you press the power key during these 3 seconds the menu may not appear.
+@ Can the shell switch the stock power menu off for 3 seconds?
+why: Runs a tiny test program from the launcher: it asks Android to disable the power menu for 3 seconds and prints the answer ("OK" or "REFUSED ..."). Nothing lasts: Android removes the setting when the program ends. If you press the power key during these 3 seconds the menu may not appear. The "3. Side-key test" button on the tablet does a longer version of this and also checks that the side key can be read.
 cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3
 alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3'
 note: Skip if the app cannot do $( ). The reply is 3 lines; send them to Claude.
-## 10. Undo everything (only if something looks odd)
+##- UNDO: take everything back (only if something looks odd)
 @ Stop the helper
 cmd: pkill -f com.tj.launcher.ShellServer
 @ Browser back on
@@ -165,6 +163,6 @@ cmd: settings delete secure sysui_qs_tiles
 @ Launcher "compiled" state back to a plain install
 why: Optional, and not needed for safety (a compiled app only starts faster). Puts the launcher back to the light "verify" state a fresh install has; installing the launcher again does the same. Android 10 refuses the shorter "compile --reset" to the shell user (the emulator run said: Only the system can clear all profile data).
 cmd: cmd package compile -m verify -f com.tj.launcher
-@ Take the permissions back (one card per permission is in section 2; the launcher keeps working without them, those features just switch off)
-why: Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
+@ Take the permissions back
+why: One undo line per permission is on the cards in FALLBACK; the launcher keeps working without them, those features just switch off. Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
 note: Accessibility: switch the helper off in the tablet's Settings > Accessibility.
