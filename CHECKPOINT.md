@@ -1,13 +1,13 @@
-# CHECKPOINT 323 — read me first, then TASKS.md
+# CHECKPOINT 324 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T07:02:48Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `97b98f9` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T07:05:08Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `580d9fa` (this checkpoint is the commit after it)
 
 ## Just done
-ship.sh gates passed for v0.7.1 (code 18, unit+lint green, pushed) but NOT RELEASED: run 119 (x) found 2 open items; run 120 (g,gc) is fully green (18 PASS: tick, next-step, restart all fine)
+x findings fixed in tools: the intake no longer flags a notification-reader mismatch when the sample holds only the system's pkg=android records (the reader skips those by design; 2 new intake tests, 51 green), setup-screen scan is now small slow steps to the end of the page and says which numbered step is missing, INFO line shows the real report's notification pkgs
 
 ## Do this next
-DO NOT trigger android.yml yet (ship.sh's printed next-step is superseded). (1) run 119 FAIL 'PARSER MISMATCH': notification sample has NotificationRecord lines but the launcher reader found no app: read TabletReport.java:152 + ShellProtocol.parseNotifPackages + ResetPolicy.shouldKill to see if the emulator's records are system-only (false positive of the intake rule in tools/tablet_intake.py:233) or a real reader bug; (2) FAIL 'setup screen numbered steps': all 5 labels exist in SetupActivity.java:174-193, the 8 blind 500px swipes (emulator_scenario.sh ~line 774) probably fling past a button: scan in 300px steps until the page stops changing, and print which strings were missing; then re-run x, then FULL emulator run (empty sections) as the release gate (L10), then android.yml full_build=true, record-release v0.7.1
+re-dispatch emulator x on main at the new HEAD and read it (setup-screen + PARSER MISMATCH checks, and the new INFO lines prove the pkg=android diagnosis); if green dispatch the FULL emulator run (empty sections) as the L10 release gate, then android.yml full_build=true, record-release v0.7.1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ DO NOT trigger android.yml yet (ship.sh's printed next-step is superseded). (1) 
 
 ## Last ten checkpoints
 ```
+  d8a171b ckpt 323: ship.sh gates passed for v0.7.1 (code 18, unit+lint green, pushed) but NOT REL
   97b98f9 ckpt 322: gated v0.7.1 (code 18) and pushed it: the handoff self-test, the full unit sui
   3029356 ckpt 321: dispatched emulator sections on main at 05c10f9: run 119 (id 41983710605, prob
   05c10f9 ckpt 320: finished the cut-off change: KEYTEST-LINES (getevent silent is not 'key not pr
@@ -25,5 +26,7 @@ DO NOT trigger android.yml yet (ship.sh's printed next-step is superseded). (1) 
   aa2b6de ckpt 316: PG2/PG3 part 1 (tablet side, code + unit tests green, emulator proof pending):
   b660de3 ckpt 315: PG1 done: phone guide redesigned for a short cable session. New order: PART 1 
   35fada6 ckpt 314: Tj: close G3d (done) + phone guide: simple, logical order for a short OTG sess
-  77726ab ckpt 313: Tj asked what Power menu v2 and the standing items are: answered in chat; his 
 ```
+
+(4 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
