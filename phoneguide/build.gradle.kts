@@ -11,8 +11,8 @@ android {
         applicationId = "com.tj.phoneguide"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
     val ks = file("../app/sideload.jks")
     if (ks.exists()) {
