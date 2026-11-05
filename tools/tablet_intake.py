@@ -389,19 +389,19 @@ def run(src, out_base, label, date, keep_images):
         if CREDENTIALS.search(text):
             print("REFUSED: %s contains something shaped like a live credential. Nothing was saved. Remove it and run again." % name)
             return 4
-    report_text = None
-    for cand in sorted(staged):                       # the full report first, then the PC route's probe, then the short summary (status.txt alone has no facts to parse)
-        if cand.lower().startswith("tablet-report"):
-            report_text = staged[cand]; break
-    if report_text is None:
-        for pref in ("launcher-probe", "tablet-summary"):
-            for cand in sorted(staged):
-                if cand.lower().startswith(pref):
-                    report_text = staged[cand]; break
-            if report_text is not None:
-                break
-    if report_text is None:
-        report_text = "\n".join(staged.values())
+    def newest(prefix):
+        """The staged file that starts with prefix and is the NEWEST: a browser calls a second download 'name (1)' and a third 'name (2)' (safe_name turns that into name__1_), so the highest number wins and no number is the oldest."""
+        names = [n for n in staged if n.lower().startswith(prefix)]
+        def rank(n):
+            m = re.search(r"__(\d+)_(?:\.|$)", n)
+            return (int(m.group(1)) if m else 0, n)
+        return max(names, key=rank) if names else None
+    # the full report first, then the PC route's probe, then the short summary (status.txt alone has no facts to parse)
+    picked = newest("tablet-report") or newest("launcher-probe") or newest("tablet-summary")
+    report_text = staged[picked] if picked else "\n".join(staged.values())
+    reading = "FACTS.md was written from %s" % (picked or "all the text files together")
+    if picked and sum(1 for n in staged if n.lower().startswith("tablet-report")) > 1 and picked.lower().startswith("tablet-report"):
+        reading += " (the newest of %d tablet reports, by the ' (N)' number a browser adds to a later download; the others are saved beside it)" % sum(1 for n in staged if n.lower().startswith("tablet-report"))
     dest = next_dir(out_base, date)
     os.makedirs(dest, exist_ok=True)
     for name, text in staged.items():
