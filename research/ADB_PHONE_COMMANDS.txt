@@ -162,8 +162,9 @@ cmd: settings delete global policy_control
 @ Quick-settings tiles back to the system's own list
 why: Only if the tiles look wrong after you switched launchers. Android rebuilds its default list.
 cmd: settings delete secure sysui_qs_tiles
-@ Launcher "compiled" state back to normal
-cmd: cmd package compile --reset com.tj.launcher
+@ Launcher "compiled" state back to a plain install
+why: Optional, and not needed for safety (a compiled app only starts faster). Puts the launcher back to the light "verify" state a fresh install has; installing the launcher again does the same. Android 10 refuses the shorter "compile --reset" to the shell user (the emulator run said: Only the system can clear all profile data).
+cmd: cmd package compile -m verify -f com.tj.launcher
 @ Take the permissions back (one card per permission is in section 2; the launcher keeps working without them, those features just switch off)
 why: Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
 note: Accessibility: switch the helper off in the tablet's Settings > Accessibility.

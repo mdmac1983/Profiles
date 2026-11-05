@@ -1227,8 +1227,16 @@ gcrun(){ # gcrun <kind> <command line>
   local kind="$1" c="$2" o rc
   case "$c" in *PATH*) GCSKIP=$((GCSKIP+1)); return;; esac  # the two-step placeholder, not a command
   # </dev/null: `adb shell` forwards ITS stdin to the device, and here stdin is the steps file the while-loop below is reading: run 99 ran 2 of ~60 lines because the first command swallowed the rest of the file
+  # the guide offers the forms of the start line as ALTERNATIVES, not as a sequence: each is tried from a stopped helper, and must leave it running
+  local starts=0; case "$c" in *ShellServer*) case "$c" in *pkill*|*grep*|*ShellProbe*) ;; *) starts=1;; esac;; esac
+  [ "$starts" = 1 ] && { adb shell "pkill -f com.tj.launcher.ShellServer" </dev/null >/dev/null 2>&1; sleep 1; }
   o="$(adb shell "$c" </dev/null 2>&1)"; rc=$?
-  case "$c" in *ShellServer*) case "$c" in *pkill*|*grep*|*ShellProbe*) ;; *) sleep 4;; esac;; esac
+  if [ "$starts" = 1 ]; then
+    sleep 4
+    local n; n=$(adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" </dev/null 2>&1 | tr -d '\r\n ')
+    info "GC after the $kind start line [$(echo "$c" | cut -c1-60)...] the helper processes running: ${n:-?}"
+    [ "${n:-0}" -ge 1 ] 2>/dev/null || { GCBAD=$((GCBAD+1)); check "AA5: the guide's $kind start line left the helper running (processes: ${n:-?}; the line printed: $(echo "$o" | head -2 | tr '\n' ' ' | cut -c1-120))" false; }
+  fi
   GCN=$((GCN+1))
   case "$c" in
     *"grep -c '[S]hellServer'"*) [ "$(echo "$o" | tr -d '\r\n ')" -ge 1 ] 2>/dev/null || { GCBAD=$((GCBAD+1)); check "AA5: the guide's 'Is the helper running?' card printed 1 after its start line (printed: $o)" false; }; return;;
@@ -1236,12 +1244,12 @@ gcrun(){ # gcrun <kind> <command line>
     *"ShellProbe statusbar"*) echo "$o" | grep -q 'disable2(0x8) -> OK' || { GCBAD=$((GCBAD+1)); check "AA5: the ShellProbe card answered OK (printed: $(echo "$o" | head -3 | tr '\n' ' ' | cut -c1-200))" false; }; return;;
   esac
   if echo "$o" | grep -q 'Unknown package'; then info "GC $kind [$c]: that package is not on this emulator (fine)"; return; fi
-  if echo "$o" | grep -qiE 'not found|unknown (option|command)|usage:|syntax error|no such file|exception|error:|permission denied|inaccessible' || { [ "$rc" != 0 ] && ! echo "$c" | grep -qE 'grep|head'; }; then
+  if echo "$o" | grep -qiE 'not found|unknown (option|command)|usage:|syntax error|no such file|exception|error:|permission denied|inaccessible' || { [ "$rc" != 0 ] && ! echo "$c" | grep -qE 'grep|head|pkill'; }; then   # grep and pkill answer 1 for "nothing matched", which is not an error
     GCBAD=$((GCBAD+1)); check "AA5: guide $kind line works: [$(echo "$c" | cut -c1-110)] -> rc=$rc $(echo "$o" | head -2 | tr '\n' ' ' | cut -c1-160)" false
   fi
 }
 while IFS= read -r L; do case "$L" in cmd:*|alt:*) gcrun "${L%%:*}" "$(echo "${L#*:}" | sed 's/^ *//')";; esac; done < "$STEPS"
-info "GC the helper line started the helper: $(adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" | tr -d '\r\n') process(es); permissions now: $(adb shell dumpsys package $PKG | grep -c 'granted=true') granted"
+info "GC permissions granted after the first loop: $(adb shell dumpsys package $PKG | grep -c 'granted=true')"
 while IFS= read -r L; do case "$L" in undo:*) U="$(echo "${L#*:}" | sed 's/^ *//')"; case "$U" in pm\ *|cmd\ *|settings\ *|dumpsys\ *|pkill\ *|am\ *) gcrun undo "$U";; esac;; esac; done < "$STEPS"
 GCWANT=$(( $(grep -cE '^(cmd|alt):' "$STEPS") + $(grep -E '^undo:' "$STEPS" | sed 's/^undo: *//' | grep -cE '^(pm|cmd|settings|dumpsys|pkill|am) ') ))
 info "GC ran $GCN guide command lines ($GCSKIP placeholder lines skipped) of $GCWANT in the file, $GCBAD problem(s)"
@@ -1252,7 +1260,6 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 # the undo lines above revoked what the scenario had granted at its start (DUMP) and what other sections grant for themselves: put it back, so every section after this one runs as it did before
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 adb shell pm grant "$PKG" android.permission.DUMP >/dev/null 2>&1
-adb shell cmd package compile --reset "$PKG" >/dev/null 2>&1
 rebind; setfeat; setmode custom; home
 fi # section gc
 if want rs4; then # section rs4
