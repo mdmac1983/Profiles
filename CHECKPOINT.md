@@ -1,13 +1,13 @@
-# CHECKPOINT 367 — read me first, then TASKS.md
+# CHECKPOINT 368 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T20:30:03Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `6089226` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T20:31:10Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `2cddeb7` (this checkpoint is the commit after it)
 
 ## Just done
-step 20: Tj turned the lock number ON; step 21 (lock + look for the number) sent
+step 21: lock number shows on the real lock screen (LK1 number+gesture OK); step 22 (read-only proof of all grants) sent
 
 ## Do this next
-Tj reports what the lock screen shows (number at the bottom? right number?); then gestures under 'Unlock into Quickstep', two-profiles switches, switch back to custom; read-only proof of grants; cable-done; then KA1 PNG + default OFF + fuse + CBR1 + CBR2 + A11Y words. Way out if lock screen wrong: settings put secure enabled_accessibility_services ''
+Tj sends step 22 screenshot (4, four allow lines, 1, a11y string): all OK -> close CBL1, tell Tj the cable work is DONE (unplug; other switches are in-app, no cable) and ask the ONE question: which launcher to leave the tablet in (custom = tap Switch to the custom launcher in Launcher control); then write handoff/CHECKPOINT; then KA1 PNG + default OFF + CrashGuard fuse + CBR1 + CBR2 + A11Y words in report; BATCH1 vs mailbox decision for Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Tj reports what the lock screen shows (number at the bottom? right number?); the
 
 ## Last ten checkpoints
 ```
+  1b94375 ckpt 367: step 20: Tj turned the lock number ON; step 21 (lock + look for the number) se
   0df7428 ckpt 366: step 19: double-erase handshake works on the real tablet (pad recognised), unl
   217aa31 ckpt 365: Tj: custom home live (default home ours, 0 crashes) but lock number missing + 
   b2464af ckpt 364: step 17: notification access null = a Go device refuses it (my audit was wrong
@@ -26,7 +27,6 @@ Tj reports what the lock screen shows (number at the bottom? right number?); the
   ddf42e9 ckpt 360: step 15: a11y service BOUND after restart = ACC1 solved (stale Binding from cr
   2035ff8 ckpt 359: step 14 done: Tj restarted the tablet (Back); step 15 sent (a11y Bound/Binding
   a8b34fd ckpt 358: step 13: no ServiceRecord = stale a11y Binding (ACC1 A); first-connect safety 
-  5f0da9b ckpt 357: step 12: DuraSpeed back on (1,1); a11y service STUCK in Binding services; step
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
