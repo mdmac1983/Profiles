@@ -133,6 +133,9 @@ check "phone-guide steps.txt equals research/ADB_PHONE_COMMANDS.txt (edit the as
 check "no phone-guide command starts with adb (the OTG shell takes the bare command)" '! grep -E "^(cmd|alt):[[:space:]]*adb( |$)" "$D/phoneguide/src/main/assets/steps.txt"'
 check "no phone-guide command is destructive" '! grep -E "^(cmd|alt):.*(pm uninstall|pm clear|wipe|factory|rm -|reboot|setprop|locksettings|pm hide|pm suspend|svc wifi|svc data|settings put global (airplane|adb_enabled|development))" "$D/phoneguide/src/main/assets/steps.txt"'
 
+# ---------------------------------------------------------------- the tablet intake: what Tj sends from the tablet is saved redacted + summarised (its own self-test, ~2 s)
+if TI_OUT="$(bash "$D/tools/test_tablet_intake.sh" 2>&1)"; then ok; else bad "tablet intake self-test failed (bash tools/test_tablet_intake.sh)"; printf '%s\n' "$TI_OUT" | grep FAIL | head -10; fi
+
 # ---------------------------------------------------------------- inbox capture
 printf '{"prompt":"please build X, my key is ghp_%s ok"}' "$(printf 'c%.0s' $(seq 1 36))" | bash tools/capture_inbox.sh
 check "inbox captures the message, redacts the key, and commits it" 'grep -q "please build X" INBOX.md && grep -q "REDACTED-KEY" INBOX.md && ! grep -q "ghp_c" INBOX.md && [ "$(bash tools/unpushed.sh)" = 0 ]'
