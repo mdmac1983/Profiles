@@ -1439,6 +1439,7 @@ for try in 1 2 3 4; do
   info "RB try $try screen: $(rbui)"
 done
 info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try ($RBHOW)" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
+info "RB display after the restart: $(adb shell wm size | tr -d '\r' | tr '\n' ' ')| $(adb shell wm density | tr -d '\r' | tr '\n' ' ')| overscan: $(adb shell dumpsys window displays | grep -m1 -oE 'overscan=\([0-9, -]*\)|mOverscan[A-Za-z]*=[^ ]*' | tr '\n' ' ')| font_scale=$(adb shell settings get system font_scale | tr -d '\r\n')"
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
 for i in $(seq 1 20); do adb shell dumpsys accessibility 2>/dev/null | grep -q 'Service\[label=' && break; sleep 2; done   # Android binds the helper a few seconds after the unlock
 sleep 3
@@ -1459,6 +1460,8 @@ info "RB after the restart: tiles '$(tr -d '\r\n' < $OUT/rb-tiles-after.txt)', p
 adb shell locksettings clear --old 1234 > "$OUT/rb-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 adb shell settings delete global policy_control >/dev/null 2>&1
+# the scenario's display set-up (top of this file) is applied once; a restart can drop it, which would change every later section (run 114: the last step found no power menu after rb)
+adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 setfeat; setmode custom; rebind; home
 fi # section rb
 if want last; then # section last
@@ -1467,6 +1470,7 @@ beat "before LAST STEP"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"guard_stock_home\\\" value=\\\"false\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1
 setmode custom; rebind; home; sleep 3
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart
+info "LAST state: display $(adb shell wm size | tr -d '\r' | tr '\n' ' ')$(adb shell wm density | tr -d '\r' | tr '\n' ' '); a11y services bound: $(adb shell dumpsys accessibility | grep -c 'Service\[label='); stock menu windows: $(adb shell dumpsys window windows | grep -c 'ActionsDialog'); TjA11y log lines this boot: $(adb logcat -d -s TjA11y:I | wc -l); resumed: $(resumed | cut -c1-90)"
 RECT="$(adb logcat -d -s TjA11y:I | grep -o 'bounds=Rect([0-9, -]*)' | tail -1 | grep -o '[0-9]*' | tr '\n' ' ')"
 set -- $RECT
 if [ "$#" -ge 4 ]; then
