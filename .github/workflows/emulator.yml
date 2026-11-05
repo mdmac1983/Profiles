@@ -67,7 +67,7 @@ jobs:
           path: emulator-out/
           retention-days: 14
           if-no-files-found: warn
-      - name: Results (compact: counts, every FAIL, every INFO)
+      - name: Results - compact (counts, every FAIL, every INFO)
         if: always()
         run: |
           f=emulator-out/results.txt
