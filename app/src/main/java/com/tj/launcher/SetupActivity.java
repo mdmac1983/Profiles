@@ -251,7 +251,7 @@ public class SetupActivity extends Activity {
         String out = ShellHelper.keyTest();
         if (out == null) return null;
         String res = out.trim();
-        // the one-line verdict is computed from the WHOLE answer and stored on its own: the report cuts long values, and the flag line comes after up to 40 key lines
+        // the one-line verdict is computed from the WHOLE answer and stored on its own: the report cuts long values, and the flag line comes after up to 64 device and key lines
         Features.setString(this, "keytest_summary", ShellProtocol.keyTestSummary(res));
         Features.setString(this, "keytest_output", res.length() > 1500 ? res.substring(0, 1500) : res);
         Features.setString(this, "keytest_at", new java.util.Date().toString());
