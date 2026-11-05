@@ -769,7 +769,10 @@ check "T1: the tablet's own Settings app was copied to Downloads/launcher-probe/
 # PG2 / PG3 (Tj, 2026-11-05: "make sure claude can save and use all necessary information from the tablet"): the REAL report this app just wrote on a real Android 10 system (not the invented sample)
 rep_all(){ local p; for p in "$@"; do grep -qE -- "$p" "$OUT/x-report.txt" || return 1; done; }
 kt_all(){ local l p; l=$(grep '^keytest:' "$OUT/x-autorun-done.txt"); for p in "$@"; do printf '%s' "$l" | grep -qF -- "$p" || return 1; done; }
-# the setup screen: go to its top, then scroll down in SMALL, slow steps until the page stops changing (a dump only lists what is on screen, and eight fast 500 px swipes flung past a whole button: run 119, 2026-11-05)
+# the setup screen. The autorun's screenshot job has just opened the tablet's SETTINGS screens, so the setup screen is no longer in front (run 121, 2026-11-05: the scan dumped Settings, found none of the five
+# labels and "2 pages"): open it again (no autorun this time), go to its top, then scroll down in SMALL, slow steps until the page stops changing (a dump only lists what is on screen, and eight fast 500 px swipes can fling past a whole button)
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" >/dev/null 2>&1; sleep 3
+shot 76b-setup-screen-reopened
 for i in 1 2 3 4 5 6; do adb shell input swipe 300 250 300 900 150; done; sleep 1
 : > "$OUT/x-setup-ui.xml"; XLAST=""; XPAGES=0
 for i in $(seq 1 24); do
