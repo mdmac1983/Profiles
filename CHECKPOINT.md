@@ -1,13 +1,13 @@
-# CHECKPOINT 351 — read me first, then TASKS.md
+# CHECKPOINT 352 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T19:16:34Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `047d8e2` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T19:19:39Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `e252af8` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's step 8 (2:13): the helper started 13:31 is DEAD at 14:13 (silent, tj.log has no exit line), DuraSpeed is ON (global 1, system 1), accessibility enabled but Bound services empty, and the shell can create files in the launcher's folder owned by u0_a243: MBX1 works in BOTH directions; step 9 = reversible DuraSpeed experiment sent
+Tj's step 9 (2:18): DuraSpeed now OFF, helper restarted 14:17:57 (EST tablet clock); accessibility STILL not bound before and after (Bound services empty), so DuraSpeed is not the ACC1 cause; step 10 sent (ps check about 30 min later)
 
 ## Do this next
-WAIT for Tj's step 9 screenshot (TjA11y connected lines, Bound services before/after DuraSpeed off, tj.log, date); then Tj re-plugs ~30 min later: date; ps count; Bound services; then tell Tj whether DuraSpeed matters and give the undo line (both settings back to 1); the custom launcher is still OFF (breaker): tell Tj how to switch back; then v0.7.2 = KA1 + MBX1 (ephemeral helper) + UX1 + ACC1 + CBR1 + PG5/PG6 + RS1
+WAIT for Tj's step 10 screenshot (about 14:50 on the tablet clock): date + ps count; 1 = DuraSpeed (or the earlier session) killed the helper before, 0 = DuraSpeed is not the killer: tell Tj to turn it back on (settings put global/system setting.duraspeed.enabled 1); then ACC1 via the next report; v0.7.2 = KA1 + MBX1 (helper ephemeral) + UX1 + ACC1 + CBR1 + PG5/PG6 + RS1; Tj should start a NEW chat after step 10 (handoff ready: CHECKPOINT.md, TASKS.md, .handoff)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ WAIT for Tj's step 9 screenshot (TjA11y connected lines, Bound services before/a
 
 ## Last ten checkpoints
 ```
+  e252af8 ckpt 351: Tj's step 8 (2:13): the helper started 13:31 is DEAD at 14:13 (silent, tj.log 
   3f63046 ckpt 350: tablet intake 2026-11-05: Tj's first real report saved (3 red flags); the cras
   cedcd7c ckpt 349: Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0
   ec20d98 ckpt 348: Tj's step 6 photo: the app-side report works without the helper (31 KB, in the
@@ -26,8 +27,4 @@ WAIT for Tj's step 9 screenshot (TjA11y connected lines, Bound services before/a
   cbfb881 ckpt 344: Tj's step 3 screenshot (1:33): with a LIVE helper the launcher's log says unix
   0b4b40c ckpt 343: Tj: the tablet says Shell helper NOT running right after a fresh restart (help
   97cb41f ckpt 342: Tj's step 1 screenshot (1:31 phone clock): helper restarted OK ([1] 12440, uni
-  000d69b ckpt 341: Tj says the launcher crashed when first opened on the tablet and now seems to 
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
