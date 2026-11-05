@@ -372,12 +372,13 @@ def run(src, out_base, label, date, keep_images):
                 f.write("%s  %d bytes  sha256 %s\n" % (name, size, digest))
         kept.append("apk-list.txt")
     rep = Report(report_text)
-    md, flags = facts_markdown(rep, label or os.path.basename(src.rstrip("/")), date)
+    src_name = "pasted text" if src == "-" else os.path.basename(src.rstrip("/"))
+    md, flags = facts_markdown(rep, label or src_name, date)
     with open(os.path.join(dest, "FACTS.md"), "w", encoding="utf-8") as f:
         f.write(md)
     with open(os.path.join(dest, "INTAKE.txt"), "w", encoding="utf-8") as f:
         f.write("source: %s\nlabel: %s\ndate: %s\nkept: %s\nredactions: %s\nskipped:\n%s\n" % (
-            os.path.basename(src.rstrip("/")), label, date, ", ".join(kept), redactions or "none", "\n".join("  " + s for s in skipped) or "  (nothing)"))
+            src_name, label, date, ", ".join(kept), redactions or "none", "\n".join("  " + s for s in skipped) or "  (nothing)"))
     latest = os.path.join(out_base, "LATEST.md")
     with open(latest, "w", encoding="utf-8") as f:
         f.write("# Latest tablet intake: %s\n\nSaved in the folder `%s/` next to this file (its raw report and screen files sit beside its FACTS.md). Older intakes stay in their own folders.\n\n" % (os.path.basename(dest), os.path.basename(dest)))
