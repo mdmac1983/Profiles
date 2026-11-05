@@ -171,6 +171,20 @@ public class ShellProtocolTest {
         for (int i = 0; i < 500; i++) many.add("[ 1.0] /dev/input/event3: EV_KEY KEY_VOLUMEUP DOWN");
         assertEquals(40, ShellProtocol.keyTestLines(many).size());
     }
+    @Test public void manyInputDevicesCannotCrowdOutTheSideKey() {
+        // 30 devices = 60 header lines before the first event: with one shared cap the KEY_POWER lines were dropped and the verdict read "side key NOT seen" although it was pressed
+        java.util.List<String> raw = new java.util.ArrayList<>();
+        for (int i = 0; i < 30; i++) { raw.add("add device " + (i + 1) + ": /dev/input/event" + i); raw.add("  name:     \"device-" + i + "\""); }
+        raw.add("[   45.000000] /dev/input/event3: EV_KEY       KEY_POWER            DOWN");
+        raw.add("[   46.500000] /dev/input/event3: EV_KEY       KEY_POWER            UP");
+        java.util.List<String> kept = ShellProtocol.keyTestLines(raw);
+        int power = 0, headers = 0;
+        for (String l : kept) { if (l.contains("KEY_POWER")) power++; else headers++; }
+        assertEquals(kept.toString(), 2, power);
+        assertEquals("the device list is cut at its own cap", 24, headers);
+        String verdict = ShellProtocol.keyTestSummary("KEYTEST-START\n" + String.join("\n", kept) + "\nKEYTEST-END\nKEYTEST-LINES 62\ndisable2(0x8) -> OK\ncleared\n");
+        assertTrue(verdict, verdict.contains("side key WAS seen (held 1.5 s)"));
+    }
     @Test public void summarisesWhatTheHelperFound() {
         String seen = "KEYTEST-START\n" + String.join("\n", ShellProtocol.keyTestLines(Arrays.asList(GETEVENT))) + "\nKEYTEST-END\nuid=2000\ndisable2(0x8) -> OK\ngetDisableFlags -> OK [0, 8]\ncleared\n";
         String s = ShellProtocol.keyTestSummary(seen);
