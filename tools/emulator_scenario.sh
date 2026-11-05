@@ -1387,16 +1387,23 @@ adb shell pm list users > "$OUT/rb-users-after.txt" 2>&1
 check "RB2: exactly one user exists after the restart (no demo user was created)" bash -c "[ \"\$(grep -c 'UserInfo' $OUT/rb-users-after.txt)\" = 1 ]"
 adb shell settings get global device_demo_mode > "$OUT/rb-demo-after.txt" 2>&1
 check "RB3: the retail-demo flag is off" bash -c "v=\$(tr -d ' \r\n' < $OUT/rb-demo-after.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
-# 3. the lock screen of a restarted tablet with a PIN: the credential-encrypted storage (and with it every app, the helper included) is locked until the PIN is entered, so enter it like a person (up to 4 tries)
+# 3. the lock screen of a restarted tablet with a PIN: the credential-encrypted storage (and with it every app, the helper included) is locked until the PIN is entered, so enter it like a person.
+#    Run 100: four tries with the pad taps (the way every other section does it) never got past FallbackHome. A restarted tablet shows an extra line on the PIN screen, so the pad may sit lower than the
+#    fixed coordinates; the PIN as key events does not depend on the layout. Tries alternate between the two (6 in all) and every failed try prints what the screen shows, so a failure explains itself.
+rbstate(){ echo "user0 $(adb shell dumpsys user 2>/dev/null | grep -oE 'State: [A-Z_]+' | head -1), ce_available=$(adb shell getprop sys.user.0.ce_available | tr -d '\r\n'), keyguard: $(adb shell dumpsys window 2>/dev/null | grep -oE '(mShowingLockscreen|isKeyguardShowing|mDreamingLockscreen|mKeyguardGoingAway)=[a-z]+' | sort -u | tr '\n' ' ')"; }
+rbui(){ adb shell uiautomator dump /sdcard/rbui.xml >/dev/null 2>&1; adb shell cat /sdcard/rbui.xml 2>/dev/null | grep -oE '(text|content-desc)="[^"]+"' | cut -d'"' -f2 | tr '\n' '|' | cut -c1-260; }
+info "RB right after the restart: $(rbstate); the screen shows: $(rbui)"
 RBUNLOCKED=0
-for try in 1 2 3 4; do
+for try in 1 2 3 4 5 6; do
   adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
   [ "$try" = 1 ] && shot 150-rb-lock-after-restart
-  pad 1 2 3 4 e; sleep 8
+  if [ $((try % 2)) = 1 ]; then pad 1 2 3 4 e; RBHOW=taps; else adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; RBHOW=keys; fi
+  sleep 8
   resumed > "$OUT/rb-resumed.txt"
   if ! grep -q FallbackHome "$OUT/rb-resumed.txt"; then RBUNLOCKED=1; break; fi
+  info "RB try $try ($RBHOW) did not unlock: $(rbstate); the screen shows: $(rbui)"
 done
-info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
+info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try ($RBHOW)" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
 for i in $(seq 1 20); do adb shell dumpsys accessibility 2>/dev/null | grep -q 'Service\[label=' && break; sleep 2; done   # Android binds the helper a few seconds after the unlock
 sleep 3
