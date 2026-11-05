@@ -31,10 +31,19 @@ def main(argv):
             opt["exact"] = True
         elif a in ("--contains", "--row-of", "--attr", "--nth") and i + 1 < len(args):
             i += 1
-            opt[a[2:].replace("-", "_")] = int(args[i]) if a == "--nth" else args[i]
+            if a == "--nth":
+                if not args[i].isdigit() or int(args[i]) < 1:
+                    print("uinode: --nth needs a number from 1 up, got %r" % args[i], file=sys.stderr)
+                    return 2
+                opt["nth"] = int(args[i])
+            else:
+                opt[a[2:].replace("-", "_")] = args[i]
         else:
             return 2
         i += 1
+    if opt["contains"] is None:                      # without it EVERY node matches and the first one would be taken for the wanted one
+        print("uinode: --contains TEXT is required", file=sys.stderr)
+        return 2
     try:
         text = open(path, encoding="utf-8", errors="replace").read()
         start = text.find("<?xml")
