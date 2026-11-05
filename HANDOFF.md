@@ -1,6 +1,6 @@
 # HANDOFF — read this first if you are a Claude session with NO prior context
 
-Written 2026-11-04, refreshed 2026-11-05 (the v0.7.0 stretch). It is the single entry point for a new Claude account. Everything it says is
+Written 2026-11-04, refreshed 2026-11-05 (the v0.7.0 / v0.7.1 stretch). It is the single entry point for a new Claude account. Everything it says is
 checked against the repo at that date; where it can go stale it says where to look instead. After this, read in order:
 `CLAUDE.md` (working agreement, auto-loaded) → `CHECKPOINT.md` (where the last session stopped, "Do this next") → open `[ ]` in `TASKS.md`.
 
