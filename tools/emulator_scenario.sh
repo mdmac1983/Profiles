@@ -1074,7 +1074,7 @@ adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT w
 # the custom account's world: Calendar (the target app here) and Contacts, both open before Quickstep begins
 for APP in com.android.contacts com.android.calendar; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 info "RT custom account before Quickstep: $(rec)"
-tl(){ adb shell dumpsys activity recents 2>/dev/null | grep -E '^ *\* Recent #' | sed -E 's/.*\{[0-9a-f]+ #([0-9]+) [AI]=([^ ]*) .*/\1:\2/' | tr '\n' ' '; }   # task id:affinity-or-component of every Recents task, newest first (run 99: Contacts vanished although spared)
+tl(){ adb shell dumpsys activity recents 2>/dev/null | grep -E '^ *\* Recent #' | sed -E 's/.*\{[0-9a-f]+ #([0-9]+) [AI]=([^ ]*) .*/\1:\2/; s/com\.android\.//' | tr '\n' ' '; }   # task id:affinity-or-component of every Recents task, newest first (run 99: Contacts vanished although spared)
 info "RT task ids before Quickstep: $(tl)"
 adb shell locksettings set-pin 1234 > "$OUT/rt-setpin.txt" 2>&1
 adb logcat -c
@@ -1095,7 +1095,7 @@ adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session end
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
 info "RT after the lock: $(rec)"
 info "RT the clean-up said: $(grep 'AT LOCK' $OUT/rt-log-lock.txt | tail -1 | cut -c1-420)"
-info "RT the plan (base | now | stop | remove by id | spared): $(grep 'session end' $OUT/rt-log-lock.txt | tail -1 | sed 's/^.*session end: //' | cut -c1-600)"
+info "RT the plan: $(grep 'session end' $OUT/rt-log-lock.txt | tail -1 | sed 's/^.*session end: //; s/base [^|]*| now [^|]*| //; s/com\.android\.//g' | cut -c1-340)"
 info "RT task ids after the lock: $(tl)"
 info "RT helper log tail: $(adb shell tail -n 6 /data/local/tmp/tjshell.log 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' > "$OUT/rt-recents-after.txt"; adb shell dumpsys activity recents 2>/dev/null | grep 'Recent #' | sed 's/^ *//' | cut -c1-100 > "$OUT/rt-recents-headers-after.txt"
@@ -1262,7 +1262,8 @@ adb shell cmd statusbar collapse; sleep 1.5
 ( probe notifpolicy 0x1FC 2 22 > "$OUT/rs4-dnd.txt" 2>&1 & ) ; sleep 6
 adb shell cmd statusbar expand-notifications; sleep 2.5
 adb shell uiautomator dump /sdcard/rs4c.xml >/dev/null 2>&1; shot 143-rs4-shade-with-policy
-info "RS4 b with the DND policy (hide list, priority-only): probe said [$(tr '\n' ' ' < $OUT/rs4-dnd.txt | cut -c1-420)]; the notification is in the shade: $(adb shell cat /sdcard/rs4c.xml 2>/dev/null | grep -c HELLOTITLE) time(s); zen_mode=$(adb shell settings get global zen_mode | tr -d '\r\n')"
+info "RS4 b with the DND policy (hide list, priority-only): the notification is in the shade: $(adb shell cat /sdcard/rs4c.xml 2>/dev/null | grep -c HELLOTITLE) time(s); zen_mode=$(adb shell settings get global zen_mode | tr -d '\r\n'); probe ended OK: $(grep -c 'OK' $OUT/rs4-dnd.txt)"
+info "RS4 b the probe said (tail): $(tr '\n' ' ' < $OUT/rs4-dnd.txt | sed 's/.*suppressedVisualEffects/suppressedVisualEffects/' | cut -c1-330)"
 adb shell cmd statusbar collapse; sleep 17
 adb shell cmd statusbar expand-notifications; sleep 2.5
 adb shell uiautomator dump /sdcard/rs4d.xml >/dev/null 2>&1
@@ -1391,8 +1392,9 @@ check "RB3: the retail-demo flag is off" bash -c "v=\$(tr -d ' \r\n' < $OUT/rb-d
 #    Run 100: four tries with the pad taps (the way every other section does it) never got past FallbackHome. A restarted tablet shows an extra line on the PIN screen, so the pad may sit lower than the
 #    fixed coordinates; the PIN as key events does not depend on the layout. Tries alternate between the two (6 in all) and every failed try prints what the screen shows, so a failure explains itself.
 rbstate(){ echo "user0 $(adb shell dumpsys user 2>/dev/null | grep -oE 'State: [A-Z_]+' | head -1), ce_available=$(adb shell getprop sys.user.0.ce_available | tr -d '\r\n'), keyguard: $(adb shell dumpsys window 2>/dev/null | grep -oE '(mShowingLockscreen|isKeyguardShowing|mDreamingLockscreen|mKeyguardGoingAway)=[a-z]+' | sort -u | tr '\n' ' ')"; }
-rbui(){ adb shell uiautomator dump /sdcard/rbui.xml >/dev/null 2>&1; adb shell cat /sdcard/rbui.xml 2>/dev/null | grep -oE '(text|content-desc)="[^"]+"' | cut -d'"' -f2 | tr '\n' '|' | cut -c1-260; }
-info "RB right after the restart: $(rbstate); the screen shows: $(rbui)"
+rbui(){ adb shell uiautomator dump /sdcard/rbui.xml >/dev/null 2>&1; adb shell cat /sdcard/rbui.xml 2>/dev/null | grep -oE '(text|content-desc)="[^"]+"' | cut -d'"' -f2 | tr '\n' '|' | cut -c1-330; }
+info "RB right after the restart: $(rbstate)"
+info "RB the screen right after the restart shows: $(rbui)"
 RBUNLOCKED=0
 for try in 1 2 3 4 5 6; do
   adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
@@ -1401,7 +1403,8 @@ for try in 1 2 3 4 5 6; do
   sleep 8
   resumed > "$OUT/rb-resumed.txt"
   if ! grep -q FallbackHome "$OUT/rb-resumed.txt"; then RBUNLOCKED=1; break; fi
-  info "RB try $try ($RBHOW) did not unlock: $(rbstate); the screen shows: $(rbui)"
+  info "RB try $try ($RBHOW) did not unlock: $(rbstate)"
+  info "RB try $try screen: $(rbui)"
 done
 info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try ($RBHOW)" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
