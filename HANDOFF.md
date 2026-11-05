@@ -36,6 +36,7 @@ checked against the repo at that date; where it can go stale it says where to lo
    If you did not see it: `bash tools/resume.sh`.
 3. Look for unfinished work: `git status`, `git log --oneline -5`, and "another branch has N commits this one lacks" in the briefing.
 4. Compare the `INBOX.md` tail with `TASKS.md`: any message of Tj's that has no `[ ]`/`[x]` entry and no answer is unanswered — handle it first.
+   **If Tj sent tablet files** (`tablet-report.txt`, a `launcher-probe` folder or zip, or pasted report text): `bash tools/tablet-intake.sh <file|folder|zip>` (`-` = standard input), then read `research/tablet/LATEST.md` (red flags first), commit `research/tablet` with `ckpt`, and write what it decides into `TASKS.md`. Details: `research/tablet/README.md`.
 5. Tools you need (names as seen in this environment): GitHub MCP (`mcp__github__*`: `actions_run_trigger`, `actions_get`, `actions_list`,
    `get_release_by_tag`, …), `Bash`, `Read/Edit/Write`. There is **no `gh` CLI**. Session scope is the single repo `tjshea90/Launcher`.
 6. Secrets: never paste or commit one (`tools/secretscan.sh` blocks it). The keystore is committed on purpose as base64 (`signing/README.md`);
@@ -129,7 +130,7 @@ L10 (standing safety rule: before ANY release be highly confident nothing breaks
 `service.adb.tcp.port` answer), per-launcher setting bundles (DND/animation/brightness).
 
 ## 8. Document index (`research/` unless noted)
-`SAFETY_2026-11-05.md` (what could force a factory reset, what prevents it, recovery steps, evidence, code-review outcomes) · `EFFICIENCY_2026-11-05.md` · `BUTTONMAPPER_2026-11-05.md` (power key: AOSP quotes, "Power menu v2") · `OPEN_BUT_HIDDEN_2026-11-05.md` (8 candidates measured) · `REEXAMINE_2026-11-05.md` (the ranked ideas behind AA1-AA3) · `ADB_TODO.md` (every adb command, fast path on top) · `ADB_PHONE.txt` (adb from a phone) · `ADB_COMMANDS.txt` · `PROFILES_2026-11-04.md` (two-profiles design + limits) · `IDEAS_2026-11-04.md`
+`tablet/README.md` + `tablet/LATEST.md` (**what the real tablet told us**: every intake of a tablet report, redacted, with a facts file; tool `tools/tablet-intake.sh`, test `tools/test_tablet_intake.sh`) · `SAFETY_2026-11-05.md` (what could force a factory reset, what prevents it, recovery steps, evidence, code-review outcomes) · `EFFICIENCY_2026-11-05.md` · `BUTTONMAPPER_2026-11-05.md` (power key: AOSP quotes, "Power menu v2") · `OPEN_BUT_HIDDEN_2026-11-05.md` (8 candidates measured) · `REEXAMINE_2026-11-05.md` (the ranked ideas behind AA1-AA3) · `ADB_TODO.md` (every adb command, fast path on top) · `ADB_PHONE.txt` (adb from a phone) · `ADB_COMMANDS.txt` · `PROFILES_2026-11-04.md` (two-profiles design + limits) · `IDEAS_2026-11-04.md`
 (separation / power menu / pencil / Settings plan / accelerometer) · `NOTES_2026-11-04.md` (answered research) · `DESIGN_2026-11-02.md` (foundation design, safety rules §6) ·
 `SETTINGS_CLONE_2026-11-02.md` · `FIRST_INSTALL.md` · `HANDOFF_2026-11-03.md`, `HANDOFF_2026-11-04.md` (older, history) · `reference/stock/INDEX.md` (**the stock-launcher photos are the ground
 truth for the look**: open `stock-home.png`/`stock-drawer.png` and measure before saying a look is matched) · root: `BRIEF.md`, `BUILDLOG.md`, `TASKS.md`, `CHECKPOINT.md`, `INBOX.md`.
