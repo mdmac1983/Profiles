@@ -61,7 +61,7 @@
 
 ## 4. What would work: "Power menu v2" (not built; needs Tj's decision)
 
-Measured on the emulator (`rs3` b2/b3): the **shell user may set `StatusBarManager.DISABLE2_GLOBAL_ACTIONS` (0x8)**. While the setting process lives, pressing the power key does **not** open the stock menu at all; when the process ends Android clears the flag and the stock menu is back. So:
+Measured on the emulator (`rs2` a1 and `rs3` b2/b3, injected with `input keyevent --longpress KEYCODE_POWER`; see section 3): the **shell user may set `StatusBarManager.DISABLE2_GLOBAL_ACTIONS` (0x8)**. While the setting process lives, the power long-press does **not** open the stock menu; when the process ends Android clears the flag and the stock menu is back (stock SystemUI source: `GlobalActionsImpl.showGlobalActions` returns early while the flag is set). So:
 
 1. the shell helper (already needed for the clean-up) holds the flag and reads the power key from the kernel input device with `getevent` (the shell can list it: `getevent -pl` shows `KEY_POWER`; whether it can *read* it on the tablet is the one thing still to prove, the guide has a card for the device name);
 2. when the key has been held for the long-press time, the launcher shows its **own** card (Power off / Restart, no Screenshot), drawn as an overlay, and does the action itself (`svc power shutdown` / `svc power reboot` run by the helper; the shell holds `REBOOT`);
