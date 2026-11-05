@@ -228,14 +228,21 @@ public class SetupActivity extends Activity {
     }
 
     /** Tj, 2026-11-05 (Power menu v2): can the shell read the side key here, and does the "no power menu" flag keep the normal menu away? The helper does the 13-second routine; the person holds the key. */
+    /** One side-key test at a time: a second tap while it runs would start a second 13 s routine (two getevent readers and two flag holders racing for the same key press and for the stored verdict). */
+    private final java.util.concurrent.atomic.AtomicBoolean keyTestRunning = new java.util.concurrent.atomic.AtomicBoolean(false);
+
     private void keyTest() {
+        if (!keyTestRunning.compareAndSet(false, true)) { say("The side-key test is already running: wait for its answer (about 13 seconds)."); return; }
         Features.setString(this, "keytest_menu", "");
         say("SIDE-KEY TEST: within the next 8 seconds hold the SIDE key (power) for about 1.5 seconds, then let go. Never hold it longer than 3 seconds.");
         new Thread(new Runnable() { public void run() {
-            String res = runKeyTest();
-            if (res == null) { say("side-key test FAILED (is the helper running?)"); return; }
-            say("side-key test: " + ShellProtocol.keyTestSummary(res));
-            ui.post(new Runnable() { public void run() { build(); } });
+            try {
+                String res = runKeyTest();
+                say(res == null ? "side-key test FAILED (is the helper running?)" : "side-key test: " + ShellProtocol.keyTestSummary(res));
+            } finally {
+                keyTestRunning.set(false);
+                ui.post(new Runnable() { public void run() { build(); } });   // success AND failure: the screen must not keep an old verdict next to a cleared answer
+            }
         } }, "tj-setup-keytest").start();
     }
 
