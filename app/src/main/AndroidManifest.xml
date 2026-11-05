@@ -40,6 +40,8 @@
          (127.0.0.1, ports 47631-47635; SELinux forbids apps the shell user's abstract unix socket). No code opens any other address; the helper is off unless Tj starts it with adb. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />   <!-- N2: a 40 ms buzz when an unlock handshake is accepted -->
+    <!-- AA2: a normal permission (granted at install, no adb): lets the keep-alive foreground service run, so the launcher process stays in memory for a faster unlock. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
 
     <!--
@@ -291,6 +293,11 @@
             android:exported="false"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="adb setup guide" />
+
+        <!-- AA2: keep-alive foreground service (does no work; one silent notification). Started by the router and the accessibility helper, stopped by the switch / Restore everything. -->
+        <service
+            android:name="com.tj.launcher.KeepAliveService"
+            android:exported="false" />
 
         <!-- Tj: power-menu helper. Does nothing until Tj turns it on in Settings > Accessibility, and nothing unless a power mode is chosen. -->
         <service

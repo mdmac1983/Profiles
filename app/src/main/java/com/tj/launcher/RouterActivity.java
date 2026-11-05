@@ -45,6 +45,7 @@ public class RouterActivity extends Activity {
 
     private void route(Intent in) {
         ProfileSession.checkBoot(this);   // N7: a restart ends a Quickstep session
+        KeepAliveService.ensure(this);    // AA2: the process stays in memory (no-op when it already runs or the switch is off)
         String pre = in == null ? null : in.getStringExtra(EXTRA_PREARM);
         if ("stock".equals(pre)) { startStock(); return; }
         boolean prearm = "custom".equals(pre);

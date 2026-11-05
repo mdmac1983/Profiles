@@ -193,6 +193,13 @@ public class ControlActivity extends Activity {
         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
+        section("Speed");
+        toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\", no status-bar icon, hidden on the lock screen) sits at the bottom of the notification shade. Off = Android may close the launcher when memory is short.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, KeepAlivePolicy.KEY, v);
+            KeepAliveService.ensure(ControlActivity.this);
+        } });
+        note("Keep-alive now: " + (KeepAliveService.running() ? "RUNNING (the launcher process is a foreground service)" : "not running") + ".  Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
+
         section("Invisible clean-up (needs adb after every restart)");
         final boolean helperUp = ShellHelper.reachable();
         LinearLayout hc = card();
