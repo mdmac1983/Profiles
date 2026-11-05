@@ -1,13 +1,13 @@
-# CHECKPOINT 312 — read me first, then TASKS.md
+# CHECKPOINT 313 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T05:11:01Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `61d5725` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T05:32:33Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-3bcc29a7-cuz0x0` · **builds on:** `3d241d8` (this checkpoint is the commit after it)
 
 ## Just done
-v0.7.0 RELEASED: https://github.com/tjshea90/Launcher/releases/tag/v0.7.0 (Launcher-v0.7.0.apk 8.9 MB + PhoneGuide-v0.7.0.apk), android.yml run 19 green, BUILDLOG recorded. AA1-AA6 and AB1-AB5 all ticked with proof
+Tj asked what Power menu v2 and the standing items are: answered in chat; his question + the 5 decisions that wait on him recorded in TASKS.md and HANDOFF section 6
 
 ## Do this next
-NOTHING pending for v0.7.0 except Tj: install on the tablet + the OTG session (HANDOFF 0b recipe), then read his report (status lines, Last unlock, panel/power menu/status bar look, guide section 7 replies). Open standing items: V5/U3 (need tablet numbers), Power menu v2 (his go-ahead), SET1 (his go + inputs), L3/L5/L10
+Nothing to build until Tj decides. v0.7.0 is released (https://github.com/tjshea90/Launcher/releases/tag/v0.7.0). If he says yes to the v0.7.1 guide card: add a getevent read-test card to phoneguide steps.txt (and research/ADB_PHONE_COMMANDS.txt, identical), run emulator sections gc and g, ship v0.7.1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -18,6 +18,7 @@ NOTHING pending for v0.7.0 except Tj: install on the tablet + the OTG session (H
 
 ## Last ten checkpoints
 ```
+  3de52f1 ckpt 312: v0.7.0 RELEASED: https://github.com/tjshea90/Launcher/releases/tag/v0.7.0 (Lau
   245c684 ckpt 311: v0.7.0 gated by ship.sh (handoff 29/29, unit 220 green, lint clean) and pushed
   2a547f6 ckpt 310: gated v0.7.0 (code 17) and pushed it: the handoff self-test, the full unit sui
   92a21c6 ckpt 309: pre-ship: v0.7.0: task-precise Recents clean-up at the lock (only Quickstep's 
@@ -27,5 +28,7 @@ NOTHING pending for v0.7.0 except Tj: install on the tablet + the OTG session (H
   dc1c928 ckpt 305: gc harness bug: *PATH* skipped every CLASSPATH= line (helper start + ShellProb
   c8077b8 ckpt 304: gc harness: process evidence for the helper check; rt PASSES (run 108: 18 PASS
   2e195a9 ckpt 303: rt: run 106 showed Android's Recents DROPS the older same-affinity task when a
-  7c43805 ckpt 302: Review fixes: ImmersiveProfile owns-only undo + snapshot refresh, KeepAlive st
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)

@@ -118,6 +118,7 @@ checked against the repo at that date; where it can go stale it says where to lo
    first unlock, `power_menu_actions`, compile state, memory/process facts, and delivers the tablet's own Settings APK for SET1.
 3. Screenshots + keep/remove list for the Settings clone (SET1/C4) when he is ready.
 4. Optional housekeeping: delete the old branch `ccr-4ff66321-chzhhg`; Dependabot PRs re-open against `main`.
+5. **Decisions only Tj can make** (asked and explained 2026-11-05; exact list in the last block of `TASKS.md`): build "Power menu v2" or not; go / no-go and keep-list for the Settings front door (SET1); confirm the tile behaviour (L5) on the tablet; close G3d; report "Last unlock" (U3) and the lock-screen menu look (V5).
 
 ## 6b. Tj's open requests at hand-off time (all are in TASKS.md in his words)
 AA1-AA6 and AB1-AB5 (his 2026-11-05 messages: status-bar switch, keep-alive, task-precise clean-up, safety audit, efficiency, notification panel, guide completeness, Button Mapper; all built, proven or answered in v0.7.0 except AA6 = the tablet run and the release itself), U1-U3 (lock-screen delay: measure + compile + stopwatch), V1-V4 (lock-screen wallpaper patch covering the whole 3-button menu, card = top two buttons, auto-calibration), W1-W2 (probe extras), P2 (keep Quickstep apps open but invisible: answered "not seamless", documented), Y1-Y5 (phone guide app + this hand-off). Check each box's PROOF line before assuming it is finished; anything `[ ]` is not proven.
