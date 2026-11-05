@@ -761,3 +761,18 @@ Release the next version. If i update it, will i need adb again
 ```
 This session's worker process was restarted. If your previous turn was already complete, take no action and wait for the next event. Otherwise, continue from where you left off.
 ```
+
+## 2026-11-05T22:17:01Z
+```
+Resume where the other Claude account left off, and do this:
+
+1) sometimes when I go to the lock screen and type the regular code with no gesture, it opens to quickstep. If I don't use a gesture and type the pin normally, it should ALWAYS open to the custom launcher, without exception. The custom launcher should never have open or recent apps from quickstep, wifi, Bluetooth, or anything more than the single quick settings tile
+2) I turned off the feature to automatically open solitaire, yet I see it in the Quickstep launcher recent apps often.
+3) make it so custom launcher automatically disables battery saver mode. I turned on battery saver from quickstep then went to the custom launcher and it was still on. I want the custom launcher to turn it off immediately, if possible without any delay, maybe this can be prepped ahead of time
+4) adb permissions are enabled. Will this persist through restarts? Will the custom launcher, lock screen gestures and accessibility overlays all persist through restarts and work immediately after boot?
+5) is there anything I can do with the adb permissions to send to Claude to improve or speed up the launcher and improve the power menu custom overlay?
+6) the lock screen power menu overlay doesn't look right at all. It has the wrong patch of wallpaper and the buttons and card are too small. How can I get Claude to make it exact? The overlay must be on the lock screen permanently at all times so the original power menu never shows up
+7) a couple times I did the lock screen gesture to unlock to quickstep but it opened the custom launcher. Make sure the gestures are responsive
+8) if possible, prepare the custom launcher invisibly when the lock screen is on, so it can open fast. I think there is a setting for this in the launcher, but it opens solitaire also. I turned the solitaire setting off, so it shouldn't load it under the lock screen.
+9) even though the custom launcher is prepared to open on the lock screen, if I do the gesture for quickstep, always open quickstep
+```
