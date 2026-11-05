@@ -1231,6 +1231,24 @@ getmode > "$OUT/ac7-mode.txt"; resumed > "$OUT/ac7-resumed.txt"
 check "AC7: a wrong PIN after the gesture, then the right PIN plain: Quickstep (the gesture is not lost)" grep -q quickstep "$OUT/ac7-mode.txt"
 check "AC7: and the stock launcher is on screen" grep -q "com.android.launcher3/" "$OUT/ac7-resumed.txt"
 
+# ---- AC1 safety net: the helper is NOT running at the unlock; when it comes back the Quickstep session is ended (Android's usage events say the keyguard was shown after the session began)
+adb shell appops set "$PKG" GET_USAGE_STATS allow >/dev/null 2>&1
+acfeat true false true
+NOWMS=$(( $(adb shell date +%s | tr -d '\r\n') * 1000 ))
+adb shell am force-stop "$PKG"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"mode\\\">quickstep</string><long name=\\\"changedAt\\\" value=\\\"$(( NOWMS - 5000 ))\\\" /></map>\" > shared_prefs/tj_mode.xml'"
+adb shell settings put secure enabled_accessibility_services ""; sleep 2          # the helper is away
+lockpad; pad 1 2 3 4 e; sleep 6                                                   # a plain PIN that nobody sees
+getmode > "$OUT/ac-b6-before.txt"
+adb shell dumpsys usagestats 2>/dev/null | grep -iE "KEYGUARD" | tail -3 | cut -c1-160 > "$OUT/ac-b6-usagestats.txt"
+info "AC1 safety net: usage events about the keyguard on this emulator: $(tr '\n' '|' < $OUT/ac-b6-usagestats.txt | cut -c1-300)"
+rebind; sleep 9                                                                    # the helper comes back, asks the usage events, ends the session
+getmode > "$OUT/ac-b6-after.txt"
+adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | grep RECONCILE > "$OUT/ac-b6-log.txt"
+check "AC1 safety net (control): while the helper is away a plain PIN is not seen, the mode is still Quickstep" grep -q quickstep "$OUT/ac-b6-before.txt"
+check "AC1 safety net: when the helper comes back it ends the Quickstep session (the keyguard was shown after it began, no handshake)" grep -q custom "$OUT/ac-b6-after.txt"
+check "AC1 safety net: the lock log says RECONCILE" test -s "$OUT/ac-b6-log.txt"
+
 # ---- AC1 / AC7 evidence: the persistent decision log exists, says what happened, and holds no digit of the PIN
 adb shell "run-as $PKG cat files/lock-events.log" > "$OUT/ac-lock-events.txt" 2>&1
 info "AC log: $(wc -l < $OUT/ac-lock-events.txt | tr -d ' ') lines; last: $(tail -2 $OUT/ac-lock-events.txt | cut -c1-120 | tr '\n' '|')"
