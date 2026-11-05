@@ -11,5 +11,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- its own task (a different affinity than the main one, which is the package name): see SecondActivity -->
+        <activity android:name="com.tj.testnotifier.SecondActivity" android:exported="true" android:taskAffinity="${applicationId}.two" />
     </application>
 </manifest>

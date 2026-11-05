@@ -1092,14 +1092,14 @@ check "AA3: a Quickstep session began (the handshake worked)" grep -q quickstep 
 check "AA3: the custom account's tasks were remembered when it began" grep -q "session start: .* task(s) belong to the custom account" "$OUT/rt-log-start.txt"
 # inside Quickstep: two apps that exist only here, Contacts again (real app: the task ids after each step are printed), and a REAL second task of the shared test app
 for APP in com.android.gallery3d com.android.email com.android.contacts; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; info "RT task ids after opening ${APP#com.android.} in Quickstep: $(tl)"; done
-adb shell am start -n com.android.contacts/.activities.PeopleActivity -f 0x18000000 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
-info "RT task ids after Contacts' second launch (NEW_TASK + MULTIPLE_TASK): $(tl)"
-adb shell am start -n $SN/com.tj.testnotifier.MainActivity --ez quiet true -f 0x18000000 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
+# a REAL second task of the shared test app: another activity with its own task affinity (a relaunch with MULTIPLE_TASK is not it: Android then drops the OLDER task of the same affinity from Recents, run 106)
+adb shell am start -n $SN/com.tj.testnotifier.SecondActivity >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
 info "RT during Quickstep: $(rec)"
 TLB=$(tl); SB=$(echo "$TLB" | tr ' ' '\n' | grep ":$SN\$" | grep -v "^$SA:" | head -1 | cut -d: -f1)
 info "RT task ids during Quickstep (just before the lock): $TLB (test app: custom task ${SA:-none}, Quickstep's second task ${SB:-none})"
 check "AA3-S0: Android created a SECOND task of the shared test app (so the test means something)" bash -c "[ -n '$SA' ] && [ -n '$SB' ]"
-SPID0=$(adb shell pidof $SN | tr -d '\r\n'); CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
+SPID0=$(adb shell pidof $SN | tr -d '\r\n'); CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n'); CT0=$(echo "$TLB" | tr ' ' '\n' | grep ':android.task.contacts$' | head -1 | cut -d: -f1)
+info "RT progress: about to lock, +${SECONDS}s (Contacts task ${CT0:-none}, processes: test app ${SPID0:-none}, Contacts ${CPID0:-none})"
 adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session ends; the helper cleans up before any wake
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
@@ -1109,21 +1109,25 @@ info "RT the plan: $(grep 'session end' $OUT/rt-log-lock.txt | tail -1 | sed 's/
 TLA=$(tl); SPID1=$(adb shell pidof $SN | tr -d '\r\n'); CPID1=$(adb shell pidof com.android.contacts | tr -d '\r\n')
 info "RT task ids after the lock: $TLA"
 info "RT processes before -> after the lock: test app ${SPID0:-none} -> ${SPID1:-none}, Contacts ${CPID0:-none} -> ${CPID1:-none}"
+info "RT progress: locked and read, +${SECONDS}s"
 info "RT helper log tail: $(adb shell tail -n 6 /data/local/tmp/tjshell.log 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' > "$OUT/rt-recents-after.txt"; adb shell dumpsys activity recents 2>/dev/null | grep 'Recent #' | sed 's/^ *//' | cut -c1-100 > "$OUT/rt-recents-headers-after.txt"
 check "AA3: the lock-time clean-up used the task list (it reports the new/closed/removed/spared counts)" grep -q "tasks: [0-9]* new since the session began" "$OUT/rt-log-lock.txt"
 check "AA3: Gallery (only opened in Quickstep) is gone from Recents" bash -c "! grep -qi 'gallery' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
 check "AA3: Email (only opened in Quickstep) is gone from Recents" bash -c "! grep -qi 'email' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
-check "AA3: Contacts (open in both worlds) was spared: not force-stopped, the same process before and after the lock" bash -c "[ -n '$CPID0' ] && [ '$CPID0' = '$CPID1' ]"
+check "AA3: Contacts (open in the custom account, only RESUMED by Quickstep) is left alone: the same task is still in Recents" bash -c "[ -n '$CT0' ] && echo '$TLA' | tr ' ' '\n' | grep -q '^$CT0:'"
+check "AA3: Contacts is left alone: the same process before and after the lock" bash -c "[ -n '$CPID0' ] && [ '$CPID0' = '$CPID1' ]"
 check "AA3-S1: Quickstep's SECOND task of the shared test app is gone after the lock (removed by id)" bash -c "[ -n '$SB' ] && ! echo '$TLA' | tr ' ' '\n' | grep -q '^$SB:'"
 check "AA3-S2: the custom account's OWN task of the shared test app is still there (same id)" bash -c "[ -n '$SA' ] && echo '$TLA' | tr ' ' '\n' | grep -q '^$SA:'"
 check "AA3-S3: the shared test app was not force-stopped (the same process before and after the lock)" bash -c "[ -n '$SPID0' ] && [ '$SPID0' = '$SPID1' ]"
 check "AA3: Solitaire (Calendar here), the target, is untouched" bash -c "grep -qi 'calendar' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
 getmode > "$OUT/rt-mode-after.txt"
 check "AA3: the custom account is active again behind the lock screen" grep -q custom "$OUT/rt-mode-after.txt"
+info "RT progress: checks done, +${SECONDS}s"
 adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
 pad 1 2 3 4 e; sleep 4
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+info "RT progress: unlocked again, +${SECONDS}s"
 adb uninstall $SN >/dev/null 2>&1
 adb shell locksettings clear --old 1234 > "$OUT/rt-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
