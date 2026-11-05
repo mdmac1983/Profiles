@@ -1,13 +1,13 @@
-# CHECKPOINT 348 — read me first, then TASKS.md
+# CHECKPOINT 349 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T18:51:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `a9cef92` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T18:54:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-888039cc-xwzdeh` · **builds on:** `ec20d98` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's step 6 photo: the app-side report works without the helper (31 KB, in the app folder), the publish to Downloads needs the helper and the DONE line then misleads; buttons 1, 3, 4 greyed; UX1 added; step 7 sent: copy the report to Downloads by hand from the phone and ls -l both folders (MBX1 evidence)
+Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0_a243, group sdcard_rw) and copied it to Downloads/launcher-probe: MBX1 viable in the app->shell direction; step 8 sent: helper liveness (started 1:31) + tj.log + a shell-writes-into-the-app-folder test
 
 ## Do this next
-WAIT for Tj's screenshot of the cp + ls -l line: if the copy worked, the shell CAN read what the app writes there (MBX1 viable) and the report is in Downloads/launcher-probe; then tell Tj to unplug (or offer ONE more cable test: the side-key read test) and to send tablet-report.txt later from the tablet (Files app share, or 2b); then v0.7.2 = KA1 + MBX1 + UX1 + PG5/PG6 + RS1
+WAIT for Tj's step 8 screenshot (ps count, tj.log, ls -l of the probe folder with from-shell.txt: owner/mode); then tell Tj he can unplug and send tablet-report.txt from Downloads/launcher-probe later (Files app share or 2b); then intake it: bash tools/tablet-intake.sh <file>, read research/tablet/LATEST.md; v0.7.2 = KA1 + MBX1 + UX1 + PG5/PG6 + RS1 (+ HLP1 if the helper died)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ WAIT for Tj's screenshot of the cp + ls -l line: if the copy worked, the shell C
 
 ## Last ten checkpoints
 ```
+  ec20d98 ckpt 348: Tj's step 6 photo: the app-side report works without the helper (31 KB, in the
   a9cef92 ckpt 347: Tj's step 5 (1:47): SELinux Enforcing, build = MediaTek alps user/release-keys
   f04ea27 ckpt 346: Tj's crash log (1:39): the first-open crash = the keep-alive notification (id 
   6accd5d ckpt 345: Tj's step 3 result (1:37): grants, app-ops, battery whitelist and speed compil
@@ -26,5 +27,4 @@ WAIT for Tj's screenshot of the cp + ls -l line: if the copy worked, the shell C
   000d69b ckpt 341: Tj says the launcher crashed when first opened on the tablet and now seems to 
   c87f389 ckpt 340: Tj's 3rd screenshots: the helper starts fine (unix up for uid 10243, tcp 47631
   bf2b0c8 ckpt 339: Tj's 2nd screenshot (1:02): helper start attempt 1 left no process, attempt 2 
-  336c9e7 ckpt 338: Tj is in the CABLE SESSION (screenshot 12:59 phone clock): shell uid 2000 OK, 
 ```
