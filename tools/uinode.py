@@ -38,7 +38,10 @@ def main(argv):
     try:
         text = open(path, encoding="utf-8", errors="replace").read()
         start = text.find("<?xml")
-        root = ET.fromstring(text[start:] if start >= 0 else text)
+        if start < 0:
+            start = max(text.find("<hierarchy"), 0)
+        end = text.rfind("</hierarchy>")                 # uiautomator may print a status line after the document
+        root = ET.fromstring(text[start:end + len("</hierarchy>")] if end >= 0 else text[start:])
     except Exception:
         return 1
     nodes = [n for n in root.iter("node") if bounds(n)]
