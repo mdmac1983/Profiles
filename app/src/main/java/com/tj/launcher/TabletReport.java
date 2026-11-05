@@ -156,14 +156,16 @@ public final class TabletReport {
     /** The launcher's own log lines, as far as the app itself may read them (an app sees only its own lines; the shell helper's probe adds the rest when it runs). */
     private static String ownLog(int maxLines) {
         StringBuilder b = new StringBuilder("\n\n===== THE LAUNCHER'S OWN LOG (what the app itself may read)\n");
+        Process p = null;
         try {
-            Process p = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "TjReset:I", "TjTasks:I", "TjA11y:I", "TjKeepAlive:I", "TjImmersive:I", "TjRouter:I", "TjHooks:I", "TjKeyboard:I", "TjRecentsGuard:I").redirectErrorStream(true).start();
+            p = new ProcessBuilder("logcat", "-d", "-v", "time", "-s", "TjReset:I", "TjTasks:I", "TjA11y:I", "TjKeepAlive:I", "TjImmersive:I", "TjRouter:I", "TjHooks:I", "TjKeyboard:I", "TjRecentsGuard:I").redirectErrorStream(true).start();
             java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));
             java.util.ArrayDeque<String> last = new java.util.ArrayDeque<>();
             String l;
             while ((l = r.readLine()) != null) { last.add(l); if (last.size() > maxLines) last.removeFirst(); }
             for (String s : last) b.append(s).append('\n');
         } catch (Throwable t) { b.append("(not readable: ").append(t).append(")\n"); }
+        finally { if (p != null) p.destroy(); }   // a read that failed half way must not leave the logcat child running
         return b.toString();
     }
 
