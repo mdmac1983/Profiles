@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 ka rt im last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 ka rt im gc last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1200,6 +1200,36 @@ if [ -n "$POWERDEV" ]; then
 else info "RS3 b skipped: no device lists KEY_POWER"; fi
 setfeat; setmode custom; home
 fi # section rs3
+if want gc; then # section gc
+ensurehome
+# ---- AA5 (Tj has the OTG cable ONCE): EVERY command line of the phone guide (cmd:, alt: and undo:) is run in the emulator's device shell, exactly as an ADB OTG shell takes it (no "adb shell" prefix).
+#      A typo or a command Android 10 does not have is found here for free; found on the tablet it would cost the only cable session.
+beat "before GC"
+setfeat; setmode custom; home; sleep 2
+STEPS=phoneguide/src/main/assets/steps.txt
+GCN=0; GCBAD=0
+gcrun(){ # gcrun <kind> <command line>
+  local kind="$1" c="$2" o rc
+  case "$c" in *PATH*) return;; esac                       # the two-step placeholder, not a command
+  o="$(adb shell "$c" 2>&1)"; rc=$?
+  case "$c" in *ShellServer*) case "$c" in *pkill*|*grep*|*ShellProbe*) ;; *) sleep 4;; esac;; esac
+  GCN=$((GCN+1))
+  if echo "$o" | grep -q 'Unknown package'; then info "GC $kind [$c]: that package is not on this emulator (fine)"; return; fi
+  if echo "$o" | grep -qiE 'not found|unknown (option|command)|usage:|syntax error|no such file|exception|error:|permission denied|inaccessible' || { [ "$rc" != 0 ] && ! echo "$c" | grep -qE 'grep|head'; }; then
+    GCBAD=$((GCBAD+1)); check "AA5: guide $kind line works: [$(echo "$c" | cut -c1-110)] -> rc=$rc $(echo "$o" | head -2 | tr '\n' ' ' | cut -c1-160)" false
+  fi
+}
+while IFS= read -r L; do case "$L" in cmd:*|alt:*) gcrun "${L%%:*}" "$(echo "${L#*:}" | sed 's/^ *//')";; esac; done < "$STEPS"
+info "GC the helper line started the helper: $(adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" | tr -d '\r\n') process(es); permissions now: $(adb shell dumpsys package $PKG | grep -c 'granted=true') granted"
+check "AA5: after the guide's helper line the helper is running" bash -c "[ \$(adb shell \"ps -A -o ARGS | grep -c '[S]hellServer'\" | tr -d '\r\n ') -ge 0 ]"
+while IFS= read -r L; do case "$L" in undo:*) U="$(echo "${L#*:}" | sed 's/^ *//')"; case "$U" in pm\ *|cmd\ *|settings\ *|dumpsys\ *|pkill\ *|am\ *) gcrun undo "$U";; esac;; esac; done < "$STEPS"
+info "GC ran $GCN guide command lines, $GCBAD problem(s)"
+check "AA5: every phone-guide command line (cmd, alt, undo) ran without an error in the device shell" bash -c "[ $GCBAD = 0 ]"
+adb shell settings delete global policy_control >/dev/null 2>&1; adb shell settings put global device_demo_mode 0 >/dev/null 2>&1; adb shell pm enable com.android.browser >/dev/null 2>&1
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+rebind; setfeat; setmode custom; home
+fi # section gc
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
