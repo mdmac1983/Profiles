@@ -145,4 +145,44 @@ public class ShellProtocolTest {
         for (String p : ShellProtocol.APK_PACKAGES) assertTrue(p, p.matches("[a-z0-9.]+"));
         assertTrue(ShellProtocol.PUBLISH_DIR.startsWith("/sdcard/Download/"));
     }
+
+    // ---- Tj, 2026-11-05: the side-key readiness test ("Power menu v2")
+    private static final String[] GETEVENT = {
+        "add device 1: /dev/input/event3", "  name:     \"mtk-kpd\"", "add device 2: /dev/input/event0", "  name:     \"mtk-tpd\"",
+        "[   45.123456] /dev/input/event3: EV_KEY       KEY_POWER            DOWN", "[   45.123456] /dev/input/event3: EV_SYN       SYN_REPORT           00000000",
+        "[   46.612345] /dev/input/event3: EV_KEY       KEY_POWER            UP", "[   46.612345] /dev/input/event3: EV_SYN       SYN_REPORT           00000000",
+        "[   47.000000] /dev/input/event0: EV_ABS       ABS_MT_POSITION_X    000001a4", "[   47.000000] /dev/input/event0: EV_KEY       BTN_TOUCH            DOWN" };
+    @Test public void theKeyTestIsAFixedRoutineNotAShellLine() {
+        assertTrue(ShellProtocol.isKeyTest(" KEYTEST "));
+        assertFalse(ShellProtocol.isKeyTest("KEYTEST; reboot"));
+        assertFalse(ShellProtocol.isKeyTest(null));
+        assertNull("it is not in the simple-line job table", ShellProtocol.runLine("KEYTEST"));
+    }
+    @Test public void keepsTheDevicesAndTheKeyEventsAndDropsTheTouchNoise() {
+        java.util.List<String> kept = ShellProtocol.keyTestLines(Arrays.asList(GETEVENT));
+        assertTrue(kept.toString(), kept.contains("add device 1: /dev/input/event3"));
+        assertTrue(kept.toString(), kept.contains("name:     \"mtk-kpd\""));
+        int power = 0; for (String l : kept) { assertFalse(l, l.contains("ABS_MT") || l.contains("BTN_TOUCH") || l.contains("SYN_REPORT")); if (l.contains("KEY_POWER")) power++; }
+        assertEquals(2, power);
+        assertTrue(ShellProtocol.keyTestLines(null).isEmpty());
+    }
+    @Test public void neverKeepsMoreThanFortyLines() {
+        java.util.List<String> many = new java.util.ArrayList<>();
+        for (int i = 0; i < 500; i++) many.add("[ 1.0] /dev/input/event3: EV_KEY KEY_VOLUMEUP DOWN");
+        assertEquals(40, ShellProtocol.keyTestLines(many).size());
+    }
+    @Test public void summarisesWhatTheHelperFound() {
+        String seen = "KEYTEST-START\n" + String.join("\n", ShellProtocol.keyTestLines(Arrays.asList(GETEVENT))) + "\nKEYTEST-END\nuid=2000\ndisable2(0x8) -> OK\ngetDisableFlags -> OK [0, 8]\ncleared\n";
+        String s = ShellProtocol.keyTestSummary(seen);
+        assertTrue(s, s.contains("side key WAS seen (held 1.5 s)"));
+        assertTrue(s, s.contains("MAY switch the normal power menu off"));
+        String none = ShellProtocol.keyTestSummary("KEYTEST-START\nKEYTEST-END\nuid=2000\ndisable2(0x8) -> java.lang.SecurityException REFUSED\n");
+        assertTrue(none, none.contains("NOT seen"));
+        assertTrue(none, none.contains("REFUSED"));
+        assertTrue(ShellProtocol.keyTestSummary(null).contains("no answer"));
+        assertTrue(ShellProtocol.keyTestSummary("  ").contains("no answer"));
+    }
+    @Test public void aKeyWithoutATimestampStillCounts() {
+        assertTrue(ShellProtocol.keyTestSummary("/dev/input/event3: EV_KEY KEY_POWER DOWN").contains("side key WAS seen"));
+    }
 }
