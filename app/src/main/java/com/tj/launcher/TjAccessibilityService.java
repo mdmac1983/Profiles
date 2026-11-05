@@ -759,9 +759,10 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Look at SystemUI events only (and keep checking while a cover is up, so it follows the panel and goes with it). Throttled. */
     private void schedulePencil(AccessibilityEvent e) {
-        if (!Mode.isCustom(this) || !Features.get(this, PEN_KEY, true) || DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // Q3: the native flag already removed the pencil   // N3: Quickstep needs no cover over the pencil
+        if (!Mode.isCustom(this) || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }   // N3: Quickstep needs no cover over the pencil
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
         if (!sysui && penView == null) return;
+        if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
         if (now - lastPenMs >= 40) { lastPenMs = now; updatePencil(); }
         if (!penPending) { penPending = true; handler.postDelayed(penEval, 90); }
