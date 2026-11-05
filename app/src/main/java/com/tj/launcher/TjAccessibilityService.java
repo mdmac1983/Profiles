@@ -56,6 +56,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }   // only the (rare, 10-minute) Solitaire probe wants those
             return;
         }
+        if (event != null && EventNoise.windowsJustChanged(event.getEventType())) fullScanUntilMs = android.os.SystemClock.uptimeMillis() + 300;   // AB2: look in every window for the next 300 ms (a power menu is a new window)
         scheduleLockUpdate();
         scheduleLayerRefresh();
         schedulePencil(event);
@@ -77,6 +78,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private long lastEvalMs = 0;
+    private long fullScanUntilMs = 0;
 
     /** AB2: is the Solitaire probe running? Read from the preferences at most once a second instead of on every event. */
     private long probeUntilCache = 0, probeCacheAt = -10_000;
@@ -778,6 +780,7 @@ public class TjAccessibilityService extends AccessibilityService {
         List<AccessibilityWindowInfo> windows = getWindows();
         if (windows == null) return null;
         for (AccessibilityWindowInfo w : windows) {
+            if (!EventNoise.isSystemWindow(w.getType())) continue;   // AB2: the pencil is in SystemUI's shade window; never wake an app (or the keyboard) just to read its package name
             AccessibilityNodeInfo root = w.getRoot();
             if (root == null) continue;
             try {
@@ -1328,6 +1331,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
             List<AccessibilityWindowInfo> windows = getWindows();
             final boolean dialogUp = dialogWindowPresent(windows);
+            final boolean everyWindow = android.os.SystemClock.uptimeMillis() < fullScanUntilMs;
             if (menuSeenMs == 0 && dialogUp) menuSeenMs = android.os.SystemClock.uptimeMillis();
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
@@ -1336,7 +1340,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (windows != null) {
                 for (AccessibilityWindowInfo w : windows) {
                     CharSequence wt = w.getTitle();
-                    if (!EventNoise.mayHoldPowerMenu(dialogUp, wt != null && wt.toString().contains("ActionsDialog"), w.getType())) continue;   // AB2: never fetch + search the foreground app's own tree
+                    if (!EventNoise.mayHoldPowerMenu(dialogUp, wt != null && wt.toString().contains("ActionsDialog"), w.getType(), everyWindow)) continue;   // AB2: never fetch + search the foreground app's own tree
                     AccessibilityNodeInfo root = w.getRoot();
                     if (root == null) continue;
                     if (getPackageName().contentEquals(root.getPackageName() == null ? "" : root.getPackageName())) { root.recycle(); continue; }

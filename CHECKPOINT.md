@@ -1,22 +1,25 @@
-# CHECKPOINT 290 — read me first, then TASKS.md
+# CHECKPOINT 291 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T01:50:09Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-8b1c3755-1tp147` · **builds on:** `5bfcd55` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T02:04:10Z · **tests:** all 1 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-8b1c3755-1tp147` · **builds on:** `5c3e323` (this checkpoint is the commit after it)
 
 ## Just done
-Tj's new message recorded as AB1-AB5: safety audit (no factory reset, ever), efficiency review for armv7 MT8168 2GB Android 10 Go, notification panel requirements in custom (normal, one tile, no pencil, never wifi/bt, never Quickstep notifications), guide completeness last, then research the Button Mapper claim. Emulator runs 80 (ka,y2,b4), 81 (rt), 82 (im,rs3) were in flight.
+AB2 efficiency (code, compiled, not yet unit-tested): EventNoise (drops other apps' content-change events, narrows power-menu scan to system windows except right after a window change), probeWanted/keyguardLockedFast caches, SharedPreferences handle caches, ReturnReset.targetPackage cached 10 min + persisted + async refresh, single-package openApp/startTargetBehindLock/findAppLabel, findPencil skips app windows; EventNoiseTest written
 
 ## Do this next
-read runs 80/81/82 (job ids: 126992678236 for run 80; list jobs for 41950388462 and 41950392187); fix FAILs; then AB1/AB2 reviews (read TjAccessibilityService hot paths first), AB3 section pf, AB4, ship 0.7.0, AB5 web research
+run the whole unit suite (bash tools/gradle.sh :app:testDebugUnitTest), fix failures; then AB1 SAFETY doc, AB3 notification-aware sparing + pf section, re-run emulator sections, AB4, AB5, ship 0.7.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M app/src/main/java/com/tj/launcher/EventNoise.java
+     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+    ?? app/src/test/java/com/tj/launcher/EventNoiseTest.java
 
 ## Last ten checkpoints
 ```
+  2fc12ca ckpt 290: Tj's new message recorded as AB1-AB5: safety audit (no factory reset, ever), e
   da09334 ckpt 289: AA1 (ImmersiveProfile: policy_control immersive.status=* per mode, merge/resto
   11306b2 ckpt 288: AA2 built: KeepAliveService (foreground, min-importance silent notification) +
   cbf34e0 ckpt 287: Added emulator research section rs (info lines only): R1 policy_control immers
@@ -26,8 +29,7 @@ read runs 80/81/82 (job ids: 126992678236 for run 80; list jobs for 41950388462 
   f12b6ca ckpt 283: v0.6.0 RELEASED and recorded (android.yml run 18 green; the Release has the La
   246f6c6 ckpt 282: v0.6.0 (code 16) gated with ship.sh and pushed (main == branch == eb2e260). Se
   eb2e260 ckpt 281: gated v0.6.0 (code 16) and pushed it: the handoff self-test, the full unit sui
-  1e6ba2a ckpt 280: Run 74 (v): U1/U2/V1/V2-closed PASS; g (run 75) PASS. V4/V2-freed FAIL because
 ```
 
-(5 automatic checkpoint(s) since the last deliberate one — the
+(6 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)

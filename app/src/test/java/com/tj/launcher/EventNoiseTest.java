@@ -1,0 +1,79 @@
+package com.tj.launcher;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityWindowInfo;
+import org.junit.Test;
+
+/** AB2: which accessibility events and windows the helper may skip on the slow tablet without ever missing the power menu, the shade or the PIN pad. */
+public class EventNoiseTest {
+    @Test public void theConstantsAreTheOnesAndroidUses() {
+        // compile-time constants of android.jar: if Android ever changed them this fails instead of silently skipping the wrong events
+        assertEquals(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, EventNoise.TYPE_WINDOW_CONTENT_CHANGED);
+        assertEquals(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, EventNoise.TYPE_WINDOW_STATE_CHANGED);
+        assertEquals(AccessibilityEvent.TYPE_WINDOWS_CHANGED, EventNoise.TYPE_WINDOWS_CHANGED);
+        assertEquals(AccessibilityWindowInfo.TYPE_APPLICATION, EventNoise.WINDOW_TYPE_APPLICATION);
+        assertEquals(AccessibilityWindowInfo.TYPE_INPUT_METHOD, EventNoise.WINDOW_TYPE_INPUT_METHOD);
+    }
+
+    @Test public void anotherAppsContentChangeIsNoise() {
+        assertTrue(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.example.game"));
+        assertTrue(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.google.android.apps.photosgo"));
+        assertTrue(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, null));
+    }
+
+    @Test public void systemUiContentChangesAreNeverNoise() {
+        // the shade, the volume panel, the PIN pad and the power menu all live in SystemUI
+        assertFalse(EventNoise.isNoise(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.android.systemui"));
+    }
+
+    @Test public void everyOtherEventTypeIsNeverNoiseWhoeverSendsIt() {
+        int[] types = { AccessibilityEvent.TYPE_VIEW_CLICKED, AccessibilityEvent.TYPE_VIEW_LONG_CLICKED, AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                AccessibilityEvent.TYPE_WINDOWS_CHANGED, AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+                AccessibilityEvent.TYPE_VIEW_SCROLLED, AccessibilityEvent.TYPE_VIEW_FOCUSED };
+        for (int t : types) {
+            assertFalse("type " + t, EventNoise.isNoise(t, "com.example.game"));
+            assertFalse("type " + t, EventNoise.isNoise(t, "com.android.systemui"));
+            assertFalse("type " + t, EventNoise.isNoise(t, null));
+        }
+    }
+
+    @Test public void aNewWindowIsRecognisedFromTheEventType() {
+        assertTrue(EventNoise.windowsJustChanged(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED));
+        assertTrue(EventNoise.windowsJustChanged(AccessibilityEvent.TYPE_WINDOWS_CHANGED));
+        assertFalse(EventNoise.windowsJustChanged(AccessibilityEvent.TYPE_VIEW_CLICKED));
+        assertFalse(EventNoise.windowsJustChanged(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED));
+    }
+
+    @Test public void onlyAppAndKeyboardWindowsAreNotSystemWindows() {
+        assertFalse(EventNoise.isSystemWindow(AccessibilityWindowInfo.TYPE_APPLICATION));
+        assertFalse(EventNoise.isSystemWindow(AccessibilityWindowInfo.TYPE_INPUT_METHOD));
+        assertTrue(EventNoise.isSystemWindow(AccessibilityWindowInfo.TYPE_SYSTEM));
+        assertTrue(EventNoise.isSystemWindow(AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY));
+        assertTrue(EventNoise.isSystemWindow(AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER));
+    }
+
+    @Test public void withTheActionsDialogUpOnlyThatWindowIsSearched() {
+        for (boolean just : new boolean[] { false, true }) {
+            assertTrue(EventNoise.mayHoldPowerMenu(true, true, AccessibilityWindowInfo.TYPE_SYSTEM, just));
+            assertFalse(EventNoise.mayHoldPowerMenu(true, false, AccessibilityWindowInfo.TYPE_SYSTEM, just));
+            assertFalse(EventNoise.mayHoldPowerMenu(true, false, AccessibilityWindowInfo.TYPE_APPLICATION, just));
+        }
+    }
+
+    @Test public void rightAfterAWindowChangeEveryWindowIsSearchedLikeBefore() {
+        assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_APPLICATION, true));
+        assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_INPUT_METHOD, true));
+        assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_SYSTEM, true));
+    }
+
+    @Test public void theQuietFollowUpChecksSkipTheAppAndTheKeyboard() {
+        assertFalse(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_APPLICATION, false));
+        assertFalse(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_INPUT_METHOD, false));
+        assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_SYSTEM, false));
+        assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY, false));
+    }
+}

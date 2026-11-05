@@ -22,12 +22,27 @@ public final class EventNoise {
     /** android.view.accessibility.AccessibilityWindowInfo types */
     public static final int WINDOW_TYPE_APPLICATION = 1, WINDOW_TYPE_INPUT_METHOD = 2;
 
-    /**
-     * Which windows are searched for the power menu? When a window titled "ActionsDialog" (AOSP's power dialog) exists, only that one. Otherwise every window except app windows and the keyboard
-     * (the menu is a system window). Never the foreground app's window: its tree can be large and the search runs on its UI thread.
-     */
-    public static boolean mayHoldPowerMenu(boolean someWindowIsTheActionsDialog, boolean thisWindowIsTheActionsDialog, int windowType) {
-        if (someWindowIsTheActionsDialog) return thisWindowIsTheActionsDialog;
+    /** android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED / TYPE_WINDOWS_CHANGED: a window appeared, changed or went away. */
+    public static final int TYPE_WINDOW_STATE_CHANGED = 0x00000020, TYPE_WINDOWS_CHANGED = 0x00400000;
+
+    /** True when this event can mean "a new window just showed up" (a power menu is a new window). Right after one, the search looks in EVERY window like before; only the quiet follow-up checks are narrowed. */
+    public static boolean windowsJustChanged(int eventType) {
+        return (eventType & (TYPE_WINDOW_STATE_CHANGED | TYPE_WINDOWS_CHANGED)) != 0;
+    }
+
+    /** True for a window that belongs to the system, not to an app or the keyboard (status bar, shade, dialogs of SystemUI, volume, global actions: AccessibilityWindowInfo.TYPE_SYSTEM and friends). */
+    public static boolean isSystemWindow(int windowType) {
         return windowType != WINDOW_TYPE_APPLICATION && windowType != WINDOW_TYPE_INPUT_METHOD;
+    }
+
+    /**
+     * Which windows are searched for the power menu? When a window titled "ActionsDialog" (AOSP's power dialog) exists, only that one. Right after a window change ({@code windowsJustChanged}), every window,
+     * exactly as before this optimisation (so an unusual power menu on another Android build is still found). Otherwise (clicks, scrolls inside SystemUI, the 1.5 s re-check) only system windows:
+     * never the foreground app's window, whose tree can be large and whose UI thread would run the search.
+     */
+    public static boolean mayHoldPowerMenu(boolean someWindowIsTheActionsDialog, boolean thisWindowIsTheActionsDialog, int windowType, boolean windowsJustChanged) {
+        if (someWindowIsTheActionsDialog) return thisWindowIsTheActionsDialog;
+        if (windowsJustChanged) return true;
+        return isSystemWindow(windowType);
     }
 }
