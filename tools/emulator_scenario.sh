@@ -986,8 +986,8 @@ kafeat true; adb shell am force-stop "$PKG"; rebind; home; sleep 4
 adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-on.txt" 2>&1
 check "AA2: with the switch ON the keep-alive service is a foreground service" grep -q 'isForeground=true' "$OUT/ka-services-on.txt"
 info "KA ON: service record: $(grep -E 'ServiceRecord|isForeground|foregroundId|foregroundNoti' $OUT/ka-services-on.txt | sed 's/^ *//' | cut -c1-140 | tr '\n' '|' | cut -c1-600)"
-adb shell dumpsys notification --noredact 2>/dev/null | grep -E "tj_keep_alive" | sed 's/^ *//' | cut -c1-240 | head -3 > "$OUT/ka-channel.txt"
-info "KA ON: notification channel: $(tr '\n' '|' < $OUT/ka-channel.txt)"
+adb shell dumpsys notification --noredact 2>/dev/null | grep "tj_keep_alive" | grep -oE "mImportance=[0-9]+|importance=[0-9]+" | sort -u > "$OUT/ka-channel.txt"
+info "KA ON: notification importance values seen: $(tr '\n' ' ' < $OUT/ka-channel.txt)"
 check "AA2: its notification is silent (importance LOW or lower: Android floors a foreground service at LOW)" bash -c "grep -qE 'mImportance=(1|2)' $OUT/ka-channel.txt"
 kameasure ON
 check "AA2: the launcher process survives 'am kill-all' with the service" bash -c "echo '$KA_KILL' | grep -q 'oom_score_adj'"
@@ -1078,7 +1078,8 @@ ensurehome
 beat "before RT"
 setfeat; setmode custom; rebind; home; sleep 2
 adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
-rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE 'realActivity=[A-Za-z0-9_.]+' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
+rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
+adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT what Android prints for Recents (first lines): $(sed -n 1,16p $OUT/rt-recents-dump.txt | sed 's/^ *//' | cut -c1-110 | tr '\n' '|')"
 # the custom account's world: Calendar (the target app here) and Contacts, both open before Quickstep begins
 for APP in com.android.contacts com.android.calendar; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 info "RT custom account before Quickstep: $(rec)"
@@ -1094,19 +1095,19 @@ check "AA3: the custom account's tasks were remembered when it began" grep -q "s
 for APP in com.android.gallery3d com.android.email com.android.contacts; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 adb shell am start -n com.android.contacts/.activities.PeopleActivity -f 0x18000000 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1
 info "RT during Quickstep: $(rec)"
-CONTACTS_TASKS_BEFORE=$(adb shell dumpsys activity recents 2>/dev/null | grep -c 'realActivity=com.android.contacts')
+CONTACTS_TASKS_BEFORE=$(adb shell dumpsys activity recents 2>/dev/null | grep -c 'Recent #.*\(contacts\)')
 adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session ends; the helper cleans up before any wake
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
 info "RT after the lock: $(rec)"
 info "RT the clean-up said: $(grep 'AT LOCK' $OUT/rt-log-lock.txt | tail -1 | cut -c1-420)"
-adb shell dumpsys activity recents 2>/dev/null | grep -oE 'realActivity=[A-Za-z0-9_.]+' > "$OUT/rt-recents-after.txt"
+adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' > "$OUT/rt-recents-after.txt"; adb shell dumpsys activity recents 2>/dev/null | grep 'Recent #' | sed 's/^ *//' | cut -c1-100 > "$OUT/rt-recents-headers-after.txt"
 check "AA3: the lock-time clean-up used the task list (it reports the new/closed/removed/spared counts)" grep -q "tasks: [0-9]* new since the session began" "$OUT/rt-log-lock.txt"
-check "AA3: Gallery (only opened in Quickstep) is gone from Recents" bash -c "! grep -q 'com.android.gallery3d' $OUT/rt-recents-after.txt"
-check "AA3: Email (only opened in Quickstep) is gone from Recents" bash -c "! grep -q 'com.android.email' $OUT/rt-recents-after.txt"
-check "AA3: Contacts, which the custom account had open before Quickstep began, is SPARED (still in Recents)" grep -q 'com.android.contacts' "$OUT/rt-recents-after.txt"
-check "AA3: Solitaire (Calendar here), the target, is untouched" grep -q 'com.android.calendar' "$OUT/rt-recents-after.txt"
-CONTACTS_TASKS_AFTER=$(grep -c 'com.android.contacts' "$OUT/rt-recents-after.txt")
+check "AA3: Gallery (only opened in Quickstep) is gone from Recents" bash -c "! grep -qi 'gallery' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
+check "AA3: Email (only opened in Quickstep) is gone from Recents" bash -c "! grep -qi 'email' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
+check "AA3: Contacts, which the custom account had open before Quickstep began, is SPARED (still in Recents)" bash -c "grep -qi 'contacts' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
+check "AA3: Solitaire (Calendar here), the target, is untouched" bash -c "grep -qi 'calendar' $OUT/rt-recents-after.txt $OUT/rt-recents-headers-after.txt"
+CONTACTS_TASKS_AFTER=$(grep -c 'contacts' "$OUT/rt-recents-headers-after.txt")
 info "RT Contacts tasks: before the lock $CONTACTS_TASKS_BEFORE, after $CONTACTS_TASKS_AFTER (a second one existed only if Android allowed it)"
 if [ "${CONTACTS_TASKS_BEFORE:-0}" -ge 2 ]; then check "AA3: Quickstep's own SECOND Contacts task was removed by id, the custom account's one stays" bash -c "[ $CONTACTS_TASKS_AFTER = 1 ]"; fi
 getmode > "$OUT/rt-mode-after.txt"
@@ -1180,7 +1181,7 @@ adb shell am force-stop com.android.contacts; home
 POWERDEV=$(adb shell getevent -pl 2>&1 | awk '/add device/{d=$4} /KEY_POWER/{print d; exit}')
 info "RS3 b power device: $POWERDEV; emulator console: $(adb emu help 2>&1 | head -3 | tr '\n' ' ' | cut -c1-200)"
 presskey(){ # presskey <hold seconds>: a real kernel-level power key press through the emulator console
-  adb emu event send EV_KEY:KEY_POWER:1 EV_SYN:SYN_REPORT:0 > "$OUT/rs3-emu-down.txt" 2>&1; sleep "$1"; adb emu event send EV_KEY:KEY_POWER:0 EV_SYN:SYN_REPORT:0 > "$OUT/rs3-emu-up.txt" 2>&1; }
+  adb emu event send 1:116:1 0:0:0 > "$OUT/rs3-emu-down.txt" 2>&1; sleep "$1"; adb emu event send 1:116:0 0:0:0 > "$OUT/rs3-emu-up.txt" 2>&1; }
 if [ -n "$POWERDEV" ]; then
   adb logcat -c
   ( adb shell "timeout 12 getevent -lt $POWERDEV" > "$OUT/rs3-getevent.txt" 2>&1 & ) ; sleep 2
