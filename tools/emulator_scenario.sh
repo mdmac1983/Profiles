@@ -261,6 +261,7 @@ adb logcat -d -s TjA11y:I | grep -E 'RESET|STRAY|LOCKNUM' > "$OUT/reset2-log.txt
 check "reset2: the chosen app (Calendar) was opened after the accessibility reset" grep -qi 'calendar' "$OUT/resumed-reset2.txt"
 check "reset2: the notification was cleared through the real shade (no notification access)" bash -c "[ \"$(tr -d ' \r\n' < $OUT/notif2-before.txt)\" != 0 ] && [ \"$(tr -d ' \r\n' < $OUT/notif2-after.txt)\" = 0 ]"
 info "recents entries before=$(tr -d ' \r\n' < $OUT/recents-before.txt) after=$(tr -d ' \r\n' < $OUT/recents-after.txt); apps still running: $(cat $OUT/apps2-after.txt | tr '\n' ';')"
+info "reset2: test notification count before=$(tr -d ' \r\n' < $OUT/notif2-before.txt) after=$(tr -d ' \r\n' < $OUT/notif2-after.txt) (after $NPOLL extra 2 s poll(s)); the helper's RESET lines: $(grep RESET "$OUT/reset2-log.txt" 2>/dev/null | sed -E 's/^[0-9-]+ [0-9:.]+ +[0-9]+ +[0-9]+ //' | cut -c1-90 | tr '\n' ';' | cut -c1-300)"
 adb shell svc wifi enable >/dev/null 2>&1
 
 beat "before V5 + V2"
