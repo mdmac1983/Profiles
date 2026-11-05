@@ -1,13 +1,13 @@
-# CHECKPOINT 356 — read me first, then TASKS.md
+# CHECKPOINT 357 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T19:55:50Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `a1bfd54` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T20:01:51Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `354b658` (this checkpoint is the commit after it)
 
 ## Just done
-Tj: step 11 Done (no screenshot); step 12 sent (read-back + ACC1 grep); BATCH1 proposal noted
+step 12: DuraSpeed back on (1,1); a11y service STUCK in Binding services; step 13 sent
 
 ## Do this next
-Tj sends the step 12 screenshot: 1,1 + accessibility lines (our service in Crashed / Binding / only Enabled?) -> write ACC1 answer in TASKS; step 13 optional kill log; then cable-done line; then KA1 PNG + default OFF + CrashGuard fuse + CBR1; put BATCH1 vs mailbox to Tj as one decision
+Tj sends step 13 screenshot (dumpsys activity services com.tj.launcher grep): no ServiceRecord = stale bind -> ask Tj to restart the tablet then re-check Bound services; requested=true received=false = our main thread/vendor; then cable-done line; then KA1 PNG + default OFF + CrashGuard fuse + CBR1 + A11Y plain-words state in report; BATCH1 vs mailbox decision for Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ Tj sends the step 12 screenshot: 1,1 + accessibility lines (our service in Crash
 
 ## Last ten checkpoints
 ```
+  354b658 ckpt 356: Tj: step 11 Done (no screenshot); step 12 sent (read-back + ACC1 grep); BATCH1
   f174df9 ckpt 355: step 10: helper dead at 14:45 with DuraSpeed off; step 11 (DuraSpeed back on) 
   b0580ee ckpt 354: new session resumed from handoff: v0.7.2 plan (KA1 fuse, MBX1 security finding
   92ecc01 ckpt 353: active-memory handoff #1 written and pushed: handoff-launcher.md (13 sections,
@@ -26,8 +27,4 @@ Tj sends the step 12 screenshot: 1,1 + accessibility lines (our service in Crash
   cedcd7c ckpt 349: Tj's step 7 (1:52): the shell CAN read the report the launcher wrote (owner u0
   ec20d98 ckpt 348: Tj's step 6 photo: the app-side report works without the helper (31 KB, in the
   a9cef92 ckpt 347: Tj's step 5 (1:47): SELinux Enforcing, build = MediaTek alps user/release-keys
-  f04ea27 ckpt 346: Tj's crash log (1:39): the first-open crash = the keep-alive notification (id 
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
