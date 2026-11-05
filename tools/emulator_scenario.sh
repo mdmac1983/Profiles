@@ -1365,22 +1365,32 @@ adb shell pm list users > "$OUT/rb-users-before.txt" 2>&1
 info "RB before the restart: tiles '$(tr -d '\r\n' < $OUT/rb-tiles-before.txt)', policy_control '$(tr -d '\r\n' < $OUT/rb-policy-before.txt)', users: $(grep -c 'UserInfo' $OUT/rb-users-before.txt), mode: $(getmode)"
 adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-before.txt"
 adb reboot >/dev/null 2>&1
-sleep 20
-RBOOT=0
-for i in $(seq 1 60); do if [ "$(command adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = 1 ]; then RBOOT=1; break; fi; sleep 5; done
-info "RB the tablet came back after the restart: $([ $RBOOT = 1 ] && echo yes || echo NO) (waited about $((20 + i * 5)) s)"
+# 1. wait until the OLD system is really gone (the first run read boot_completed=1 from it and carried on while Android was still shutting down)
+for i in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = 1 ] || break; sleep 2; done
+# 2. wait for the NEW system (bounded: 5 minutes)
+RBOOT=0; RB_T0=$SECONDS
+while [ $((SECONDS - RB_T0)) -lt 300 ]; do
+  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = 1 ]; then RBOOT=1; break; fi
+  sleep 4
+done
+info "RB the tablet came back after the restart: $([ $RBOOT = 1 ] && echo yes || echo NO) (about $((SECONDS - RB_T0)) s after the old system was gone)"
 check "RB1: the tablet boots again with every option on" [ "$RBOOT" = 1 ]
 ( command adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I >> "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null   # the stream died with the restart
-sleep 15
+sleep 10
 adb shell pm list users > "$OUT/rb-users-after.txt" 2>&1
 check "RB2: exactly one user exists after the restart (no demo user was created)" bash -c "[ \"\$(grep -c 'UserInfo' $OUT/rb-users-after.txt)\" = 1 ]"
 adb shell settings get global device_demo_mode > "$OUT/rb-demo-after.txt" 2>&1
 check "RB3: the retail-demo flag is off" bash -c "v=\$(tr -d ' \r\n' < $OUT/rb-demo-after.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
-adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
-shot 150-rb-lock-after-restart
-pad 1 2 3 4 e; sleep 8                                                      # the PIN unlock after a restart, with the helper enabled and the status bar setting on
-resumed > "$OUT/rb-resumed.txt"
-adb shell dumpsys window windows 2>/dev/null | grep -c 'Window{[^}]* Keyguard' > /dev/null 2>&1
+# 3. the lock screen of a restarted tablet with a PIN: the credential-encrypted storage (and with it every app, the helper included) is locked until the PIN is entered, so enter it like a person (up to 4 tries)
+RBUNLOCKED=0
+for try in 1 2 3 4; do
+  adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
+  [ "$try" = 1 ] && shot 150-rb-lock-after-restart
+  pad 1 2 3 4 e; sleep 8
+  resumed > "$OUT/rb-resumed.txt"
+  if ! grep -q FallbackHome "$OUT/rb-resumed.txt"; then RBUNLOCKED=1; break; fi
+done
+info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
 check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
 adb shell dumpsys accessibility > "$OUT/rb-a11y.txt" 2>&1
 adb shell settings get secure enabled_accessibility_services > "$OUT/rb-a11y-list.txt" 2>&1
@@ -1391,6 +1401,7 @@ check "RB6: the one-tile list survived the restart" bash -c "[ \"\$(tr -d ' \r\n
 adb shell dumpsys activity services "$PKG" > "$OUT/rb-services.txt" 2>&1
 check "RB7: the keep-alive service is running again after the restart" grep -q KeepAliveService "$OUT/rb-services.txt"
 adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-after.txt"
+check "RB7b: the launcher\'s own data is readable again after the unlock (so RB8 / RB9 mean something)" bash -c "[ -n \"\$(adb shell run-as $PKG ls shared_prefs 2>/dev/null | head -1)\" ]"
 check "RB8: the crash breaker did not trip during the restart" bash -c "! grep -q 'tripped.*true' $OUT/rb-crash-after.txt"
 command adb logcat -d -b crash 2>/dev/null | grep -c "com.tj.launcher" > "$OUT/rb-crashes.txt"
 check "RB9: the launcher did not crash while the tablet started up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-crashes.txt)\" = 0 ]"
