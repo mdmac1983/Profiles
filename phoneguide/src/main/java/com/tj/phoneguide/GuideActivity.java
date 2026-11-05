@@ -114,7 +114,10 @@ public class GuideActivity extends Activity {
         sw.setText("Show lines with the \"adb shell \" prefix");
         sw.setChecked(withPrefix);
         sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(CompoundButton v, boolean on) { withPrefix = on; prefs.edit().putBoolean("prefix", on).apply(); page.post(new Runnable() { @Override public void run() { build(); } }); }
+            @Override public void onCheckedChanged(CompoundButton v, boolean on) {
+                withPrefix = on; prefs.edit().putBoolean("prefix", on).apply();
+                refreshCommands();   // only the command boxes change: rebuilding the page would throw away the scroll position, the parts Tj opened and anything he typed into a card (the Copy buttons read the switch when pressed)
+            }
         });
         how.addView(sw);
         page.addView(how);
