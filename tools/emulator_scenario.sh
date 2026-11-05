@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 ka last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -959,6 +959,118 @@ adb shell settings delete global overlay_display_devices >/dev/null 2>&1; sleep 
 adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.calendar
 setfeat; setmode custom; home
 fi # section rs
+if want ka; then # section ka
+ensurehome
+# ---- AA2: the keep-alive foreground service. Proof: it IS a foreground service, how it changes the launcher process's priority (oom_score_adj) with another app in front / the screen off, whether the
+#      process survives `am kill-all`, that its notification is the quietest kind, and that "Restore everything" stops it.
+beat "before KA"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+kafeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"keep_alive\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+adjof(){ local p; p=$(adb shell pidof $PKG | tr -d '\r' | awk '{print $1}'); if [ -n "$p" ]; then echo "pid=$p oom_score_adj=$(adb shell cat /proc/$p/oom_score_adj | tr -d '\r\n')"; else echo "NO PROCESS"; fi; }
+kameasure(){ # kameasure <tag>: the launcher process priority with another app in front, with the screen off, and after `am kill-all`
+  adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+  KA_FRONT="$(adjof)"; info "KA $1: with Contacts in front: $KA_FRONT"
+  adb shell input keyevent KEYCODE_SLEEP; sleep 4
+  KA_OFF="$(adjof)"; info "KA $1: screen off: $KA_OFF"
+  adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+  adb shell am kill-all >/dev/null 2>&1; sleep 4
+  KA_KILL="$(adjof)"; info "KA $1: after 'am kill-all': $KA_KILL"
+}
+# switch OFF first (the baseline): no foreground service, and what the process looks like without it
+kafeat false; setmode custom; adb shell am force-stop "$PKG"; rebind; home; sleep 3
+adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-off.txt" 2>&1
+kameasure OFF
+check "AA2: with the switch OFF there is no foreground service" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-off.txt"
+# switch ON (the default)
+kafeat true; adb shell am force-stop "$PKG"; rebind; home; sleep 4
+adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-on.txt" 2>&1
+check "AA2: with the switch ON the keep-alive service is a foreground service" grep -q 'isForeground=true' "$OUT/ka-services-on.txt"
+info "KA ON: service record: $(grep -E 'ServiceRecord|isForeground|foregroundId|foregroundNoti' $OUT/ka-services-on.txt | sed 's/^ *//' | cut -c1-140 | tr '\n' '|' | cut -c1-600)"
+adb shell dumpsys notification --noredact 2>/dev/null | grep -E "tj_keep_alive" | sed 's/^ *//' | cut -c1-240 | head -3 > "$OUT/ka-channel.txt"
+info "KA ON: notification channel: $(tr '\n' '|' < $OUT/ka-channel.txt)"
+check "AA2: its notification channel has the lowest importance (no status-bar icon)" grep -q "mImportance=1" "$OUT/ka-channel.txt"
+kameasure ON
+check "AA2: the launcher process survives 'am kill-all' with the service" bash -c "echo '$KA_KILL' | grep -q 'oom_score_adj'"
+check "AA2: with the service the process priority is at least foreground-service level (adj <= 200) with another app in front" bash -c "a=\$(echo '$KA_FRONT' | sed -n 's/.*oom_score_adj=\\([-0-9]*\\).*/\\1/p'); [ -n \"\$a\" ] && [ \"\$a\" -le 200 ]"
+# "Restore everything" must stop it (L10): Quickstep mode, Launcher control, scroll to the end, tap the action and confirm
+setmode quickstep; rebind; home; sleep 2
+adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do adb shell input swipe 300 900 300 200 250; sleep 0.4; done
+tapapp "Restore everything" 300 900; sleep 2; shot 110-ka-restore-dialog
+tapapp "Restore" 420 600; sleep 3
+adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-restored.txt" 2>&1
+adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-prefs-restored.txt"
+info "KA after Restore everything: foreground service present: $(grep -c 'isForeground=true' $OUT/ka-services-restored.txt), keep_alive pref: $(grep -o 'keep_alive[^/]*' $OUT/ka-prefs-restored.txt | head -1)"
+check "AA2: Restore everything stopped the keep-alive service" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-restored.txt"
+setfeat; setmode custom; home
+fi # section ka
+if want rs2; then # section rs2
+ensurehome
+# ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
+#      (c) the "hide a task but keep it alive" candidates, now with a correct task parser (some apps have a custom task affinity, e.g. android.task.contacts)
+beat "before RS2"
+setfeat; setmode custom; home; sleep 2
+probe(){ adb shell "CLASSPATH=\$(pm path $PKG | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe $*"; }
+sbstate(){ adb shell dumpsys window windows 2>/dev/null | awk '/Window #[0-9]+ Window\{[^}]* StatusBar\}/{f=1;c=0} f{ if ($0 ~ /mFrame=/) print; c++; if (c>60) f=0 }' | head -1 | tr -s ' ' | cut -c1-80; }
+# (a1) DISABLE2_GLOBAL_ACTIONS (0x8): does the stock power menu stay away?
+( probe statusbar 0 0x8 22 > "$OUT/rs2-sb-globalactions.txt" 2>&1 & ) ; sleep 5
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 120-rs2-power-with-disable2
+adb shell uiautomator dump /sdcard/rs2.xml >/dev/null 2>&1
+info "RS2 a1 disable2(GLOBAL_ACTIONS=0x8): helper said [$(tr '\n' ' ' < $OUT/rs2-sb-globalactions.txt | cut -c1-400)]; power menu items on screen: $(adb shell cat /sdcard/rs2.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"
+adb shell input keyevent KEYCODE_BACK; sleep 18
+# (a2) DISABLE_EXPAND (0x10000): can the shade still be pulled down / opened?
+( probe statusbar 0x10000 0 20 > "$OUT/rs2-sb-expand.txt" 2>&1 & ) ; sleep 5
+adb shell input swipe 300 2 300 600 150; sleep 1.5
+adb shell cmd statusbar expand-settings; sleep 2
+info "RS2 a2 disable(EXPAND=0x10000): helper said [$(tr '\n' ' ' < $OUT/rs2-sb-expand.txt | cut -c1-300)]; StatusBar window after a swipe AND expand-settings: $(sbstate)  (frame ending in 26 = still collapsed, 976 = expanded)"
+adb shell cmd statusbar collapse; sleep 14
+# (a3) DISABLE2_QUICK_SETTINGS (0x1) and DISABLE_NOTIFICATION_ICONS (0x20000)
+( probe statusbar 0x20000 0x1 18 > "$OUT/rs2-sb-qs.txt" 2>&1 & ) ; sleep 5
+adb shell cmd statusbar expand-settings; sleep 2.5; shot 121-rs2-qs-disabled
+adb shell uiautomator dump /sdcard/rs2b.xml >/dev/null 2>&1
+info "RS2 a3 disable(NOTIFICATION_ICONS) + disable2(QUICK_SETTINGS): helper said [$(tr '\n' ' ' < $OUT/rs2-sb-qs.txt | cut -c1-300)]; tiles on screen: $(adb shell cat /sdcard/rs2b.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Auto-rotate|Wi-Fi|Bluetooth)"' | tr '\n' ' ')"
+adb shell cmd statusbar collapse; sleep 12
+# (b) the raw power-key events: which input device has KEY_POWER, may the shell read it, and does a REAL kernel key event (sendevent) show up there and open the stock menu?
+adb shell getevent -pl 2>&1 | awk '/add device/{d=$4} /name:/{n=$0} /KEY_POWER/{print d, n; exit}' > "$OUT/rs2-powerdev.txt"
+POWERDEV=$(awk '{print $1}' "$OUT/rs2-powerdev.txt")
+info "RS2 b device with KEY_POWER: [$(cat $OUT/rs2-powerdev.txt | tr -s ' ')]; all input devices: $(adb shell getevent -p 2>&1 | grep -E 'add device|name:' | tr -s ' ' | tr '\n' ' ' | cut -c1-400)"
+if [ -n "$POWERDEV" ]; then
+  ( adb shell "timeout 14 getevent -lt $POWERDEV" > "$OUT/rs2-getevent.txt" 2>&1 & ) ; sleep 2
+  adb shell "sendevent $POWERDEV 1 116 1; sendevent $POWERDEV 0 0 0" > "$OUT/rs2-sendevent-down.txt" 2>&1
+  sleep 1.3
+  adb shell "sendevent $POWERDEV 1 116 0; sendevent $POWERDEV 0 0 0" > "$OUT/rs2-sendevent-up.txt" 2>&1
+  sleep 2; shot 122-rs2-power-sendevent
+  adb shell uiautomator dump /sdcard/rs2c.xml >/dev/null 2>&1
+  info "RS2 b sendevent KEY_POWER held 1.3 s: sendevent said [$(cat $OUT/rs2-sendevent-down.txt $OUT/rs2-sendevent-up.txt | tr '\n' ' ' | cut -c1-200)]; getevent saw: $(grep -E 'KEY_POWER' $OUT/rs2-getevent.txt | tr -s ' ' | tr '\n' '|' | cut -c1-300); stock power menu on screen: $(adb shell cat /sdcard/rs2c.xml 2>/dev/null | tr '>' '\n' | grep -oE 'text="(Power off|Restart|Screenshot)"' | tr '\n' ' ')"
+  adb shell input keyevent KEYCODE_BACK; sleep 1
+else info "RS2 b skipped: no input device lists KEY_POWER"; fi
+# (c) hide-a-task candidates with a correct parser: ids from `am stack list` ("taskId=N: pkg/activity")
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+adb shell am stack list > "$OUT/rs2-stacks.txt" 2>&1
+awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:/{t=$1; sub(/taskId=/,"",t); sub(/:/,"",t); print sid, t, $2}' "$OUT/rs2-stacks.txt" > "$OUT/rs2-tasks.txt"
+info "RS2 c tasks (stack task component): $(tr '\n' '|' < $OUT/rs2-tasks.txt | cut -c1-500)"
+CT=$(grep 'com.android.contacts' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'com.tj.launcher|com.android.launcher3' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $1}')
+CALT=$(grep 'com.android.calendar' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $1" "$2}')
+recents(){ adb shell dumpsys activity recents 2>/dev/null | grep -E 'Recent #[0-9]+:|realActivity=' | sed 's/^ *//' | cut -c1-110 | tr '\n' '|' | cut -c1-700; }
+info "RS2 c Recents before: $(recents)"
+if [ -n "$CT" ] && [ -n "$HS" ]; then
+  P0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
+  adb shell am stack movetask "$CT" "$HS" true > "$OUT/rs2-movetask.txt" 2>&1; sleep 2
+  info "RS2 c1 'am stack movetask $CT $HS true' (contacts into the HOME stack) -> [$(tr '\n' ' ' < $OUT/rs2-movetask.txt | cut -c1-300)]; Recents after: $(recents); pid $P0 -> $(adb shell pidof com.android.contacts | tr -d '\r\n')"
+else info "RS2 c1 skipped (contacts task=$CT home stack=$HS)"; fi
+adb shell settings put global overlay_display_devices "600x1024/170"; sleep 4
+NEWD=$(adb shell dumpsys activity activities 2>/dev/null | grep -oE '^ *Display #[0-9]+' | grep -oE '[0-9]+' | grep -v '^0$' | head -1)
+CALS=$(echo "$CALT" | awk '{print $1}')
+if [ -n "$NEWD" ] && [ -n "$CALS" ]; then
+  adb shell am display move-stack "$CALS" "$NEWD" > "$OUT/rs2-movestack.txt" 2>&1; sleep 3
+  info "RS2 c2 secondary display #$NEWD: 'am display move-stack $CALS $NEWD' -> [$(tr '\n' ' ' < $OUT/rs2-movestack.txt | cut -c1-300)]; Recents after: $(recents); calendar pid: $(adb shell pidof com.android.calendar | tr -d '\r\n')"
+  shot 123-rs2-secondary-display
+else info "RS2 c2 skipped (second display=$NEWD calendar stack=$CALS)"; fi
+adb shell settings delete global overlay_display_devices >/dev/null 2>&1; sleep 3
+adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.calendar
+setfeat; setmode custom; home
+fi # section rs2
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
