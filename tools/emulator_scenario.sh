@@ -916,6 +916,7 @@ check "PG1: tapping FALLBACK opens it and shows the permission commands (pm gran
 # the tick: restart the guide (back at the top), tick the first card, "Take me to my next step" must put the SECOND card at the top of the screen, and the tick must survive another restart
 adb shell am force-stop com.tj.phoneguide; sleep 1
 adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
+adb shell input swipe 300 850 300 450 300; sleep 1      # the plan card fills the first screen: scroll a little so the button and card 1's Done box are both on screen
 gdump "$OUT/g-ui-r1.xml"
 CARD1=$(grep -m1 '^@ ' phoneguide/src/main/assets/steps.txt | sed 's/^@ //'); CARD2=$(grep '^@ ' phoneguide/src/main/assets/steps.txt | sed -n 2p | sed 's/^@ //')
 gtap 'text="Done"' "$OUT/g-ui-r1.xml"; sleep 1
@@ -927,6 +928,7 @@ info "PG1: card 1 [$CARD1] ticked; after 'Take me to my next step' card 2 [$CARD
 check "PG1: 'Take me to my next step' scrolled to the second card (its title is within the top 250 px)" bash -c "[ -n '$GTOP' ] && [ '$GTOP' -le 250 ]"
 adb shell am force-stop com.tj.phoneguide; sleep 1
 adb shell am start -n com.tj.phoneguide/.GuideActivity >/dev/null 2>&1; sleep 3
+adb shell input swipe 300 850 300 450 300; sleep 1
 gdump "$OUT/g-ui-r3.xml"
 check "PG1: the tick on card 1 survived a restart of the guide" bash -c "tr '>' '\n' < $OUT/g-ui-r3.xml | grep -F 'text=\"Done\"' | head -1 | grep -q 'checked=\"true\"'"
 adb shell am force-stop com.tj.phoneguide; home
