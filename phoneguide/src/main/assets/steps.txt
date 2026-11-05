@@ -27,7 +27,7 @@ why: Should print package:/data/app/.../base.apk. If it prints nothing, install 
 cmd: pm path com.tj.launcher
 ## 2. Permissions for the launcher (only for this app; they survive updates; all listed in advance so a future update needs nothing new)
 @ Permission: change secure settings
-why: Lets the launcher switch the keyboard, the quick-settings tiles per launcher and the animation speed-up.
+why: Lets the launcher switch the keyboard, the quick-settings tiles per launcher, the animation speed-up and (only if you turn that option on) the status-bar hiding.
 cmd: pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
 undo: pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
 @ Permission: read what is running
@@ -120,6 +120,9 @@ cmd: netstat -ltn | grep ':555'
 alt: getprop init.svc.adbd
 @ Which input device is the power key? (for a possible instant power menu)
 cmd: getevent -pl | grep -E 'add device|name:|KEY_POWER'
+@ Is Android's retail-demo flag off? (it must be)
+why: Should print 0 or null. If it prints 1, run the "Retail-demo flag off" card in section 10 and tell Claude.
+cmd: settings get global device_demo_mode
 @ Is the status bar already customised on this ROM?
 why: Normally prints null. If it prints something, tell Claude: the launcher keeps it and puts it back.
 cmd: settings get global policy_control
