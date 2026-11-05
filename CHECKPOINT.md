@@ -1,13 +1,13 @@
-# CHECKPOINT 376 — read me first, then TASKS.md
+# CHECKPOINT 377 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T22:35:42Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-0e021d44-iyicti` · **builds on:** `0a31e95` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T22:44:13Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-0e021d44-iyicti` · **builds on:** `77fcb04` (this checkpoint is the commit after it)
 
 ## Just done
-ka fuse check made conditional (emulator SystemUI never crashes: runs 130,132); gate A run 131 + gate B dispatched ~22:37
+AC drafts saved in research/ac-drafts (BatterySaver*, LockLog, PowerMenuDump + tests, scenario section ac); ADB_LOCKMENU_PROBE.md written; gate A run 131 + B run 133 still running
 
 ## Do this next
-read run 131 (A) and the B run results (get_job_logs tail 60 each) around 22:50-23:00; if both 0 FAIL run ship.sh 'v0.7.2' then android.yml full_build=true; do NOT edit app/ product code until that android.yml run has started
+read runs 131 and 133 (tail 60 of the job logs, list_workflow_jobs for the job ids) after ~22:55; both 0 FAIL -> bash ship.sh 'v0.7.2: KA1 CBR1 UX1' -> android.yml full_build=true on main; ONLY AFTER that run started: copy research/ac-drafts into app/ and wire in per research/AC_DESIGN_2026-11-05.md
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read run 131 (A) and the B run results (get_job_logs tail 60 each) around 22:50-
 
 ## Last ten checkpoints
 ```
+  c7cc995 ckpt 376: ka fuse check made conditional (emulator SystemUI never crashes: runs 130,132)
   782ca63 ckpt 375: AC design written (research/AC_DESIGN_2026-11-05.md); gate A run 131 + ka run 
   88e1fb2 ckpt 374: Tj sent 9 requests (AC1-AC9) written to TASKS.md
   90bdfef ckpt 373: REL072: code-review of v0.7.1..HEAD done (8 fixed, 2 declined); unit 245 green
@@ -25,8 +26,7 @@ read run 131 (A) and the B run results (get_job_logs tail 60 each) around 22:50-
   c684404 ckpt 369: step 22: all permissions verified after restart (CBL1 closed); answer to 'ever
   8181b49 ckpt 368: step 21: lock number shows on the real lock screen (LK1 number+gesture OK); st
   1b94375 ckpt 367: step 20: Tj turned the lock number ON; step 21 (lock + look for the number) se
-  0df7428 ckpt 366: step 19: double-erase handshake works on the real tablet (pad recognised), unl
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
