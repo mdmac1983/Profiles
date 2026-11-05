@@ -1236,7 +1236,10 @@ check "AA5: the loops reached EVERY phone-guide command line (ran $GCN + skipped
 check "AA5: every phone-guide command line (cmd, alt, undo) ran without an error in the device shell" bash -c "[ $GCBAD = 0 ]"
 adb shell settings delete global policy_control >/dev/null 2>&1; adb shell settings put global device_demo_mode 0 >/dev/null 2>&1; adb shell pm enable com.android.browser >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+# the undo lines above revoked what the scenario had granted at its start (DUMP) and what other sections grant for themselves: put it back, so every section after this one runs as it did before
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell pm grant "$PKG" android.permission.DUMP >/dev/null 2>&1
+adb shell cmd package compile --reset "$PKG" >/dev/null 2>&1
 rebind; setfeat; setmode custom; home
 fi # section gc
 if want rs4; then # section rs4
