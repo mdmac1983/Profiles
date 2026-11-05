@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 
 # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 ka rt im gc last. Setup, the install and the helper functions below always run.
+#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
 want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
 info "sections: ${SECTIONS:-ALL}"
@@ -1234,6 +1234,41 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 rebind; setfeat; setmode custom; home
 fi # section gc
+if want rs4; then # section rs4
+ensurehome
+# ---- RESEARCH 4 (info lines only), the "keep Quickstep's apps OPEN but hidden" ideas that the shell's new powers make testable:
+#      (a) DISABLE_RECENT (0x1000000): does the system Recents button stop opening Recents, so the custom side could offer its OWN list and Quickstep's tasks stay alive but unreachable?
+#      (b) a Do-Not-Disturb policy that hides the notification LIST (SUPPRESSED_EFFECT_NOTIFICATION_LIST): are other apps' notifications hidden while they keep running?
+beat "before RS4"
+setfeat; setmode custom; home; sleep 2
+probe(){ adb shell "CLASSPATH=\$(pm path $PKG | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe $*"; }
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; resumed > "$OUT/rs4-recents-base.txt"; shot 140-rs4-recents-baseline
+info "RS4 a baseline: after the Recents key the front activity is: $(cat $OUT/rs4-recents-base.txt | tr -s ' ' | cut -c1-140)"
+adb shell input keyevent KEYCODE_HOME; sleep 2
+( probe statusbar 0x1000000 0 24 > "$OUT/rs4-sb.txt" 2>&1 & ) ; sleep 5
+adb shell uiautomator dump /sdcard/rs4a.xml >/dev/null 2>&1
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3; resumed > "$OUT/rs4-recents-disabled.txt"; shot 141-rs4-recents-disabled
+info "RS4 a with DISABLE_RECENT: probe said [$(tr '\n' ' ' < $OUT/rs4-sb.txt | cut -c1-200)]; nav-bar recents button in the screen dump: $(adb shell cat /sdcard/rs4a.xml 2>/dev/null | tr '>' '\n' | grep -c 'recent_apps') node(s); after the Recents key the front activity is: $(cat $OUT/rs4-recents-disabled.txt | tr -s ' ' | cut -c1-140)"
+adb shell input keyevent KEYCODE_HOME; sleep 19
+# (b)
+adb shell cmd notification allow_dnd com.android.shell >/dev/null 2>&1
+adb shell cmd notification post -t HELLOTITLE tagx hellobody > "$OUT/rs4-post.txt" 2>&1; sleep 2
+adb shell cmd statusbar expand-notifications; sleep 2.5
+adb shell uiautomator dump /sdcard/rs4b.xml >/dev/null 2>&1; shot 142-rs4-shade-baseline
+info "RS4 b baseline: posted [$(tr '\n' ' ' < $OUT/rs4-post.txt | cut -c1-120)]; the notification is in the shade: $(adb shell cat /sdcard/rs4b.xml 2>/dev/null | grep -c HELLOTITLE) time(s)"
+adb shell cmd statusbar collapse; sleep 1.5
+( probe notifpolicy 0x1FC 2 22 > "$OUT/rs4-dnd.txt" 2>&1 & ) ; sleep 6
+adb shell cmd statusbar expand-notifications; sleep 2.5
+adb shell uiautomator dump /sdcard/rs4c.xml >/dev/null 2>&1; shot 143-rs4-shade-with-policy
+info "RS4 b with the DND policy (hide list, priority-only): probe said [$(tr '\n' ' ' < $OUT/rs4-dnd.txt | cut -c1-420)]; the notification is in the shade: $(adb shell cat /sdcard/rs4c.xml 2>/dev/null | grep -c HELLOTITLE) time(s); zen_mode=$(adb shell settings get global zen_mode | tr -d '\r\n')"
+adb shell cmd statusbar collapse; sleep 17
+adb shell cmd statusbar expand-notifications; sleep 2.5
+adb shell uiautomator dump /sdcard/rs4d.xml >/dev/null 2>&1
+info "RS4 b after the probe ended: the notification is back in the shade: $(adb shell cat /sdcard/rs4d.xml 2>/dev/null | grep -c HELLOTITLE) time(s); zen_mode=$(adb shell settings get global zen_mode | tr -d '\r\n')"
+adb shell cmd statusbar collapse; sleep 1
+adb shell cmd notification cancel tagx >/dev/null 2>&1; adb shell cmd notification disallow_dnd com.android.shell >/dev/null 2>&1; adb shell settings put global zen_mode 0 >/dev/null 2>&1
+setfeat; setmode custom; home
+fi # section rs4
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)

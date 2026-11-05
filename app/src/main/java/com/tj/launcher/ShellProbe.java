@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
  * identity may do on Android 10. It prints one line per question and changes nothing that lasts: every flag it sets belongs to a Binder token of THIS process, and Android removes the flags
  * when the process ends. Not used by the app itself.
  *   statusbar <disable1> <disable2> <seconds>   set StatusBarManager disable flags (hex ok) for N seconds, print what Android answered, then clear them
+ *   notifpolicy <suppressedEffects> <filter> <seconds>   set a Do-Not-Disturb policy that hides notification effects (e.g. the notification LIST) for N seconds, then put the old policy and filter back
  */
 public final class ShellProbe {
     private ShellProbe() {}
@@ -17,7 +18,8 @@ public final class ShellProbe {
     public static void main(String[] args) throws Exception {
         String mode = args.length > 0 ? args[0] : "help";
         if ("statusbar".equals(mode)) statusbar(args);
-        else System.out.println("ShellProbe: modes: statusbar <disable1> <disable2> <seconds>");
+        else if ("notifpolicy".equals(mode)) notifPolicy(args);
+        else System.out.println("ShellProbe: modes: statusbar <disable1> <disable2> <seconds> | notifpolicy <suppressedEffects> <interruptionFilter> <seconds>");
     }
 
     private static Object service(String name, String stub) throws Exception {
@@ -53,5 +55,22 @@ public final class ShellProbe {
         call(sb, "disable", t3, 0, token, "com.android.shell");
         call(sb, "disable2", t3, 0, token, "com.android.shell");
         System.out.println("cleared");
+    }
+
+    private static void notifPolicy(String[] a) throws Exception {
+        int effects = Integer.decode(a[1]), filter = Integer.parseInt(a[2]), secs = Integer.parseInt(a[3]);
+        Object nm = service("notification", "android.app.INotificationManager$Stub");
+        String pkg = "com.android.shell";
+        Object old = null;
+        try { old = nm.getClass().getMethod("getNotificationPolicy", String.class).invoke(nm, pkg); System.out.println("uid=" + android.os.Process.myUid() + " old policy=" + old); }
+        catch (Throwable t) { System.out.println("getNotificationPolicy -> " + t); }
+        android.app.NotificationManager.Policy np = new android.app.NotificationManager.Policy(0, 0, 0, effects);
+        System.out.println("setNotificationPolicy(effects=0x" + Integer.toHexString(effects) + ") -> " + call(nm, "setNotificationPolicy", new Class<?>[] { String.class, android.app.NotificationManager.Policy.class }, pkg, np));
+        System.out.println("setInterruptionFilter(" + filter + ") -> " + call(nm, "setInterruptionFilter", new Class<?>[] { String.class, int.class }, pkg, filter));
+        System.out.flush();
+        Thread.sleep(secs * 1000L);
+        call(nm, "setInterruptionFilter", new Class<?>[] { String.class, int.class }, pkg, 1);
+        if (old != null) call(nm, "setNotificationPolicy", new Class<?>[] { String.class, android.app.NotificationManager.Policy.class }, pkg, old);
+        System.out.println("restored");
     }
 }
