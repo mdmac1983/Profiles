@@ -1,0 +1,1428 @@
+diff --git a/.github/workflows/emulator.yml b/.github/workflows/emulator.yml
+index b2985fa..e804bb0 100644
+--- a/.github/workflows/emulator.yml
++++ b/.github/workflows/emulator.yml
+@@ -8,7 +8,7 @@ on:
+   workflow_dispatch:
+     inputs:
+       sections:
+-        description: 'Which scenario sections to run, comma list, in the order they run: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,rs,ka,rs2,rt,im,rs3,gc,rs4,pf,rb,last. EMPTY = everything (about 42 min since 2026-11-05, close to the 2700 s step limit: do not use it as the gate). RELEASE GATE = two side-by-side runs, about 20 min each: A = base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x and B = v,g,ka,rt,im,gc,pf,rb,last (the one-off research sections rs to rs4 are not part of it). A new feature usually needs only its own, e.g. "n6" (~5 min).'
++        description: 'Which scenario sections to run, comma list, in the order they run: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,rs,ka,ac,rs2,rt,im,rs3,gc,rs4,pf,rb,last. EMPTY = everything (about 42 min since 2026-11-05, close to the 2700 s step limit: do not use it as the gate). RELEASE GATE = two side-by-side runs, about 20 min each: A = base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x and B = v,g,ka,ac,rt,im,gc,pf,rb,last (the one-off research sections rs to rs4 are not part of it). A new feature usually needs only its own, e.g. "n6" (~5 min).'
+         required: false
+         default: ''
+ 
+diff --git a/app/src/main/java/com/tj/launcher/BatterySaverGuard.java b/app/src/main/java/com/tj/launcher/BatterySaverGuard.java
+new file mode 100644
+index 0000000..f537784
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/BatterySaverGuard.java
+@@ -0,0 +1,60 @@
++package com.tj.launcher;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.database.ContentObserver;
++import android.os.Handler;
++import android.os.Looper;
++import android.provider.Settings;
++import android.util.Log;
++
++/**
++ * AC3: turns battery saver off the moment it is on while the custom launcher is active. See {@link BatterySaverPolicy} for the why; this class is the Android side (a ContentObserver on
++ * {@code Settings.Global low_power} registered once per process from {@link TjApplication}, plus a check whenever the mode becomes custom). Cheap, exception-safe, never throws.
++ * Quickstep is never touched. Needs the WRITE_SECURE_SETTINGS grant (already part of the adb setup): without it the guard does nothing and says so in its status line.
++ */
++public final class BatterySaverGuard {
++    private static final String TAG = "TjBatSaver";
++    private static final long[] writes = new long[BatterySaverPolicy.MAX_WRITES];
++    private static int writeIdx = 0;
++    private static ContentObserver observer;   // held strongly: the content resolver only keeps a weak reference
++
++    private BatterySaverGuard() {}
++
++    public static boolean enabled(Context c) { return Features.get(c, BatterySaverPolicy.KEY, true); }
++    public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED; }
++
++    /** Registers the observer once per process (idempotent) and checks once. Called from {@link TjApplication#onCreate}. */
++    public static synchronized void start(Context c) {
++        try {
++            if (observer != null) return;
++            final Context app = c.getApplicationContext();
++            observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
++                @Override public void onChange(boolean selfChange) { check(app, "setting changed"); }
++            };
++            app.getContentResolver().registerContentObserver(Settings.Global.getUriFor(BatterySaverPolicy.SETTING), false, observer);
++            check(app, "process start");
++        } catch (Throwable t) { Log.e(TAG, "could not watch battery saver", t); }
++    }
++
++    /** Switches battery saver off now if the rules say so. {@code why} is for the log / status line only. */
++    public static void check(Context c, String why) {
++        try {
++            ContentResolver cr = c.getContentResolver();
++            boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
++            if (!on) return;   // the common case costs one settings read
++            long now = System.currentTimeMillis();
++            synchronized (BatterySaverGuard.class) {
++                if (!BatterySaverPolicy.shouldTurnOff(enabled(c), Mode.isCustom(c), CrashGuard.automationOff(c), true, now, writes)) return;
++                if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  battery saver is on but the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
++                writes[writeIdx++ % writes.length] = now;
++            }
++            Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 0);
++            if (BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.STICKY_SETTING))) Settings.Global.putInt(cr, BatterySaverPolicy.STICKY_SETTING, 0);
++            Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver off in the custom launcher (" + why + ")");
++            Log.i(TAG, "BATSAVER off (" + why + ")");
++        } catch (Throwable t) { Log.e(TAG, "battery saver check failed", t); }
++    }
++
++    private static String stamp(long ms) { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(ms)); }
++}
+diff --git a/app/src/main/java/com/tj/launcher/BatterySaverPolicy.java b/app/src/main/java/com/tj/launcher/BatterySaverPolicy.java
+new file mode 100644
+index 0000000..760f30f
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/BatterySaverPolicy.java
+@@ -0,0 +1,35 @@
++package com.tj.launcher;
++
++/**
++ * AC3 (Tj, 2026-11-05 ~22:17): "make it so custom launcher automatically disables battery saver mode. I turned on battery saver from quickstep then went to the custom launcher and it was still on.
++ * I want the custom launcher to turn it off immediately, if possible without any delay, maybe this can be prepped ahead of time".
++ *
++ * The pure rules for {@link BatterySaverGuard} (JVM-tested). Android 10's BatterySaverStateMachine watches {@code Settings.Global low_power}: writing 0 (with the WRITE_SECURE_SETTINGS grant the
++ * launcher already has) switches battery saver off exactly as the Settings screen does. "Prepared ahead of time" = a ContentObserver on that setting registered for the life of the process, so the
++ * write happens the moment something turns it on; nothing polls.
++ */
++public final class BatterySaverPolicy {
++    public static final String KEY = "profile_battery_saver_off";   // switch in Launcher control, default ON (Tj asked for it)
++    public static final String SETTING = "low_power";               // Settings.Global: 1 = battery saver on
++    public static final String STICKY_SETTING = "low_power_sticky"; // Settings.Global: Android keeps it on until the battery recovers; cleared together with the main flag
++    public static final String LAST_KEY = "battery_saver_last";     // what the guard did last (shown in Launcher control and the report)
++    /** At most this many switch-offs per window: a ROM that turns it on again by itself is never fought in a loop. */
++    public static final int MAX_WRITES = 4;
++    public static final long WINDOW_MS = 60_000;
++
++    private BatterySaverPolicy() {}
++
++    /** Pure: is this stored setting value "battery saver on"? */
++    public static boolean isOn(String value) { return value != null && "1".equals(value.trim()); }
++
++    /**
++     * Pure: switch battery saver off now? Only in the custom launcher, only while the switch is on, never while automation is paused (breaker tripped / "Restore everything"),
++     * only when it really is on, and not more than {@link #MAX_WRITES} times per {@link #WINDOW_MS}.
++     */
++    public static boolean shouldTurnOff(boolean switchOn, boolean customMode, boolean automationOff, boolean saverOn, long now, long[] recentWrites) {
++        if (!switchOn || !customMode || automationOff || !saverOn) return false;
++        int n = 0;
++        if (recentWrites != null) for (long t : recentWrites) if (t > 0 && now - t <= WINDOW_MS) n++;
++        return n < MAX_WRITES;
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/ControlActivity.java b/app/src/main/java/com/tj/launcher/ControlActivity.java
+index 3f3230a..87d8dec 100644
+--- a/app/src/main/java/com/tj/launcher/ControlActivity.java
++++ b/app/src/main/java/com/tj/launcher/ControlActivity.java
+@@ -99,7 +99,7 @@ public class ControlActivity extends Activity {
+ 
+         section("Double-Home return  (Quickstep to custom)");
+         toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
+-        toggle("Open Solitaire when the launcher starts", "Solitaire in front after boot or a launcher restart.", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
++        toggle("Open Solitaire automatically", "ON: Solitaire is put in front after boot / a launcher restart AND behind the lock screen when the tablet wakes. OFF: it is never opened for you (it then also stays out of Quickstep's Recents). The return from Quickstep has its own control right below: \"Plain (no app)\".", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
+         final EditText appBox = new EditText(this);
+         appBox.setSingleLine(true);
+         appBox.setText(ReturnReset.appLabel(this));
+@@ -133,6 +133,7 @@ public class ControlActivity extends Activity {
+             stepper("Patch left / right", TjAccessibilityService.PATCH_DX_KEY, 2, -200, 200, " px");
+             stepper("Patch up / down", TjAccessibilityService.PATCH_DY_KEY, 2, -200, 200, " px");
+             stepper("Patch size", TjAccessibilityService.PATCH_SCALE_KEY, 1, -30, 30, " %");
++            stepper("Patch brightness (lock screen)", TjAccessibilityService.PATCH_DIM_KEY, 2, -40, 40, " %");
+         }
+         note("Last unlock: " + Features.getString(this, TjAccessibilityService.UNLOCK_SPEED_KEY, "(unlock once to measure)"));
+         note("Speed of the last menu: " + Features.getString(this, TjAccessibilityService.LATENCY_KEY, "(open the menu once)"));
+@@ -187,10 +188,13 @@ public class ControlActivity extends Activity {
+         note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)") + "\nLast lock-screen switch: " + Features.getString(this, ProfileSession.PREARM_REPORT_KEY, "(none yet)"));
+ 
+         section("Two profiles (custom launcher / Quickstep)");
+-        toggle("Locking the tablet ends a Quickstep session", "Like logging out: after the tablet locks, a plain PIN gives you the custom launcher again and closes what Quickstep left open.", ProfileSession.endOnLock(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.END_ON_LOCK_KEY, v); } });
++        note("Locking the tablet ALWAYS ends a Quickstep session (no switch any more): a plain PIN or fingerprint gives the custom launcher again and closes what Quickstep left open. Only the crash breaker and \"Restore everything\" pause this, until you switch to the custom launcher yourself.");
+         toggle("Close Quickstep's apps and notifications the moment the tablet locks", "Needs the adb helper (Invisible clean-up below): apps, their notifications and their Recents cards are closed at lock, and the custom account is already active when you unlock, so the unlock has nothing left to do. Without the helper the clean-up happens at unlock under a black cover.", ProfileSession.preClean(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PRECLEAN_KEY, v); } });
+-        toggle("Switch behind the lock screen", "On waking to the lock screen, Solitaire and the custom home are put in front behind it, so the unlock opens them at once with no delay. (A handshake puts Quickstep there instead.)", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
++        toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
+         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
++        toggle("Turn battery saver off in the custom launcher", BatterySaverGuard.permitted(this) ? "If battery saver is on when the custom launcher becomes active, or something turns it on while it is active, it is switched off at once (Android's own setting, no delay). Quickstep keeps whatever you set." : "Needs the adb permission (not granted yet).", BatterySaverGuard.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
++        note("Battery saver guard: " + Features.getString(this, BatterySaverPolicy.LAST_KEY, "(has not had to act yet)"));
++        note("Lock screen log (newest last):\n" + (LockLog.tail(this, 8).isEmpty() ? "(nothing yet: lock and unlock the tablet once)" : LockLog.tail(this, 8)));
+         note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
+ 
+         section("Speed");
+@@ -258,6 +262,7 @@ public class ControlActivity extends Activity {
+             new AlertDialog.Builder(ControlActivity.this).setTitle("Restore everything?").setMessage("Every launcher feature is switched off and the original system settings are put back. You stay in Quickstep.")
+                     .setPositiveButton("Restore", new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int w) {
+                         RestoreStore.restoreAll(ControlActivity.this);
++                        CrashGuard.pause(ControlActivity.this);   // AC1: nothing of ours switches launchers for you until you go back to the custom launcher on purpose
+                         Mode.set(ControlActivity.this, Mode.QUICKSTEP);
+                         rebuild();
+                     } }).setNegativeButton("Cancel", null).show();
+@@ -267,6 +272,7 @@ public class ControlActivity extends Activity {
+                 + "\nWill open: " + describeTarget());
+         if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
+         if (!CrashGuard.clearedNote(this).isEmpty()) note(CrashGuard.clearedNote(this));
++        if (CrashGuard.isPaused(this)) note("Automatic switching is PAUSED: while you are in Quickstep nothing switches back to the custom launcher by itself (after \"Restore everything\", or after an update cleared the crash breaker). Press \"Switch to the custom launcher\" above when you want it back.");
+     }
+ 
+     private String describeTarget() {
+diff --git a/app/src/main/java/com/tj/launcher/CrashGuard.java b/app/src/main/java/com/tj/launcher/CrashGuard.java
+index 62c4214..c7cce2c 100644
+--- a/app/src/main/java/com/tj/launcher/CrashGuard.java
++++ b/app/src/main/java/com/tj/launcher/CrashGuard.java
+@@ -67,8 +67,34 @@ public final class CrashGuard {
+         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("tripped", false);
+     }
+ 
++    /**
++     * AC1 (v0.7.3): "automation" = everything the launcher does BY ITSELF around the lock screen (plain unlock ends a Quickstep session, the custom home is prepared behind the lock, the battery saver
++     * guard ...). Those rules no longer depend on switches that a breaker wipe can leave off, so this is what pauses them: the breaker tripped, or Tj pressed "Restore everything", or a newer version
++     * cleared the breaker (CBR1: the mode is left alone, so the launcher must not switch it back by itself). Cleared by every DELIBERATE way back to the custom launcher ({@link #clearTripped}).
++     */
++    static final String PAUSED_KEY = "paused";
++
++    /** Pure: is the launcher's own automation paused? */
++    public static boolean automationOff(boolean tripped, boolean paused) { return tripped || paused; }
++
++    public static boolean isPaused(Context c) {
++        return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(PAUSED_KEY, false);
++    }
++
++    /** The one answer the automation rules read (breaker tripped OR paused). */
++    public static boolean automationOff(Context c) {
++        SharedPreferences p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
++        return automationOff(p.getBoolean("tripped", false), p.getBoolean(PAUSED_KEY, false));
++    }
++
++    /** "Restore everything": nothing of ours switches launchers for you until you go back to the custom launcher on purpose. */
++    public static void pause(Context c) {
++        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(PAUSED_KEY, true).commit();
++    }
++
++    /** A deliberate way back to the custom launcher (double Home, a return method, the Control button): the breaker AND the pause are over. */
+     public static void clearTripped(Context c) {
+-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false)
++        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false).putBoolean(PAUSED_KEY, false)
+                 .putLong("t1", 0).putLong("t2", 0).putLong("t3", 0).putInt(TRIP_VERSION_KEY, 0).remove(CLEARED_NOTE_KEY).commit();
+     }
+ 
+@@ -80,6 +106,7 @@ public final class CrashGuard {
+             int installed = installedVersion(app);
+             if (shouldAutoClear(true, p.getInt(TRIP_VERSION_KEY, 0), installed)) {
+                 clearTripped(app);
++                p.edit().putBoolean(PAUSED_KEY, true).commit();   // AC1: the breaker is cleared (a fair try) but the launcher still does not switch the MODE by itself: Tj decides when to go back to custom
+                 p.edit().putString(CLEARED_NOTE_KEY, "The crash breaker was cleared when version " + installed + " was installed: the new version gets a fair try (three more crashes within two minutes would trip it again). If the launcher is still in Quickstep, switch to the custom launcher above when you want it.").commit();
+                 android.util.Log.i("TjCrash", "crash breaker cleared at start-up: version " + installed + " is newer than the one that tripped it");
+             }
+diff --git a/app/src/main/java/com/tj/launcher/LockLog.java b/app/src/main/java/com/tj/launcher/LockLog.java
+new file mode 100644
+index 0000000..90e1f9e
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/LockLog.java
+@@ -0,0 +1,88 @@
++package com.tj.launcher;
++
++import android.content.Context;
++import java.io.File;
++import java.io.FileOutputStream;
++
++/**
++ * AC1/AC7 (found while reading the code for Tj's 2026-11-05 requests): "sometimes the plain PIN opens Quickstep", "a couple of times the gesture opened the custom launcher". The tablet's logcat only keeps about
++ * three minutes, so the cause of a one-off could never be read afterwards. This is a small PERSISTENT log of what the lock screen logic saw and decided (screen on/off, PIN pad shown, the KIND of key tapped,
++ * the first two key kinds at Enter, handshake accepted / withdrawn, the unlock decision with the mode before and after, how long Enter to unlock took). It goes into the tablet report.
++ *
++ * PRIVACY (hard rule, same as the unlock handshakes): never a digit, never how many digits, never the PIN. Callers pass key CLASSES only and at most two of them ({@link UnlockMethods#padLead}).
++ * Size: a ring file of at most {@link #MAX_BYTES}; when it grows past that the oldest lines are dropped. Never throws, never blocks the lock screen logic for more than one small append.
++ */
++public final class LockLog {
++    static final String FILE = "lock-events.log";
++    public static final int MAX_BYTES = 48 * 1024;
++    public static final int KEEP_BYTES = 32 * 1024;
++    private static final Object LOCK = new Object();
++    private static int sinceTrimCheck = 0;
++
++    private LockLog() {}
++
++    /** Pure: one log line ("HH:mm:ss.SSS EVENT detail"), flattened to a single line and cut to 200 characters. */
++    public static String line(long nowMs, String event, String detail) {
++        String d = detail == null ? "" : detail.replace('\r', ' ').replace('\n', ' ');
++        String l = new java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(new java.util.Date(nowMs)) + " " + (event == null ? "?" : event) + (d.isEmpty() ? "" : " " + d);
++        if (l.length() > 200) l = l.substring(0, 200);
++        return l + "\n";
++    }
++
++    /** Pure: {@code all} if it fits in {@code max} characters, else its last {@code keep} characters starting at a line boundary. */
++    public static String trim(String all, int max, int keep) {
++        if (all == null || all.length() <= max) return all == null ? "" : all;
++        String t = all.substring(all.length() - keep);
++        int nl = t.indexOf('\n');
++        return nl >= 0 && nl + 1 < t.length() ? t.substring(nl + 1) : t;
++    }
++
++    /** Pure: the last {@code n} lines of {@code all}. */
++    public static String tailLines(String all, int n) {
++        if (all == null || all.isEmpty() || n <= 0) return "";
++        int end = all.length();
++        if (all.charAt(end - 1) == '\n') end--;
++        int pos = end, seen = 0;
++        while (pos > 0 && seen < n) { pos = all.lastIndexOf('\n', pos - 1); seen++; if (pos < 0) break; }
++        String t = all.substring(pos < 0 ? 0 : pos + 1);
++        return t.endsWith("\n") ? t : t + "\n";
++    }
++
++    /** Appends one line. Safe from any thread. */
++    public static void add(Context c, String event, String detail) {
++        try {
++            String l = line(System.currentTimeMillis(), event, detail);
++            File f = c.getApplicationContext().getFileStreamPath(FILE);
++            synchronized (LOCK) {
++                FileOutputStream o = new FileOutputStream(f, true);
++                try { o.write(l.getBytes("UTF-8")); } finally { o.close(); }
++                if (++sinceTrimCheck >= 40 || f.length() > MAX_BYTES) { sinceTrimCheck = 0; if (f.length() > MAX_BYTES) rewriteTrimmed(f); }
++            }
++        } catch (Throwable ignored) { }
++    }
++
++    private static void rewriteTrimmed(File f) throws java.io.IOException {
++        String all = read(f);
++        String t = trim(all, MAX_BYTES, KEEP_BYTES);
++        FileOutputStream o = new FileOutputStream(f, false);
++        try { o.write(t.getBytes("UTF-8")); } finally { o.close(); }
++    }
++
++    private static String read(File f) {
++        try {
++            if (!f.exists()) return "";
++            java.io.FileInputStream in = new java.io.FileInputStream(f);
++            try {
++                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
++                byte[] buf = new byte[4096]; int n;
++                while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
++                return bo.toString("UTF-8");
++            } finally { in.close(); }
++        } catch (Throwable t) { return ""; }
++    }
++
++    /** The last {@code n} lines (for the report and Launcher control); "" when there is no log. */
++    public static String tail(Context c, int n) {
++        synchronized (LOCK) { return tailLines(read(c.getApplicationContext().getFileStreamPath(FILE)), n); }
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/Mode.java b/app/src/main/java/com/tj/launcher/Mode.java
+index e435e1e..bc0bea9 100644
+--- a/app/src/main/java/com/tj/launcher/Mode.java
++++ b/app/src/main/java/com/tj/launcher/Mode.java
+@@ -57,6 +57,7 @@ public final class Mode {
+         KeyboardSwitch.apply(c, m);
+         TileProfile.apply(c, m);
+         ImmersiveProfile.apply(c, m);  // AA1: status bar hidden while the custom launcher is active (opt-in, needs the adb grant)
++        if (CUSTOM.equals(m)) BatterySaverGuard.check(c, "the custom launcher became active");   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins (the observer covers everything after)
+         // (Q3's retail-demo flag was REMOVED by the AB1 safety audit: see DemoModeProfile)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
+     }
+ }
+diff --git a/app/src/main/java/com/tj/launcher/PowerMenuDump.java b/app/src/main/java/com/tj/launcher/PowerMenuDump.java
+new file mode 100644
+index 0000000..19fac58
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/PowerMenuDump.java
+@@ -0,0 +1,106 @@
++package com.tj.launcher;
++
++import android.content.Context;
++import android.view.accessibility.AccessibilityNodeInfo;
++import java.io.File;
++import java.io.FileOutputStream;
++
++/**
++ * AC6 (Tj, 2026-11-05: "the lock screen power menu overlay doesn't look right at all ... the buttons and card are too small. How can I get Claude to make it exact?").
++ * The code cannot know the real menu's layout on the tablet's MtkSystemUI. The accessibility helper SEES it every time the menu opens, so it writes what it sees (the menu window's node tree: class, view id,
++ * label, bounds, clickable; plus the numbers it used and the display facts) into a small file. {@link ReportState} adds the file to the tablet report, so one report after one power-menu press carries the
++ * exact geometry, no cable. Nothing private is in it: labels of the menu entries ("Power off", "Restart", "Screenshot", "Emergency"...), pixel rectangles and display numbers.
++ */
++public final class PowerMenuDump {
++    static final String FILE = "power-menu-dump.txt";
++    static final int MAX_NODES = 80, MAX_DEPTH = 9, MAX_CHARS = 12 * 1024;
++    private static final Object LOCK = new Object();
++    private static long lastWriteLockedMs = 0, lastWriteOpenMs = 0;
++
++    private PowerMenuDump() {}
++
++    /** Pure: one node as a line: depth-indented "Class #id 'text' [l,t][r,b] click". Labels cut to 40 characters, newlines flattened. */
++    public static String nodeLine(int depth, String cls, String viewId, CharSequence text, CharSequence desc, int l, int t, int r, int b, boolean clickable) {
++        StringBuilder s = new StringBuilder();
++        for (int i = 0; i < depth && i < MAX_DEPTH; i++) s.append("  ");
++        String c = cls == null ? "?" : cls.substring(cls.lastIndexOf('.') + 1);
++        s.append(c);
++        if (viewId != null && !viewId.isEmpty()) s.append(" #").append(viewId.substring(viewId.lastIndexOf('/') + 1));
++        String label = flat(text != null && text.length() > 0 ? text : desc);
++        if (!label.isEmpty()) s.append(" '").append(label).append('\'');
++        s.append(" [").append(l).append(',').append(t).append("][").append(r).append(',').append(b).append(']');
++        if (clickable) s.append(" click");
++        return s.append('\n').toString();
++    }
++
++    private static String flat(CharSequence cs) {
++        if (cs == null) return "";
++        String s = cs.toString().replace('\r', ' ').replace('\n', ' ').trim();
++        return s.length() > 40 ? s.substring(0, 40) : s;
++    }
++
++    /** Pure: item pitch (distance between the tops of two neighbouring entries) from the tops of the first and the last of {@code n} equally spaced entries; -1 when it cannot be told. */
++    public static int pitch(int firstTop, int lastTop, int n) { return n >= 2 && lastTop > firstTop ? (lastTop - firstTop) / (n - 1) : -1; }
++
++    /** Pure: the card of OUR menu from the stock panel: the panel minus its last entry (the third item, Screenshot). {@code pitch} < 1 falls back to one third of the panel. */
++    public static int[] cardFromPanel(int left, int top, int right, int bottom, int pitch) {
++        int h = bottom - top;
++        int drop = pitch > 0 && pitch < h ? pitch : h / 3;
++        return new int[] { left, top, right, bottom - drop };
++    }
++
++    /** Walks {@code root} (the power menu's window) breadth-limited and returns the text block; never throws. */
++    public static String walk(AccessibilityNodeInfo root) {
++        StringBuilder out = new StringBuilder();
++        try { walk(root, 0, out, new int[] { 0 }); } catch (Throwable t) { out.append("(walk failed: ").append(t).append(")\n"); }
++        return out.toString();
++    }
++
++    private static void walk(AccessibilityNodeInfo n, int depth, StringBuilder out, int[] count) {
++        if (n == null || count[0] >= MAX_NODES || depth > MAX_DEPTH) return;
++        count[0]++;
++        android.graphics.Rect r = new android.graphics.Rect();
++        n.getBoundsInScreen(r);
++        out.append(nodeLine(depth, String.valueOf(n.getClassName()), n.getViewIdResourceName(), n.getText(), n.getContentDescription(), r.left, r.top, r.right, r.bottom, n.isClickable()));
++        for (int i = 0; i < n.getChildCount() && count[0] < MAX_NODES; i++) {
++            AccessibilityNodeInfo ch = n.getChild(i);
++            if (ch != null) { try { walk(ch, depth + 1, out, count); } finally { ch.recycle(); } }
++        }
++    }
++
++    /** True when a dump of this lock state is due (the newest per state wins, at most one per 20 s), so the tree is only walked when it will be written. */
++    public static boolean due(boolean locked) {
++        long now = android.os.SystemClock.elapsedRealtime();
++        synchronized (LOCK) { long last = locked ? lastWriteLockedMs : lastWriteOpenMs; return last == 0 || now - last >= 20_000; }
++    }
++
++    /** Writes the dump (header + tree). The file holds the LAST dump of each state, lock screen first. Safe from any thread. */
++    public static void write(Context c, boolean locked, String header, String tree) {
++        try {
++            long now = android.os.SystemClock.elapsedRealtime();
++            synchronized (LOCK) {
++                if (locked) lastWriteLockedMs = now; else lastWriteOpenMs = now;
++                String mine = "=== " + (locked ? "LOCK SCREEN" : "UNLOCKED") + "\n" + header + tree;
++                if (mine.length() > MAX_CHARS / 2) mine = mine.substring(0, MAX_CHARS / 2);
++                String other = read(c);
++                String keepOther = "";
++                int a = other.indexOf("=== " + (locked ? "UNLOCKED" : "LOCK SCREEN"));
++                if (a >= 0) { int b = other.indexOf("=== ", a + 4); keepOther = b < 0 ? other.substring(a) : other.substring(a, b); }
++                String all = locked ? mine + (keepOther.isEmpty() ? "" : "\n" + keepOther) : (keepOther.isEmpty() ? "" : keepOther + "\n") + mine;
++                FileOutputStream o = new FileOutputStream(c.getApplicationContext().getFileStreamPath(FILE), false);
++                try { o.write(all.getBytes("UTF-8")); } finally { o.close(); }
++            }
++        } catch (Throwable ignored) { }
++    }
++
++    /** The stored dump, or "" (for the report). */
++    public static String read(Context c) {
++        try {
++            File f = c.getApplicationContext().getFileStreamPath(FILE);
++            if (!f.exists()) return "";
++            java.io.FileInputStream in = new java.io.FileInputStream(f);
++            try { java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream(); byte[] b = new byte[4096]; int n; while ((n = in.read(b)) > 0) bo.write(b, 0, n); return bo.toString("UTF-8"); }
++            finally { in.close(); }
++        } catch (Throwable t) { return ""; }
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/ProfileSession.java b/app/src/main/java/com/tj/launcher/ProfileSession.java
+index d028903..e171dab 100644
+--- a/app/src/main/java/com/tj/launcher/ProfileSession.java
++++ b/app/src/main/java/com/tj/launcher/ProfileSession.java
+@@ -13,8 +13,8 @@ import android.content.Context;
+  * Pure rules here (JVM-testable); {@link TjAccessibilityService} feeds the events and does the starting.
+  */
+ public final class ProfileSession {
+-    public static final String END_ON_LOCK_KEY = "profile_end_on_lock";      // locking ends a Quickstep session, default ON
+-    public static final String PREARM_KEY = "profile_prearm";                // lock screen: put Solitaire (custom) / the stock home (handshake) in front behind the keyguard, default ON
++    // AC1 (v0.7.3): "locking ends a Quickstep session" is no longer a switch (Tj: a plain PIN must ALWAYS open the custom launcher, without exception). Only the paused state ({@link CrashGuard#automationOff}) stops it.
++    public static final String PREARM_KEY = "profile_prearm";                // lock screen: put the custom home (and Solitaire, only if "Open Solitaire automatically" is on) in front behind the keyguard, default ON (an OFF-ramp)
+     public static final String RADIOS_KEY = "profile_radios_off";            // custom account: Wi-Fi and Bluetooth are switched off again if something turns them on, default ON
+     public static final String PRECLEAN_KEY = "profile_preclean";            // O4: closing/locking from Quickstep closes its apps + notifications AT LOCK (needs the adb helper), default ON
+     public static final String BUZZ_KEY = "unlock_buzz";                     // a short buzz when a handshake is accepted, default ON
+@@ -22,15 +22,17 @@ public final class ProfileSession {
+ 
+     private ProfileSession() {}
+ 
+-    public static boolean endOnLock(Context c) { return Features.get(c, END_ON_LOCK_KEY, true); }
+     public static boolean prearm(Context c) { return Features.get(c, PREARM_KEY, true); }
+     public static boolean radiosOff(Context c) { return Features.get(c, RADIOS_KEY, true); }
+     public static boolean preClean(Context c) { return Features.get(c, PRECLEAN_KEY, true); }
+     public static boolean buzz(Context c) { return Features.get(c, BUZZ_KEY, true); }
+ 
+-    /** Pure: wake-up on the LOCK screen (keyguard locked, screen on). Put the custom stack in front behind the keyguard? Never while a handshake is armed (the target is Quickstep then). */
+-    public static boolean prearmCustomStackOnLockedWake(boolean prearmEnabled, boolean keyguardLocked, boolean handshakeArmed, boolean alreadyDoneThisLock, boolean crashTripped) {
+-        return prearmEnabled && keyguardLocked && !handshakeArmed && !alreadyDoneThisLock && !crashTripped;
++    /**
++     * Pure: wake-up on the LOCK screen (keyguard locked, screen on). Put the custom stack (the custom home; Solitaire only when {@link ReturnReset#autoOpenWanted}) in front behind the keyguard?
++     * Never while a handshake is armed (the target is Quickstep then). {@code prearmEnabled} is the OFF-ramp switch (default on); {@code automationOff} = breaker tripped or paused.
++     */
++    public static boolean prearmCustomStackOnLockedWake(boolean prearmEnabled, boolean keyguardLocked, boolean handshakeArmed, boolean alreadyDoneThisLock, boolean automationOff) {
++        return prearmEnabled && keyguardLocked && !handshakeArmed && !alreadyDoneThisLock && !automationOff;
+     }
+ 
+     /**
+@@ -38,25 +40,39 @@ public final class ProfileSession {
+      * the tablet is LOCKED while a Quickstep session is current, nobody has given a handshake, and the shell helper can do the clean-up with no screen at all
+      * (force-stop + removing the Recents cards; the shade and Recents cannot be driven with the screen off) -> clean up NOW and switch to the custom account behind the lock screen.
+      */
+-    public static boolean preCleanAtLock(boolean preCleanEnabled, boolean endOnLock, boolean customMode, boolean crashTripped, boolean keyguardLocked, boolean handshakeArmed, boolean helperReady, boolean alreadyDone) {
+-        return preCleanEnabled && endOnLock && !customMode && !crashTripped && keyguardLocked && !handshakeArmed && helperReady && !alreadyDone;
++    public static boolean preCleanAtLock(boolean preCleanEnabled, boolean customMode, boolean automationOff, boolean keyguardLocked, boolean handshakeArmed, boolean helperReady, boolean alreadyDone) {
++        return preCleanEnabled && !customMode && !automationOff && keyguardLocked && !handshakeArmed && helperReady && !alreadyDone;
+     }
+ 
+-    /** Pure: a plain unlock (USER_PRESENT, no handshake): is the Quickstep session over, so the custom account takes the tablet? */
+-    public static boolean plainUnlockEndsQuickstep(boolean endOnLock, boolean customMode, boolean crashTripped) {
+-        return endOnLock && !customMode && !crashTripped;
++    /** Pure: a plain unlock (USER_PRESENT, no handshake): is the Quickstep session over, so the custom account takes the tablet? ALWAYS, unless automation is paused (AC1). */
++    public static boolean plainUnlockEndsQuickstep(boolean customMode, boolean automationOff) {
++        return !customMode && !automationOff;
+     }
+ 
+     /** Pure: the Enter tap of a plain PIN while a Quickstep session is still current: raise the black cover now, so the unlock animation never shows Quickstep's leftovers. */
+-    public static boolean coverAtEnter(boolean endOnLock, boolean customMode, boolean crashTripped, boolean handshakeGiven, boolean maybeWorkToDo, boolean coverEnabled) {
+-        return plainUnlockEndsQuickstep(endOnLock, customMode, crashTripped) && !handshakeGiven && maybeWorkToDo && coverEnabled;
++    public static boolean coverAtEnter(boolean customMode, boolean automationOff, boolean handshakeGiven, boolean maybeWorkToDo, boolean coverEnabled) {
++        return plainUnlockEndsQuickstep(customMode, automationOff) && !handshakeGiven && maybeWorkToDo && coverEnabled;
+     }
+ 
+     /** Pure: is this the first Home of a NEW boot (the boot counter changed since we last looked) while a Quickstep session is still marked? A restart kills every app, so the session is over. */
+-    public static boolean bootEndsQuickstep(int seenBootCount, int nowBootCount, boolean endOnLock, boolean customMode, boolean crashTripped) {
+-        return nowBootCount >= 0 && seenBootCount != nowBootCount && endOnLock && !customMode && !crashTripped;
++    public static boolean bootEndsQuickstep(int seenBootCount, int nowBootCount, boolean customMode, boolean automationOff) {
++        return nowBootCount >= 0 && seenBootCount != nowBootCount && !customMode && !automationOff;
++    }
++
++    /**
++     * Pure (AC9): a handshake was just accepted. Quickstep's home goes in front behind the lock screen AT ONCE, whatever the pre-arm switch says: the custom stack may already be there
++     * (prepared at the wake) and must be replaced before the unlock reveals it.
++     */
++    public static boolean stockBehindLockOnHandshake() { return true; }
++
++    /** Pure (AC9): after an unlock that chose Quickstep, are we still looking at OUR launcher or the Solitaire stand-in (a late start from the lock-screen preparation)? Then Quickstep is started again. */
++    public static boolean restartQuickstepAfterUnlock(boolean ourLauncherInFront, boolean targetInFront, int attempt) {
++        return attempt < VERIFY_DELAYS_MS.length && (ourLauncherInFront || targetInFront);
+     }
+ 
++    /** AC9: when (ms after the unlock) the helper looks again whether Quickstep really is in front, at most this many times. */
++    public static final long[] VERIFY_DELAYS_MS = { 600, 900 };
++
+     /** Pure: switch Wi-Fi / Bluetooth off again? Custom account only, at most 3 attempts per 60 s (a radio that refuses to go off is never fought in a loop). */
+     public static boolean enforceRadios(boolean enabled, boolean customMode, long now, long[] recent) {
+         if (!enabled || !customMode) return false;
+@@ -82,7 +98,7 @@ public final class ProfileSession {
+             if (now == seen) return;
+             Features.setInt(c, "boot_count_seen", now);
+             if (seen == -2) return;   // first look after install
+-            if (bootEndsQuickstep(seen, now, endOnLock(c), Mode.isCustom(c), CrashGuard.wasTripped(c))) {
++            if (bootEndsQuickstep(seen, now, Mode.isCustom(c), CrashGuard.automationOff(c))) {
+                 Mode.set(c, Mode.CUSTOM);
+                 AppOrigin.clearQuickstep(c);
+                 Features.setString(c, PREARM_REPORT_KEY, "boot: a new boot ended the Quickstep session (custom launcher)");
+diff --git a/app/src/main/java/com/tj/launcher/ReportState.java b/app/src/main/java/com/tj/launcher/ReportState.java
+index 979b4a8..6350aa9 100644
+--- a/app/src/main/java/com/tj/launcher/ReportState.java
++++ b/app/src/main/java/com/tj/launcher/ReportState.java
+@@ -23,7 +23,7 @@ public final class ReportState {
+             "power_mode", "return_app_label", "qs_tiles_applied_mode", "qs_tiles_custom", "qs_tiles_quickstep",
+             "unlock_pick_last", "unlock_speed", "reset_last", "failsafe_last", "profile_last", "power_latency",
+             "guard_count", "guard_last", "keyboard_status", "wallpaper_patch_status", "lock_cal_status",
+-            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why"));
++            "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why", "battery_saver_last"));
+ 
+     /** Pure: the "key: value" lines for the preferences in {@code all}: every Boolean, plus the allow-listed text and number values; sorted, values flattened to one line and cut to 600 characters. */
+     public static String format(Map<String, ?> all) {
+@@ -68,8 +68,20 @@ public final class ReportState {
+         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
+         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
+         try { b.append("crash breaker tripped: ").append(yes(CrashGuard.wasTripped(c))).append('\n'); } catch (Throwable t) { /* not available */ }
++        try { b.append("automation paused (Restore everything, or the breaker cleared by an update; the lock-screen rules do nothing while paused): ").append(yes(CrashGuard.isPaused(c))).append('\n'); } catch (Throwable t) { /* not available */ }
++        try {
++            b.append("battery saver guard: switch ").append(BatterySaverGuard.enabled(c) ? "on" : "off").append(", low_power = ").append(setting("global", c, BatterySaverPolicy.SETTING)).append(", low_power_sticky = ").append(setting("global", c, BatterySaverPolicy.STICKY_SETTING))
++                    .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
++        } catch (Throwable t) { /* not available */ }
+         b.append("\n----- the launcher's switches and last results (an allow-list: nothing secret is read)\n");
+         b.append(format(Features.all(c)));
++        try {
++            String log = LockLog.tail(c, 40);
++            b.append("\n----- the lock screen log (last 40 events; key KINDS only, never a digit)\n").append(log.isEmpty() ? "(empty: lock and unlock the tablet once)\n" : log);
++            String dump = PowerMenuDump.read(c);
++            if (dump.length() > 6000) dump = dump.substring(0, 6000) + "...\n";
++            b.append("\n----- the stock power menu as the accessibility helper saw it (open the power menu once in the custom launcher with the cover on; empty = not seen yet)\n").append(dump.isEmpty() ? "(none yet)\n" : dump);
++        } catch (Throwable t) { /* not available */ }
+         return b.toString();
+     }
+ }
+diff --git a/app/src/main/java/com/tj/launcher/RestoreStore.java b/app/src/main/java/com/tj/launcher/RestoreStore.java
+index e1385e5..e00902a 100644
+--- a/app/src/main/java/com/tj/launcher/RestoreStore.java
++++ b/app/src/main/java/com/tj/launcher/RestoreStore.java
+@@ -70,10 +70,9 @@ public final class RestoreStore {
+         sp.edit().clear().commit();
+         Features.allOff(c);
+         Features.set(c, LockNumber.KEY, false);
+-        Features.set(c, ProfileSession.END_ON_LOCK_KEY, false);   // N3: restore = nothing of ours switches launchers for you (these default to ON)
+-        Features.set(c, ProfileSession.PREARM_KEY, false);
+-        Features.set(c, ProfileSession.RADIOS_KEY, false);
+-        Features.set(c, ProfileSession.PRECLEAN_KEY, false);
++        // AC1 (v0.7.3): the Two-profiles switches (pre-arm, radios, pre-clean) are NOT written false here any more. The old code did, so a breaker trip silently disabled the very things Tj depends on and he had to find and
++        // re-enable them by hand. "Nothing of ours switches launchers for you" is now the PAUSE ({@link CrashGuard#automationOff}), which every one of those rules reads; Restore and the breaker set it, and the next deliberate
++        // way back to the custom launcher clears it.
+         Features.set(c, KeepAlivePolicy.KEY, false);   // AA2: restore = the process is no longer held in memory by us
+         KeepAliveService.stop(c);
+         Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off
+diff --git a/app/src/main/java/com/tj/launcher/ReturnReset.java b/app/src/main/java/com/tj/launcher/ReturnReset.java
+index 1432552..56cd9b1 100644
+--- a/app/src/main/java/com/tj/launcher/ReturnReset.java
++++ b/app/src/main/java/com/tj/launcher/ReturnReset.java
+@@ -34,6 +34,14 @@ public final class ReturnReset {
+     private ReturnReset() {}
+ 
+     public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
++
++    /**
++     * AC2 / AC8 (Tj, 2026-11-05: "I turned off the feature to automatically open solitaire, yet I see it in the Quickstep launcher recent apps often"; "it opens solitaire also. I turned the solitaire setting off,
++     * so it shouldn't load it under the lock screen"). ROOT CAUSE: the "Open Solitaire" switch ({@link TjHooks#STARTUP_KEY}) was read only when the launcher STARTS; the lock-screen preparation started the target
++     * app on every locked wake whatever the switch said, and every wake left a Solitaire task that Quickstep's Recents then listed. The preparation now asks this first.
++     * (The RETURN reset keeps its own controls, the app-name box and "Plain (no app)": Tj asked for that behaviour on 2026-11-02.)
++     */
++    public static boolean autoOpenWanted(Context c) { return Features.get(c, TjHooks.STARTUP_KEY, true); }
+     public static String appLabel(Context c) { return Features.getString(c, APP_KEY, DEFAULT_APP); }
+ 
+     /**
+@@ -303,6 +311,7 @@ public final class ReturnReset {
+     /** N3: start the target app once, with no verification loop and no Home press: used while the lock screen still covers everything (the accessibility check cannot see behind it). */
+     public static void startTargetBehindLock(Context c) {
+         Context app = c.getApplicationContext();
++        if (!autoOpenWanted(app)) { Log.i(TAG, "lock-screen preparation: the target app is NOT started (\"Open Solitaire automatically\" is off)"); return; }   // AC2/AC8
+         String pkg = targetPackage(app);
+         if (pkg == null) return;
+         List<String> labels = new ArrayList<>();
+diff --git a/app/src/main/java/com/tj/launcher/RouterActivity.java b/app/src/main/java/com/tj/launcher/RouterActivity.java
+index e681461..aa3a276 100644
+--- a/app/src/main/java/com/tj/launcher/RouterActivity.java
++++ b/app/src/main/java/com/tj/launcher/RouterActivity.java
+@@ -48,6 +48,7 @@ public class RouterActivity extends Activity {
+         DemoModeProfile.cleanupOnce(this);   // AB1: the retired retail-demo option never stays switched on (one settings read, once)
+         KeepAliveService.ensure(this);    // AA2: the process stays in memory (no-op when it already runs or the switch is off)
+         String pre = in == null ? null : in.getStringExtra(EXTRA_PREARM);
++        LockLog.add(this, "ROUTER", (pre == null ? "home press" : "prepare " + pre) + ", mode " + Mode.get(this));   // AC1/AC7: the persistent lock-screen log shows whether a start made by the helper really arrived here
+         if ("stock".equals(pre)) { startStock(); return; }
+         boolean prearm = "custom".equals(pre);
+         // Double-press Home while the stock launcher is active = back to the custom launcher (Tj: "a quick way to go back").
+diff --git a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+index da7d186..8d86c38 100644
+--- a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
++++ b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+@@ -126,11 +126,17 @@ public class TjAccessibilityService extends AccessibilityService {
+         try { DemoModeProfile.cleanupOnce(this); } catch (Throwable t) { Log.e(TAG, "demo cleanup failed", t); }   // AB1: the retired retail-demo option never stays switched on
+         try { KeepAliveService.ensure(this); } catch (Throwable t) { Log.e(TAG, "keep-alive failed", t); }   // AA2: after a restart / update the helper reconnects first: bring the service back
+         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
++        LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
++        try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
+     }
+ 
+     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
+     public static final String PATCH_STATUS_KEY = "wallpaper_patch_status";
+     public static final String PATCH_DX_KEY = "patch_dx", PATCH_DY_KEY = "patch_dy", PATCH_SCALE_KEY = "patch_scale_pct";   // alignment nudges in px / percent
++    /** AC6: brightness nudge of the lock-screen patch in percent points (Launcher control). The wallpaper MODEL is drawn darker by {@link #DIM_KEYGUARD} because the real keyguard darkens its wallpaper. */
++    public static final String PATCH_DIM_KEY = "patch_dim_pct";
++    /** AC6: how much of its brightness the real lock screen keeps: MEASURED on the Android 10 emulator (run 74: (173,96,20) on screen vs (229,122,26) in the wallpaper = 0.755 / 0.787 / 0.77). A first estimate for the tablet's MtkSystemUI. */
++    static final float DIM_KEYGUARD = 0.77f;
+     private View patchView;
+     private android.graphics.Bitmap wallpaperBmp;
+     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
+@@ -138,6 +144,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private boolean patchLockMode, targetIsLock;
+     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
+     private long lastOffTop = -1, lastItemH = -1;
++    private int lastPitch = -1;   // AC6: distance between the tops of neighbouring menu entries (Power off -> Restart), measured on every scan
+     // V4: auto-calibration of the lock-screen patch against a real screenshot (shell helper). Final lock-patch scale = lockCalM * (1 + Tj's nudge %); shifts add.
+     public static final String LOCK_CAL_KEY = "lock_cal";
+     public static final String CAL_STATUS_KEY = "lock_cal_status";
+@@ -159,7 +166,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
+             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+-            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
++            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); BatterySaverGuard.check(TjAccessibilityService.this, "the mode changed"); } });
+             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
+             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
+             if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
+@@ -386,6 +393,9 @@ public class TjAccessibilityService extends AccessibilityService {
+                 if (patchLockMode && lockShot != null) { c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen
+                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
+                 if (b == null) return;
++                // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
++                if (patchLockMode) { float k = Math.max(0.3f, Math.min(1f, DIM_KEYGUARD * (1f + Features.getInt(TjAccessibilityService.this, PATCH_DIM_KEY, 0) / 100f))); p.setColorFilter(new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP)); }
++                else p.setColorFilter(null);
+                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
+                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
+                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
+@@ -482,8 +492,11 @@ public class TjAccessibilityService extends AccessibilityService {
+             long now = System.currentTimeMillis();
+             lastPadKeyAt = now;
+             if (k == UnlockPick.Key.ENTER) {
++                String lead = unlock.padLead();   // read BEFORE onEnter clears the pad: the first two key KINDS only (never a digit, never the length)
++                lastEnterAt = now;
+                 UnlockMethods.Method m = unlock.onEnter(now);
+                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
++                LockLog.add(getApplicationContext(), "ENTER", "lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
+                 if (m == null) coverAtEnter();
+             } else unlock.onKey(k, now);
+         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
+@@ -570,10 +583,11 @@ public class TjAccessibilityService extends AccessibilityService {
+         buzz();
+         android.content.Context app = getApplicationContext();
+         if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; }
+-        if (ProfileSession.prearm(app)) startRouter("stock");
++        if (ProfileSession.stockBehindLockOnHandshake()) startRouter("stock");   // AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
+         preArmedThisLock = true;
+         Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
+         profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
++        LockLog.add(app, "HANDSHAKE", m.id + " accepted, mode now " + Mode.get(app));
+     }
+ 
+     /** The handshake was withdrawn (plain retry after a wrong PIN, or the screen went dark): back to the custom account. */
+@@ -581,12 +595,15 @@ public class TjAccessibilityService extends AccessibilityService {
+         if (!flippedByHandshake) return;
+         flippedByHandshake = false;
+         android.content.Context app = getApplicationContext();
+-        if (!Mode.isCustom(app) && !CrashGuard.wasTripped(app)) Mode.set(app, Mode.CUSTOM);
++        if (!Mode.isCustom(app) && !CrashGuard.automationOff(app)) Mode.set(app, Mode.CUSTOM);
+         preArmedThisLock = false;
++        LockLog.add(app, "HANDSHAKE", "withdrawn (screen off or a plain retry too late), mode " + Mode.get(app));
+         if (keyguardLocked()) prearmCustom("handshake withdrawn");
+     }
+ 
+     private void startRouter(String which) {
++        Log.i(TAG, "ROUTER start " + which);
++        LockLog.add(this, "START", "router " + which);
+         try {
+             startActivity(new android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME).setPackage(getPackageName())
+                     .putExtra(RouterActivity.EXTRA_PREARM, which)
+@@ -600,7 +617,7 @@ public class TjAccessibilityService extends AccessibilityService {
+             android.content.Context app = getApplicationContext();
+             startRouter("custom");            // the router starts the custom home and THEN the target app (same activity, fixed order)
+             preArmedThisLock = true;
+-            profileNote("lock screen (" + why + "): custom home + " + ReturnReset.appLabel(app) + " put in front behind the keyguard");
++            profileNote("lock screen (" + why + "): custom home" + (ReturnReset.autoOpenWanted(app) ? " + " + ReturnReset.appLabel(app) : " (Solitaire NOT started: \"Open Solitaire automatically\" is off)") + " put in front behind the keyguard");
+         } catch (Throwable t) { Log.e(TAG, "prearm failed", t); }
+     }
+ 
+@@ -618,14 +635,16 @@ public class TjAccessibilityService extends AccessibilityService {
+             android.content.Context app = getApplicationContext();
+             boolean locked = keyguardLocked();
+             boolean armed = unlock.armedMethod() != null;
+-            if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
++            boolean paused = CrashGuard.automationOff(app);
++            LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
++            if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
+                 if (ReturnReset.cleanAtLock(app)) {
+                     preCleanedThisLock = true;
+                     Mode.set(app, Mode.CUSTOM);
+                     profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
+                 }
+             }
+-            if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, CrashGuard.wasTripped(app))) prearmCustom(why);
++            if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, paused)) prearmCustom(why);
+         } catch (Throwable t) { Log.e(TAG, "lock prepare failed", t); }
+     }
+ 
+@@ -651,7 +670,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private void coverAtEnter() {
+         try {
+             android.content.Context app = getApplicationContext();
+-            if (!ProfileSession.coverAtEnter(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), false, ReturnReset.mayHaveWork(app), Features.get(app, ReturnReset.COVER_KEY, true))) return;
++            if (!ProfileSession.coverAtEnter(Mode.isCustom(app), CrashGuard.automationOff(app), false, ReturnReset.mayHaveWork(app), Features.get(app, ReturnReset.COVER_KEY, true))) return;
+             showResetCover();
+             handler.removeCallbacks(coverCheck);
+             handler.postDelayed(coverCheck, 1800);
+@@ -673,6 +692,7 @@ public class TjAccessibilityService extends AccessibilityService {
+             boolean wasFlipped = flippedByHandshake;
+             flippedByHandshake = false;
+             unlock.reset();
++            long sinceEnter = lastEnterAt > 0 ? System.currentTimeMillis() - lastEnterAt : -1;   // AC7: how long the PIN check took (the log is how a slow tablet shows itself)
+             if (m != null) {
+                 if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
+                 // The stock home was started behind the lock screen; only if the pre-start did not land (not in front now) press the router's Home.
+@@ -681,23 +701,51 @@ public class TjAccessibilityService extends AccessibilityService {
+                 if (!front) startRouter("stock");
+                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
+                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
++                LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
++                verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
+                 return;
+             }
+-            boolean ends = ProfileSession.plainUnlockEndsQuickstep(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app));
++            boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
+             if (ends) {
+                 Mode.set(app, Mode.CUSTOM);
+                 startRouter("custom");           // quiet: the stack is already (or about to be) in front; no Home press, no double-Home
+                 ReturnReset.run(app);            // closes what Quickstep opened, clears the shade, radios off, Solitaire last (the cover is usually up already)
+                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
+                 Log.i(TAG, "UNLOCKPICK custom (session ended)");
++                LockLog.add(app, "UNLOCK", "plain -> custom (a Quickstep session ended), Enter to unlock " + sinceEnter + " ms");
+             } else {
+                 hideResetCover();
+                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
+                 Log.i(TAG, "UNLOCKPICK custom");
++                LockLog.add(app, "UNLOCK", "plain, mode " + Mode.get(app) + (CrashGuard.automationOff(app) ? " (automation paused: the mode is left alone)" : "") + ", Enter to unlock " + sinceEnter + " ms");
+             }
+         } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
+     }
+ 
++    private long lastEnterAt = 0;   // when the last PIN-pad Enter was tapped (for the lock log's "Enter to unlock" time)
++
++    /**
++     * AC9 (Tj: "even though the custom launcher is prepared to open on the lock screen, if I do the gesture for quickstep, always open quickstep"): after an unlock that chose Quickstep, look again at
++     * {@link ProfileSession#VERIFY_DELAYS_MS} - if OUR launcher or the Solitaire stand-in is the window in front (a start made at the wake finished late), start Quickstep's home again. Bounded (two looks),
++     * and it never touches any OTHER app: someone who opened an app within a second of the unlock is left alone.
++     */
++    private void verifyQuickstepFront(final int attempt) {
++        if (attempt >= ProfileSession.VERIFY_DELAYS_MS.length) return;
++        handler.postDelayed(new Runnable() { @Override public void run() {
++            try {
++                android.content.Context app = getApplicationContext();
++                if (Mode.isCustom(app) || keyguardLocked()) return;   // the choice changed meanwhile (a return method, a new lock): nothing to enforce
++                String target = ReturnReset.targetPackage(app);
++                boolean ours = isForeground(getPackageName()), tgt = target != null && isForeground(target);
++                if (ProfileSession.restartQuickstepAfterUnlock(ours, tgt, attempt)) {
++                    LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": " + (ours ? "the custom launcher" : "Solitaire") + " is in front after a Quickstep choice: starting Quickstep's home again");
++                    startRouter("stock");
++                    verifyQuickstepFront(attempt + 1);
++                } else LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": Quickstep (or another app) is in front, nothing to do");
++            } catch (Throwable t) { Log.e(TAG, "quickstep verify failed", t); }
++        } }, ProfileSession.VERIFY_DELAYS_MS[attempt]);
++    }
++
+     // ---------------------------------------------------------------- B4: has another app been opened since Recents was last cleared?
+     private void trackDirty(AccessibilityEvent e) {
+         try {
+@@ -872,6 +920,8 @@ public class TjAccessibilityService extends AccessibilityService {
+             String act = i == null ? null : i.getAction();
+             long t = System.currentTimeMillis();
+             ensureUnlockListener();
++            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act) || android.content.Intent.ACTION_SCREEN_ON.equals(act) || android.content.Intent.ACTION_USER_PRESENT.equals(act))
++                LockLog.add(getApplicationContext(), android.content.Intent.ACTION_SCREEN_OFF.equals(act) ? "SCREEN_OFF" : android.content.Intent.ACTION_SCREEN_ON.equals(act) ? "SCREEN_ON" : "USER_PRESENT", "locked=" + keyguardLocked() + " mode=" + Mode.get(getApplicationContext()));
+             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
+                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
+                 unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
+@@ -922,7 +972,7 @@ public class TjAccessibilityService extends AccessibilityService {
+             boolean on = pm != null && pm.isInteractive();
+             boolean locked = km != null && km.isKeyguardLocked();
+             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
+-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); }
++            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); }
+             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
+         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
+     }
+@@ -1320,7 +1370,7 @@ public class TjAccessibilityService extends AccessibilityService {
+ 
+     @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
+ 
+-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
++    @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
+ 
+     @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
+ 
+@@ -1357,6 +1407,11 @@ public class TjAccessibilityService extends AccessibilityService {
+                             Rect scr = new Rect(), c = new Rect(), ob = new Rect();
+                             offItem.getBoundsInScreen(ob); lastOffTop = ob.top; lastItemH = ob.height();   // V1: the stock item size, so our menu is "stock minus Screenshot"
+                             clickableAncestor(sc.get(0)).getBoundsInScreen(scr);
++                            // AC6: the entry PITCH (not the height of one clickable node: the entries have margins), so our two-entry card is "the stock panel minus its last entry"
++                            lastPitch = -1;
++                            List<AccessibilityNodeInfo> rst = root.findAccessibilityNodeInfosByText("Restart");
++                            if (rst != null && !rst.isEmpty()) { Rect rb = new Rect(); clickableAncestor(rst.get(0)).getBoundsInScreen(rb); if (rb.top > ob.top) lastPitch = rb.top - ob.top; }
++                            if (lastPitch <= 0 && scr.top > ob.top) lastPitch = (scr.top - ob.top) / 2;
+                             AccessibilityNodeInfo t = offItem;
+                             for (int i = 0; i < 6 && t != null; i++) {
+                                 t.getBoundsInScreen(c);
+@@ -1364,6 +1419,7 @@ public class TjAccessibilityService extends AccessibilityService {
+                                 t = t.getParent();
+                             }
+                             found = !shot.isEmpty();
++                            if (found) dumpMenu(root, locked, shot);   // AC6: what the stock menu really looks like on THIS tablet, for the report (cable-free)
+                             break;
+                         }
+                     } finally { root.recycle(); }
+@@ -1375,7 +1431,7 @@ public class TjAccessibilityService extends AccessibilityService {
+         if (action == PowerMenuRule.COVER_SCREENSHOT) {
+             showOverlay(shot);
+             Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
+-            if (lastItemH > 0) Features.setString(this, itemKey(), lastOffTop + "," + lastItemH);
++            if (lastPitch > 0) Features.setString(this, itemKey(), String.valueOf(lastPitch));
+             handler.removeCallbacks(recheck);
+             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
+             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
+@@ -1654,6 +1710,24 @@ public class TjAccessibilityService extends AccessibilityService {
+         return null;
+     }
+ 
++    /** AC6: writes the stock menu's node tree + the numbers used into the report file (at most once per 20 s per lock state). Never throws. */
++    private void dumpMenu(AccessibilityNodeInfo root, boolean locked, Rect panel) {
++        try {
++            if (!PowerMenuDump.due(locked)) return;
++            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
++            ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
++            int[] card = PowerMenuDump.cardFromPanel(panel.left, panel.top, panel.right, panel.bottom, lastPitch);
++            StringBuilder h = new StringBuilder();
++            h.append("written ").append(now()).append(" in the ").append(Mode.isCustom(this) ? "CUSTOM" : "Quickstep").append(" launcher, ").append(locked ? "on the LOCK SCREEN" : "unlocked").append('\n');
++            h.append("display ").append(dm.widthPixels).append('x').append(dm.heightPixels).append(" px, rotation ").append(rotation()).append(", density ").append(dm.density).append(" (").append(dm.densityDpi).append(" dpi), font scale ").append(getResources().getConfiguration().fontScale).append('\n');
++            h.append("stock panel ").append(panel.toShortString()).append(" (").append(panel.width()).append('x').append(panel.height()).append("), first entry top ").append(lastOffTop).append(" height ").append(lastItemH).append(", entry pitch ").append(lastPitch).append('\n');
++            h.append("our card would be [").append(card[0]).append(',').append(card[1]).append("][").append(card[2]).append(',').append(card[3]).append("] (").append(card[2] - card[0]).append('x').append(card[3] - card[1]).append(")\n");
++            h.append("patch: ").append(Features.getString(this, PATCH_STATUS_KEY, "?")).append(" | calibration: ").append(Features.getString(this, CAL_STATUS_KEY, "?")).append(" | brightness nudge ").append(Features.getInt(this, PATCH_DIM_KEY, 0)).append(" % | patch nudges dx ").append(Features.getInt(this, PATCH_DX_KEY, 0)).append(" dy ").append(Features.getInt(this, PATCH_DY_KEY, 0)).append(" size ").append(Features.getInt(this, PATCH_SCALE_KEY, 0)).append(" %\n");
++            h.append("tree of the menu window (class #id 'label' [left,top][right,bottom] click):\n");
++            PowerMenuDump.write(this, locked, h.toString(), PowerMenuDump.walk(root));
++        } catch (Throwable t) { Log.e(TAG, "power menu dump failed", t); }
++    }
++
+     private AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo n) {
+         AccessibilityNodeInfo t = n;
+         for (int i = 0; i < 4 && t != null && !t.isClickable(); i++) t = t.getParent();
+@@ -1743,17 +1817,19 @@ public class TjAccessibilityService extends AccessibilityService {
+     }
+ 
+     /**
+-     * V1 (Tj): our menu is "the stock menu minus the Screenshot button": same item size, Power off + Restart only. The wallpaper patch underneath fills what the rest of the stock menu
++     * V1 (Tj): our menu is "the stock menu minus the Screenshot button": same panel, Power off + Restart only. The wallpaper patch underneath fills what the rest of the stock menu
+      * (Screenshot, Emergency ...) would have covered. Without a patch below we keep the whole rectangle so a real Screenshot button can never show.
++     * AC6 (Tj, 2026-11-05: "the buttons and card are too small"): the card is the PANEL minus one entry pitch ({@link PowerMenuDump#cardFromPanel}); it used to start at the top of the first entry and be
++     * twice the height of ONE clickable node, which ignores the panel's padding and the gaps between entries (about a quarter shorter than the stock two-entry area).
+      */
+     private Rect cardArea(Rect full) {
+         if (patchView == null) return full;
+         try {
+-            String[] p = Features.getString(this, itemKey(), "").split(",");
+-            if (p.length != 2) return full;
+-            int top = Integer.parseInt(p[0]), h = Integer.parseInt(p[1]);
+-            if (h <= 0 || top < full.top || top - full.top > h || top + 2 * h >= full.bottom) return full;
+-            return new Rect(full.left, top, full.right, top + 2 * h);
++            String v = Features.getString(this, itemKey(), "");
++            int pitch = v.isEmpty() || v.contains(",") ? -1 : Integer.parseInt(v.trim());   // an old "top,height" value from before v0.7.3 is ignored: the fallback is one third of the panel
++            int[] c = PowerMenuDump.cardFromPanel(full.left, full.top, full.right, full.bottom, pitch);
++            if (c[3] - c[1] < full.height() / 2) return full;                                  // nonsense geometry: keep the whole rectangle
++            return new Rect(c[0], c[1], c[2], c[3]);
+         } catch (NumberFormatException e) { return full; }
+     }
+ 
+diff --git a/app/src/main/java/com/tj/launcher/TjApplication.java b/app/src/main/java/com/tj/launcher/TjApplication.java
+index 0b5db9f..42c8f7d 100644
+--- a/app/src/main/java/com/tj/launcher/TjApplication.java
++++ b/app/src/main/java/com/tj/launcher/TjApplication.java
+@@ -2,12 +2,13 @@ package com.tj.launcher;
+ 
+ import android.app.Application;
+ 
+-/** Installs the crash-loop breaker before anything else of ours runs. Does nothing else at start-up (no receivers, no services, no work at boot). */
++/** Installs the crash-loop breaker before anything else of ours runs. Does nothing else at start-up (no receivers, no services, no work at boot) except one content observer on battery saver (AC3). */
+ public class TjApplication extends Application {
+     @Override public void onCreate() {
+         super.onCreate();
+         try { CrashGuard.install(this); } catch (Throwable ignored) { }
+         try { CrashGuard.clearIfNewer(this); } catch (Throwable ignored) { }   // CBR1: a tripped breaker is cleared by the first start of a NEWER version (a fair try)
+         try { AnimationSpeedup.restoreIfPending(this); } catch (Throwable ignored) { }   // an interrupted reset must never leave the animations off
++        try { BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the process (one observer, no polling)
+     }
+ }
+diff --git a/app/src/main/java/com/tj/launcher/UnlockMethods.java b/app/src/main/java/com/tj/launcher/UnlockMethods.java
+index 9ff7630..ec3eb08 100644
+--- a/app/src/main/java/com/tj/launcher/UnlockMethods.java
++++ b/app/src/main/java/com/tj/launcher/UnlockMethods.java
+@@ -43,6 +43,11 @@ public final class UnlockMethods {
+     }
+ 
+     public static final long VALID_PAD_MS = 8_000;          // a pad-method latch made at Enter counts only this long (a wrong PIN never unlocks)
++    /**
++     * AC7 (Tj, 2026-11-05: "a couple times I did the lock screen gesture to unlock to quickstep but it opened the custom launcher"): a typo in the PIN after the gesture must not lose the gesture.
++     * A PLAIN Enter this soon after a pad latch (the first attempt, which did not unlock = a wrong PIN) keeps the latch and refreshes it; later than this it withdraws it as before.
++     */
++    public static final long RETRY_GRACE_MS = 20_000;
+     public static final long VALID_FREE_MS = 90_000;        // a latch made away from the pad (volume / side key / peek) lasts this long
+     public static final long VOLUME_WINDOW_MS = 6_000, SIDEKEY_WINDOW_MS = 4_000, PEEK_WINDOW_MS = 15_000, VOLUP_ERASE_WINDOW_MS = 10_000;
+     public static final long PEEK5_WINDOW_MS = 25_000, CHARGER_WINDOW_MS = 8_000, ROTATE_WINDOW_MS = 8_000, HOLD_TAP_MS = 4_000;
+@@ -135,6 +140,14 @@ public final class UnlockMethods {
+         }
+     }
+ 
++    /**
++     * AC1/AC7: the first (at most two) key KINDS of the pad entry so far, e.g. "DD" (two Deletes) or "NN" (digits), for the persistent lock log. Never a digit, never more than two kinds: the length of the PIN is not revealed.
++     */
++    public String padLead() {
++        String p = pad.toString();
++        return p.length() > 2 ? p.substring(0, 2) : p;
++    }
++
+     /** True while pad taps were fed but no Enter was processed (the Enter click arrives after the keyguard tore its key down and cannot be recognised): the unlock itself then stands in for Enter. */
+     public boolean hasPendingPad() { return pad.length() > 0 || dismissedPad != null; }
+ 
+@@ -168,7 +181,10 @@ public final class UnlockMethods {
+         else if (enabled.on(Method.ERASE2) && p.startsWith("DD")) m = Method.ERASE2;
+         pad.setLength(0); volUpBeforeErase = false;
+         if (m != null) arm(m, now, true);
+-        else if (armedAtPad) disarm();     // a later plain attempt withdraws the earlier pad latch; free latches (volume, side key, peek) stay
++        else if (armedAtPad) {
++            if (now - armedAt <= RETRY_GRACE_MS) armedAt = now;   // AC7: the retry after a wrong PIN inherits the gesture (a correct PIN would have unlocked within a second or two)
++            else disarm();                                        // a plain attempt long after the gesture withdraws the pad latch; free latches (volume, side key, peek) stay
++        }
+         return m;
+     }
+ 
+diff --git a/app/src/test/java/com/tj/launcher/BatterySaverPolicyTest.java b/app/src/test/java/com/tj/launcher/BatterySaverPolicyTest.java
+new file mode 100644
+index 0000000..ac5a4e4
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/BatterySaverPolicyTest.java
+@@ -0,0 +1,39 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import org.junit.Test;
++
++/** AC3: the battery-saver guard's rules. The guard itself needs Android; emulator section "ac" proves it on a real Android 10 system. */
++public class BatterySaverPolicyTest {
++    private static final long NOW = 1_000_000;
++    private static final long[] NONE = {0, 0, 0, 0};
++
++    @Test public void switchesItOffInTheCustomLauncher() { assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, NONE)); }
++    @Test public void neverInQuickstep() { assertFalse(BatterySaverPolicy.shouldTurnOff(true, false, false, true, NOW, NONE)); }
++    @Test public void neverWhenTheSwitchIsOff() { assertFalse(BatterySaverPolicy.shouldTurnOff(false, true, false, true, NOW, NONE)); }
++    @Test public void neverWhileAutomationIsPaused() { assertFalse(BatterySaverPolicy.shouldTurnOff(true, true, true, true, NOW, NONE)); }
++    @Test public void nothingToDoWhenItIsAlreadyOff() { assertFalse(BatterySaverPolicy.shouldTurnOff(true, true, false, false, NOW, NONE)); }
++    @Test public void aRomThatInsistsIsNotFoughtInALoop() {
++        long[] four = {NOW - 1000, NOW - 2000, NOW - 3000, NOW - 4000};
++        assertFalse(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, four));
++        long[] three = {NOW - 1000, NOW - 2000, NOW - 3000, 0};
++        assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, three));
++    }
++    @Test public void oldWritesDoNotCount() {
++        long[] old = {NOW - 61_000, NOW - 70_000, NOW - 80_000, NOW - 90_000};
++        assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, old));
++    }
++    @Test public void aMissingHistoryIsTreatedAsEmpty() { assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, null)); }
++    @Test public void theSettingValueIsParsedStrictly() {
++        assertTrue(BatterySaverPolicy.isOn("1")); assertTrue(BatterySaverPolicy.isOn(" 1 "));
++        assertFalse(BatterySaverPolicy.isOn("0")); assertFalse(BatterySaverPolicy.isOn(null)); assertFalse(BatterySaverPolicy.isOn("")); assertFalse(BatterySaverPolicy.isOn("true"));
++    }
++    @Test public void theSettingNamesAreAndroidsOwn() {
++        assertEquals("low_power", BatterySaverPolicy.SETTING);
++        assertEquals("low_power_sticky", BatterySaverPolicy.STICKY_SETTING);
++        assertEquals("profile_battery_saver_off", BatterySaverPolicy.KEY);
++    }
++}
+diff --git a/app/src/test/java/com/tj/launcher/CrashGuardTest.java b/app/src/test/java/com/tj/launcher/CrashGuardTest.java
+index def990d..5e5dbe4 100644
+--- a/app/src/test/java/com/tj/launcher/CrashGuardTest.java
++++ b/app/src/test/java/com/tj/launcher/CrashGuardTest.java
+@@ -26,6 +26,14 @@ public class CrashGuardTest {
+         assertFalse(CrashGuard.shouldAutoClear(true, CrashGuard.tripVersionToStore(0), 19));
+     }
+ 
++    // ---- AC1 (v0.7.3): the launcher's own lock-screen automation is paused by the breaker OR by "Restore everything" / an update that cleared the breaker
++    @Test public void automationIsOffWhenTrippedOrPaused() {
++        assertTrue(CrashGuard.automationOff(true, false));
++        assertTrue(CrashGuard.automationOff(false, true));
++        assertTrue(CrashGuard.automationOff(true, true));
++        assertFalse(CrashGuard.automationOff(false, false));
++    }
++
+     @Test public void oldCrashesDoNotCount() {
+         long now = 1_000_000;
+         assertEquals(1, CrashGuard.countInWindow(new long[]{now - 600_000, now - 500_000, now - 400_000}, now));
+diff --git a/app/src/test/java/com/tj/launcher/LockLogTest.java b/app/src/test/java/com/tj/launcher/LockLogTest.java
+new file mode 100644
+index 0000000..5dff94c
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/LockLogTest.java
+@@ -0,0 +1,46 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import org.junit.Test;
++
++/** AC1/AC7: the persistent lock-screen decision log. The Android side only appends to a file; every rule worth testing is pure. */
++public class LockLogTest {
++    @Test public void aLineIsOneLineWithTimeEventAndDetail() {
++        String l = LockLog.line(0, "UNLOCK", "plain, mode quickstep -> custom");
++        assertTrue(l.endsWith("\n"));
++        assertEquals(1, l.split("\n").length);
++        assertTrue(l.contains("UNLOCK plain, mode quickstep -> custom"));
++        assertTrue(l.matches("\\d\\d:\\d\\d:\\d\\d\\.\\d\\d\\d .*\n"));
++    }
++    @Test public void newlinesInDetailsCannotSplitALine() {
++        String l = LockLog.line(0, "X", "a\nb\rc");
++        assertEquals(1, l.split("\n").length);
++    }
++    @Test public void aLongDetailIsCut() { assertTrue(LockLog.line(0, "X", new String(new char[500]).replace('\0', 'a')).length() <= 201); }
++    @Test public void aMissingEventAndDetailStillGiveALine() { assertTrue(LockLog.line(0, null, null).contains(" ?")); }
++
++    @Test public void trimKeepsTheNewestWholeLines() {
++        StringBuilder b = new StringBuilder();
++        for (int i = 0; i < 100; i++) b.append("line").append(i).append("-xxxxxxxxxx\n");
++        String t = LockLog.trim(b.toString(), 500, 300);
++        assertTrue(t.length() <= 300);
++        assertTrue(t.startsWith("line"));                 // starts at a line boundary
++        assertTrue(t.endsWith("line99-xxxxxxxxxx\n"));    // the newest line survives
++        assertFalse(t.contains("line0-"));                // the oldest is gone
++    }
++    @Test public void trimLeavesAShortLogAlone() { assertEquals("a\nb\n", LockLog.trim("a\nb\n", 500, 300)); assertEquals("", LockLog.trim(null, 500, 300)); }
++
++    @Test public void tailGivesTheLastLinesInOrder() {
++        String all = "1\n2\n3\n4\n5\n";
++        assertEquals("4\n5\n", LockLog.tailLines(all, 2));
++        assertEquals("1\n2\n3\n4\n5\n", LockLog.tailLines(all, 9));
++        assertEquals("5\n", LockLog.tailLines(all, 1));
++        assertEquals("", LockLog.tailLines("", 3));
++        assertEquals("", LockLog.tailLines(all, 0));
++        assertEquals("only\n", LockLog.tailLines("only", 3));
++    }
++    @Test public void theSizesAreSane() { assertTrue(LockLog.KEEP_BYTES < LockLog.MAX_BYTES); assertTrue(LockLog.MAX_BYTES <= 64 * 1024); }
++}
+diff --git a/app/src/test/java/com/tj/launcher/PowerMenuDumpTest.java b/app/src/test/java/com/tj/launcher/PowerMenuDumpTest.java
+new file mode 100644
+index 0000000..1cd1f02
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/PowerMenuDumpTest.java
+@@ -0,0 +1,37 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertArrayEquals;
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertTrue;
++
++import org.junit.Test;
++
++/** AC6: the stock-menu geometry helpers. The tree walk needs Android; the rules are pure. */
++public class PowerMenuDumpTest {
++    @Test public void aNodeLineHasClassIdLabelBoundsAndClickable() {
++        String l = PowerMenuDump.nodeLine(2, "android.widget.TextView", "com.android.systemui:id/message", "Power off", null, 485, 357, 596, 434, true);
++        assertEquals("    TextView #message 'Power off' [485,357][596,434] click\n", l);
++    }
++    @Test public void theDescriptionIsUsedWhenThereIsNoText() {
++        assertTrue(PowerMenuDump.nodeLine(0, "a.B", null, null, "Restart", 0, 0, 1, 1, false).contains("'Restart'"));
++    }
++    @Test public void longLabelsAreCutAndNewlinesFlattened() {
++        String l = PowerMenuDump.nodeLine(0, "a.B", null, "x\ny" + new String(new char[100]).replace('\0', 'z'), null, 0, 0, 1, 1, false);
++        assertEquals(1, l.split("\n").length);
++        assertTrue(l.length() < 100);
++    }
++    @Test public void theItemPitchIsTheDistanceBetweenNeighbouringEntries() {
++        assertEquals(101, PowerMenuDump.pitch(357, 559, 3));
++        assertEquals(-1, PowerMenuDump.pitch(357, 357, 3));
++        assertEquals(-1, PowerMenuDump.pitch(357, 559, 1));
++    }
++    @Test public void ourCardIsTheStockPanelMinusItsLastEntry() {
++        // the emulator's real panel [485,339][596,642] with a measured pitch of 101: the card ends one pitch above the bottom
++        assertArrayEquals(new int[] { 485, 339, 596, 541 }, PowerMenuDump.cardFromPanel(485, 339, 596, 642, 101));
++    }
++    @Test public void withoutAPitchTheCardIsTwoThirdsOfThePanel() {
++        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, -1));
++        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 0));
++        assertArrayEquals(new int[] { 0, 0, 100, 200 }, PowerMenuDump.cardFromPanel(0, 0, 100, 300, 999));   // a pitch bigger than the panel cannot be right
++    }
++}
+diff --git a/app/src/test/java/com/tj/launcher/ProfileSessionTest.java b/app/src/test/java/com/tj/launcher/ProfileSessionTest.java
+index 1fd213e..1a12c6f 100644
+--- a/app/src/test/java/com/tj/launcher/ProfileSessionTest.java
++++ b/app/src/test/java/com/tj/launcher/ProfileSessionTest.java
+@@ -16,18 +16,18 @@ public class ProfileSessionTest {
+         assertFalse(ProfileSession.prearmCustomStackOnLockedWake(true, true, true, false, false));
+         assertFalse(ProfileSession.prearmCustomStackOnLockedWake(true, true, false, false, true));
+     }
+-    @Test public void plainUnlockEndsQuickstepOnlyWhenAllowed() {
+-        assertTrue(ProfileSession.plainUnlockEndsQuickstep(true, false, false));
+-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, true, false));    // already custom
+-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(false, false, false));  // switched off (Restore everything does this)
+-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, false, true));    // the launcher crashed: stay on the safe stock launcher
++    @Test public void plainUnlockEndsQuickstepAlwaysUnlessAutomationIsPaused() {
++        assertTrue(ProfileSession.plainUnlockEndsQuickstep(false, false));
++        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, false));    // already custom
++        assertFalse(ProfileSession.plainUnlockEndsQuickstep(false, true));    // paused (Restore everything / the crash breaker): stay on the safe stock launcher
+     }
+     @Test public void coverAtEnterNeedsAPlainPinAndWorkToDo() {
+-        assertTrue(ProfileSession.coverAtEnter(true, false, false, false, true, true));
+-        assertFalse(ProfileSession.coverAtEnter(true, false, false, true, true, true));    // handshake: going to Quickstep, nothing to hide
+-        assertFalse(ProfileSession.coverAtEnter(true, false, false, false, false, true));  // nothing to clean
+-        assertFalse(ProfileSession.coverAtEnter(true, false, false, false, true, false));  // cover switched off
+-        assertFalse(ProfileSession.coverAtEnter(true, true, false, false, true, true));    // already custom
++        assertTrue(ProfileSession.coverAtEnter(false, false, false, true, true));
++        assertFalse(ProfileSession.coverAtEnter(false, false, true, true, true));    // handshake: going to Quickstep, nothing to hide
++        assertFalse(ProfileSession.coverAtEnter(false, false, false, false, true));  // nothing to clean
++        assertFalse(ProfileSession.coverAtEnter(false, false, false, true, false));  // cover switched off
++        assertFalse(ProfileSession.coverAtEnter(true, false, false, true, true));    // already custom
++        assertFalse(ProfileSession.coverAtEnter(false, true, false, true, true));    // automation paused
+     }
+     @Test public void radiosAreEnforcedInCustomOnlyAndNeverInALoop() {
+         long now = 100_000;
+@@ -45,24 +45,36 @@ public class ProfileSessionTest {
+         assertFalse(ProfileSession.homeFailsafe(false, true, 5000, 1000, 1700));    // the last press is old
+         assertFalse(ProfileSession.homeFailsafe(false, true, 1500, 0, 1000));       // only two presses so far
+     }
+-    @Test public void aNewBootEndsAQuickstepSessionOnlyWhenAllowed() {
+-        assertTrue(ProfileSession.bootEndsQuickstep(41, 42, true, false, false));
+-        assertFalse(ProfileSession.bootEndsQuickstep(42, 42, true, false, false));    // same boot
+-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, true, false));     // already custom
+-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, false, false, false));   // switched off / Restore everything
+-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false, true));     // crash breaker tripped: stay stock
+-        assertFalse(ProfileSession.bootEndsQuickstep(41, -1, true, false, false));    // counter unreadable
++    @Test public void aNewBootEndsAQuickstepSessionUnlessAutomationIsPaused() {
++        assertTrue(ProfileSession.bootEndsQuickstep(41, 42, false, false));
++        assertFalse(ProfileSession.bootEndsQuickstep(42, 42, false, false));    // same boot
++        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false));     // already custom
++        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, false, true));     // paused (Restore everything / crash breaker): stay stock
++        assertFalse(ProfileSession.bootEndsQuickstep(41, -1, false, false));    // counter unreadable
+     }
+     @Test public void preCleanAtLockNeedsEverythingToLineUp() {
+-        assertTrue(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, false));
+-        assertFalse(ProfileSession.preCleanAtLock(false, true, false, false, true, false, true, false));   // switched off
+-        assertFalse(ProfileSession.preCleanAtLock(true, false, false, false, true, false, true, false));    // locking does not end the session
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, true, false, true, false, true, false));      // already custom: nothing of Quickstep to clean
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, true, true, false, true, false));      // crash breaker tripped: stay on the stock launcher
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, false, false, true, false));    // not locked: a plain wake must keep Quickstep's apps
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
+-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, true));      // done already this lock
++        assertTrue(ProfileSession.preCleanAtLock(true, false, false, true, false, true, false));
++        assertFalse(ProfileSession.preCleanAtLock(false, false, false, true, false, true, false));   // switched off
++        assertFalse(ProfileSession.preCleanAtLock(true, true, false, true, false, true, false));      // already custom: nothing of Quickstep to clean
++        assertFalse(ProfileSession.preCleanAtLock(true, false, true, true, false, true, false));      // automation paused: stay on the stock launcher
++        assertFalse(ProfileSession.preCleanAtLock(true, false, false, false, false, true, false));    // not locked: a plain wake must keep Quickstep's apps
++        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
++        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
++        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, false, true, true));      // done already this lock
++    }
++
++    // ---- AC9 (v0.7.3): the gesture's choice always wins
++    @Test public void aHandshakeAlwaysStartsQuickstepBehindTheLockWhateverThePrearmSwitchSays() { assertTrue(ProfileSession.stockBehindLockOnHandshake()); }
++    @Test public void quickstepIsStartedAgainOnlyWhenOurLauncherOrTheStandInIsInFront() {
++        assertTrue(ProfileSession.restartQuickstepAfterUnlock(true, false, 0));    // the custom home came up late
++        assertTrue(ProfileSession.restartQuickstepAfterUnlock(false, true, 0));    // the Solitaire stand-in came up late
++        assertFalse(ProfileSession.restartQuickstepAfterUnlock(false, false, 0));  // Quickstep (or any other app Tj opened) is in front: leave it alone
++        assertTrue(ProfileSession.restartQuickstepAfterUnlock(true, false, 1));    // second look
++        assertFalse(ProfileSession.restartQuickstepAfterUnlock(true, true, 2));    // never more than two restarts
++        assertEquals(2, ProfileSession.VERIFY_DELAYS_MS.length);
++    }
++    @Test public void theOldEndOnLockSwitchIsGone() throws Exception {
++        for (java.lang.reflect.Field f : ProfileSession.class.getDeclaredFields()) org.junit.Assert.assertFalse(f.getName(), f.getName().equals("END_ON_LOCK_KEY"));
+     }
+ 
+     @Test public void retiredDemoFlagCleanupOnlyUndoesWhatWasOurs() {
+diff --git a/app/src/test/java/com/tj/launcher/UnlockMethodsTest.java b/app/src/test/java/com/tj/launcher/UnlockMethodsTest.java
+index f2cda1a..db5ce14 100644
+--- a/app/src/test/java/com/tj/launcher/UnlockMethodsTest.java
++++ b/app/src/test/java/com/tj/launcher/UnlockMethodsTest.java
+@@ -40,11 +40,44 @@ public class UnlockMethodsTest {
+         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+         assertNull(u.consume(1000 + UnlockMethods.VALID_PAD_MS + 1));
+     }
+-    @Test public void aWrongPinWithTheTokenThenAPlainRetryIsPlain() {
++    // ---- AC7 (v0.7.3): a typo in the PIN after the gesture must not lose the gesture
++    @Test public void aWrongPinWithTheTokenThenAPlainRetryKeepsTheGesture() {
+         UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);     // wrong PIN, pad stays up
+-        keys(u, 1000, N, N); u.onEnter(3000);                        // plain retry
+-        assertNull(u.consume(3500));
++        keys(u, 1000, N, N); u.onEnter(3000);                        // plain retry two seconds later
++        assertEquals(UnlockMethods.Method.ERASE2, u.consume(3500));
++    }
++    @Test public void aPlainRetryLongAfterTheGestureDoesNotInheritIt() {
++        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
++        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
++        long late = 1000 + UnlockMethods.RETRY_GRACE_MS + 1;
++        keys(u, late, N, N); u.onEnter(late + 600);
++        assertNull(u.consume(late + 1500));
++    }
++    @Test public void theInheritedGestureStillExpiresWhenTheUnlockNeverComes() {
++        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
++        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
++        keys(u, 1000, N); u.onEnter(3000);                           // inherited, refreshed at 3000
++        assertNull(u.consume(3000 + UnlockMethods.VALID_PAD_MS + 1));
++    }
++    @Test public void aSecondGestureStillWorksAfterAWrongPin() {
++        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
++        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
++        keys(u, 1000, D, D, N); u.onEnter(4000);
++        assertEquals(UnlockMethods.Method.ERASE2, u.consume(4500));
++    }
++    @Test public void padLeadShowsAtMostTwoKeyKindsNeverADigitOrTheLength() {
++        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
++        assertEquals("", u.padLead());
++        u.onPad(true, 0); keys(u, 0, D, D, N, N, N, N);
++        assertEquals("DD", u.padLead());
++        u.onEnter(3000);
++        assertEquals("", u.padLead());                               // cleared by Enter
++        keys(u, 3000, N, N, N, N, N, N);
++        assertEquals("NN", u.padLead());
++        u.onEnter(6000);
++        keys(u, 6000, N);
++        assertEquals("N", u.padLead());
+     }
+     @Test public void disabledMethodDoesNothing() {
+         UnlockMethods u = only(UnlockMethods.Method.VOLUME);
+@@ -193,7 +226,10 @@ public class UnlockMethodsTest {
+         });
+         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+         assertEquals(1, armed[0]);
+-        keys(u, 1000, N); u.onEnter(3000);                       // plain retry withdraws it
++        keys(u, 1000, N); u.onEnter(3000);                       // AC7: a plain retry soon after (a typo in the PIN) keeps the gesture: nothing is withdrawn
++        assertEquals(0, armed[1]);
++        long late = 3000 + UnlockMethods.RETRY_GRACE_MS + 1;
++        keys(u, late, N); u.onEnter(late + 600);                 // a plain attempt long after the gesture withdraws it
+         assertEquals(1, armed[1]);
+     }
+     @Test public void everyMethodHasAUniqueIdAndKey() {
+diff --git a/tools/emulator_scenario.sh b/tools/emulator_scenario.sh
+index 4b9ac1f..582dcfc 100755
+--- a/tools/emulator_scenario.sh
++++ b/tools/emulator_scenario.sh
+@@ -49,7 +49,7 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
+ 
+ # ---- SECTIONS: the Emulator check can run only some parts (N9, Tj 2026-11-04: "make the test runs fast").
+ #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
+-#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka rt im gc pf rb last. Setup, the install and the helper functions below always run.
++#      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka ac rt im gc pf rb last. Setup, the install and the helper functions below always run.
+ SECTIONS="${SECTIONS:-}"
+ want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
+ info "sections: ${SECTIONS:-ALL}"
+@@ -552,7 +552,7 @@ if want o; then # section o
+ ensurehome
+ # ---- O1 / O3 / O4 (v0.5.0): more lock-screen methods, closing at lock, instant unlock to custom
+ beat "before O"
+-setfeat3(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_ladder\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_charger\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_peek5\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
++setfeat3(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_ladder\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_charger\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_peek5\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+ setfeat3; setmode custom; rebind; home
+ adb shell locksettings set-pin 1234 > "$OUT/o-setpin.txt" 2>&1
+ # O1: erase ladder = Delete, digit, Delete, digit, Delete, digit, then the PIN
+@@ -881,6 +881,10 @@ if [ "$#" -ge 4 ]; then
+     RING="30x$(( FB - FT ))+$(( FL - 32 ))+$FT"
+     MAER="$(compare -metric MAE -extract "$RING" "$OUT/82-lock-menu-open.png" "$OUT/83-lock-closed-patch-off.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+     info "V2: next to the patch (strip $RING, outside it) the screen with the menu open differs from the closed lock screen by MAE $MAER (0 = the menu does not dim the surroundings)"
++    # AC6 / V5 measurement (info only): how much of its brightness the strip next to the menu keeps when the stock dialog's scrim is up, and how much the closed lock screen keeps of the test wallpaper (the keyguard's own dim)
++    MC="$(convert "$OUT/83-lock-closed-patch-off.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
++    MO="$(convert "$OUT/82-lock-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
++    info "V5: mean colour of the strip next to the menu: closed ($MC) vs open ($MO): the open menu's scrim keeps $(echo "$MC $MO" | awk -F'[ ,]' 'NF>=6 && $1>0 && $2>0 && $3>0 {printf "R %.3f G %.3f B %.3f", $4/$1, $5/$2, $6/$3}') of the closed brightness"
+     check "V2: the part of the old menu below our short card shows exactly the lock wallpaper (MAE < 0.5 %)" awk -v m="$MAEF" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+     check "V1: our card is shorter than the stock menu rectangle (stock item size, no Screenshot slot)" bash -c "[ $(( $4 - $2 )) -lt $(( $(echo $FULL | cut -d' ' -f4) - $(echo $FULL | cut -d' ' -f2) )) ]"
+   else info "V1: no card area in the log"; check "V1: the short card area was logged" false; fi
+@@ -1113,6 +1117,9 @@ adb shell dumpsys activity services "$PKG" > "$OUT/ka-services-restored.txt" 2>&
+ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr '>' '\n' > "$OUT/ka-prefs-restored.txt"
+ info "KA after Restore everything: foreground service present: $(grep -c 'isForeground=true' $OUT/ka-services-restored.txt), keep_alive pref: $(grep -o 'keep_alive[^/]*' $OUT/ka-prefs-restored.txt | head -1)"
+ check "AA2: Restore everything stopped the keep-alive service" bash -c "! grep -q 'isForeground=true' $OUT/ka-services-restored.txt"
++adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/ka-crashprefs-after-restore.txt"
++check "AC1: Restore everything PAUSES the lock-screen automation (nothing switches launchers for you until you go back to custom)" grep -q 'name="paused" value="true"' "$OUT/ka-crashprefs-after-restore.txt"
++adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_crash.xml'"   # a paused app would make every later section behave differently
+ # ---- KA1 (v0.7.2): the FUSE, end to end on the real Android crash path. On the real tablet SystemUI could not draw the keep-alive notification's icon, so Android crashed the launcher over it ("Bad notification ... Couldn't create
+ #      icon") three times in seven seconds, the breaker tripped and Tj's switches were wiped. Here the service posts an icon that does not exist (test key keep_alive_test_bad_icon = 1), which SystemUI cannot draw either, so Android crashes
+ #      the app the same way. Expected: exactly ONE such crash, keep-alive switches ITSELF off and is marked blocked, the 3-crash breaker does NOT trip, Tj's other switches survive, no keep-alive service afterwards.
+@@ -1147,6 +1154,92 @@ info "KA1 variant 1 (unknown icon id, informational): crashes of $PKG: $(grep -c
+ adb logcat -b crash -c
+ setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+ fi # section ka
++if want ac; then # section ac
++ensurehome
++# ---- AC1-AC9 (Tj, 2026-11-05 ~22:17; v0.7.3): the Solitaire switch gates every automatic open, the lock-screen rules do not depend on a wiped switch, a wrong PIN after the gesture keeps the gesture,
++#      the handshake puts Quickstep behind the lock at once whatever the pre-arm switch says, battery saver is switched off in the custom launcher the moment it is on, the decision log exists and holds no digit.
++beat "before AC"
++adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
++# acfeat <prearm true|false> <startup_open true|false> <battery_saver_off true|false>: the usual test features (Calendar stands in for Solitaire) + the OLD end-on-lock switch stored as FALSE (the breaker's wipe): it must have no effect any more
++acfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"$2\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_end_on_lock\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"$3\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
++lowpower(){ adb shell settings get global low_power | tr -d '\r\n'; }
++
++# ---- AC3: battery saver. Make the test deterministic: not charging, 60 %
++adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
++acfeat true false true; setmode quickstep; rebind; home; sleep 2
++adb shell settings put global low_power 1; sleep 3
++info "AC3: Quickstep, battery saver switched on from outside: low_power=$(lowpower)"
++check "AC3: in Quickstep battery saver is left alone (still on 3 s later)" bash -c "[ \"$(lowpower)\" = 1 ]"
++adb logcat -c
++adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 5     # the real way back to custom (double Home): Mode.set(CUSTOM)
++AC3B="$(lowpower)"; adb logcat -d -s TjBatSaver:I | grep BATSAVER > "$OUT/ac3-log.txt" 2>&1
++info "AC3: back in the custom launcher (it was switched on in Quickstep): low_power=$AC3B; log: $(head -c 160 $OUT/ac3-log.txt | tr '\n' '|')"
++check "AC3: returning to the custom launcher switched battery saver off (turned on in Quickstep, still on when custom began)" bash -c "[ \"$AC3B\" = 0 ]"
++adb shell settings put global low_power 1; sleep 2
++AC3L="$(lowpower)"
++check "AC3: turned on again while the custom launcher is active, it is switched off again within 2 s (the observer, no polling)" bash -c "[ \"$AC3L\" = 0 ]"
++setmode custom; adb shell settings put global low_power 1; rebind; sleep 4
++AC3P="$(lowpower)"
++check "AC3: a launcher process that STARTS while battery saver is on switches it off (prepared at process start)" bash -c "[ \"$AC3P\" = 0 ]"
++acfeat true false false; setmode custom; rebind; sleep 2
++adb shell settings put global low_power 1; sleep 3
++AC3S="$(lowpower)"
++check "AC3: with its switch OFF the guard leaves battery saver alone (control)" bash -c "[ \"$AC3S\" = 1 ]"
++adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
++
++# ---- the lock screen tests need a PIN (the same one as section n)
++adb shell locksettings set-pin 1234 > "$OUT/ac-setpin.txt" 2>&1
++
++# ---- AC2 / AC8: the Solitaire (Calendar) switch is OFF: waking to the lock screen must start nothing, but the custom home is still prepared
++acfeat true false true; setmode custom; rebind; home; sleep 2
++adb shell am force-stop com.android.calendar; sleep 1; adb logcat -c
++lockpad
++adb shell pidof com.android.calendar | tr -d '\r\n' > "$OUT/ac-a-off-pid.txt"
++adb shell dumpsys activity recents | grep -c "A=com.android.calendar" > "$OUT/ac-a-off-recents.txt"
++adb logcat -d -s TjA11y:I | grep PROFILE > "$OUT/ac-a-off-log.txt" 2>&1
++info "AC2: switch OFF, locked wake: calendar pid='$(cat $OUT/ac-a-off-pid.txt)' recents=$(tr -d ' \r\n' < $OUT/ac-a-off-recents.txt); PROFILE: $(tail -1 $OUT/ac-a-off-log.txt | cut -c1-200)"
++check "AC2/AC8: with 'Open Solitaire' OFF the lock-screen preparation starts NO Solitaire stand-in (no process)" bash -c "[ -z \"\$(cat $OUT/ac-a-off-pid.txt)\" ]"
++check "AC2: and it is not in Recents" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/ac-a-off-recents.txt)\" = 0 ]"
++check "AC8: the custom home WAS still prepared behind the lock screen" grep -q "custom home" "$OUT/ac-a-off-log.txt"
++pad 1 2 3 4 e; sleep 4
++resumed > "$OUT/ac-a-off-resumed.txt"
++check "AC1/AC8: a plain PIN lands on the custom launcher at once" grep -q "com.tj.launcher" "$OUT/ac-a-off-resumed.txt"
++check "AC2: still no Solitaire stand-in after the unlock" bash -c "[ -z \"\$(adb shell pidof com.android.calendar | tr -d '\r\n')\" ]"
++# positive control: with the switch ON the same flow does start it
++acfeat true true true; setmode custom; rebind; home; sleep 3
++adb shell am force-stop com.android.calendar; sleep 1
++lockpad; sleep 3
++check "AC2 (control): with 'Open Solitaire' ON the locked wake starts the stand-in behind the lock screen" bash -c "[ -n \"\$(adb shell pidof com.android.calendar | tr -d '\r\n')\" ]"
++pad 1 2 3 4 e; sleep 3
++
++# ---- AC1: a Quickstep session, the old end-on-lock switch stored as FALSE: a plain PIN must still give the custom launcher
++acfeat true false true; setmode quickstep; rebind; home; sleep 2
++lockpad; pad 1 2 3 4 e; sleep 7
++getmode > "$OUT/ac1-mode.txt"; resumed > "$OUT/ac1-resumed.txt"
++check "AC1: a plain PIN after a Quickstep session ends it although the old switch is stored as off" grep -q custom "$OUT/ac1-mode.txt"
++check "AC1: and the custom launcher (not Quickstep) is on screen" grep -q "com.tj.launcher" "$OUT/ac1-resumed.txt"
++
++# ---- AC9: the pre-arm switch is OFF, the handshake still puts Quickstep behind the lock screen AT ONCE (a wrong PIN keeps the tablet locked, so the log is the evidence)
++acfeat false false true; setmode custom; rebind; home; sleep 2; adb logcat -c
++lockpad; pad 1 d 1 d 1 d 4 4 4 4 e; sleep 2
++adb logcat -d -s TjA11y:I | grep -E "PROFILE|ROUTER" > "$OUT/ac9-log.txt" 2>&1
++info "AC9: $(tail -2 $OUT/ac9-log.txt | cut -c1-200 | tr '\n' '|')"
++check "AC9: with 'switch behind the lock screen' OFF the handshake still started Quickstep behind the lock screen at once" grep -q "ROUTER start stock" "$OUT/ac9-log.txt"
++# ---- AC7: ...and the RIGHT PIN typed plainly after that wrong one still unlocks into Quickstep (the gesture survives a typo)
++sleep 2; pad 1 2 3 4 e; sleep 7
++getmode > "$OUT/ac7-mode.txt"; resumed > "$OUT/ac7-resumed.txt"
++check "AC7: a wrong PIN after the gesture, then the right PIN plain: Quickstep (the gesture is not lost)" grep -q quickstep "$OUT/ac7-mode.txt"
++check "AC7: and the stock launcher is on screen" grep -q "com.android.launcher3/" "$OUT/ac7-resumed.txt"
++
++# ---- AC1 / AC7 evidence: the persistent decision log exists, says what happened, and holds no digit of the PIN
++adb shell "run-as $PKG cat files/lock-events.log" > "$OUT/ac-lock-events.txt" 2>&1
++info "AC log: $(wc -l < $OUT/ac-lock-events.txt | tr -d ' ') lines; last: $(tail -2 $OUT/ac-lock-events.txt | cut -c1-120 | tr '\n' '|')"
++check "AC-B5: the lock-screen decision log exists and records the unlocks" grep -q "UNLOCK" "$OUT/ac-lock-events.txt"
++check "AC-B5: it holds no digit of the PIN (1234 / 4444 never appear)" bash -c "! grep -qE '1234|4444' $OUT/ac-lock-events.txt"
++adb shell locksettings clear --old 1234 > "$OUT/ac-clearpin.txt" 2>&1
++adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
++setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
++fi # section ac
+ if want rs2; then # section rs2
+ ensurehome
+ # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
