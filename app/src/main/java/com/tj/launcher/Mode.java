@@ -29,6 +29,13 @@ public final class Mode {
     /** When the mode last changed (ms): the stray-Quickstep guard waits a moment after a deliberate change (late window events from the screen we just left). */
     public static long changedAt(Context c) { return prefs(c).getLong("changedAt", 0); }
 
+    /** AC1: when the last unlock that CONFIRMED a Quickstep session (a handshake) happened (ms). With {@link #changedAt} it dates the start of the current Quickstep session. */
+    public static long confirmedAt(Context c) { return prefs(c).getLong("qsConfirmedAt", 0); }
+    public static void confirmQuickstep(Context c, long now) { prefs(c).edit().putLong("qsConfirmedAt", now).commit(); }
+
+    /** AC1: the start of the current Quickstep session = the later of the mode change and the last handshake unlock; 0 = unknown (a test helper wrote the mode without a time). */
+    public static long sessionRefMs(Context c) { return Math.max(changedAt(c), confirmedAt(c)); }
+
     /** W5: while a fail-open window is active (the router had to fall back to the stock launcher because ours would not start) the stray-Quickstep guard stands down. */
     public static long failOpenUntil(Context c) { return prefs(c).getLong("failOpenUntil", 0); }
     public static void markFailOpen(Context c, long untilMs) { prefs(c).edit().putLong("failOpenUntil", untilMs).commit(); }
