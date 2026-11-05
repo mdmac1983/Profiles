@@ -1,13 +1,13 @@
-# CHECKPOINT 372 — read me first, then TASKS.md
+# CHECKPOINT 373 — read me first, then TASKS.md
 
-**Written:** 2026-11-05T20:52:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `1207e4b` (this checkpoint is the commit after it)
+**Written:** 2026-11-05T20:55:53Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-9ab65fa5-vp812y` · **builds on:** `0bed2da` (this checkpoint is the commit after it)
 
 ## Just done
-REL072: KA1+CBR1+UX1 coded, unit 245 green, lint ok; ka scenario extended, CI run next
+REL072: code-review of v0.7.1..HEAD done (8 fixed, 2 declined); unit 245 green; ka run 130 (pre-fix code) running
 
 ## Do this next
-dispatch emulator.yml on main with sections=ka (4-5 min), read RESULTS (get_job_logs tail 60): the new KA1 checks must PASS (if 'Bad notification' crash is not reproduced on the emulator switch test key to 2 or fix the check); then update HANDOFF/CLAUDE docs, code-review, push, dispatch gate A and gate B in parallel, then ship.sh + android.yml full_build + record-release
+read run 130 RESULTS (job log tail 60) for the ka section: the new KA1 checks; then push, re-run ka on the FINAL code (sections=ka), update HANDOFF/CLAUDE docs, dispatch gate A and gate B in parallel (A=base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x B=v,g,ka,rt,im,gc,pf,rb,last), then ship.sh + android.yml full_build + get_release_by_tag + record-release
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ dispatch emulator.yml on main with sections=ka (4-5 min), read RESULTS (get_job_
 
 ## Last ten checkpoints
 ```
+  e860f7e ckpt 372: REL072: KA1+CBR1+UX1 coded, unit 245 green, lint ok; ka scenario extended, CI 
   ce42d62 ckpt 371: Tj asked to release the next version + will an update need adb (answer: no); R
   fa8132b ckpt 370: Tj: cable later; asked if he can use Launcher control now: yes, with cautions 
   c684404 ckpt 369: step 22: all permissions verified after restart (CBL1 closed); answer to 'ever
@@ -26,8 +27,7 @@ dispatch emulator.yml on main with sections=ka (4-5 min), read RESULTS (get_job_
   217aa31 ckpt 365: Tj: custom home live (default home ours, 0 crashes) but lock number missing + 
   b2464af ckpt 364: step 17: notification access null = a Go device refuses it (my audit was wrong
   8d77e87 ckpt 363: Tj made the custom launcher the default Home himself: first live custom run; s
-  5038b3d ckpt 362: Tj: wants the permissions set up now; audit: only notification access missing;
 ```
 
-(9 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
