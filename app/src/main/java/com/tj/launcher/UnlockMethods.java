@@ -43,6 +43,11 @@ public final class UnlockMethods {
     }
 
     public static final long VALID_PAD_MS = 8_000;          // a pad-method latch made at Enter counts only this long (a wrong PIN never unlocks)
+    /**
+     * AC7 (Tj, 2026-11-05: "a couple times I did the lock screen gesture to unlock to quickstep but it opened the custom launcher"): a typo in the PIN after the gesture must not lose the gesture.
+     * A PLAIN Enter this soon after a pad latch (the first attempt, which did not unlock = a wrong PIN) keeps the latch and refreshes it; later than this it withdraws it as before.
+     */
+    public static final long RETRY_GRACE_MS = 20_000;
     public static final long VALID_FREE_MS = 90_000;        // a latch made away from the pad (volume / side key / peek) lasts this long
     public static final long VOLUME_WINDOW_MS = 6_000, SIDEKEY_WINDOW_MS = 4_000, PEEK_WINDOW_MS = 15_000, VOLUP_ERASE_WINDOW_MS = 10_000;
     public static final long PEEK5_WINDOW_MS = 25_000, CHARGER_WINDOW_MS = 8_000, ROTATE_WINDOW_MS = 8_000, HOLD_TAP_MS = 4_000;
@@ -135,6 +140,14 @@ public final class UnlockMethods {
         }
     }
 
+    /**
+     * AC1/AC7: the first (at most two) key KINDS of the pad entry so far, e.g. "DD" (two Deletes) or "NN" (digits), for the persistent lock log. Never a digit, never more than two kinds: the length of the PIN is not revealed.
+     */
+    public String padLead() {
+        String p = pad.toString();
+        return p.length() > 2 ? p.substring(0, 2) : p;
+    }
+
     /** True while pad taps were fed but no Enter was processed (the Enter click arrives after the keyguard tore its key down and cannot be recognised): the unlock itself then stands in for Enter. */
     public boolean hasPendingPad() { return pad.length() > 0 || dismissedPad != null; }
 
@@ -168,7 +181,10 @@ public final class UnlockMethods {
         else if (enabled.on(Method.ERASE2) && p.startsWith("DD")) m = Method.ERASE2;
         pad.setLength(0); volUpBeforeErase = false;
         if (m != null) arm(m, now, true);
-        else if (armedAtPad) disarm();     // a later plain attempt withdraws the earlier pad latch; free latches (volume, side key, peek) stay
+        else if (armedAtPad) {
+            if (now - armedAt <= RETRY_GRACE_MS) armedAt = now;   // AC7: the retry after a wrong PIN inherits the gesture (a correct PIN would have unlocked within a second or two)
+            else disarm();                                        // a plain attempt long after the gesture withdraws the pad latch; free latches (volume, side key, peek) stay
+        }
         return m;
     }
 

@@ -16,18 +16,18 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.prearmCustomStackOnLockedWake(true, true, true, false, false));
         assertFalse(ProfileSession.prearmCustomStackOnLockedWake(true, true, false, false, true));
     }
-    @Test public void plainUnlockEndsQuickstepOnlyWhenAllowed() {
-        assertTrue(ProfileSession.plainUnlockEndsQuickstep(true, false, false));
-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, true, false));    // already custom
-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(false, false, false));  // switched off (Restore everything does this)
-        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, false, true));    // the launcher crashed: stay on the safe stock launcher
+    @Test public void plainUnlockEndsQuickstepAlwaysUnlessAutomationIsPaused() {
+        assertTrue(ProfileSession.plainUnlockEndsQuickstep(false, false));
+        assertFalse(ProfileSession.plainUnlockEndsQuickstep(true, false));    // already custom
+        assertFalse(ProfileSession.plainUnlockEndsQuickstep(false, true));    // paused (Restore everything / the crash breaker): stay on the safe stock launcher
     }
     @Test public void coverAtEnterNeedsAPlainPinAndWorkToDo() {
-        assertTrue(ProfileSession.coverAtEnter(true, false, false, false, true, true));
-        assertFalse(ProfileSession.coverAtEnter(true, false, false, true, true, true));    // handshake: going to Quickstep, nothing to hide
-        assertFalse(ProfileSession.coverAtEnter(true, false, false, false, false, true));  // nothing to clean
-        assertFalse(ProfileSession.coverAtEnter(true, false, false, false, true, false));  // cover switched off
-        assertFalse(ProfileSession.coverAtEnter(true, true, false, false, true, true));    // already custom
+        assertTrue(ProfileSession.coverAtEnter(false, false, false, true, true));
+        assertFalse(ProfileSession.coverAtEnter(false, false, true, true, true));    // handshake: going to Quickstep, nothing to hide
+        assertFalse(ProfileSession.coverAtEnter(false, false, false, false, true));  // nothing to clean
+        assertFalse(ProfileSession.coverAtEnter(false, false, false, true, false));  // cover switched off
+        assertFalse(ProfileSession.coverAtEnter(true, false, false, true, true));    // already custom
+        assertFalse(ProfileSession.coverAtEnter(false, true, false, true, true));    // automation paused
     }
     @Test public void radiosAreEnforcedInCustomOnlyAndNeverInALoop() {
         long now = 100_000;
@@ -45,24 +45,36 @@ public class ProfileSessionTest {
         assertFalse(ProfileSession.homeFailsafe(false, true, 5000, 1000, 1700));    // the last press is old
         assertFalse(ProfileSession.homeFailsafe(false, true, 1500, 0, 1000));       // only two presses so far
     }
-    @Test public void aNewBootEndsAQuickstepSessionOnlyWhenAllowed() {
-        assertTrue(ProfileSession.bootEndsQuickstep(41, 42, true, false, false));
-        assertFalse(ProfileSession.bootEndsQuickstep(42, 42, true, false, false));    // same boot
-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, true, false));     // already custom
-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, false, false, false));   // switched off / Restore everything
-        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false, true));     // crash breaker tripped: stay stock
-        assertFalse(ProfileSession.bootEndsQuickstep(41, -1, true, false, false));    // counter unreadable
+    @Test public void aNewBootEndsAQuickstepSessionUnlessAutomationIsPaused() {
+        assertTrue(ProfileSession.bootEndsQuickstep(41, 42, false, false));
+        assertFalse(ProfileSession.bootEndsQuickstep(42, 42, false, false));    // same boot
+        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, true, false));     // already custom
+        assertFalse(ProfileSession.bootEndsQuickstep(41, 42, false, true));     // paused (Restore everything / crash breaker): stay stock
+        assertFalse(ProfileSession.bootEndsQuickstep(41, -1, false, false));    // counter unreadable
     }
     @Test public void preCleanAtLockNeedsEverythingToLineUp() {
-        assertTrue(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, false));
-        assertFalse(ProfileSession.preCleanAtLock(false, true, false, false, true, false, true, false));   // switched off
-        assertFalse(ProfileSession.preCleanAtLock(true, false, false, false, true, false, true, false));    // locking does not end the session
-        assertFalse(ProfileSession.preCleanAtLock(true, true, true, false, true, false, true, false));      // already custom: nothing of Quickstep to clean
-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, true, true, false, true, false));      // crash breaker tripped: stay on the stock launcher
-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, false, false, true, false));    // not locked: a plain wake must keep Quickstep's apps
-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
-        assertFalse(ProfileSession.preCleanAtLock(true, true, false, false, true, false, true, true));      // done already this lock
+        assertTrue(ProfileSession.preCleanAtLock(true, false, false, true, false, true, false));
+        assertFalse(ProfileSession.preCleanAtLock(false, false, false, true, false, true, false));   // switched off
+        assertFalse(ProfileSession.preCleanAtLock(true, true, false, true, false, true, false));      // already custom: nothing of Quickstep to clean
+        assertFalse(ProfileSession.preCleanAtLock(true, false, true, true, false, true, false));      // automation paused: stay on the stock launcher
+        assertFalse(ProfileSession.preCleanAtLock(true, false, false, false, false, true, false));    // not locked: a plain wake must keep Quickstep's apps
+        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, true, true, false));      // a handshake is armed: the target is Quickstep
+        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, false, false, false));    // no shell helper: the cover path at unlock
+        assertFalse(ProfileSession.preCleanAtLock(true, false, false, true, false, true, true));      // done already this lock
+    }
+
+    // ---- AC9 (v0.7.3): the gesture's choice always wins
+    @Test public void aHandshakeAlwaysStartsQuickstepBehindTheLockWhateverThePrearmSwitchSays() { assertTrue(ProfileSession.stockBehindLockOnHandshake()); }
+    @Test public void quickstepIsStartedAgainOnlyWhenOurLauncherOrTheStandInIsInFront() {
+        assertTrue(ProfileSession.restartQuickstepAfterUnlock(true, false, 0));    // the custom home came up late
+        assertTrue(ProfileSession.restartQuickstepAfterUnlock(false, true, 0));    // the Solitaire stand-in came up late
+        assertFalse(ProfileSession.restartQuickstepAfterUnlock(false, false, 0));  // Quickstep (or any other app Tj opened) is in front: leave it alone
+        assertTrue(ProfileSession.restartQuickstepAfterUnlock(true, false, 1));    // second look
+        assertFalse(ProfileSession.restartQuickstepAfterUnlock(true, true, 2));    // never more than two restarts
+        assertEquals(2, ProfileSession.VERIFY_DELAYS_MS.length);
+    }
+    @Test public void theOldEndOnLockSwitchIsGone() throws Exception {
+        for (java.lang.reflect.Field f : ProfileSession.class.getDeclaredFields()) org.junit.Assert.assertFalse(f.getName(), f.getName().equals("END_ON_LOCK_KEY"));
     }
 
     @Test public void retiredDemoFlagCleanupOnlyUndoesWhatWasOurs() {

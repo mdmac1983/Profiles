@@ -70,10 +70,9 @@ public final class RestoreStore {
         sp.edit().clear().commit();
         Features.allOff(c);
         Features.set(c, LockNumber.KEY, false);
-        Features.set(c, ProfileSession.END_ON_LOCK_KEY, false);   // N3: restore = nothing of ours switches launchers for you (these default to ON)
-        Features.set(c, ProfileSession.PREARM_KEY, false);
-        Features.set(c, ProfileSession.RADIOS_KEY, false);
-        Features.set(c, ProfileSession.PRECLEAN_KEY, false);
+        // AC1 (v0.7.3): the Two-profiles switches (pre-arm, radios, pre-clean) are NOT written false here any more. The old code did, so a breaker trip silently disabled the very things Tj depends on and he had to find and
+        // re-enable them by hand. "Nothing of ours switches launchers for you" is now the PAUSE ({@link CrashGuard#automationOff}), which every one of those rules reads; Restore and the breaker set it, and the next deliberate
+        // way back to the custom launcher clears it.
         Features.set(c, KeepAlivePolicy.KEY, false);   // AA2: restore = the process is no longer held in memory by us
         KeepAliveService.stop(c);
         Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off

@@ -57,6 +57,7 @@ public final class Mode {
         KeyboardSwitch.apply(c, m);
         TileProfile.apply(c, m);
         ImmersiveProfile.apply(c, m);  // AA1: status bar hidden while the custom launcher is active (opt-in, needs the adb grant)
+        if (CUSTOM.equals(m)) BatterySaverGuard.check(c, "the custom launcher became active");   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins (the observer covers everything after)
         // (Q3's retail-demo flag was REMOVED by the AB1 safety audit: see DemoModeProfile)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }

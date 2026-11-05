@@ -48,6 +48,7 @@ public class RouterActivity extends Activity {
         DemoModeProfile.cleanupOnce(this);   // AB1: the retired retail-demo option never stays switched on (one settings read, once)
         KeepAliveService.ensure(this);    // AA2: the process stays in memory (no-op when it already runs or the switch is off)
         String pre = in == null ? null : in.getStringExtra(EXTRA_PREARM);
+        LockLog.add(this, "ROUTER", (pre == null ? "home press" : "prepare " + pre) + ", mode " + Mode.get(this));   // AC1/AC7: the persistent lock-screen log shows whether a start made by the helper really arrived here
         if ("stock".equals(pre)) { startStock(); return; }
         boolean prearm = "custom".equals(pre);
         // Double-press Home while the stock launcher is active = back to the custom launcher (Tj: "a quick way to go back").

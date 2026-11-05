@@ -15,7 +15,7 @@ public final class PowerMenuDump {
     static final String FILE = "power-menu-dump.txt";
     static final int MAX_NODES = 80, MAX_DEPTH = 9, MAX_CHARS = 12 * 1024;
     private static final Object LOCK = new Object();
-    private static long lastWriteMs = 0;
+    private static long lastWriteLockedMs = 0, lastWriteOpenMs = 0;
 
     private PowerMenuDump() {}
 
@@ -68,15 +68,25 @@ public final class PowerMenuDump {
         }
     }
 
-    /** Writes the dump (header + tree) at most once every 20 s; the newest one wins. Safe from any thread. */
-    public static void write(Context c, String header, String tree) {
+    /** True when a dump of this lock state is due (the newest per state wins, at most one per 20 s), so the tree is only walked when it will be written. */
+    public static boolean due(boolean locked) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        synchronized (LOCK) { long last = locked ? lastWriteLockedMs : lastWriteOpenMs; return last == 0 || now - last >= 20_000; }
+    }
+
+    /** Writes the dump (header + tree). The file holds the LAST dump of each state, lock screen first. Safe from any thread. */
+    public static void write(Context c, boolean locked, String header, String tree) {
         try {
             long now = android.os.SystemClock.elapsedRealtime();
             synchronized (LOCK) {
-                if (lastWriteMs != 0 && now - lastWriteMs < 20_000) return;
-                lastWriteMs = now;
-                String all = header + tree;
-                if (all.length() > MAX_CHARS) all = all.substring(0, MAX_CHARS);
+                if (locked) lastWriteLockedMs = now; else lastWriteOpenMs = now;
+                String mine = "=== " + (locked ? "LOCK SCREEN" : "UNLOCKED") + "\n" + header + tree;
+                if (mine.length() > MAX_CHARS / 2) mine = mine.substring(0, MAX_CHARS / 2);
+                String other = read(c);
+                String keepOther = "";
+                int a = other.indexOf("=== " + (locked ? "UNLOCKED" : "LOCK SCREEN"));
+                if (a >= 0) { int b = other.indexOf("=== ", a + 4); keepOther = b < 0 ? other.substring(a) : other.substring(a, b); }
+                String all = locked ? mine + (keepOther.isEmpty() ? "" : "\n" + keepOther) : (keepOther.isEmpty() ? "" : keepOther + "\n") + mine;
                 FileOutputStream o = new FileOutputStream(c.getApplicationContext().getFileStreamPath(FILE), false);
                 try { o.write(all.getBytes("UTF-8")); } finally { o.close(); }
             }

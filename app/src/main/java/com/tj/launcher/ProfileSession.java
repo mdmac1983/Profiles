@@ -13,8 +13,8 @@ import android.content.Context;
  * Pure rules here (JVM-testable); {@link TjAccessibilityService} feeds the events and does the starting.
  */
 public final class ProfileSession {
-    public static final String END_ON_LOCK_KEY = "profile_end_on_lock";      // locking ends a Quickstep session, default ON
-    public static final String PREARM_KEY = "profile_prearm";                // lock screen: put Solitaire (custom) / the stock home (handshake) in front behind the keyguard, default ON
+    // AC1 (v0.7.3): "locking ends a Quickstep session" is no longer a switch (Tj: a plain PIN must ALWAYS open the custom launcher, without exception). Only the paused state ({@link CrashGuard#automationOff}) stops it.
+    public static final String PREARM_KEY = "profile_prearm";                // lock screen: put the custom home (and Solitaire, only if "Open Solitaire automatically" is on) in front behind the keyguard, default ON (an OFF-ramp)
     public static final String RADIOS_KEY = "profile_radios_off";            // custom account: Wi-Fi and Bluetooth are switched off again if something turns them on, default ON
     public static final String PRECLEAN_KEY = "profile_preclean";            // O4: closing/locking from Quickstep closes its apps + notifications AT LOCK (needs the adb helper), default ON
     public static final String BUZZ_KEY = "unlock_buzz";                     // a short buzz when a handshake is accepted, default ON
@@ -22,15 +22,17 @@ public final class ProfileSession {
 
     private ProfileSession() {}
 
-    public static boolean endOnLock(Context c) { return Features.get(c, END_ON_LOCK_KEY, true); }
     public static boolean prearm(Context c) { return Features.get(c, PREARM_KEY, true); }
     public static boolean radiosOff(Context c) { return Features.get(c, RADIOS_KEY, true); }
     public static boolean preClean(Context c) { return Features.get(c, PRECLEAN_KEY, true); }
     public static boolean buzz(Context c) { return Features.get(c, BUZZ_KEY, true); }
 
-    /** Pure: wake-up on the LOCK screen (keyguard locked, screen on). Put the custom stack in front behind the keyguard? Never while a handshake is armed (the target is Quickstep then). */
-    public static boolean prearmCustomStackOnLockedWake(boolean prearmEnabled, boolean keyguardLocked, boolean handshakeArmed, boolean alreadyDoneThisLock, boolean crashTripped) {
-        return prearmEnabled && keyguardLocked && !handshakeArmed && !alreadyDoneThisLock && !crashTripped;
+    /**
+     * Pure: wake-up on the LOCK screen (keyguard locked, screen on). Put the custom stack (the custom home; Solitaire only when {@link ReturnReset#autoOpenWanted}) in front behind the keyguard?
+     * Never while a handshake is armed (the target is Quickstep then). {@code prearmEnabled} is the OFF-ramp switch (default on); {@code automationOff} = breaker tripped or paused.
+     */
+    public static boolean prearmCustomStackOnLockedWake(boolean prearmEnabled, boolean keyguardLocked, boolean handshakeArmed, boolean alreadyDoneThisLock, boolean automationOff) {
+        return prearmEnabled && keyguardLocked && !handshakeArmed && !alreadyDoneThisLock && !automationOff;
     }
 
     /**
@@ -38,24 +40,38 @@ public final class ProfileSession {
      * the tablet is LOCKED while a Quickstep session is current, nobody has given a handshake, and the shell helper can do the clean-up with no screen at all
      * (force-stop + removing the Recents cards; the shade and Recents cannot be driven with the screen off) -> clean up NOW and switch to the custom account behind the lock screen.
      */
-    public static boolean preCleanAtLock(boolean preCleanEnabled, boolean endOnLock, boolean customMode, boolean crashTripped, boolean keyguardLocked, boolean handshakeArmed, boolean helperReady, boolean alreadyDone) {
-        return preCleanEnabled && endOnLock && !customMode && !crashTripped && keyguardLocked && !handshakeArmed && helperReady && !alreadyDone;
+    public static boolean preCleanAtLock(boolean preCleanEnabled, boolean customMode, boolean automationOff, boolean keyguardLocked, boolean handshakeArmed, boolean helperReady, boolean alreadyDone) {
+        return preCleanEnabled && !customMode && !automationOff && keyguardLocked && !handshakeArmed && helperReady && !alreadyDone;
     }
 
-    /** Pure: a plain unlock (USER_PRESENT, no handshake): is the Quickstep session over, so the custom account takes the tablet? */
-    public static boolean plainUnlockEndsQuickstep(boolean endOnLock, boolean customMode, boolean crashTripped) {
-        return endOnLock && !customMode && !crashTripped;
+    /** Pure: a plain unlock (USER_PRESENT, no handshake): is the Quickstep session over, so the custom account takes the tablet? ALWAYS, unless automation is paused (AC1). */
+    public static boolean plainUnlockEndsQuickstep(boolean customMode, boolean automationOff) {
+        return !customMode && !automationOff;
     }
 
     /** Pure: the Enter tap of a plain PIN while a Quickstep session is still current: raise the black cover now, so the unlock animation never shows Quickstep's leftovers. */
-    public static boolean coverAtEnter(boolean endOnLock, boolean customMode, boolean crashTripped, boolean handshakeGiven, boolean maybeWorkToDo, boolean coverEnabled) {
-        return plainUnlockEndsQuickstep(endOnLock, customMode, crashTripped) && !handshakeGiven && maybeWorkToDo && coverEnabled;
+    public static boolean coverAtEnter(boolean customMode, boolean automationOff, boolean handshakeGiven, boolean maybeWorkToDo, boolean coverEnabled) {
+        return plainUnlockEndsQuickstep(customMode, automationOff) && !handshakeGiven && maybeWorkToDo && coverEnabled;
     }
 
     /** Pure: is this the first Home of a NEW boot (the boot counter changed since we last looked) while a Quickstep session is still marked? A restart kills every app, so the session is over. */
-    public static boolean bootEndsQuickstep(int seenBootCount, int nowBootCount, boolean endOnLock, boolean customMode, boolean crashTripped) {
-        return nowBootCount >= 0 && seenBootCount != nowBootCount && endOnLock && !customMode && !crashTripped;
+    public static boolean bootEndsQuickstep(int seenBootCount, int nowBootCount, boolean customMode, boolean automationOff) {
+        return nowBootCount >= 0 && seenBootCount != nowBootCount && !customMode && !automationOff;
     }
+
+    /**
+     * Pure (AC9): a handshake was just accepted. Quickstep's home goes in front behind the lock screen AT ONCE, whatever the pre-arm switch says: the custom stack may already be there
+     * (prepared at the wake) and must be replaced before the unlock reveals it.
+     */
+    public static boolean stockBehindLockOnHandshake() { return true; }
+
+    /** Pure (AC9): after an unlock that chose Quickstep, are we still looking at OUR launcher or the Solitaire stand-in (a late start from the lock-screen preparation)? Then Quickstep is started again. */
+    public static boolean restartQuickstepAfterUnlock(boolean ourLauncherInFront, boolean targetInFront, int attempt) {
+        return attempt < VERIFY_DELAYS_MS.length && (ourLauncherInFront || targetInFront);
+    }
+
+    /** AC9: when (ms after the unlock) the helper looks again whether Quickstep really is in front, at most this many times. */
+    public static final long[] VERIFY_DELAYS_MS = { 600, 900 };
 
     /** Pure: switch Wi-Fi / Bluetooth off again? Custom account only, at most 3 attempts per 60 s (a radio that refuses to go off is never fought in a loop). */
     public static boolean enforceRadios(boolean enabled, boolean customMode, long now, long[] recent) {
@@ -82,7 +98,7 @@ public final class ProfileSession {
             if (now == seen) return;
             Features.setInt(c, "boot_count_seen", now);
             if (seen == -2) return;   // first look after install
-            if (bootEndsQuickstep(seen, now, endOnLock(c), Mode.isCustom(c), CrashGuard.wasTripped(c))) {
+            if (bootEndsQuickstep(seen, now, Mode.isCustom(c), CrashGuard.automationOff(c))) {
                 Mode.set(c, Mode.CUSTOM);
                 AppOrigin.clearQuickstep(c);
                 Features.setString(c, PREARM_REPORT_KEY, "boot: a new boot ended the Quickstep session (custom launcher)");

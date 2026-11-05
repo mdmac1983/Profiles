@@ -40,11 +40,44 @@ public class UnlockMethodsTest {
         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
         assertNull(u.consume(1000 + UnlockMethods.VALID_PAD_MS + 1));
     }
-    @Test public void aWrongPinWithTheTokenThenAPlainRetryIsPlain() {
+    // ---- AC7 (v0.7.3): a typo in the PIN after the gesture must not lose the gesture
+    @Test public void aWrongPinWithTheTokenThenAPlainRetryKeepsTheGesture() {
         UnlockMethods u = only(UnlockMethods.Method.ERASE2);
         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);     // wrong PIN, pad stays up
-        keys(u, 1000, N, N); u.onEnter(3000);                        // plain retry
-        assertNull(u.consume(3500));
+        keys(u, 1000, N, N); u.onEnter(3000);                        // plain retry two seconds later
+        assertEquals(UnlockMethods.Method.ERASE2, u.consume(3500));
+    }
+    @Test public void aPlainRetryLongAfterTheGestureDoesNotInheritIt() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+        long late = 1000 + UnlockMethods.RETRY_GRACE_MS + 1;
+        keys(u, late, N, N); u.onEnter(late + 600);
+        assertNull(u.consume(late + 1500));
+    }
+    @Test public void theInheritedGestureStillExpiresWhenTheUnlockNeverComes() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+        keys(u, 1000, N); u.onEnter(3000);                           // inherited, refreshed at 3000
+        assertNull(u.consume(3000 + UnlockMethods.VALID_PAD_MS + 1));
+    }
+    @Test public void aSecondGestureStillWorksAfterAWrongPin() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
+        keys(u, 1000, D, D, N); u.onEnter(4000);
+        assertEquals(UnlockMethods.Method.ERASE2, u.consume(4500));
+    }
+    @Test public void padLeadShowsAtMostTwoKeyKindsNeverADigitOrTheLength() {
+        UnlockMethods u = only(UnlockMethods.Method.ERASE2);
+        assertEquals("", u.padLead());
+        u.onPad(true, 0); keys(u, 0, D, D, N, N, N, N);
+        assertEquals("DD", u.padLead());
+        u.onEnter(3000);
+        assertEquals("", u.padLead());                               // cleared by Enter
+        keys(u, 3000, N, N, N, N, N, N);
+        assertEquals("NN", u.padLead());
+        u.onEnter(6000);
+        keys(u, 6000, N);
+        assertEquals("N", u.padLead());
     }
     @Test public void disabledMethodDoesNothing() {
         UnlockMethods u = only(UnlockMethods.Method.VOLUME);
@@ -193,7 +226,10 @@ public class UnlockMethodsTest {
         });
         u.onPad(true, 0); keys(u, 0, D, D, N); u.onEnter(1000);
         assertEquals(1, armed[0]);
-        keys(u, 1000, N); u.onEnter(3000);                       // plain retry withdraws it
+        keys(u, 1000, N); u.onEnter(3000);                       // AC7: a plain retry soon after (a typo in the PIN) keeps the gesture: nothing is withdrawn
+        assertEquals(0, armed[1]);
+        long late = 3000 + UnlockMethods.RETRY_GRACE_MS + 1;
+        keys(u, late, N); u.onEnter(late + 600);                 // a plain attempt long after the gesture withdraws it
         assertEquals(1, armed[1]);
     }
     @Test public void everyMethodHasAUniqueIdAndKey() {

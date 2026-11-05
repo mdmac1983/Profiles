@@ -126,11 +126,17 @@ public class TjAccessibilityService extends AccessibilityService {
         try { DemoModeProfile.cleanupOnce(this); } catch (Throwable t) { Log.e(TAG, "demo cleanup failed", t); }   // AB1: the retired retail-demo option never stays switched on
         try { KeepAliveService.ensure(this); } catch (Throwable t) { Log.e(TAG, "keep-alive failed", t); }   // AA2: after a restart / update the helper reconnects first: bring the service back
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
+        LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
+        try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
     }
 
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
     public static final String PATCH_STATUS_KEY = "wallpaper_patch_status";
     public static final String PATCH_DX_KEY = "patch_dx", PATCH_DY_KEY = "patch_dy", PATCH_SCALE_KEY = "patch_scale_pct";   // alignment nudges in px / percent
+    /** AC6: brightness nudge of the lock-screen patch in percent points (Launcher control). The wallpaper MODEL is drawn darker by {@link #DIM_KEYGUARD} because the real keyguard darkens its wallpaper. */
+    public static final String PATCH_DIM_KEY = "patch_dim_pct";
+    /** AC6: how much of its brightness the real lock screen keeps: MEASURED on the Android 10 emulator (run 74: (173,96,20) on screen vs (229,122,26) in the wallpaper = 0.755 / 0.787 / 0.77). A first estimate for the tablet's MtkSystemUI. */
+    static final float DIM_KEYGUARD = 0.77f;
     private View patchView;
     private android.graphics.Bitmap wallpaperBmp;
     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
@@ -138,6 +144,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean patchLockMode, targetIsLock;
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
     private long lastOffTop = -1, lastItemH = -1;
+    private int lastPitch = -1;   // AC6: distance between the tops of neighbouring menu entries (Power off -> Restart), measured on every scan
     // V4: auto-calibration of the lock-screen patch against a real screenshot (shell helper). Final lock-patch scale = lockCalM * (1 + Tj's nudge %); shifts add.
     public static final String LOCK_CAL_KEY = "lock_cal";
     public static final String CAL_STATUS_KEY = "lock_cal_status";
@@ -159,7 +166,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
-            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
+            if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); BatterySaverGuard.check(TjAccessibilityService.this, "the mode changed"); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
             if (FailsafeKeys.HOTSPOT_KEY.equals(key) || FailsafeKeys.CORNER_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { removeHotspot(); updateHotspot(); } });
@@ -386,6 +393,9 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (patchLockMode && lockShot != null) { c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
+                // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
+                if (patchLockMode) { float k = Math.max(0.3f, Math.min(1f, DIM_KEYGUARD * (1f + Features.getInt(TjAccessibilityService.this, PATCH_DIM_KEY, 0) / 100f))); p.setColorFilter(new android.graphics.PorterDuffColorFilter(Color.argb(Math.round((1f - k) * 255), 0, 0, 0), android.graphics.PorterDuff.Mode.SRC_ATOP)); }
+                else p.setColorFilter(null);
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
@@ -482,8 +492,11 @@ public class TjAccessibilityService extends AccessibilityService {
             long now = System.currentTimeMillis();
             lastPadKeyAt = now;
             if (k == UnlockPick.Key.ENTER) {
+                String lead = unlock.padLead();   // read BEFORE onEnter clears the pad: the first two key KINDS only (never a digit, never the length)
+                lastEnterAt = now;
                 UnlockMethods.Method m = unlock.onEnter(now);
                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
+                LockLog.add(getApplicationContext(), "ENTER", "lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
                 if (m == null) coverAtEnter();
             } else unlock.onKey(k, now);
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
@@ -570,10 +583,11 @@ public class TjAccessibilityService extends AccessibilityService {
         buzz();
         android.content.Context app = getApplicationContext();
         if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; }
-        if (ProfileSession.prearm(app)) startRouter("stock");
+        if (ProfileSession.stockBehindLockOnHandshake()) startRouter("stock");   // AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
         preArmedThisLock = true;
         Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
         profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
+        LockLog.add(app, "HANDSHAKE", m.id + " accepted, mode now " + Mode.get(app));
     }
 
     /** The handshake was withdrawn (plain retry after a wrong PIN, or the screen went dark): back to the custom account. */
@@ -581,12 +595,15 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!flippedByHandshake) return;
         flippedByHandshake = false;
         android.content.Context app = getApplicationContext();
-        if (!Mode.isCustom(app) && !CrashGuard.wasTripped(app)) Mode.set(app, Mode.CUSTOM);
+        if (!Mode.isCustom(app) && !CrashGuard.automationOff(app)) Mode.set(app, Mode.CUSTOM);
         preArmedThisLock = false;
+        LockLog.add(app, "HANDSHAKE", "withdrawn (screen off or a plain retry too late), mode " + Mode.get(app));
         if (keyguardLocked()) prearmCustom("handshake withdrawn");
     }
 
     private void startRouter(String which) {
+        Log.i(TAG, "ROUTER start " + which);
+        LockLog.add(this, "START", "router " + which);
         try {
             startActivity(new android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME).setPackage(getPackageName())
                     .putExtra(RouterActivity.EXTRA_PREARM, which)
@@ -600,7 +617,7 @@ public class TjAccessibilityService extends AccessibilityService {
             android.content.Context app = getApplicationContext();
             startRouter("custom");            // the router starts the custom home and THEN the target app (same activity, fixed order)
             preArmedThisLock = true;
-            profileNote("lock screen (" + why + "): custom home + " + ReturnReset.appLabel(app) + " put in front behind the keyguard");
+            profileNote("lock screen (" + why + "): custom home" + (ReturnReset.autoOpenWanted(app) ? " + " + ReturnReset.appLabel(app) : " (Solitaire NOT started: \"Open Solitaire automatically\" is off)") + " put in front behind the keyguard");
         } catch (Throwable t) { Log.e(TAG, "prearm failed", t); }
     }
 
@@ -618,14 +635,16 @@ public class TjAccessibilityService extends AccessibilityService {
             android.content.Context app = getApplicationContext();
             boolean locked = keyguardLocked();
             boolean armed = unlock.armedMethod() != null;
-            if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
+            boolean paused = CrashGuard.automationOff(app);
+            LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
+            if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
                     preCleanedThisLock = true;
                     Mode.set(app, Mode.CUSTOM);
                     profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
                 }
             }
-            if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, CrashGuard.wasTripped(app))) prearmCustom(why);
+            if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, paused)) prearmCustom(why);
         } catch (Throwable t) { Log.e(TAG, "lock prepare failed", t); }
     }
 
@@ -651,7 +670,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void coverAtEnter() {
         try {
             android.content.Context app = getApplicationContext();
-            if (!ProfileSession.coverAtEnter(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app), false, ReturnReset.mayHaveWork(app), Features.get(app, ReturnReset.COVER_KEY, true))) return;
+            if (!ProfileSession.coverAtEnter(Mode.isCustom(app), CrashGuard.automationOff(app), false, ReturnReset.mayHaveWork(app), Features.get(app, ReturnReset.COVER_KEY, true))) return;
             showResetCover();
             handler.removeCallbacks(coverCheck);
             handler.postDelayed(coverCheck, 1800);
@@ -673,6 +692,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean wasFlipped = flippedByHandshake;
             flippedByHandshake = false;
             unlock.reset();
+            long sinceEnter = lastEnterAt > 0 ? System.currentTimeMillis() - lastEnterAt : -1;   // AC7: how long the PIN check took (the log is how a slow tablet shows itself)
             if (m != null) {
                 if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
                 // The stock home was started behind the lock screen; only if the pre-start did not land (not in front now) press the router's Home.
@@ -681,21 +701,49 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (!front) startRouter("stock");
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
+                LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
+                verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
                 return;
             }
-            boolean ends = ProfileSession.plainUnlockEndsQuickstep(ProfileSession.endOnLock(app), Mode.isCustom(app), CrashGuard.wasTripped(app));
+            boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
             if (ends) {
                 Mode.set(app, Mode.CUSTOM);
                 startRouter("custom");           // quiet: the stack is already (or about to be) in front; no Home press, no double-Home
                 ReturnReset.run(app);            // closes what Quickstep opened, clears the shade, radios off, Solitaire last (the cover is usually up already)
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
                 Log.i(TAG, "UNLOCKPICK custom (session ended)");
+                LockLog.add(app, "UNLOCK", "plain -> custom (a Quickstep session ended), Enter to unlock " + sinceEnter + " ms");
             } else {
                 hideResetCover();
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
                 Log.i(TAG, "UNLOCKPICK custom");
+                LockLog.add(app, "UNLOCK", "plain, mode " + Mode.get(app) + (CrashGuard.automationOff(app) ? " (automation paused: the mode is left alone)" : "") + ", Enter to unlock " + sinceEnter + " ms");
             }
         } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
+    }
+
+    private long lastEnterAt = 0;   // when the last PIN-pad Enter was tapped (for the lock log's "Enter to unlock" time)
+
+    /**
+     * AC9 (Tj: "even though the custom launcher is prepared to open on the lock screen, if I do the gesture for quickstep, always open quickstep"): after an unlock that chose Quickstep, look again at
+     * {@link ProfileSession#VERIFY_DELAYS_MS} - if OUR launcher or the Solitaire stand-in is the window in front (a start made at the wake finished late), start Quickstep's home again. Bounded (two looks),
+     * and it never touches any OTHER app: someone who opened an app within a second of the unlock is left alone.
+     */
+    private void verifyQuickstepFront(final int attempt) {
+        if (attempt >= ProfileSession.VERIFY_DELAYS_MS.length) return;
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            try {
+                android.content.Context app = getApplicationContext();
+                if (Mode.isCustom(app) || keyguardLocked()) return;   // the choice changed meanwhile (a return method, a new lock): nothing to enforce
+                String target = ReturnReset.targetPackage(app);
+                boolean ours = isForeground(getPackageName()), tgt = target != null && isForeground(target);
+                if (ProfileSession.restartQuickstepAfterUnlock(ours, tgt, attempt)) {
+                    LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": " + (ours ? "the custom launcher" : "Solitaire") + " is in front after a Quickstep choice: starting Quickstep's home again");
+                    startRouter("stock");
+                    verifyQuickstepFront(attempt + 1);
+                } else LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": Quickstep (or another app) is in front, nothing to do");
+            } catch (Throwable t) { Log.e(TAG, "quickstep verify failed", t); }
+        } }, ProfileSession.VERIFY_DELAYS_MS[attempt]);
     }
 
     // ---------------------------------------------------------------- B4: has another app been opened since Recents was last cleared?
@@ -872,6 +920,8 @@ public class TjAccessibilityService extends AccessibilityService {
             String act = i == null ? null : i.getAction();
             long t = System.currentTimeMillis();
             ensureUnlockListener();
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(act) || android.content.Intent.ACTION_SCREEN_ON.equals(act) || android.content.Intent.ACTION_USER_PRESENT.equals(act))
+                LockLog.add(getApplicationContext(), android.content.Intent.ACTION_SCREEN_OFF.equals(act) ? "SCREEN_OFF" : android.content.Intent.ACTION_SCREEN_ON.equals(act) ? "SCREEN_ON" : "USER_PRESENT", "locked=" + keyguardLocked() + " mode=" + Mode.get(getApplicationContext()));
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
                 unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
@@ -922,7 +972,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean on = pm != null && pm.isInteractive();
             boolean locked = km != null && km.isKeyguardLocked();
             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); }
+            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); }
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
     }
@@ -1320,7 +1370,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
     @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
 
@@ -1357,6 +1407,11 @@ public class TjAccessibilityService extends AccessibilityService {
                             Rect scr = new Rect(), c = new Rect(), ob = new Rect();
                             offItem.getBoundsInScreen(ob); lastOffTop = ob.top; lastItemH = ob.height();   // V1: the stock item size, so our menu is "stock minus Screenshot"
                             clickableAncestor(sc.get(0)).getBoundsInScreen(scr);
+                            // AC6: the entry PITCH (not the height of one clickable node: the entries have margins), so our two-entry card is "the stock panel minus its last entry"
+                            lastPitch = -1;
+                            List<AccessibilityNodeInfo> rst = root.findAccessibilityNodeInfosByText("Restart");
+                            if (rst != null && !rst.isEmpty()) { Rect rb = new Rect(); clickableAncestor(rst.get(0)).getBoundsInScreen(rb); if (rb.top > ob.top) lastPitch = rb.top - ob.top; }
+                            if (lastPitch <= 0 && scr.top > ob.top) lastPitch = (scr.top - ob.top) / 2;
                             AccessibilityNodeInfo t = offItem;
                             for (int i = 0; i < 6 && t != null; i++) {
                                 t.getBoundsInScreen(c);
@@ -1364,6 +1419,7 @@ public class TjAccessibilityService extends AccessibilityService {
                                 t = t.getParent();
                             }
                             found = !shot.isEmpty();
+                            if (found) dumpMenu(root, locked, shot);   // AC6: what the stock menu really looks like on THIS tablet, for the report (cable-free)
                             break;
                         }
                     } finally { root.recycle(); }
@@ -1375,7 +1431,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
             showOverlay(shot);
             Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);
-            if (lastItemH > 0) Features.setString(this, itemKey(), lastOffTop + "," + lastItemH);
+            if (lastPitch > 0) Features.setString(this, itemKey(), String.valueOf(lastPitch));
             handler.removeCallbacks(recheck);
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
@@ -1654,6 +1710,24 @@ public class TjAccessibilityService extends AccessibilityService {
         return null;
     }
 
+    /** AC6: writes the stock menu's node tree + the numbers used into the report file (at most once per 20 s per lock state). Never throws. */
+    private void dumpMenu(AccessibilityNodeInfo root, boolean locked, Rect panel) {
+        try {
+            if (!PowerMenuDump.due(locked)) return;
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+            int[] card = PowerMenuDump.cardFromPanel(panel.left, panel.top, panel.right, panel.bottom, lastPitch);
+            StringBuilder h = new StringBuilder();
+            h.append("written ").append(now()).append(" in the ").append(Mode.isCustom(this) ? "CUSTOM" : "Quickstep").append(" launcher, ").append(locked ? "on the LOCK SCREEN" : "unlocked").append('\n');
+            h.append("display ").append(dm.widthPixels).append('x').append(dm.heightPixels).append(" px, rotation ").append(rotation()).append(", density ").append(dm.density).append(" (").append(dm.densityDpi).append(" dpi), font scale ").append(getResources().getConfiguration().fontScale).append('\n');
+            h.append("stock panel ").append(panel.toShortString()).append(" (").append(panel.width()).append('x').append(panel.height()).append("), first entry top ").append(lastOffTop).append(" height ").append(lastItemH).append(", entry pitch ").append(lastPitch).append('\n');
+            h.append("our card would be [").append(card[0]).append(',').append(card[1]).append("][").append(card[2]).append(',').append(card[3]).append("] (").append(card[2] - card[0]).append('x').append(card[3] - card[1]).append(")\n");
+            h.append("patch: ").append(Features.getString(this, PATCH_STATUS_KEY, "?")).append(" | calibration: ").append(Features.getString(this, CAL_STATUS_KEY, "?")).append(" | brightness nudge ").append(Features.getInt(this, PATCH_DIM_KEY, 0)).append(" % | patch nudges dx ").append(Features.getInt(this, PATCH_DX_KEY, 0)).append(" dy ").append(Features.getInt(this, PATCH_DY_KEY, 0)).append(" size ").append(Features.getInt(this, PATCH_SCALE_KEY, 0)).append(" %\n");
+            h.append("tree of the menu window (class #id 'label' [left,top][right,bottom] click):\n");
+            PowerMenuDump.write(this, locked, h.toString(), PowerMenuDump.walk(root));
+        } catch (Throwable t) { Log.e(TAG, "power menu dump failed", t); }
+    }
+
     private AccessibilityNodeInfo clickableAncestor(AccessibilityNodeInfo n) {
         AccessibilityNodeInfo t = n;
         for (int i = 0; i < 4 && t != null && !t.isClickable(); i++) t = t.getParent();
@@ -1743,17 +1817,19 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /**
-     * V1 (Tj): our menu is "the stock menu minus the Screenshot button": same item size, Power off + Restart only. The wallpaper patch underneath fills what the rest of the stock menu
+     * V1 (Tj): our menu is "the stock menu minus the Screenshot button": same panel, Power off + Restart only. The wallpaper patch underneath fills what the rest of the stock menu
      * (Screenshot, Emergency ...) would have covered. Without a patch below we keep the whole rectangle so a real Screenshot button can never show.
+     * AC6 (Tj, 2026-11-05: "the buttons and card are too small"): the card is the PANEL minus one entry pitch ({@link PowerMenuDump#cardFromPanel}); it used to start at the top of the first entry and be
+     * twice the height of ONE clickable node, which ignores the panel's padding and the gaps between entries (about a quarter shorter than the stock two-entry area).
      */
     private Rect cardArea(Rect full) {
         if (patchView == null) return full;
         try {
-            String[] p = Features.getString(this, itemKey(), "").split(",");
-            if (p.length != 2) return full;
-            int top = Integer.parseInt(p[0]), h = Integer.parseInt(p[1]);
-            if (h <= 0 || top < full.top || top - full.top > h || top + 2 * h >= full.bottom) return full;
-            return new Rect(full.left, top, full.right, top + 2 * h);
+            String v = Features.getString(this, itemKey(), "");
+            int pitch = v.isEmpty() || v.contains(",") ? -1 : Integer.parseInt(v.trim());   // an old "top,height" value from before v0.7.3 is ignored: the fallback is one third of the panel
+            int[] c = PowerMenuDump.cardFromPanel(full.left, full.top, full.right, full.bottom, pitch);
+            if (c[3] - c[1] < full.height() / 2) return full;                                  // nonsense geometry: keep the whole rectangle
+            return new Rect(c[0], c[1], c[2], c[3]);
         } catch (NumberFormatException e) { return full; }
     }
 

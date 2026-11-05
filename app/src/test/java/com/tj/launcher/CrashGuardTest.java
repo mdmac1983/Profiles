@@ -26,6 +26,14 @@ public class CrashGuardTest {
         assertFalse(CrashGuard.shouldAutoClear(true, CrashGuard.tripVersionToStore(0), 19));
     }
 
+    // ---- AC1 (v0.7.3): the launcher's own lock-screen automation is paused by the breaker OR by "Restore everything" / an update that cleared the breaker
+    @Test public void automationIsOffWhenTrippedOrPaused() {
+        assertTrue(CrashGuard.automationOff(true, false));
+        assertTrue(CrashGuard.automationOff(false, true));
+        assertTrue(CrashGuard.automationOff(true, true));
+        assertFalse(CrashGuard.automationOff(false, false));
+    }
+
     @Test public void oldCrashesDoNotCount() {
         long now = 1_000_000;
         assertEquals(1, CrashGuard.countInWindow(new long[]{now - 600_000, now - 500_000, now - 400_000}, now));

@@ -34,6 +34,14 @@ public final class ReturnReset {
     private ReturnReset() {}
 
     public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
+
+    /**
+     * AC2 / AC8 (Tj, 2026-11-05: "I turned off the feature to automatically open solitaire, yet I see it in the Quickstep launcher recent apps often"; "it opens solitaire also. I turned the solitaire setting off,
+     * so it shouldn't load it under the lock screen"). ROOT CAUSE: the "Open Solitaire" switch ({@link TjHooks#STARTUP_KEY}) was read only when the launcher STARTS; the lock-screen preparation started the target
+     * app on every locked wake whatever the switch said, and every wake left a Solitaire task that Quickstep's Recents then listed. The preparation now asks this first.
+     * (The RETURN reset keeps its own controls, the app-name box and "Plain (no app)": Tj asked for that behaviour on 2026-11-02.)
+     */
+    public static boolean autoOpenWanted(Context c) { return Features.get(c, TjHooks.STARTUP_KEY, true); }
     public static String appLabel(Context c) { return Features.getString(c, APP_KEY, DEFAULT_APP); }
 
     /**
@@ -303,6 +311,7 @@ public final class ReturnReset {
     /** N3: start the target app once, with no verification loop and no Home press: used while the lock screen still covers everything (the accessibility check cannot see behind it). */
     public static void startTargetBehindLock(Context c) {
         Context app = c.getApplicationContext();
+        if (!autoOpenWanted(app)) { Log.i(TAG, "lock-screen preparation: the target app is NOT started (\"Open Solitaire automatically\" is off)"); return; }   // AC2/AC8
         String pkg = targetPackage(app);
         if (pkg == null) return;
         List<String> labels = new ArrayList<>();

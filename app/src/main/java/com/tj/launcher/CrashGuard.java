@@ -67,8 +67,34 @@ public final class CrashGuard {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("tripped", false);
     }
 
+    /**
+     * AC1 (v0.7.3): "automation" = everything the launcher does BY ITSELF around the lock screen (plain unlock ends a Quickstep session, the custom home is prepared behind the lock, the battery saver
+     * guard ...). Those rules no longer depend on switches that a breaker wipe can leave off, so this is what pauses them: the breaker tripped, or Tj pressed "Restore everything", or a newer version
+     * cleared the breaker (CBR1: the mode is left alone, so the launcher must not switch it back by itself). Cleared by every DELIBERATE way back to the custom launcher ({@link #clearTripped}).
+     */
+    static final String PAUSED_KEY = "paused";
+
+    /** Pure: is the launcher's own automation paused? */
+    public static boolean automationOff(boolean tripped, boolean paused) { return tripped || paused; }
+
+    public static boolean isPaused(Context c) {
+        return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(PAUSED_KEY, false);
+    }
+
+    /** The one answer the automation rules read (breaker tripped OR paused). */
+    public static boolean automationOff(Context c) {
+        SharedPreferences p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        return automationOff(p.getBoolean("tripped", false), p.getBoolean(PAUSED_KEY, false));
+    }
+
+    /** "Restore everything": nothing of ours switches launchers for you until you go back to the custom launcher on purpose. */
+    public static void pause(Context c) {
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(PAUSED_KEY, true).commit();
+    }
+
+    /** A deliberate way back to the custom launcher (double Home, a return method, the Control button): the breaker AND the pause are over. */
     public static void clearTripped(Context c) {
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false)
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false).putBoolean(PAUSED_KEY, false)
                 .putLong("t1", 0).putLong("t2", 0).putLong("t3", 0).putInt(TRIP_VERSION_KEY, 0).remove(CLEARED_NOTE_KEY).commit();
     }
 
@@ -80,6 +106,7 @@ public final class CrashGuard {
             int installed = installedVersion(app);
             if (shouldAutoClear(true, p.getInt(TRIP_VERSION_KEY, 0), installed)) {
                 clearTripped(app);
+                p.edit().putBoolean(PAUSED_KEY, true).commit();   // AC1: the breaker is cleared (a fair try) but the launcher still does not switch the MODE by itself: Tj decides when to go back to custom
                 p.edit().putString(CLEARED_NOTE_KEY, "The crash breaker was cleared when version " + installed + " was installed: the new version gets a fair try (three more crashes within two minutes would trip it again). If the launcher is still in Quickstep, switch to the custom launcher above when you want it.").commit();
                 android.util.Log.i("TjCrash", "crash breaker cleared at start-up: version " + installed + " is newer than the one that tripped it");
             }
