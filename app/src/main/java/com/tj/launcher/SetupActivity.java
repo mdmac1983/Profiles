@@ -179,7 +179,8 @@ public class SetupActivity extends Activity {
         page.addView(key);
         final String kout = Features.getString(this, "keytest_output", "");
         if (!kout.isEmpty()) {
-            page.addView(text("Side-key test: " + ShellProtocol.keyTestSummary(kout), 13, INK, false));
+            String ksum = Features.getString(this, "keytest_summary", "");
+            page.addView(text("Side-key test: " + (ksum.isEmpty() ? ShellProtocol.keyTestSummary(kout) : ksum), 13, INK, false));
             String ans = Features.getString(this, "keytest_menu", "");
             if (ans.isEmpty()) {
                 page.addView(text("Did the NORMAL power menu (Power off / Restart / Screenshot) appear while you held the key?", 14, INK, true));
