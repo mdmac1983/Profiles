@@ -391,7 +391,7 @@ public class TjAccessibilityService extends AccessibilityService {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
             @Override protected void onDraw(android.graphics.Canvas c) {
-                if (patchLockMode && lockShot != null) { c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen
+                if (patchLockMode && lockShot != null) { p.setColorFilter(null); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)

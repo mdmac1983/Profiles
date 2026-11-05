@@ -884,7 +884,7 @@ if [ "$#" -ge 4 ]; then
     # AC6 / V5 measurement (info only): how much of its brightness the strip next to the menu keeps when the stock dialog's scrim is up, and how much the closed lock screen keeps of the test wallpaper (the keyguard's own dim)
     MC="$(convert "$OUT/83-lock-closed-patch-off.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
     MO="$(convert "$OUT/82-lock-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
-    info "V5: mean colour of the strip next to the menu: closed ($MC) vs open ($MO): the open menu's scrim keeps $(echo "$MC $MO" | awk -F'[ ,]' 'NF>=6 && $1>0 && $2>0 && $3>0 {printf "R %.3f G %.3f B %.3f", $4/$1, $5/$2, $6/$3}') of the closed brightness"
+    info "V5: mean colour of the strip next to the menu: closed ($MC) vs open ($MO): the open menu's scrim keeps $(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "R %.3f G %.3f B %.3f", $5/$1, $6/$2, $7/$3}') of the closed brightness"
     check "V2: the part of the old menu below our short card shows exactly the lock wallpaper (MAE < 0.5 %)" awk -v m="$MAEF" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
     check "V1: our card is shorter than the stock menu rectangle (stock item size, no Screenshot slot)" bash -c "[ $(( $4 - $2 )) -lt $(( $(echo $FULL | cut -d' ' -f4) - $(echo $FULL | cut -d' ' -f2) )) ]"
   else info "V1: no card area in the log"; check "V1: the short card area was logged" false; fi
