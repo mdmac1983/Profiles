@@ -1074,6 +1074,8 @@ adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT w
 # the custom account's world: Calendar (the target app here) and Contacts, both open before Quickstep begins
 for APP in com.android.contacts com.android.calendar; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 info "RT custom account before Quickstep: $(rec)"
+tl(){ adb shell dumpsys activity recents 2>/dev/null | grep -E '^ *\* Recent #' | sed -E 's/.*\{[0-9a-f]+ #([0-9]+) [AI]=([^ ]*) .*/\1:\2/' | tr '\n' ' '; }   # task id:affinity-or-component of every Recents task, newest first (run 99: Contacts vanished although spared)
+info "RT task ids before Quickstep: $(tl)"
 adb shell locksettings set-pin 1234 > "$OUT/rt-setpin.txt" 2>&1
 adb logcat -c
 lockpad; pad d d 1 2 3 4 e; sleep 7                      # the default handshake -> a Quickstep session BEGINS (Mode.set -> TaskOrigin.sessionStart)
