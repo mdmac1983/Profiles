@@ -1414,7 +1414,12 @@ public class TjAccessibilityService extends AccessibilityService {
                     AccessibilityNodeInfo box = hit.get(0);
                     if (!box.isVisibleToUser()) return null;   // status bar hidden (full-screen app): the empty list means nothing
                     int n = 0;
-                    for (int i = 0; i < box.getChildCount(); i++) { AccessibilityNodeInfo ch = box.getChild(i); if (ch != null) { n++; ch.recycle(); } }
+                    for (int i = 0; i < box.getChildCount(); i++) {
+                        AccessibilityNodeInfo ch = box.getChild(i);
+                        if (ch == null) continue;
+                        if (!KeepAlivePolicy.isOurIcon(ch.getContentDescription())) n++;   // AA2: our own do-nothing notification is not "something to clear"
+                        ch.recycle();
+                    }
                     return n > 0;
                 } finally { root.recycle(); }
             }

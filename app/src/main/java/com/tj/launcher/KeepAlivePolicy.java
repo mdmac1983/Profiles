@@ -17,10 +17,18 @@ public final class KeepAlivePolicy {
     }
 
     /**
-     * A foreground service whose notification Android never shows in the status bar or on the lock screen: the lowest importance and a secret lock-screen visibility. Pure so a test can pin the
-     * numbers (IMPORTANCE_MIN = 1, VISIBILITY_SECRET = -1) without Android.
+     * The quietest notification Android allows for a foreground service. We ask for IMPORTANCE_MIN (1) and the secret lock-screen visibility (-1); Android raises it to LOW (2) and ignores the
+     * lock-screen request (apps cannot set it) - measured on the Android 10 emulator, run 79. The numbers are pinned here so a test can check them without Android.
      */
     public static final int IMPORTANCE_MIN = 1, VISIBILITY_SECRET = -1;
+
+    /** The notification's title. The accessibility helper's status-bar look recognises our own icon by it (its content description is "<app> notification: <title>"). */
+    public static final String TITLE = "Launcher is kept ready";
+
+    /** Pure: is this status-bar icon our own keep-alive icon? (so it never counts as "a notification to clear") */
+    public static boolean isOurIcon(CharSequence contentDescription) {
+        return contentDescription != null && contentDescription.toString().contains(TITLE);
+    }
 
     /** Pure: a restart request for a service that was killed (START_STICKY) is honoured only while the rule above still says run. */
     public static boolean honourRestart(boolean switchOn, boolean crashTripped) { return shouldRun(switchOn, crashTripped); }

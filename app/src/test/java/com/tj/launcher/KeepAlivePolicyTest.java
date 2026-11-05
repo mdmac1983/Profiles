@@ -21,5 +21,12 @@ public class KeepAlivePolicyTest {
         assertEquals(1, KeepAlivePolicy.IMPORTANCE_MIN);
         assertEquals(-1, KeepAlivePolicy.VISIBILITY_SECRET);
     }
+    @Test public void ourOwnStatusBarIconIsRecognisedByItsTitleAndNothingElseIs() {
+        assertTrue(KeepAlivePolicy.isOurIcon("Launcher notification: Launcher is kept ready"));
+        assertTrue(KeepAlivePolicy.isOurIcon("Launcher is kept ready"));
+        assertFalse(KeepAlivePolicy.isOurIcon("Gmail notification: 3 new messages"));
+        assertFalse(KeepAlivePolicy.isOurIcon("Launcher notification: something else"));
+        assertFalse(KeepAlivePolicy.isOurIcon(null)); assertFalse(KeepAlivePolicy.isOurIcon(""));
+    }
     @Test public void theSwitchKeyIsStable() { assertEquals("keep_alive", KeepAlivePolicy.KEY); }
 }

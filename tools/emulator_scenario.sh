@@ -988,7 +988,7 @@ check "AA2: with the switch ON the keep-alive service is a foreground service" g
 info "KA ON: service record: $(grep -E 'ServiceRecord|isForeground|foregroundId|foregroundNoti' $OUT/ka-services-on.txt | sed 's/^ *//' | cut -c1-140 | tr '\n' '|' | cut -c1-600)"
 adb shell dumpsys notification --noredact 2>/dev/null | grep -E "tj_keep_alive" | sed 's/^ *//' | cut -c1-240 | head -3 > "$OUT/ka-channel.txt"
 info "KA ON: notification channel: $(tr '\n' '|' < $OUT/ka-channel.txt)"
-check "AA2: its notification channel has the lowest importance (no status-bar icon)" grep -q "mImportance=1" "$OUT/ka-channel.txt"
+check "AA2: its notification is silent (importance LOW or lower: Android floors a foreground service at LOW)" bash -c "grep -qE 'mImportance=(1|2)' $OUT/ka-channel.txt"
 kameasure ON
 check "AA2: the launcher process survives 'am kill-all' with the service" bash -c "echo '$KA_KILL' | grep -q 'oom_score_adj'"
 check "AA2: with the service the process priority is at least foreground-service level (adj <= 200) with another app in front" bash -c "a=\$(echo '$KA_FRONT' | sed -n 's/.*oom_score_adj=\\([-0-9]*\\).*/\\1/p'); [ -n \"\$a\" ] && [ \"\$a\" -le 200 ]"

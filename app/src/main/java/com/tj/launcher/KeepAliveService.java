@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
+import com.android.launcher3.R;
 
 /**
  * AA2 (Tj, 2026-11-05: "Build number 3"; goal "as fast as possible launcher startup (if it can be kept in ram ...)"). A foreground service that does NOTHING except exist: it lifts this app's process
@@ -15,8 +16,10 @@ import android.util.Log;
  * accessibility helper are still alive when the tablet wakes. A killed process is why an unlock can be slow: the process must start, the helper must reconnect, and the lock-screen pre-arm
  * (Solitaire + custom home put in front BEHIND the lock screen) has not happened yet.
  *
- * Cost, said honestly: the process stays in RAM (about what it uses now) and ONE silent notification ("Launcher is kept ready") sits in the shade. It uses the lowest importance, so it has no status-bar icon and
- * is secret on the lock screen. Switch in Launcher control; "Restore everything" turns it off and stops it. It does no work, holds no wake lock and never touches the lock screen.
+ * Cost, said honestly: the process stays in RAM (about what it uses now) and ONE silent notification ("Launcher is kept ready") sits in the shade. MEASURED (emulator run 79): Android raises a foreground-service
+ * notification to at least LOW importance whatever the channel asks for, so it gets a status-bar slot; its icon is fully transparent (tj_ic_blank) and the accessibility helper's "are there notifications to clear"
+ * look ignores it by its title, so the reset still skips the shade when nothing else is there. Effect on priority, MEASURED: with the accessibility helper bound the process already sat at oom_score_adj 100
+ * (visible) and survived `am kill-all`; with the service it is 50. The gain on the real tablet (MediaTek's own memory cleaner) can only be seen there ("Last unlock" in Launcher control). Switch in Launcher control; "Restore everything" turns it off and stops it. It does no work, holds no wake lock and never touches the lock screen.
  */
 public final class KeepAliveService extends Service {
     private static final String TAG = "TjKeepAlive";
@@ -55,8 +58,8 @@ public final class KeepAliveService extends Service {
             nm.createNotificationChannel(ch);
         }
         Notification n = new Notification.Builder(this, CHANNEL)
-                .setSmallIcon(getApplicationInfo().icon)
-                .setContentTitle("Launcher is kept ready")
+                .setSmallIcon(R.drawable.tj_ic_blank)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
+                .setContentTitle(KeepAlivePolicy.TITLE)
                 .setContentText("Faster unlock. Turn off in Launcher control.")
                 .setOngoing(true)
                 .setShowWhen(false)
