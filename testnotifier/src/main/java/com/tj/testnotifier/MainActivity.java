@@ -15,6 +15,7 @@ public class MainActivity extends Activity {
         t.setText("Notifier test app " + getPackageName());
         t.setTextSize(20);
         setContentView(t);
+        if (getIntent().getBooleanExtra("quiet", false)) return;   // the task-clean-up test (section rt) needs a shared app that opens WITHOUT a notification
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.createNotificationChannel(new NotificationChannel("t", "Test", NotificationManager.IMPORTANCE_DEFAULT));
         nm.notify(1, new Notification.Builder(this, "t")
