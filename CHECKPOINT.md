@@ -1,13 +1,13 @@
-# CHECKPOINT 496 — read me first, then TASKS.md
+# CHECKPOINT 497 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T08:56:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-7a9vpi` · **builds on:** `8b14b7f` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T08:57:44Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-7a9vpi` · **builds on:** `75748c5` (this checkpoint is the commit after it)
 
 ## Just done
-gate on e69d979: ao PASSES in full (own picker opens: com.tj.launcher/com.android.wallpaperpicker.WallpaperPickerActivity, 'Set wallpaper' bar + master_wallpaper_list, no 'My photos', the Settings-row cover machinery works); runs 201 and 202 (the failing E1 / RB4 sequences) both SUCCESS = those were flakes; rg FAILED only because no Recents entries were counted even for the control (calendar=0 contacts=0): diagnostics added (raw dumpsys lines, monkey output) and rerunning rg; picker now in its own process (:wallpaper_picker) and only the main process feeds the crash breaker
+v0.7.7 FULL DELTA GATE dispatched at 09:00Z on 75748c5: rg alone (earlier, diagnostics), then three runs o,x,lq | n,ac,rb,last | base,x1,e1,ao (newest four emulator.yml dispatches); AM1 scratch branch tmp-merge-test f8d85bd = working branch 75748c5 + AM1, builds, 454 tests green (local only, worktree /home/user/Launcher-merge-test)
 
 ## Do this next
-1) rerun section rg (dispatched now), read it: the INFO lines show what dumpsys activity recents prints and whether monkey opened the apps; fix the counting or the guard; 2) full delta gate on the final commit (bash tools/gate.sh 8fc7662: 3 runs); 3) ship v0.7.7
+read the four runs (actions_list list_workflow_runs emulator.yml event workflow_dispatch branch claude/new-session-7a9vpi perPage 4, then list_workflow_jobs + get_job_logs tail 40 for each non-green one); expected only reset2 not in these sections; rg may need a fix (see its INFO lines); if all green: bash ship.sh <v0.7.7 note>, android.yml full_build on the branch, record-release, tell Tj; THEN merge tmp-merge-test into the branch (git merge tmp-merge-test), run section ps, AM1 gate, v0.7.8
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ gate on e69d979: ao PASSES in full (own picker opens: com.tj.launcher/com.androi
 
 ## Last ten checkpoints
 ```
+  75748c5 ckpt 496: gate on e69d979: ao PASSES in full (own picker opens: com.tj.launcher/com.andr
   8ba2f93 ckpt 495: Tj's final polish ask (speed / no flicker / restart survival test, the invisib
   e69d979 ckpt 494: AP1 CODED (446 unit tests green): RecentsFilter (new class; I first overwrote 
   a90b089 ckpt 493: AO1b CODED (builds, unit tests green): the AOSP legacy WallpaperPicker (androi
@@ -25,8 +26,4 @@ gate on e69d979: ao PASSES in full (own picker opens: com.tj.launcher/com.androi
   ef34117 ckpt 489: v0.7.7 (AN1+AO1) in the emulator gate; AM1 merge resolved on local branch tmp-
   169b461 ckpt 488: emulator gate dispatched for AN1+AO1 on 8fc7662: run 195 (id 42186194687) n,x,
   8fc7662 ckpt 487: AN1 + AO1 coded (436 unit tests green): wallpaper picker = one explicit system
-  75f75a4 ckpt 486: AN1 coded (420 unit tests green): battery-saver guard acts only at real launch
 ```
-
-(3 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
