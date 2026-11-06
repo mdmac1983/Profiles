@@ -966,3 +966,10 @@ You are trying to rebuild and match the custom power menu to the reference power
 ```
 You can see the patch clearly. It doesn't blend in
 ```
+
+## 2026-11-06T07:48:19Z
+```
+Update: the battery saver tile sometimes works. But it is mostly unresponsive. When it does work it turns on very slow. I'm almost certain this has something to do with the launcher or adb or accessibility. It wasn't happening before
+For the custom launcher, when i hold down on the home screen and select wallpapers, make sure it always uses the default android wallpaper picker and doesn't offer another app. When the wallpaper selector shows up, permanently remove "my photos" as an option. It is at the very left of the wallpapers. This should never appear
+This context window is almost full, get ready for me to continue this is a new code session with no context
+```
