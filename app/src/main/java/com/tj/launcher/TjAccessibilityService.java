@@ -801,7 +801,7 @@ public class TjAccessibilityService extends AccessibilityService {
             String ime = null;
             String cur = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
             if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
-            ComponentName stock = StockLauncher.find(this);
+            ComponentName stock = stockCached();   // AD8: cached (one lookup a minute), not a package-manager call per window change
             if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) {
                 // AC2 follow-up: the app that was in front BEHIND the lock screen shows for a moment while the gesture's unlock goes away. Tj did not open it in Quickstep: it stays the custom account's.
                 if (ProfileSession.windowIsLockLeftover(keyguardLockedFast(), unlock.armedMethod() != null, System.currentTimeMillis(), lastUnlockAt)) {
