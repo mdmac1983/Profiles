@@ -11,6 +11,10 @@ ok(){ PASS=$((PASS+1)); }
 bad(){ FAIL=$((FAIL+1)); echo "  FAIL  $1"; }
 check(){ if eval "$2" >/dev/null 2>&1; then ok; else bad "$1"; fi; }
 
+# ---------------------------------------------------------------- the tiered emulator gate (AJ1, Tj 2026-11-06): the table and the scenario must agree
+check "tools/gate.sh --check: gate-map.txt agrees with the scenario" "bash '$D/tools/gate.sh' --check"
+check "tools/gate.sh --list prints the gate table" "bash '$D/tools/gate.sh' --list"
+
 # ---------------------------------------------------------------- workflow minute rules
 for W in "$D"/.github/workflows/*.yml; do
   # No `push:` trigger that is not tags-only (autosave pushes after every tool call).

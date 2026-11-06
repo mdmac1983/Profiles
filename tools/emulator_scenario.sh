@@ -54,7 +54,10 @@ check "C2: adb pm grant DUMP works and shows granted=true" bash -c "! grep -qi '
 #      SECTIONS="n,n6" bash tools/emulator_scenario.sh   -> only those sections (~4-5 min instead of ~15);  empty = EVERYTHING (the release run).
 #      Names: base legacy x1 e1 y2 b6 b4 n n6 o t u s p x v g rs rs2 rs3 rs4 ka ac rt im gc pf rb last. Setup, the install and the helper functions below always run.
 SECTIONS="${SECTIONS:-}"
-want(){ [ -z "$SECTIONS" ] && return 0; case ",$SECTIONS," in *",$1,"*) return 0;; esac; return 1; }
+# per-section wall time (AJ1): every section that starts prints how long the PREVIOUS one took ("INFO  TIME <section> <s> s"), so the next cut of the gate is data-driven
+_SEC=""; _SECT0=0
+_sectime(){ local n; n=$(date +%s); [ -n "$_SEC" ] && info "TIME $_SEC $((n-_SECT0)) s"; _SEC="$1"; _SECT0=$n; }
+want(){ local r=1; if [ -z "$SECTIONS" ]; then r=0; else case ",$SECTIONS," in *",$1,"*) r=0;; esac; fi; [ "$r" -eq 0 ] && _sectime "$1"; return "$r"; }
 info "sections: ${SECTIONS:-ALL}"
 # helpers that more than one section uses (hoisted here so a section-only run has them)
 # tap an app icon in the OPEN drawer by its label (found with uiautomator), falling back to fixed coordinates: the drawer order is not the same on every emulator boot
@@ -1902,6 +1905,7 @@ info "LAST what was found: $(tr '\n' '|' < "$OUT/press-restart.txt" | sed 's/[0-
 info "LAST card log tail: $(grep -iE 'card|press|menu' "$OUT/tja11y-full.txt" 2>/dev/null | tail -4 | cut -c1-120 | tr '\n' '|' | cut -c1-330)"
 check "card's Restart pressed the real Restart button" grep -q "press 'Restart' -> true" "$OUT/press-restart.txt"
 fi # section last
+_sectime END   # the last section's time
 echo "failed checks: $FAILS" | tee -a "$OUT/results.txt"
 ls -la "$OUT"
 exit "$FAILS"

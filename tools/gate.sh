@@ -8,6 +8,7 @@
 #   --full       every section of the gate (core + all opt): a milestone, or lock / unlock / power-menu code changed a lot
 #   --groups N   split into at most N parallel runs (default 3: about 10 minutes each; use 2 if Actions minutes are scarce)
 #   --list       print the table (tools/gate-map.txt) and exit
+#   --check      verify that the table and tools/emulator_scenario.sh agree (the handoff self-test runs it)
 #
 # It only READS git and tools/gate-map.txt; it dispatches nothing (dispatch with the GitHub tool: emulator.yml, ref = the branch, inputs {"sections": "<group>"}).
 # Tier 0 (every release, no emulator): unit tests + lint + the handoff self-test: `bash tools/gradle.sh testDebugUnitTest :app:lintDebug`, `bash tools/test_handoff.sh` (android.yml re-runs them).
@@ -55,6 +56,12 @@ if listing:
 # scenario order (sections run in this order inside one run)
 order = re.findall(r'^if want ([a-z0-9]+); then', open(root + "/tools/emulator_scenario.sh", encoding="utf-8").read(), re.M)
 known = set(order)
+if "--check" in args:   # used by tools/test_handoff.sh: the table and the scenario must agree
+    missing = [t["name"] for t in table if t["name"] not in known]
+    dup = sorted({t["name"] for t in table if [x["name"] for x in table].count(t["name"]) > 1})
+    if missing or dup:
+        print("gate-map.txt problem: missing in the scenario:", missing, "duplicated:", dup); sys.exit(1)
+    print("gate-map.txt agrees with tools/emulator_scenario.sh (%d sections)" % len(table)); sys.exit(0)
 for t in table:
     if t["name"] not in known:
         print(f'WARN section {t["name"]} is in gate-map.txt but not in tools/emulator_scenario.sh')
