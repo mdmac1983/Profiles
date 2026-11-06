@@ -1,21 +1,23 @@
-# CHECKPOINT 430 — read me first, then TASKS.md
+# CHECKPOINT 431 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T03:54:50Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `b5c0efe` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T03:55:45Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `165fbd1` (this checkpoint is the commit after it)
 
 ## Just done
-TK3 gate 2 dispatched on b5c0efe: A=run 174 (id 42159304859), B'(no g)=run 175 (id 42159307501), 03:54Z
+AE3/AD7b build plan AE3-1..6 written (docs only); gates A=174 B'=175 running
 
 ## Do this next
-~04:18Z read both (list_workflow_jobs resource_id=run id -> job id; get_job_logs tail 70 for A, 140 for B'); meanwhile ONLY docs/plan work (AD7b design in TASKS), NO product code until v0.7.4 ships
+04:18Z read gates; AFTER v0.7.4 recorded implement AE3-1..6 as v0.7.5
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  165fbd1 ckpt 430: TK3 gate 2 dispatched on b5c0efe: A=run 174 (id 42159304859), B'(no g)=run 175
   b5c0efe ckpt 429: TK3: review fixes RV1-RV5 coded + unit 351/0 + lint ok; dispatching gate A + B
   933914d ckpt 428: TK3 review: 7 confirmed (all low), 6 refuted; RV1-RV5 written to TASKS
   9b152bb ckpt 427: TK3: b6 alone run 171 = SUCCESS on f869db3 (gate A b6 fails = flake pending co
@@ -25,5 +27,4 @@ TK3 gate 2 dispatched on b5c0efe: A=run 174 (id 42159304859), B'(no g)=run 175 (
   c20c330 ckpt 423: AE findings written (v2 not buildable now; AD7b design; MBX1/BATCH1 explained)
   5b9f077 ckpt 422: AE1-AE6 (Tj's answers) in TASKS.md; AE1/AE2/AE5 answered (switches already exi
   548833b ckpt 421: TK3: code-review workflow wf_8e100f49-bbd (5 lenses + verify) running in sessi
-  26789ed ckpt 420: TK3: gates dispatched on 76fad6a: A=run 169 (id 42154508863), B=run 170 (id 42
 ```
