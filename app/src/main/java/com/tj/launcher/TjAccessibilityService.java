@@ -2745,7 +2745,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (W != dm.widthPixels || H != dm.heightPixels) { shotStatus(now() + "  the screenshot is " + W + "x" + H + " but the screen is " + dm.widthPixels + "x" + dm.heightPixels + ": take it in the same orientation"); full.recycle(); return; }
                 long sr = 0, sg = 0, sb = 0; int n = 0;
                 for (int y = Math.max(0, win.top); y < Math.min(H, win.bottom); y += 3) for (int x = Math.max(0, win.left); x < Math.min(W, win.right); x += 3) { int q = full.getPixel(x, y); sr += (q >> 16) & 255; sg += (q >> 8) & 255; sb += q & 255; n++; }
-                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { shotStatus(now() + "  the power menu was open in that screenshot: take it with the lock screen showing and the menu closed"); full.recycle(); return; }
+                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { String seen = " [slot mean " + Math.round(sr / (double) n) + "," + Math.round(sg / (double) n) + "," + Math.round(sb / (double) n) + " at " + win.toShortString() + "; 4x4 grid brightness " + gridBrightness(full) + "]"; Log.i(TAG, "PATCHSHOT refused as a menu screenshot" + seen); shotStatus(now() + "  the power menu was open in that screenshot: take it with the lock screen showing and the menu closed" + seen); full.recycle(); return; }
                 int[] cr = PatchShot.cropRect(win.left, win.top, win.right, win.bottom, PatchShot.MARGIN_PX, W, H);
                 android.graphics.Bitmap crop = android.graphics.Bitmap.createBitmap(full, cr[0], cr[1], cr[2] - cr[0], cr[3] - cr[1]);
                 final boolean saved = PatchShot.save(app, rot, crop, sig, cr[0], cr[1]);
@@ -2763,6 +2763,20 @@ public class TjAccessibilityService extends AccessibilityService {
                 } catch (Throwable t) { Log.e(TAG, "patch shot apply failed", t); } } });
             } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); shotStatus(now() + "  failed: " + t); }
         } }, "tj-patchshot").start();
+    }
+
+    /** Diagnostics for a refused calibration screenshot: the mean brightness (0-255) of a 4 x 4 grid of the picture, row by row, so a report shows WHAT was on the screen (a white panel, a PIN pad, the plain wallpaper). */
+    private static String gridBrightness(android.graphics.Bitmap b) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            int W = b.getWidth(), H = b.getHeight();
+            for (int gy = 0; gy < 4; gy++) for (int gx = 0; gx < 4; gx++) {
+                long sum = 0; int n = 0;
+                for (int y = gy * H / 4; y < (gy + 1) * H / 4; y += 16) for (int x = gx * W / 4; x < (gx + 1) * W / 4; x += 16) { int q = b.getPixel(x, y); sum += (((q >> 16) & 255) + ((q >> 8) & 255) + (q & 255)) / 3; n++; }
+                sb.append(n == 0 ? 0 : sum / n).append(gx == 3 && gy < 3 ? "/" : " ");
+            }
+        } catch (Throwable ignored) { }
+        return sb.toString().trim();
     }
 
     /** Review of v0.8.1: a vendor ROM (the tablet is a MediaTek one) may save its screenshots under another SYSTEM package than com.android.systemui; any package that ships with the device counts as "the system itself", an app the person installed does not. */
