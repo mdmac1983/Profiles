@@ -1498,6 +1498,8 @@ public class TjAccessibilityService extends AccessibilityService {
     /**
      * AD8 (Go discipline, Tj: "optimized for my tablet": 2 GB RAM, memory class 128 MB): when Android reports memory pressure, drop the cached wallpaper / lock-screen bitmaps that nothing is drawing right now
      * (a few MB each at 600 x 973); they are rebuilt on demand. Never touches them while the patch window exists (its view draws from them).
+     * HONEST SCOPE (review RV5, 2026-11-06): this only drops the references THIS service holds. The home wallpaper bitmap usually aliases WallpaperManager's own cache and the lock bitmaps exist only while the patch window
+     * does, so on most devices little memory is actually freed. It is cheap insurance, NOT a measured saving: the tablet report's memory lines (AD8) decide whether anything bigger is worth doing.
      */
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
