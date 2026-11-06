@@ -2072,6 +2072,11 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     private Rect cardArea(Rect full) {
         if (patchView == null) return full;
+        return cardAreaGeom(full);
+    }
+
+    /** AH3: the card geometry WITHOUT the "is a patch below" guard of {@link #cardArea}: the patch window itself is derived from it, before any patch exists. */
+    private Rect cardAreaGeom(Rect full) {
         try {
             String v = Features.getString(this, itemKey(), "");
             int sl = v.indexOf('/'), pitch = -1, cut = -1;
