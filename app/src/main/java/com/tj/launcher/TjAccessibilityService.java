@@ -608,7 +608,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void secretAccepted(UnlockMethods.Method m) {
         buzz();
         android.content.Context app = getApplicationContext();
-        if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; }
+        if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; qsApp = null; resumedPkg = null; }   // review RV1: the lock began in custom = no live Quickstep session, so nothing to resume (a stale app would be cold-started)
         if (ProfileSession.stockBehindLockOnHandshake()) startQuickstepFront("handshake");   // AD5 (the app that was open, else the stock home) / AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
         preArmedThisLock = true;
         Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
