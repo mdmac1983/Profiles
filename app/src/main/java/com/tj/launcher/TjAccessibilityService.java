@@ -597,7 +597,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
-                if (patchLockMode) setDim(p, rest ? restDim(false) : lockPatchDim(false)); else setDim(p, patchOpenHome ? openScrim() : 1f);   // AH1: the home patch was always drawn UNDIMMED = a lighter block while the stock dialog dims the screen
+                if (patchLockMode) setDim(p, rest ? restDim(false) : PatchFade.mix(restDim(false), lockPatchDim(false), fadeProgress())); else setDim(p, patchOpenHome ? PatchFade.mix(1f, openScrim(), fadeProgress()) : 1f);   // AH1: the home patch was always drawn UNDIMMED = a lighter block while the stock dialog dims the screen; AZ1: both follow the stock fade-in
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
