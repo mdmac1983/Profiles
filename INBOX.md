@@ -876,3 +876,8 @@ Ignore the blue drawing in the middle of the screen, that is to blur out persona
 
 If possible, delete these photos from github when you are finished. Or somehow make them so only Claude can see them.
 ```
+
+## 2026-11-06T04:47:57Z
+```
+Don't worry about those, just do the launcher work
+```
