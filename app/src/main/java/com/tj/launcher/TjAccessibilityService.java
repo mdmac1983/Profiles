@@ -1247,6 +1247,11 @@ public class TjAccessibilityService extends AccessibilityService {
                 }
             } catch (Throwable t) { Log.e(TAG, "resume start failed, stock home instead", t); }
         }
+        if (pkg == null) {   // say WHY the stock home came up (the report and the emulator gate show it): switch off / nothing remembered / too old
+            String why = ResumeTarget.whyNot(Features.get(app, ResumeTarget.KEY, true), qsApp, qsAppAt, System.currentTimeMillis()) + " [qsApp=" + qsApp + " fg=" + fgPkg + " mode=" + Mode.get(app) + "]";
+            Log.i(TAG, "ROUTER stock home, no resume: " + why);
+            LockLog.add(app, "START", "stock home, no resume: " + why);
+        }
         resumedPkg = null;
         startRouter("stock");
     }
