@@ -1,5 +1,7 @@
 package com.android.wallpaperpicker.tileinfo;
 
+import com.android.launcher3.R;
+
 import android.app.WallpaperInfo;
 import android.app.WallpaperManager;
 import android.content.Context;

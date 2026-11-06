@@ -16,6 +16,8 @@
 
 package com.android.wallpaperpicker;
 
+import com.android.launcher3.R;
+
 import android.animation.LayoutTransition;
 import android.app.ActionBar;
 import android.app.Activity;
@@ -44,7 +46,6 @@ import android.widget.LinearLayout;
 
 import com.android.wallpaperpicker.tileinfo.DefaultWallpaperInfo;
 import com.android.wallpaperpicker.tileinfo.LiveWallpaperInfo;
-import com.android.wallpaperpicker.tileinfo.PickImageInfo;
 import com.android.wallpaperpicker.tileinfo.ResourceWallpaperInfo;
 import com.android.wallpaperpicker.tileinfo.ThirdPartyWallpaperInfo;
 import com.android.wallpaperpicker.tileinfo.UriWallpaperInfo;
@@ -161,10 +162,7 @@ public class WallpaperPickerActivity extends WallpaperCropActivity
         populateWallpapers((LinearLayout) findViewById(R.id.third_party_wallpaper_list),
                 ThirdPartyWallpaperInfo.getAll(this), false /* addLongPressHandler */);
 
-        // Add a tile for the Gallery
-        LinearLayout masterWallpaperList = (LinearLayout) findViewById(R.id.master_wallpaper_list);
-        masterWallpaperList.addView(
-                createTileView(masterWallpaperList, new PickImageInfo(), false), 0);
+        // TJ (2026-11-06, AO1b): "There should be no my photos option." The AOSP tile for the Gallery ("My photos", PickImageInfo) is NOT added: the strip starts with the first wallpaper.
 
         // Select the first item; wait for a layout pass so that we initialize the dimensions of
         // cropView or the defaultWallpaperView first
@@ -445,7 +443,10 @@ public class WallpaperPickerActivity extends WallpaperCropActivity
     }
 
     public Pair<ApplicationInfo, Integer> getWallpaperArrayResourceId() {
-        return new Pair<>(getApplicationInfo(), R.array.wallpapers);
+        // TJ (AO1b): the wallpapers of THIS tablet's stock picker are not in this code (AOSP's own array is empty: every device build fills it in through an overlay of the picker app).
+        // They are read from the installed picker app's resources, so the strip shows exactly the stock set; the empty array of this module is only the fallback.
+        Pair<ApplicationInfo, Integer> installed = com.tj.launcher.WallpaperPickerChoice.bundledWallpapers(this);
+        return installed != null ? installed : new Pair<>(getApplicationInfo(), R.array.wallpapers);
     }
 
     public void addWallpapers(ArrayList<WallpaperTileInfo> known, Resources res,

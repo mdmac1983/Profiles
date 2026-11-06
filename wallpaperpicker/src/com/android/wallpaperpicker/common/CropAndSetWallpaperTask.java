@@ -15,6 +15,8 @@
  */
 package com.android.wallpaperpicker.common;
 
+import com.android.launcher3.R;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;

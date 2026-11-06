@@ -1,5 +1,7 @@
 package com.android.wallpaperpicker.tileinfo;
 
+import com.android.launcher3.R;
+
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;

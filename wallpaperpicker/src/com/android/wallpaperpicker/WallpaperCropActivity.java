@@ -16,6 +16,8 @@
 
 package com.android.wallpaperpicker;
 
+import com.android.launcher3.R;
+
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;

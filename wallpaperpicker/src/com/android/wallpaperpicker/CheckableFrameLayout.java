@@ -16,6 +16,8 @@
 
 package com.android.wallpaperpicker;
 
+import com.android.launcher3.R;
+
 import android.content.Context;
 import android.util.AttributeSet;
 import android.widget.Checkable;

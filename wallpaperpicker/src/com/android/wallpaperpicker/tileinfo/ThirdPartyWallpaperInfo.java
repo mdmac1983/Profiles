@@ -1,5 +1,7 @@
 package com.android.wallpaperpicker.tileinfo;
 
+import com.android.launcher3.R;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -56,6 +58,7 @@ public class ThirdPartyWallpaperInfo extends WallpaperTileInfo {
 
     public static List<ThirdPartyWallpaperInfo> getAll(Context context) {
         ArrayList<ThirdPartyWallpaperInfo> result = new ArrayList<>();
+        if (true) return result;   // TJ (AO1b): "doesn't offer another app": no tile for any other app that answers SET_WALLPAPER
         int iconSize = context.getResources().getDimensionPixelSize(R.dimen.wallpaperItemIconSize);
 
         final PackageManager pm = context.getPackageManager();

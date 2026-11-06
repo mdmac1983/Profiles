@@ -1,5 +1,7 @@
 package com.android.wallpaperpicker.common;
 
+import com.android.launcher3.R;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
