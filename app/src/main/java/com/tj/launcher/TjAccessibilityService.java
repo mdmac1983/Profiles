@@ -749,7 +749,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false; handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
         Log.i(TAG, "PATCH removed");
     }
 
@@ -1920,7 +1920,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             stopShotWatch();
             handler.removeCallbacks(restRecheck); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoCalTrigger);
-            handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork);
+            handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork); handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
             quietUntilMs = 0;
         } catch (Throwable ignored) { }
     }
@@ -2550,8 +2550,21 @@ public class TjAccessibilityService extends AccessibilityService {
         return lp;
     }
 
+    /**
+     * AZ1 (run 247, emulator with animations on): changing a window flag (here: touchable on/off) makes the window RELAYOUT, a synchronous binder call into system_server made inside the next traversal, i.e. in the same
+     * frame as the patch's next draw. While the stock dialog animates it blocked the main thread for 100-200 ms: the patch's first dimmed frame was shown 60-400 ms late, events piled up behind it (age 180 ms),
+     * and the same call at the close delayed the un-dim. The flag is only needed for a tap on the hidden Screenshot spot, so it follows the draw: ON after the stock fade is over, OFF 40 ms after the patch went back to rest.
+     */
+    private final Runnable touchableOn = new Runnable() { @Override public void run() { if (overlayShown) applyPatchTouchable(true); } };
+    private final Runnable touchableOff = new Runnable() { @Override public void run() { if (!overlayShown) applyPatchTouchable(false); } };
     private void setPatchTouchable(boolean t) {
-        if (patchView == null || t == patchTouchable || !patchLockMode) return;   // the home patch never swallows a touch
+        if (patchView == null || !patchLockMode) return;   // the home patch never swallows a touch
+        handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
+        if (t == patchTouchable) return;
+        handler.postDelayed(t ? touchableOn : touchableOff, t ? PatchFade.SETTLE_MS + 20 : 40);
+    }
+    private void applyPatchTouchable(boolean t) {
+        if (patchView == null || t == patchTouchable || !patchLockMode) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).updateViewLayout(patchView, patchParams(t)); patchTouchable = t; } catch (Throwable ignored) { }
     }
 
