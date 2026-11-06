@@ -1,13 +1,13 @@
-# CHECKPOINT 446 — read me first, then TASKS.md
+# CHECKPOINT 447 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T05:17:48Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `fe80b0f` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T05:18:24Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `59c4b57` (this checkpoint is the commit after it)
 
 ## Just done
-AH1: home patch dims like the stock scrim while the menu is open + Menu dimming nudge (v0.7.5 patch, unit 368/0); Tj says wallpaper is still (not animated)
+TK3: ad,se,rt run 182 SUCCESS -> gate B' clean; only gate A run 180 open (40+ min, may hang like 174)
 
 ## Do this next
-~05:21 read run 182 (ad,se,rt) + gate A run 180; then ship v0.7.4
+read run 180 after its 45 min step limit (~05:24); if hung: split gate A in two halves; then ship v0.7.4
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ AH1: home patch dims like the stock scrim while the menu is open + Menu dimming 
 
 ## Last ten checkpoints
 ```
+  59c4b57 ckpt 446: AH1: home patch dims like the stock scrim while the menu is open + Menu dimmin
   49ac6de ckpt 445: TK3: rerun ad,se,rt = run 182 (id 42166392626) on 7defd73 (product == 364e8c0)
   7defd73 ckpt 444: TK3 gate B': AD5 passes; rt AA3 x2 = leftover origin marks from ad (test order
   b541689 ckpt 443: AG1 battery saver follows the launcher (Quickstep ON, custom OFF) coded in the
@@ -26,8 +27,4 @@ AH1: home patch dims like the stock scrim while the menu is open + Menu dimming 
   d47af7f ckpt 439: AF3: Tj parked the photo-label and privacy questions; launcher work only (AE7 
   14d9155 ckpt 438: TK3: v,ad run 179 SUCCESS on 364e8c0 (AD5 fixed by test change); waiting final
   3250146 ckpt 437: Tj's 7 photos: AE7 long-press Wallpapers-only, AE8 compare, AF2 privacy (4 old
-  40a804e ckpt 436: FINAL gates on 364e8c0 dispatched 04:37Z: v,ad=run 179 (id 42163620016), gate 
 ```
-
-(3 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
