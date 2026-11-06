@@ -1453,7 +1453,7 @@ check "AE3: with the helper the resting patch is a PHOTO of the lock screen take
 check "AE3: the patch is resting again after the photo (last 'PATCH rest' line says on)" bash -c "grep 'PATCH rest' $OUT/ae-b-log.txt | tail -1 | grep -q 'rest on'"
 aefeat false false 0; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; sleep 2
 shot 93-ae-bare-lock-screen-b
-if [ -n "$SLOT" ]; then
+if [ -n "${SLOT:-}" ]; then
   MAB="$(aemae 92-ae-rest-on-photo 93-ae-bare-lock-screen-b "$SLOT")"
   info "AE3 B: resting patch (photo) vs the bare lock screen, slot $SLOT: MAE $MAB"
   check "AE3: with a photo the resting patch is invisible (the slot looks like the bare lock screen: MAE < 0.01)" awk -v m="$MAB" 'BEGIN{exit !(m!="" && m+0 < 0.01)}'
