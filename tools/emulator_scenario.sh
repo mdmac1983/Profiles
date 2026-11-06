@@ -1329,7 +1329,8 @@ flickchain(){ # flickchain R L R L ...: the swipes run in ONE adb call (each `in
   local cmd="" d; for d in "$@"; do if [ "$d" = R ]; then cmd="$cmd input swipe 100 600 500 600 120;"; else cmd="$cmd input swipe 500 600 100 600 120;"; fi; done
   adb shell "$cmd"; }
 SE_ROT0="$(adb shell settings get system accelerometer_rotation | tr -d '\r\n')"; [ "$SE_ROT0" = "1" ] || SE_ROT0=0
-rotflip(){ local v; v=$(adb shell settings get system accelerometer_rotation | tr -d '\r\n'); [ "$v" = "1" ] && v=0 || v=1; adb shell settings put system accelerometer_rotation $v; }
+rotchain(){ # rotchain N: N changes of the rotation lock in ONE adb call, 0.3 s apart (the observer treats changes closer than 120 ms as one; the code needs 5 inside 10 s)
+  adb shell "v=\$(settings get system accelerometer_rotation); i=0; while [ \$i -lt $1 ]; do if [ \"\$v\" = 1 ]; then v=0; else v=1; fi; settings put system accelerometer_rotation \$v; i=\$((i+1)); sleep 0.3; done"; }
 # -------- page flick
 sefeat true true false; sefresh; adb logcat -c
 flickchain R L R L R; sleep 3; getmode > "$OUT/se-flick5.txt"                       # five alternating swipes
@@ -1346,13 +1347,13 @@ flickchain R L R L R L; sleep 3; getmode > "$OUT/se-flick-off.txt"
 check "SE-F5: with the page-flick switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-off.txt)\" = custom ]"
 # -------- rotation tile
 sefeat true true false; sefresh
-rotflip; rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot3.txt"
+rotchain 3; sleep 3; getmode > "$OUT/se-rot3.txt"
 check "SE-R1: three changes of the rotation lock are NOT enough" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot3.txt)\" = custom ]"
 sefresh
-rotflip; rotflip; rotflip; rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot5.txt"
+rotchain 5; sleep 3; getmode > "$OUT/se-rot5.txt"
 check "SE-R2: five changes in 10 s take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot5.txt)\" = quickstep ]"
 sefeat true false false; sefresh
-for i in 1 2 3 4 5; do rotflip; done; sleep 3; getmode > "$OUT/se-rot-off.txt"
+rotchain 5; sleep 3; getmode > "$OUT/se-rot-off.txt"
 check "SE-R3: with the rotation-tile switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot-off.txt)\" = custom ]"
 adb shell settings put system accelerometer_rotation $SE_ROT0
 # -------- charger flick (default OFF)
