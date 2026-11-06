@@ -1,22 +1,23 @@
-# CHECKPOINT 522 — read me first, then TASKS.md
+# CHECKPOINT 523 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T19:21:26Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-8o8uj9` · **builds on:** `5a2b618` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T19:25:09Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-8o8uj9` · **builds on:** `9af7dfa` (this checkpoint is the commit after it)
 
 ## Just done
-AV2 marked answered by Tj's AW request; nothing else changed
+handoff manifest saved (.handoff/handoff.md + archive; CLAUDE.md/AGENTS.md learnings = implicit rules; older key decisions recoverable via git show 024ede6:CLAUDE.md)
 
 ## Do this next
-unchanged: Tj answers AW5 (A auto-calibrate / B grey cover / both), then implement AW2+AW3 per TASKS AW1 RESULT as v0.8.1 in a fresh session
+unchanged: Tj answers AW5 (A auto-calibrate / B cover / both); then v0.8.1 per TASKS AW1 RESULT in a fresh session; Tj to try v0.8.0 with research/TABLET_CHECKLIST_v0.8.0.md
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M HANDOFF.md
 
 ## Last ten checkpoints
 ```
+  0d3b054 ckpt 522: AV2 marked answered by Tj's AW request; nothing else changed
   5a2b618 ckpt 521: v0.8.0 released and recorded; AW1 audit of Tj's strict lock screen done (tiles
   c49ac41 ckpt 520: v0.8.0 RELEASED (android.yml run 27 green, Release published 19:14Z, BUILDLOG 
   ebe0b6e ckpt 519: Tj's new request written into TASKS (AW1-AW6): lock screen from ANY launcher, 
@@ -26,5 +27,7 @@ unchanged: Tj answers AW5 (A auto-calibrate / B grey cover / both), then impleme
   02e0419 ckpt 515: review fixes in product code (patchShow: no fsync, never touchable when menu c
   766791a ckpt 514: gate read: G3 run 229 49/0; G2 run 228 79/1 (AA1 in im = known flake); G1 run 
   e9ac0e4 ckpt 513: final gate in flight on 0888e76: G1 run 227 id 42269849507 (base,legacy,e1,y2,
-  0888e76 ckpt 512: takeover done: ps control fixed and PROVEN (run 226 15/0), rg alone green (run
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
