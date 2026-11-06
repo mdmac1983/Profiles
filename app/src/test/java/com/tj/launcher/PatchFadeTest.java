@@ -46,19 +46,22 @@ public class PatchFadeTest {
         assertEquals(PatchFade.FRESH_MS, PatchFade.lagMs(1_000 + PatchFade.FRESH_MS, 1_000));
     }
     @Test public void theFirstFrameHasTheBrightnessOfTheSurround() {
-        // The point of the whole class: whatever the lag, the patch starts where the stock scrim already is, so there is no step. Compare with the v0.8.0 behaviour (a jump to the final dim).
+        // The point of the whole class: whatever the lag, the first frame already has the brightness the stock scrim has when that frame is SEEN, so there is no step.
         float keep = 0.80f;   // the stock scrim leaves 80 % at the end
-        for (long lag : new long[] { 0, 30, 60, 100, 150, 200 }) {
+        for (long lag : new long[] { 0, 30, 60, 100, 150, 200, 280 }) {
             long start = 10_000 - lag, now = 10_000;
             float patch = PatchFade.mix(1f, keep, PatchFade.progressAt(now, start));
-            float surround = PatchFade.mix(1f, keep, PatchFade.openProgress(now + PatchFade.LEAD_MS - start));   // what the screen shows when this frame is seen
-            assertEquals("lag " + lag, surround, patch, 1e-6f);
-            float oldJump = keep;   // v0.8.0: straight to the final brightness
-            float oldStep = Math.abs(oldJump - mixAt(keep, lag + PatchFade.LEAD_MS));
-            assertTrue("the old jump was a visible step for lag " + lag + " (" + oldStep + ")", lag < 60 || oldStep > 0.03f || lag > 200);
+            float surroundWhenSeen = PatchFade.mix(1f, keep, PatchFade.openProgress(now + PatchFade.LEAD_MS - start));
+            assertEquals("lag " + lag, surroundWhenSeen, patch, 1e-6f);
         }
     }
-    private static float mixAt(float keep, long elapsed) { return PatchFade.mix(1f, keep, PatchFade.openProgress(elapsed)); }
+    /** v0.8.0 switched straight to the final brightness when it noticed the menu, while the surround was only part way there: the size of that step, in brightness (1.0 = full). */
+    private static float oldStep(float keep, long lagMs) { return Math.abs(keep - PatchFade.mix(1f, keep, PatchFade.openProgress(lagMs + PatchFade.LEAD_MS))); }
+    @Test public void theOldJumpWasAVisibleStep() {
+        assertTrue(oldStep(0.80f, 40) > 0.15f);    // noticed 40 ms late: the patch was ~15 % darker than its surround at that moment
+        assertTrue(oldStep(0.80f, 80) > 0.08f);
+        assertTrue(oldStep(0.80f, 120) < 0.06f);   // only a late reaction (the scrim nearly there) hides the step
+    }
     @Test public void theFadeEndsWithTheFinalBrightness() {
         assertTrue(PatchFade.fading(10_000, 10_000));
         assertTrue(PatchFade.fading(10_000, 10_000 - 200));
