@@ -1593,13 +1593,14 @@ RGALLOW="com.android.contacts com.android.gallery3d com.android.camera2 com.andr
 RGSET=""; for a in $RGALLOW; do RGSET="$RGSET<string>$a</string>"; done
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"baseline_done\\\" value=\\\"true\\\" /><set name=\\\"allowed\\\">$RGSET</set></map>\" > shared_prefs/tj_apps.xml'"
 rgfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"recents_drawer_only\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
-rgcount(){ adb shell dumpsys activity recents 2>/dev/null | grep -c "A=$1"; }
+rgcount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|affinity=)$1"; }   # a task of the package, whichever way this Android prints it
+rgshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-150 | head -${1:-8} | tr '\n' '|'; }
 rgopen(){ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; }
 adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
 rgfeat false; setmode custom; rebind; home; sleep 2
 rgopen
 RG_CAL0="$(rgcount com.android.calendar)"; RG_CON0="$(rgcount com.android.contacts)"
-info "AP1 (guard OFF): recents entries before opening Recents: calendar=$RG_CAL0 contacts=$RG_CON0"
+info "AP1 (guard OFF): recents entries before opening Recents: calendar=$RG_CAL0 contacts=$RG_CON0; raw: $(rgshow 8)"
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 4; shot rg-recents-off
 RG_CAL1="$(rgcount com.android.calendar)"
 check "AP1 (control): with the guard OFF the hidden app's card stays in Recents after Recents was opened" bash -c "[ \"${RG_CAL1:-0}\" -ge 1 ]"
@@ -1608,7 +1609,7 @@ adb shell am force-stop com.android.calendar; adb shell am force-stop com.androi
 rgfeat true; setmode custom; rebind; home; sleep 2
 rgopen
 RG_CAL2="$(rgcount com.android.calendar)"; RG_CON2="$(rgcount com.android.contacts)"
-info "AP1 (guard ON): recents entries before opening Recents: calendar=$RG_CAL2 contacts=$RG_CON2"
+info "AP1 (guard ON): recents entries before opening Recents: calendar=$RG_CAL2 contacts=$RG_CON2; raw: $(rgshow 8)"
 adb logcat -c
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 5; shot rg-recents-on
 RG_CAL3="$(rgcount com.android.calendar)"; RG_CON3="$(rgcount com.android.contacts)"
