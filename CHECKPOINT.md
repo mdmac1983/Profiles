@@ -1,22 +1,22 @@
-# CHECKPOINT 457 — read me first, then TASKS.md
+# CHECKPOINT 458 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T05:55:42Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `ea74960` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T05:57:03Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `9c2baa0` (this checkpoint is the commit after it)
 
 ## Just done
-v0.7.5 gate dispatched on ea74960: runs 186 (y2,b4,n6,o,pf,rb) 187 (t,v,ae,rt,last) 188 (base,x1,e1,n,ac); review wf_a559b059-812 running
+AG2 battery saver TILE in Quickstep does not work: recorded + analysed; need the Control 'Battery saver guard' line; v0.7.5 gate runs 186/187/188 + review pending
 
 ## Do this next
-~06:09 read 186/187/188 (list_workflow_jobs -> get_job_logs tail 60) + the review result; fix, rerun only affected sections, ship
+~06:09 read 186/187/188 + review wf_a559b059-812; add low_power change logging (AG2) with the review fixes; rerun only ac; ship v0.7.5
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  b86027c ckpt 457: v0.7.5 gate dispatched on ea74960: runs 186 (y2,b4,n6,o,pf,rb) 187 (t,v,ae,rt,
   ea74960 ckpt 456: v0.7.5 APPLIED on the branch (patch applied cleanly, version 0.7.5/22, gate-ma
   cc28ba7 ckpt 455: TK3 DONE: v0.7.4 released + recorded (main 14f6334); merged into branch; HANDO
   cdc5ced ckpt 454: AJ1 DONE: tiered emulator gate (tools/gate.sh + gate-map.txt + timing lines + 
@@ -26,5 +26,7 @@ v0.7.5 gate dispatched on ea74960: runs 186 (y2,b4,n6,o,pf,rb) 187 (t,v,ae,rt,la
   2386d4f ckpt 450: AI1: usage-log merge (QuickstepUsage/AppOrigin.mergeUsage/Mode qsStartAt) + re
   ad8e719 ckpt 449: AH1: Tj thinks wrong wallpaper piece is copied; plan = geometry line + calibra
   5dec87a ckpt 448: AI1 leftover Quickstep app in Recents recorded + analysed (needs app name/path
-  fa53bd2 ckpt 447: TK3: ad,se,rt run 182 SUCCESS -> gate B' clean; only gate A run 180 open (40+ 
 ```
+
+(2 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
