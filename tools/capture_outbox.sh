@@ -58,6 +58,9 @@ try:
             break
     if not text:
         sys.exit(0)
+    # a tool-call hook (OUTBOX_MIN=200) records only SUBSTANTIAL new text, not the one-line narration between tool calls; the Stop hook records whatever the last reply was
+    if len(text) < int(os.environ.get("OUTBOX_MIN", "0") or 0):
+        sys.exit(0)
     pats = [r"sk-ant-[A-Za-z0-9_-]{20,}", r"sk-[A-Za-z0-9_-]{32,}", r"gh[pousr]_[A-Za-z0-9]{30,}",
             r"github_pat_[A-Za-z0-9_]{30,}", r"AIza[0-9A-Za-z_-]{30,}", r"AKIA[0-9A-Z]{16}",
             r"xox[baprs]-[A-Za-z0-9-]{10,}",
