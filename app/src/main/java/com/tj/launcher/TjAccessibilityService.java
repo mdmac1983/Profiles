@@ -2494,7 +2494,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (patchView == null) return;
         if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch || opening) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
         // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
-        boolean vis = PatchRest.visible(on, lockPatchAlways(), true, lastBouncer);
+        boolean vis = on || PatchRest.visible(false, lockPatchAlways(), true, lastBouncer);   // review of v0.8.1: an open menu always gets its patch (PatchRest.visible says so); lockPatchAlways() asks the keyguard over binder, which has no place on the path that must be fastest
         boolean rest = vis && !on;
         boolean changed = rest != patchResting;
         patchResting = rest;
