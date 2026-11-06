@@ -96,7 +96,7 @@ public final class ReportState {
         } catch (Throwable t) { b.append("launcher version: (unreadable)\n"); }
         try { b.append("mode: ").append(Mode.get(c)).append('\n'); } catch (Throwable t) { b.append("mode: (unreadable)\n"); }
         b.append("shell helper reachable: ").append(yes(helperReachable)).append('\n');
-        b.append("accessibility helper bound: ").append(yes(TjAccessibilityService.get() != null)).append('\n');
+        b.append("accessibility helper bound: ").append(yes(TjAccessibilityService.get() != null)).append("   (state: ").append(HelperStatus.describe(HelperStatus.now(c)).replaceAll("\\s+-\\s+.*", "")).append(")\n");   // ACC1
         b.append("keep-alive service running: ").append(yes(KeepAliveService.running())).append(" (switch ").append(KeepAliveService.enabled(c) ? "on" : "off").append(")\n");
         b.append("keep-alive crash fuse blown (Android refused its notification, so it stays off until you switch it on again): ").append(yes(KeepAliveService.blocked(c))).append(KeepAliveService.blocked(c) ? "  " + KeepAliveService.blockedWhy(c) : "").append('\n');
         try {

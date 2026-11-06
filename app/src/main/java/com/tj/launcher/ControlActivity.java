@@ -95,7 +95,8 @@ public class ControlActivity extends Activity {
         boolean grant = AnimationSpeedup.permitted(this);
         LinearLayout card = card();
         card.addView(chipLine("Active launcher", "Quickstep (stock)  -  settings only open here", ACCENT));
-        card.addView(chipLine("Accessibility helper", helper ? "ON" : "OFF  -  turn it on in Accessibility settings (power menu, reset, lock screen, pencil need it)", helper ? ACCENT : Color.parseColor("#B3261E")));
+        int helperState = HelperStatus.now(this);   // ACC1: "enabled but NOT connected" is its own answer
+        card.addView(chipLine("Accessibility helper", HelperStatus.describe(helperState), helperState == HelperStatus.CONNECTED ? ACCENT : helperState == HelperStatus.ENABLED_NOT_CONNECTED ? Color.parseColor("#B26A00") : Color.parseColor("#B3261E")));
         card.addView(chipLine("adb permission", grant ? "granted" : "not granted  -  keyboard / tiles / faster reset wait for it (see Advanced > adb setup guide)", grant ? ACCENT : Color.parseColor("#B26A00")));
         if (Features.isCover(Features.powerMode(this)) && Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true)) {   // AM1: say plainly whether the lock-screen patch can be invisible yet
             String cal = PatchShot.summary(this);
