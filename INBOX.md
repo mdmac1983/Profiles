@@ -936,3 +936,8 @@ The actual battery saver tile in the notification panel in quickstep doesn't wor
 ```
 Also, make it so wifi, Bluetooth, and all notifications are cleared and off whenever the tablet is on the lock screen, from any launcher. The lock screen should never, at any time, show wifi, Bluetooth, or notifications from apps
 ```
+
+## 2026-11-06T06:14:02Z
+```
+The modified power menu isn't right. On the lock screen, when i hold the side key, it should show power off and restart only. It should have no flicker. Compare the two attached photos.  Also, notice the gray square itself should be just as wide as the original power menu, and just as tall. The only part that needs to be cropped is the bottom.
+```
