@@ -45,12 +45,15 @@ public final class BatterySaverGuard {
         } catch (Throwable t) { Log.e(TAG, "could not watch battery saver", t); }
     }
 
-    /** Switches battery saver off now if the rules say so. {@code why} is for the log / status line only. */
-    public static void check(Context c, String why) {
+    /** Switches battery saver off now if the rules say so. {@code why} is for the log / status line only. A DELIBERATE check (a mode change, the process start): the switch-on that follows is never capped. */
+    public static void check(Context c, String why) { check(c, why, false); }
+
+    /** {@code reactive}: called because the setting CHANGED (something else switched the saver off): only these switch-ons count toward the cap that protects against a tight loop. */
+    static void check(Context c, String why, boolean reactive) {
         try {
             ContentResolver cr = c.getContentResolver();
             boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
-            if (!on) { keepOnInQuickstep(c, cr, why); return; }   // custom: nothing to do (one settings read + one preference read); Quickstep: AG1 keeps it on
+            if (!on) { keepOnInQuickstep(c, cr, why, reactive); return; }   // custom: nothing to do (one settings read + one preference read); Quickstep: AG1 keeps it on
             long now = System.currentTimeMillis();
             synchronized (BatterySaverGuard.class) {
                 if (!BatterySaverPolicy.shouldTurnOff(enabled(c), Mode.isCustom(c), CrashGuard.automationOff(c), true, now, writes)) return;
