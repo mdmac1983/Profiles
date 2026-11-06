@@ -178,6 +178,15 @@ check "after the breaker, Home shows the stock launcher" bash -c "grep -q 'com.a
 
 # ---- the control icon opens (reachable from the stock launcher)
 adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3; shot 06-control
+# ---- AR1 (Tj, 2026-11-06: "improve the ui and organization for ease of use and intuitive design"): Launcher control is a list of collapsible GROUPS; the page is read from top to bottom through three screens
+adb shell uiautomator dump /sdcard/ctl1.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl1.xml 2>/dev/null | tr '>' '\n' > "$OUT/control-dump.txt"
+adb shell input swipe 300 900 300 200 300; sleep 1
+adb shell uiautomator dump /sdcard/ctl2.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl2.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
+adb shell input swipe 300 900 300 200 300; sleep 1
+adb shell uiautomator dump /sdcard/ctl3.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl3.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
+info "AR1: Launcher control texts seen: $(grep -o 'text="[^"]\{3,36\}"' $OUT/control-dump.txt | sort -u | head -24 | tr '\n' ' ')"
+check "AR1: Launcher control is grouped: every group header is on the page" bash -c "for g in 'Everyday' 'Lock screen' 'Unlock into Quickstep' 'Power menu' 'Recents' 'Return to the custom launcher' 'Battery' 'Quick settings' 'Safety' 'Advanced'; do grep -q \"text=\\\"\$g\" $OUT/control-dump.txt || { echo missing \$g; exit 1; }; done"
+check "AR1: 'Restore everything' stays reachable (a fixed footer, not inside a closed group)" grep -q 'text="Restore everything"' "$OUT/control-dump.txt"
 
 # ---- uninstall must leave a working stock home
 adb uninstall "$PKG" > "$OUT/uninstall.txt" 2>&1; sleep 2; home; resumed > "$OUT/resumed-uninstalled.txt"
