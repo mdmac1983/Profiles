@@ -1368,6 +1368,12 @@ info "RT task ids during Quickstep (just before the lock): $TLB (test app: custo
 check "AA3-S0: the shared test app has TWO tasks side by side in Recents (so the test means something)" bash -c "[ -n '$SA' ] && [ -n '$SB' ] && [ '$SA' != '$SB' ] && echo '$TLB' | tr ' ' '\n' | grep -q '^$SA:'"
 SPID0=$(adb shell pidof $SN | tr -d '\r\n'); CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n'); CT0=$(echo "$TLB" | tr ' ' '\n' | grep ':android.task.contacts$' | head -1 | cut -d: -f1)
 info "RT progress: about to lock, +${SECONDS}s (Contacts task ${CT0:-none}, processes: test app ${SPID0:-none}, Contacts ${CPID0:-none})"
+# 2026-11-06: what the helper's task matcher sees. The version of 2026-11-05 matched ANY line of a task's text, so the LAST (oldest) task of the list was removed at every lock clean-up (bisect runs 153-155: the Calendar target, KILL "remove task").
+# This awk repeats the OLD matching on the pre-lock dump for email + gallery3d; after the fix of ShellProtocol.recentTaskIds only the tasks whose ROOT activity is theirs may appear in the plan.
+adb shell dumpsys activity recents > "$OUT/rt-dump-prelock.txt" 2>&1
+awk '/Recent #[0-9]+:/ { id=-1; if (match($0, /\{[0-9a-fA-F]+ #[0-9]+ /)) { t=substr($0,RSTART,RLENGTH); sub(/^.*#/,"",t); id=t+0 } } id>=0 && /(realActivity=|cmp=|affinity=|A=)(com\.android\.email|com\.android\.gallery3d)/ { print id ": " substr($0,1,70) }' "$OUT/rt-dump-prelock.txt" > "$OUT/rt-oldmatch.txt"
+info "RT the OLD any-line matcher would have picked these tasks for email + gallery3d (task id: first matching line): $(cut -c1-80 $OUT/rt-oldmatch.txt | head -6 | tr '\n' '|')"
+info "RT the Recents dump has $(wc -l < $OUT/rt-dump-prelock.txt | tr -d ' ') lines; the last 5: $(tail -5 $OUT/rt-dump-prelock.txt | sed 's/^ */ /' | cut -c1-84 | tr '\n' '|')"
 adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10         # LOCK: the session ends; the helper cleans up before any wake
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/rt-log-lock.txt" 2>&1
