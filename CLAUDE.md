@@ -52,6 +52,7 @@ it did not fire.
 | Rung | What | Who runs it | Saves |
 | :- | :- | :- | :- |
 | 0 | `tools/capture_inbox.sh` (UserPromptSubmit) | hook | every message Tj sends, verbatim (keys redacted), committed + pushed before any work |
+| 0b | `tools/capture_outbox.sh` (called by autosave on Stop AND after tool calls) | hook | what Claude told Tj: the last reply of every turn and any substantial reply text (200+ chars), quoted, key-redacted, into `OUTBOX.md`; `resume.sh` prints its tail (2026-11-06: findings that lived only in a chat died with the chat) |
 | 1 | `tools/autosave.sh` (PostToolUse Edit/Write/Bash, Stop) | hook | `git add -A`, secret scan, commit, push — after every tool call; no tests, no gate |
 | 2 | `bash tools/ckpt.sh "did" "next"` | **you, after every completed step** | rewrites `CHECKPOINT.md` (did / next / state), fast checks, commit, push |
 | 3 | `bash ship.sh "note"` | you, at real versions | full gate (handoff test, unit tests, lint, versionCode), push, queue the GitHub build |
@@ -88,7 +89,7 @@ Claude Code gives every session its own branch, so work can strand on a branch n
 - Develop and push on **the branch the session was assigned**; `push.sh` pushes it after every checkpoint.
 - `tools/MIRROR_MAIN` (`on`/`off`, committed) makes every push also fast-forward `origin/main` (plain push, never
   forced). **On** since 2026-11-02 (Tj approved), so a fresh session that just opens the repo sees the real state;
-  GitHub can only dispatch workflows that exist on the default branch, which is now `main` itself.
+  GitHub can only dispatch workflows that exist on the default branch, which is now `main` itself. **2026-11-06 (Tj: "Why are my prompts and Claude findings not being saved? This is important to fix"):** the mirror had been `off` since the v0.7.3/0.7.4 gating and was never switched back, so `main` froze at v0.7.4 for three releases while every new session started FROM it: prompts (INBOX), findings (TASKS) and code looked lost (they sat on side branches). It is `on` again and `main` follows every push. NEVER switch it off again without writing WHY in TASKS.md and switching it back on in the same session; after a push check `git ls-remote origin refs/heads/main` equals your tip.
 - `resume.sh` names every other remote branch with unmerged commits; merge deliberately, not blindly.
 
 **What each branch is (audited 2026-11-03):**
