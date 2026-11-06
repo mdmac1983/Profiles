@@ -125,6 +125,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (patchView == null || !patchLockMode) return;
             if (patchShotBmp == null && PatchShot.has(TjAccessibilityService.this, rotation(), shotSig())) loadStoredShot();
             patchShow(overlayShown);
+            maybeAutoCalibrate("the patch window settled");   // AW5
             restInfo("restRecheck rest=" + patchResting + " menuOpen=" + overlayShown);   // the diagnostic is written here (twice per new window), not on every menu open / close
         } catch (Throwable t) { Log.e(TAG, "rest recheck failed", t); }
     } };
@@ -571,7 +572,7 @@ public class TjAccessibilityService extends AccessibilityService {
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final Rect rect = new Rect(r);
         if (targetIsLock) buildPatchMasks(rect, dm); else { patchMaskOpen = null; patchMaskRest = null; }
-        if (targetIsLock) loadStoredShot(); else patchShotBmp = null;   // AM1: the real pixels, if this lock screen was calibrated (must be loaded BEFORE the resting state is decided below)   // AH3: the soft-edge masks belong to the lock patch; the home patch is drawn exactly as in v0.7.5
+        if (targetIsLock) { loadStoredShot(); if (patchShotBmp != null && !PatchShot.covers(patchShotLeft, patchShotTop, patchShotBmp.getWidth(), patchShotBmp.getHeight(), rect.left, rect.top, rect.right, rect.bottom)) { Log.i(TAG, "PATCHSHOT the stored crop no longer covers the patch window " + rect.toShortString() + ": calibrating again"); shotStatus(now() + "  the menu moved out of the stored crop (font size / menu layout changed): it is calibrated again"); patchShotBmp = null; } } else patchShotBmp = null;   // AU4   // AM1: the real pixels, if this lock screen was calibrated (must be loaded BEFORE the resting state is decided below)   // AH3: the soft-edge masks belong to the lock patch; the home patch is drawn exactly as in v0.7.5
         View v = new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
@@ -914,6 +915,7 @@ public class TjAccessibilityService extends AccessibilityService {
         lqLastWrite = 0; lqWrites = 0;
         LockQuiet.onLockAsync(getApplicationContext());
         applyLockTiles(why);
+        handler.removeCallbacks(autoCalTrigger); handler.postDelayed(autoCalTrigger, 3000);   // AW5: a lock screen without a valid crop is calibrated once it is plain
     }
 
     /**
@@ -2463,18 +2465,69 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** What a stored crop is valid for: this wallpaper picture, this rotation, this display size. */
-    private String shotSig() {
-        long id = 0;
-        try { android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
-              id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK); if (id <= 0) id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
-        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
-        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
-        return PatchShot.sig(id, rotation(), dm.widthPixels, dm.heightPixels);
-    }
+    private String shotSig() { return PatchShot.currentSig(this); }
 
     private void shotStatus(String s) { try { Features.setString(this, PatchShot.STATUS_KEY, s); } catch (Throwable ignored) { } }
 
     private long calibrationUntilMs() { try { return Long.parseLong(Features.getString(this, PatchShot.CAL_UNTIL_KEY, "0").trim()); } catch (NumberFormatException e) { return 0; } }
+    /** AW5: when the current calibration window opened (an automatic one is short, a manual one lasts {@link PatchShot#WINDOW_MS}); older windows recorded no start, so the old length is the fallback. */
+    private long calibrationStartMs() {
+        try { long st = Long.parseLong(Features.getString(this, AutoCalibration.START_KEY, "0").trim()); if (st > 0 && st <= calibrationUntilMs()) return st; } catch (NumberFormatException ignored) { }
+        return calibrationUntilMs() - PatchShot.WINDOW_MS;
+    }
+
+    // ---------------------------------------------------------------- AW5: the helper calibrates the patch BY ITSELF (Tj chose A, 2026-11-06 evening) - see AutoCalibration
+    private long autoCalLastMs = 0, lastPadSeenMs = 0, lastUnlockUptime = 0, autoShotAsked = 0;
+    private int autoCalThisLock = 0;
+    private String lastAutoNote = "";
+    private final Runnable autoCalTrigger = new Runnable() { @Override public void run() { try { maybeAutoCalibrate("timer"); } catch (Throwable t) { Log.e(TAG, "auto calibration trigger failed", t); } } };
+    private void autoCalNote(String note) {
+        if (note == null || note.equals(lastAutoNote)) return;
+        lastAutoNote = note;
+        try { Features.setStringAsync(this, "patch_auto_note", now() + "  " + note); } catch (Throwable ignored) { }
+    }
+
+    /**
+     * AW5: on a plain lock screen without a valid crop, open a short calibration window by ourselves; the existing machinery ({@link #calibrationChanged}: hide the resting patch, ask the system for a
+     * screenshot when the lock screen is plain, {@link #ingestShot}) does the rest. The pure policy is {@link AutoCalibration#decision}; every "not yet" reason is shown in Launcher control.
+     */
+    private void maybeAutoCalibrate(String why) {
+        android.content.Context app = getApplicationContext();
+        AutoCalibration.State st = new AutoCalibration.State();
+        st.switchOn = Features.get(app, AutoCalibration.KEY, true);
+        st.coverOn = Features.isCover(Features.powerMode(app));
+        st.lockPatchOn = Features.get(app, LOCK_PATCH_KEY, true);
+        st.paused = CrashGuard.automationOff(app);
+        st.permitted = checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        st.geometryKnown = cachedCard() != null;
+        st.patchWindow = patchView != null && patchLockMode;
+        st.validCrop = patchShotBmp != null || PatchShot.has(app, rotation(), shotSig());
+        st.calibrating = calibrating();
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        st.interactive = pm != null && pm.isInteractive();
+        st.keyguardLocked = keyguardLocked();
+        st.pinPadUp = lastBouncer;
+        st.menuOpen = overlayShown;
+        st.now = System.currentTimeMillis();
+        st.lastStartMs = autoCalLastMs;
+        st.startsThisLock = autoCalThisLock;
+        String tries = Features.getString(app, AutoCalibration.TRIES_KEY, "");
+        st.startsToday = AutoCalibration.startsWithinDay(tries, st.now);
+        if (st.validCrop) { autoCalNote("not needed: the patch is calibrated for this lock screen"); return; }
+        String reason = AutoCalibration.decision(st);
+        if (!reason.isEmpty()) {
+            autoCalNote(reason);
+            if (reason.startsWith("waiting") && st.switchOn && st.keyguardLocked) { handler.removeCallbacks(autoCalTrigger); handler.postDelayed(autoCalTrigger, 5000); }   // look again in a moment (the PIN pad goes, the screen wakes)
+            return;
+        }
+        autoCalLastMs = st.now; autoCalThisLock++;
+        Features.setString(app, AutoCalibration.TRIES_KEY, AutoCalibration.addTry(tries, st.now));
+        Features.setString(app, AutoCalibration.START_KEY, String.valueOf(st.now));
+        Features.setString(app, PatchShot.CAL_UNTIL_KEY, String.valueOf(st.now + AutoCalibration.WINDOW_MS));   // the preference listener runs calibrationChanged()
+        shotStatus(now() + "  automatic calibration started (" + why + "): one screenshot of the plain lock screen");
+        autoCalNote("started (" + why + "), try " + autoCalThisLock + " of " + AutoCalibration.MAX_PER_LOCK + " for this lock");
+        Log.i(TAG, "PATCHSHOT automatic calibration started (" + why + ")");
+    }
 
     private final Runnable shotIngest = new Runnable() { @Override public void run() { try { ingestShot(); } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); } } };
     private final Runnable shotEnd = new Runnable() { @Override public void run() {
@@ -2490,7 +2543,7 @@ public class TjAccessibilityService extends AccessibilityService {
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
             boolean ready = pm != null && pm.isInteractive() && keyguardLockedFast() && !lastBouncer && !overlayShown && patchView != null;
             if (!ready) { if (++autoShotTries < 12) handler.postDelayed(this, 2000); return; }   // wait for the lock screen to be up, the menu closed, no PIN pad
-            autoShotDone = true;
+            autoShotDone = true; autoShotAsked = android.os.SystemClock.uptimeMillis();
             Log.i(TAG, "PATCHSHOT asking the system for a screenshot of the lock screen");
             shotStatus(now() + "  taking the screenshot of the lock screen ...");
             performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT);
@@ -2528,19 +2581,26 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!calibrating()) return;
         if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) { shotStatus(now() + "  needs permission: Launcher control > Allow wallpaper access"); return; }
         final android.content.Context app = getApplicationContext();
-        final long start = calibrationUntilMs() - PatchShot.WINDOW_MS;
+        final long start = calibrationStartMs();
         final boolean locked = keyguardLockedFast();
+        final long menuSeen = menuUpAtMs, padSeen = lastPadSeenMs, unlockAt = lastUnlockUptime;   // AU2: what was going on around the capture
+        final boolean menuNow = overlayShown, padNow = lastBouncer;
         final Rect win = patchView != null && patchLockMode ? new Rect(patchAt) : null;
         final int rot = rotation(); final String sig = shotSig();
         final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         new Thread(new Runnable() { @Override public void run() {
             try {
-                android.net.Uri u = PatchShot.newestScreenshot(app, start);
-                if (u == null) return;
+                final PatchShot.Shot shotRow = PatchShot.newestShot(app, start);
+                if (shotRow == null) return;
+                final android.net.Uri u = shotRow.uri;
                 long id = android.content.ContentUris.parseId(u);
                 if (id == lastShotId) return;
                 lastShotId = id;
+                if (!AutoCalibration.ownerOk(shotRow.owner)) { shotStatus(now() + "  ignored a screenshot written by another app (" + shotRow.owner + "): only the system's own screenshots count"); return; }   // AU2
+                long shotUptime = android.os.SystemClock.uptimeMillis() - Math.max(0L, System.currentTimeMillis() - shotRow.addedSec * 1000L);
+                String refused = AutoCalibration.refusal(shotUptime, menuSeen, menuNow, padSeen, padNow, unlockAt);   // AU2: the power menu / the PIN pad around the capture, an unlock right after it
+                if (!refused.isEmpty()) { shotStatus(now() + "  refused a screenshot: " + refused); autoCalNote("refused a screenshot (" + refused + ")"); return; }
                 if (!locked) { shotStatus(now() + "  that screenshot was NOT taken on the lock screen: lock the tablet, wake it and take it there"); return; }
                 if (win == null) { shotStatus(now() + "  the power menu rectangle is not learned yet: hold the side key once on the lock screen, then calibrate again"); return; }
                 android.graphics.Bitmap full = PatchShot.decode(app, u);
@@ -2555,12 +2615,14 @@ public class TjAccessibilityService extends AccessibilityService {
                 final boolean saved = PatchShot.save(app, rot, crop, sig, cr[0], cr[1]);
                 final String dims = crop.getWidth() + "x" + crop.getHeight();
                 full.recycle();
+                final boolean deleted = saved && PatchShot.deleteQuietly(app, u);   // AW5: the gallery does not fill up where Android allows the removal (it usually does not without the storage WRITE permission)
                 handler.post(new Runnable() { @Override public void run() { try {
                     if (!saved) { shotStatus(now() + "  the crop could not be stored"); return; }
                     Features.setString(TjAccessibilityService.this, PatchShot.CAL_UNTIL_KEY, "0");
                     removeOverlay(); removePatch(); refreshLayers();   // rebuild the patch with the stored real pixels
                     calibrationChanged();
-                    shotStatus(now() + "  PATCH CALIBRATED (" + dims + "): the patch now shows your real lock screen at the Screenshot spot");
+                    shotStatus(now() + "  PATCH CALIBRATED (" + dims + "): the patch now shows your real lock screen at the Screenshot spot" + (deleted ? " (the screenshot was removed from the gallery again)" : " (the screenshot itself stays in the gallery)"));
+                    autoCalNote("calibrated" + (deleted ? "" : "; the screenshot stays in the gallery"));
                     Log.i(TAG, "PATCHSHOT stored a " + dims + " crop for rotation " + rot);
                 } catch (Throwable t) { Log.e(TAG, "patch shot apply failed", t); } } });
             } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); shotStatus(now() + "  failed: " + t); }
