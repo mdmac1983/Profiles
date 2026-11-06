@@ -34,6 +34,15 @@ public final class ResumeTarget {
         return nowMs;
     }
 
+    /** Plain-words reason why {@link #pick} answered null (for the lock log and the tablet report: "why did the gesture open the stock home?"). Mirrors pick()'s conditions in the same order. */
+    public static String whyNot(boolean enabled, String remembered, long rememberedAtMs, long nowMs) {
+        if (!enabled) return "the switch is off";
+        if (remembered == null || remembered.isEmpty()) return "no Quickstep app is remembered";
+        if (rememberedAtMs <= 0 || nowMs < rememberedAtMs) return "the remembered time is not valid";
+        if (nowMs - rememberedAtMs > MAX_AGE_MS) return "the remembered app is older than 6 hours";
+        return "an app is remembered";
+    }
+
     /** What the gesture starts: the remembered app (switch on, remembered recently), or null = the stock home. */
     public static String pick(boolean enabled, String remembered, long rememberedAtMs, long nowMs) {
         if (!enabled || remembered == null || remembered.isEmpty()) return null;
