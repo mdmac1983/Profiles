@@ -842,3 +842,19 @@ Send me the handoff file
 ```
 Explain the open items 
 ```
+
+## 2026-11-06T03:23:57Z
+```
+profile_preclean (default ON).  If possible, make this an option in the launcher. If not possible, keep it default on
+
+Keep-alive default OFF (shipped in v0.7.2). Again, make this an option in the launcher so I can test on and off
+
+AD7b. Figure out how to do this without the cable. Trial and error or I can send you pictures of the power menu from my phone
+
+Power menu v2. If this can be built, build it immediately and make it an option to turn on and off. But the custom power menu must be sized correctly. Tell me what I need to do for this
+
+L5, stripping quick-settings tiles down to Auto-rotate only
+The tiles per launcher seem to work fine
+
+MBX1 vs BATCH1. I don't know what this means 
+```
