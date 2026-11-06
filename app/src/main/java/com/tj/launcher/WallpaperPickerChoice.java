@@ -64,6 +64,28 @@ public final class WallpaperPickerChoice {
         return (pkgs[a] + "/" + classes[a]).compareTo(pkgs[b] + "/" + classes[b]) < 0;
     }
 
+    /**
+     * Pure (AO1b): the packages, in the order to look, for the wallpapers the STOCK picker shows on this tablet: AOSP's own picker app, the package the stock launcher is configured to use, the system apps that answer
+     * SET_WALLPAPER (names with "wallpaper" first; galleries, cameras and file apps never), then the stock launcher itself. Never our own package.
+     */
+    public static java.util.List<String> wallpaperPackages(String[] handlerPkgs, boolean[] system, String hint, String stockPkg, String ownPkg) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        out.add("com.android.wallpaperpicker");
+        if (hint != null && !hint.trim().isEmpty()) out.add(hint.trim());
+        int n = handlerPkgs == null || system == null ? 0 : Math.min(handlerPkgs.length, system.length);
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < n; i++) {
+                String p = handlerPkgs[i];
+                if (p == null || !system[i] || isMediaApp(p)) continue;
+                boolean wp = p.toLowerCase(Locale.ROOT).contains("wallpaper");
+                if ((pass == 0) == wp) out.add(p);
+            }
+        }
+        if (stockPkg != null && !stockPkg.isEmpty()) out.add(stockPkg);
+        if (ownPkg != null) out.remove(ownPkg);
+        return new java.util.ArrayList<>(out);
+    }
+
     // ---------------------------------------------------------------- Android side
 
     /** What {@link #resolve} found, for the long-press entry and for the report. */
@@ -117,6 +139,32 @@ public final class WallpaperPickerChoice {
     public static String summary(Context c) {
         Result r = resolve(c);
         return (r.component == null ? "NONE (the long-press entry shows a message and opens nothing)" : r.component.flattenToShortString() + "  <- " + r.why) + "   [answering SET_WALLPAPER: " + r.candidates + "]";
+    }
+
+    /**
+     * AO1b: where the wallpapers of the stock picker live on this device: (that app's ApplicationInfo, the resource id of its "wallpapers" string-array), or null when no installed app has a non-empty one.
+     * AOSP's picker ships an EMPTY array: every device build fills it in with an overlay, so the real set can only be read from the installed app. Never throws.
+     */
+    public static android.util.Pair<ApplicationInfo, Integer> bundledWallpapers(Context c) {
+        try {
+            PackageManager pm = c.getPackageManager();
+            List<ResolveInfo> list = pm.queryIntentActivities(new Intent(Intent.ACTION_SET_WALLPAPER), PackageManager.MATCH_DEFAULT_ONLY);
+            int n = list == null ? 0 : list.size();
+            String[] pk = new String[n]; boolean[] sys = new boolean[n];
+            for (int i = 0; i < n; i++) {
+                pk[i] = list.get(i).activityInfo.packageName;
+                sys[i] = (list.get(i).activityInfo.applicationInfo.flags & (ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0;
+            }
+            ComponentName stock = StockLauncher.find(c);
+            for (String pkg : wallpaperPackages(pk, sys, stockHint(c), stock == null ? null : stock.getPackageName(), c.getPackageName())) {
+                try {
+                    Resources res = pm.getResourcesForApplication(pkg);
+                    int id = res.getIdentifier("wallpapers", "array", pkg);
+                    if (id != 0 && res.getStringArray(id).length > 0) return new android.util.Pair<>(pm.getApplicationInfo(pkg, 0), id);
+                } catch (Throwable ignored) { /* not installed / no such array: next */ }
+            }
+        } catch (Throwable t) { Log.e(TAG, "could not find the stock wallpapers", t); }
+        return null;
     }
 
     /** The picker package last started from the long-press entry (read by the helper that hides "My photos"). */

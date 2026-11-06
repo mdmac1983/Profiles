@@ -100,6 +100,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- AO1b (Tj, 2026-11-06: "Attached is what the wallpaper picker should look like ... There should be no my photos option"): the AOSP wallpaper picker (wallpaperpicker/, android-10.0.0_r9) without the
+             "My photos" tile. Started only by the long-press > Wallpapers entry (no intent filter, not exported), never listed in Recents, in its OWN process so that nothing inside the old AOSP code can ever take the launcher down or trip the crash breaker. -->
+        <activity
+            android:name="com.android.wallpaperpicker.WallpaperPickerActivity"
+            android:theme="@style/WallpaperTheme.Picker"
+            android:label="@string/pick_wallpaper"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:process=":wallpaper_picker"
+            android:finishOnCloseSystemDialogs="true" />
+
         <service
             android:name="com.android.launcher3.uioverrides.dynamicui.WallpaperManagerCompatVL$ColorExtractionService"
             android:exported="false"

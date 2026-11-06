@@ -55,8 +55,9 @@ android {
         getByName("main") {
             // AOSP Launcher3 Go flavor: src + src_ui_overrides + go/src, resources res + go/res (go wins), plugin API sources
             java.srcDirs("../launcher3/src", "../launcher3/src_ui_overrides", "../launcher3/go/src",
-                "../launcher3/src_plugins", "../launcher3/plugin_core_src")
-            res.srcDirs("../launcher3/res")
+                "../launcher3/src_plugins", "../launcher3/plugin_core_src",
+                "../wallpaperpicker/src")   // AO1b: the AOSP wallpaper picker (android-10.0.0_r9) without "My photos"; see wallpaperpicker/PATCHES.md
+            res.srcDirs("../launcher3/res", "../wallpaperpicker/res")
             (this as org.gradle.api.plugins.ExtensionAware).extensions.getByName("proto")
                 .let { (it as org.gradle.api.file.SourceDirectorySet).srcDir("../launcher3/protos").srcDir("../launcher3/proto_overrides") }
         }

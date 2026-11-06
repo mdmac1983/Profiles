@@ -1542,6 +1542,12 @@ if [ -n "$AOL" ]; then adb shell input tap $(( (AOL + AOR) / 2 )) $(( (AOT + AOB
 resumed > "$OUT/ao-picker-resumed.txt"; shot ao-picker
 info "AO1: after tapping Wallpapers: $(cut -c1-220 "$OUT/ao-picker-resumed.txt"); SET_WALLPAPER handlers: $(adb shell pm query-activities --brief -a android.intent.action.SET_WALLPAPER 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 check "AO1: the Wallpapers entry never shows an 'Open with' / chooser list (one explicit picker)" bash -c "! grep -qE 'ResolverActivity|ChooserActivity' $OUT/ao-picker-resumed.txt"
+# AO1b (Tj: "the reference is the screenshot without the my photos button"): the entry opens the launcher's OWN copy of the AOSP picker, which has no "My photos" tile at all
+check "AO1b: the Wallpapers entry opens the launcher's own picker (com.tj.launcher / WallpaperPickerActivity)" grep -q 'com.tj.launcher/com.android.wallpaperpicker.WallpaperPickerActivity' "$OUT/ao-picker-resumed.txt"
+adb shell uiautomator dump /sdcard/ao-picker.xml >/dev/null 2>&1; adb shell cat /sdcard/ao-picker.xml 2>/dev/null | tr '>' '\n' > "$OUT/ao-picker-dump.txt"
+info "AO1b: picker texts: $(grep -o 'text="[^"]*"' $OUT/ao-picker-dump.txt | grep -v 'text=""' | head -12 | tr '\n' ' '); strip tiles (bounds): $(grep -o 'resource-id="[^"]*wallpaper_list"[^>]*bounds="[^"]*"' $OUT/ao-picker-dump.txt | head -2 | tr '\n' ' ')"
+check "AO1b: there is NO 'My photos' tile in it" bash -c "! grep -qi 'my photos' $OUT/ao-picker-dump.txt"
+check "AO1b: it is the real picker: the 'Set wallpaper' bar and the wallpaper strip are there" bash -c "grep -qi 'set wallpaper' $OUT/ao-picker-dump.txt && grep -q 'wallpaper_strip' $OUT/ao-picker-dump.txt"
 adb shell input keyevent KEYCODE_BACK; sleep 1; home
 
 # ---- the hider on a Settings row (knob): phase 1 = the guard OFF (control: the row is visible and opens), phase 2 = ON (the row is covered, a tap on it opens nothing), phase 3 = gone with Settings
@@ -1676,6 +1682,43 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ps
+if want rg; then # section rg
+ensurehome
+# ---- AP1 (Tj, 2026-11-06: "No hidden apps should ever show up in the recent apps list for the custom launcher"): when Recents opens in the custom launcher the cards of apps that are NOT in the drawer are closed.
+#      Calendar is the hidden app (not in the allowed set, as in section base); Contacts is a drawer app and must stay.
+beat "before RG"
+RGALLOW="com.android.contacts com.android.gallery3d com.android.camera2 com.android.deskclock com.android.documentsui com.android.messaging com.android.dialer com.android.quicksearchbox com.android.settings com.android.webview"
+RGSET=""; for a in $RGALLOW; do RGSET="$RGSET<string>$a</string>"; done
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"baseline_done\\\" value=\\\"true\\\" /><set name=\\\"allowed\\\">$RGSET</set></map>\" > shared_prefs/tj_apps.xml'"
+rgfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"recents_drawer_only\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+rgcount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|affinity=)$1"; }   # a task of the package, whichever way this Android prints it
+rgshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-150 | head -${1:-8} | tr '\n' '|'; }
+rgopen(){ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 > "$OUT/rg-monkey-cal.txt" 2>&1; sleep 3; resumed > "$OUT/rg-resumed-cal.txt"; adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; info "AP1: opened Calendar then Contacts: calendar was in front: $(cut -c1-110 "$OUT/rg-resumed-cal.txt"); monkey said: $(head -c 80 "$OUT/rg-monkey-cal.txt" | tr '\n' ' ')"; }
+adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
+rgfeat false; setmode custom; rebind; home; sleep 2
+rgopen
+RG_CAL0="$(rgcount com.android.calendar)"; RG_CON0="$(rgcount com.android.contacts)"
+info "AP1 (guard OFF): recents entries before opening Recents: calendar=$RG_CAL0 contacts=$RG_CON0; raw: $(rgshow 8)"
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 4; shot rg-recents-off
+RG_CAL1="$(rgcount com.android.calendar)"
+check "AP1 (control): with the guard OFF the hidden app's card stays in Recents after Recents was opened" bash -c "[ \"${RG_CAL1:-0}\" -ge 1 ]"
+adb shell input keyevent KEYCODE_HOME; sleep 2
+adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts; sleep 1
+rgfeat true; setmode custom; rebind; home; sleep 2
+rgopen
+RG_CAL2="$(rgcount com.android.calendar)"; RG_CON2="$(rgcount com.android.contacts)"
+info "AP1 (guard ON): recents entries before opening Recents: calendar=$RG_CAL2 contacts=$RG_CON2; raw: $(rgshow 8)"
+adb logcat -c
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 5; shot rg-recents-on
+RG_CAL3="$(rgcount com.android.calendar)"; RG_CON3="$(rgcount com.android.contacts)"
+adb logcat -d -s TjRecentsFilter:I TjA11y:I | grep -iE "recents|RECENTS" | tail -4 > "$OUT/rg-log.txt" 2>&1
+info "AP1 (guard ON): after opening Recents: calendar=$RG_CAL3 contacts=$RG_CON3; log: $(tr '\n' '|' < "$OUT/rg-log.txt" | cut -c1-240); status: $(adb shell "run-as $PKG sh -c 'grep -o recents_guard_status[^<]*<' shared_prefs/tj_features.xml'" 2>/dev/null | head -c 200)"
+check "AP1: with the guard ON opening Recents closes the card of the hidden app (Calendar is gone from Recents)" bash -c "[ \"${RG_CAL3:-9}\" = 0 ]"
+check "AP1: ... and the card of the drawer app stays (Contacts is still in Recents)" bash -c "[ \"${RG_CON3:-0}\" -ge 1 ]"
+adb shell input keyevent KEYCODE_HOME; sleep 2
+adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
+fi # section rg
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)

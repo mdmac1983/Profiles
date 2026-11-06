@@ -51,7 +51,8 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         evSeen++;
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
-        try { picker().onEvent(event); } catch (Throwable t) { Log.e(TAG, "picker guard failed", t); }   // AO1: no "My photos" tile in the system wallpaper picker (one string compare for every other app's event)
+        try { picker().onEvent(event); } catch (Throwable t) { Log.e(TAG, "picker guard failed", t); }
+        try { recents().onEvent(event); } catch (Throwable t) { Log.e(TAG, "recents guard failed", t); }   // AP1: whenever Recents opens in the custom launcher, the cards of apps that are not in the drawer are closed   // AO1: no "My photos" tile in the system wallpaper picker (one string compare for every other app's event)
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
         if (event != null && EventNoise.isNoise(event.getEventType(), event.getPackageName())) {   // AB2: another app's content change: it cannot open the power menu, the shade or the PIN pad
@@ -87,6 +88,25 @@ public class TjAccessibilityService extends AccessibilityService {
     private long fullScanUntilMs = 0;
     private PickerGuard pickerGuard;   // AO1
     private PickerGuard picker() { if (pickerGuard == null) pickerGuard = new PickerGuard(this, handler); return pickerGuard; }
+    private RecentsFilter recentsGuard;   // AP1
+    private RecentsFilter recents() { if (recentsGuard == null) recentsGuard = new RecentsFilter(this, handler); return recentsGuard; }
+    String stockPackageOrNull() { return stockPkg(); }
+    boolean keyguardLockedNow() { return keyguardLockedFast(); }
+    /** AP1: the return reset (or another automation) is driving Recents itself right now: the guard stays out of its way. */
+    boolean resetDrivesRecents() { return resetCover != null || System.currentTimeMillis() < guardPausedUntil; }
+
+    /** AP1: presses "Close" on the first Recents card whose description starts with one of {@code blockedLower} (lower-case app labels); returns that label, or null. Main thread. */
+    String closeOneRecentsCard(java.util.Set<String> blockedLower) {
+        for (AccessibilityNodeInfo card : findTaskCards()) {
+            CharSequence d = card.getContentDescription();
+            String hit = RecentsFilter.matchingLabel(d == null ? null : d.toString(), blockedLower);
+            if (hit == null) continue;
+            for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
+                if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) return hit;
+            }
+        }
+        return null;
+    }
 
     /** AB2: is the Solitaire probe running? Read from the preferences at most once a second instead of on every event. */
     private long probeUntilCache = 0, probeCacheAt = -10_000;

@@ -16,10 +16,10 @@ public class TjApplication extends Application {
     @Override public void onCreate() {
         long t0 = android.os.SystemClock.uptimeMillis();
         super.onCreate();
-        try { CrashGuard.install(this); } catch (Throwable ignored) { }
+        final boolean main = getPackageName().equals(Application.getProcessName());   // the short-lived :wallpaper_chooser / :wallpaper_picker processes have no business with the watchers below
+        try { if (main) CrashGuard.install(this); } catch (Throwable ignored) { }   // AO1b: only the launcher's OWN process counts toward the crash breaker: a crash inside the wallpaper picker's process just closes the picker
         try { CrashGuard.clearIfNewer(this); } catch (Throwable ignored) { }   // CBR1: a tripped breaker is cleared by the first start of a NEWER version (a fair try)
         try { AnimationSpeedup.restoreIfPending(this); } catch (Throwable ignored) { }   // an interrupted reset must never leave the animations off
-        final boolean main = getPackageName().equals(Application.getProcessName());   // the short-lived :wallpaper_chooser process has no business with the watchers below
         try { if (main) SwitchMigration.run(this); } catch (Throwable ignored) { }   // v0.7.3: undo the old breaker reset's "false" values once (all three switches stored as off = its signature)
         try { if (main) EntranceWatcher.start(this); } catch (Throwable ignored) { }   // AD4: the rotation-tile and charger entrances (the page flick is fed by the Launcher touch hook)
         try { if (main) LockQuiet.applyNotificationsAsync(this); } catch (Throwable ignored) { }   // AK1: the lock screen shows no app notifications (setting written / put back by the switch)
