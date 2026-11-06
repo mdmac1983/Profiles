@@ -231,7 +231,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             String v = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + what + " [always=" + lockPatchAlways() + " switch=" + Features.get(this, PatchRest.KEY, true) + " wanted=" + lockPatchWanted() + " calibrating=" + calibrating() + " shot=" + (patchShotBmp != null) + " bouncer=" + lastBouncer + "]";
             String key = v.substring(10);
-            if (!key.equals(lastRestInfo)) { lastRestInfo = key; Features.setString(this, "patch_rest_info", v); }
+            if (!key.equals(lastRestInfo)) { lastRestInfo = key; Features.setStringAsync(this, "patch_rest_info", v); }
         } catch (Throwable ignored) { }
     }
     private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, true) && Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && keyguardLocked() && !calibrating() && (patchShotBmp != null || lockShot != null || modelRestAllowed()); }   // AM1 (run 218): a FRESH keyguard read, not the 250 ms cache: a stale 'unlocked' left the new window hidden until the menu opened
