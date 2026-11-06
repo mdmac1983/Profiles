@@ -1115,9 +1115,9 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!Mode.isCustom(this) || !Features.get(this, StrayHomeGuard.KEY, true)) return;
         long now = System.currentTimeMillis();
         if (now < guardPausedUntil || now - Mode.changedAt(this) < 2500) return;   // a deliberate mode change or the return reset is running: never fight it
-        if (stockCache == null || now - stockCacheAt > 60_000) { stockCache = StockLauncher.find(this); stockCacheAt = now; }
-        if (stockCache == null) return;
-        if (!StrayHomeGuard.isStockHome(pk.toString(), cl.toString(), stockCache.getPackageName(), stockCache.getClassName())) return;
+        ComponentName stockHome = stockCached();
+        if (stockHome == null) return;
+        if (!StrayHomeGuard.isStockHome(pk.toString(), cl.toString(), stockHome.getPackageName(), stockHome.getClassName())) return;
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         boolean locked = km != null && km.isKeyguardLocked();
         if (!StrayHomeGuard.shouldRedirect(true, true, locked, true, now, Mode.failOpenUntil(this), standDownUntil, guardHist)) {
