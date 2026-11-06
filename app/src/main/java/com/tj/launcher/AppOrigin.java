@@ -42,6 +42,20 @@ public final class AppOrigin {
     private static long lastMergeAt = 0;
 
     /**
+     * Pure rule (JVM-testable, v0.7.6 review of v0.7.5): which span of Android's usage events counts as "used during THIS Quickstep session". {@code start} = when the session began (0 = unknown: nothing to read),
+     * the end is {@code qsEnd} once the custom launcher is back, or {@code now} while Quickstep is still on; {@code usageFrom} = what an earlier clean-up already dealt with. Returns {from, end}, or null when the
+     * span is empty (never-ended or reversed session, nothing new since the last clean-up).
+     */
+    static long[] usageWindow(long start, boolean customNow, long qsEnd, long now, long usageFrom) {
+        if (start <= 0) return null;
+        long end = customNow ? qsEnd : now;
+        if (end <= start) return null;
+        long from = Math.max(start, usageFrom);
+        if (from >= end) return null;
+        return new long[] { from, end };
+    }
+
+    /**
      * AI1 (Tj, 2026-11-06: Portfolio, opened only in Quickstep, was still in Recents after "back to custom"): the accessibility tracking above can miss an app (an event never arrived, the marks were cleared early).
      * Android's own usage events say which apps were used during the Quickstep session ({@link QuickstepUsage}); every such app that is not ours, not the stock launcher / keyboard / target and not started from the
      * custom launcher is marked as opened in Quickstep too. Bounded to the session ({@link Mode#qsStartAt} .. {@link Mode#qsEndAt}, or now while it is still on) and to what has not been cleared yet. Cheap, never throws.
