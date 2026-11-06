@@ -59,8 +59,25 @@ public final class TileProfile {
         return !sanitize(liveList, "").equals(sanitize(customList, ""));
     }
 
-    /** Writes the tile list for this mode. Cheap and exception-safe; does nothing when switched off or the adb grant is missing. */
-    public static void apply(Context c, String mode) {
+    /**
+     * AW2 (Tj, 2026-11-06 evening: "The lock screen from any launcher at all times should only have the rotation tile in the quick settings"): the list that belongs on screen NOW. While the keyguard is up it is
+     * the CUSTOM list (rotation only) whatever launcher mode says; the mode's own list comes back when the lock screen is gone. Pure (JVM-tested).
+     */
+    public static String effectiveMode(String mode, boolean keyguardLocked) {
+        if (keyguardLocked) return Mode.CUSTOM;
+        return Mode.QUICKSTEP.equals(mode) ? Mode.QUICKSTEP : Mode.CUSTOM;
+    }
+
+    /** AW2: is the lock screen up right now? A fresh answer (one binder call); false when it cannot be read. */
+    public static boolean keyguardLocked(Context c) {
+        try { android.app.KeyguardManager km = (android.app.KeyguardManager) c.getSystemService(Context.KEYGUARD_SERVICE); return km != null && km.isKeyguardLocked(); } catch (Throwable t) { return false; }
+    }
+
+    /** Writes the tile list that belongs on screen now for this mode (AW2: the custom list while the keyguard is up). Cheap and exception-safe; does nothing when switched off or the adb grant is missing. */
+    public static void apply(Context c, String mode) { applyList(c, effectiveMode(mode, keyguardLocked(c))); }
+
+    /** Writes the list of {@code mode}, which is already the EFFECTIVE mode (see {@link #effectiveMode}). */
+    private static void applyList(Context c, String mode) {
         try {
             if (!enabled(c) || !permitted(c)) return;
             RestoreStore.snapshotSecure(c, SETTING);   // the original list is on disk BEFORE the first change

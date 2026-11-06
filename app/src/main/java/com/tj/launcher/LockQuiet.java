@@ -25,9 +25,13 @@ public final class LockQuiet {
     public static final String LAST_KEY = "lq_last";                    // what it did last (Launcher control, report)
     public static final String SHOW = "lock_screen_show_notifications";
     public static final String PRIVATE = "lock_screen_allow_private_notifications";
-    /** At most this many switch-offs per window while locked: a radio that refuses to stay off is never fought in a loop. */
-    public static final int MAX_WRITES = 3;
-    public static final long WINDOW_MS = 60_000;
+    /**
+     * AW3 (Tj, 2026-11-06 evening: "no wifi or Bluetooth ... ever" on the lock screen). v0.8.0 switched a radio that came back on off again at most 3 times per minute and then GAVE UP (the radio stayed on until the
+     * next broadcast). Now it never gives up while the lock screen is up: a radio is switched off again as soon as {@link #MIN_GAP_MS} have passed since the last switch-off, and checked again after that, until it
+     * stays off. Only a lock that has already spent {@link #MAX_PER_LOCK} switch-offs stops (a ROM that really insists must not drain the battery in a tight loop); the count starts again at every lock.
+     */
+    public static final long MIN_GAP_MS = 4_000;
+    public static final int MAX_PER_LOCK = 40;
 
     private LockQuiet() {}
 
@@ -37,12 +41,16 @@ public final class LockQuiet {
 
     // ---------------------------------------------------------------- pure rules (JVM-tested)
 
-    /** Pure: switch a radio that just came on OFF again? Only while the keyguard is up, only with the switch on, never while automation is paused, at most {@link #MAX_WRITES} per {@link #WINDOW_MS}. */
-    public static boolean enforceRadios(boolean switchOn, boolean keyguardLocked, boolean automationOff, long now, long[] recent) {
-        if (!switchOn || !keyguardLocked || automationOff) return false;
-        int n = 0;
-        if (recent != null) for (long t : recent) if (t > 0 && now - t <= WINDOW_MS) n++;
-        return n < MAX_WRITES;
+    /**
+     * Pure (AW3): switch a radio that is on OFF now (return 0), later (return the wait in ms; the caller checks again then) or not at all (-1)? Only while the keyguard is up, only with the switch on, never while
+     * automation is paused, {@link #MIN_GAP_MS} apart, at most {@link #MAX_PER_LOCK} per lock. {@code lastWriteMs} 0 = none yet this lock.
+     */
+    public static long retryDelayMs(boolean switchOn, boolean keyguardLocked, boolean automationOff, long now, long lastWriteMs, int writesThisLock) {
+        if (!switchOn || !keyguardLocked || automationOff) return -1;
+        if (writesThisLock >= MAX_PER_LOCK) return -1;
+        if (lastWriteMs <= 0 || now < lastWriteMs) return 0;
+        long since = now - lastWriteMs;
+        return since >= MIN_GAP_MS ? 0 : MIN_GAP_MS - since;
     }
 
     /** Pure: the memory of which radios were on before the lock. */
@@ -85,6 +93,9 @@ public final class LockQuiet {
         final Context app = c.getApplicationContext();
         new Thread(new Runnable() { @Override public void run() { applyNotifications(app); } }, "tj-lockquiet-notif").start();
     }
+
+    /** AW3: is Wi-Fi or Bluetooth on right now? Binder calls: from a worker thread or the main thread, never under a lock. */
+    public static boolean anyRadioOn(Context c) { return wifiOn(c) || btOn(); }
 
     private static boolean wifiOn(Context c) {
         try { WifiManager wm = (WifiManager) c.getApplicationContext().getSystemService(Context.WIFI_SERVICE); return wm != null && wm.isWifiEnabled(); } catch (Throwable t) { return false; }
