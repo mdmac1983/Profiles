@@ -995,3 +995,8 @@ Audit the settings in the launcher app to make sure they all work, they don't in
 
 Build all of this into a release that is as polished as possible with all the features i asked for
 ```
+
+## 2026-11-06T19:13:40Z
+```
+Does this release make the lock screen from any launcher have only the one tile, no wifi or Bluetooth or notifications no matter what?
+```
