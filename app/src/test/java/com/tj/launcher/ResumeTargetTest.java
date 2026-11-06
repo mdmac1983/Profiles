@@ -34,4 +34,17 @@ public class ResumeTargetTest {
     }
     @Test public void aClockThatWentBackwardsOrNoTimestampIsNotTrusted() { assertNull(ResumeTarget.pick(true, "a.b", 10_000, 5_000)); assertNull(ResumeTarget.pick(true, "a.b", 0, 5_000)); }
     @Test public void theSwitchKeyIsStable() { assertEquals("resume_qs_app", ResumeTarget.KEY); }
+
+    // review RV2 (2026-11-06): one app in front all day must not run out the 6 h clock
+    @Test public void theAppStillInFrontAtScreenOffGetsAFreshClock() {
+        long first = 1_000, off = first + ResumeTarget.MAX_AGE_MS + 5_000;       // in front for more than 6 h without a window change
+        assertEquals(off, ResumeTarget.refreshedAt("a.b", "a.b", first, off));
+        assertEquals("a.b", ResumeTarget.pick(true, "a.b", ResumeTarget.refreshedAt("a.b", "a.b", first, off), off + 60_000));
+    }
+    @Test public void anotherForegroundPackageOrNothingRememberedKeepsTheOldClock() {
+        assertEquals(1_000, ResumeTarget.refreshedAt("a.b", "c.d", 1_000, 9_000));
+        assertEquals(1_000, ResumeTarget.refreshedAt("a.b", null, 1_000, 9_000));
+        assertEquals(1_000, ResumeTarget.refreshedAt(null, "a.b", 1_000, 9_000));
+        assertEquals(1_000, ResumeTarget.refreshedAt("", "", 1_000, 9_000));
+    }
 }
