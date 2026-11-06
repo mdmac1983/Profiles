@@ -858,3 +858,8 @@ The tiles per launcher seem to work fine
 
 MBX1 vs BATCH1. I don't know what this means 
 ```
+
+## 2026-11-06T03:43:26Z
+```
+Stop wasting time on the phone guide, because i already did the adb commands
+```
