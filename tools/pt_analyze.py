@@ -64,16 +64,17 @@ def analyse(P, S, fps, thr=0.006):
     tail = [d for (j, d) in open_devs if j >= o_end - int(0.10 * fps)]
     out = {"onset": onset / fps, "r0": r0, "rest_noise": noise, "open_max": abs(d_max), "open_at": (j_max - onset) / fps,
            "open_final": statistics.mean(tail) if tail else 0.0}
-    # closing: after the surround reached its darkest point, the first time it brightens again by thr
-    lo = min(range(o_end, n), key=lambda j: S[j]) if o_end < n else None
-    if lo is not None:
-        c_on = next((j for j in range(lo, n - 2) if all(S[j + k] > S[lo] * (1 + thr) for k in range(3))), None)
-        if c_on is not None:
-            c_end = min(n, c_on + int(0.55 * fps))
-            cd = [(j, dev(j)) for j in range(max(0, c_on - 2), c_end)]
-            jm, dm = max(cd, key=lambda t: abs(t[1]))
-            ctail = [d for (j, d) in cd if j >= c_end - int(0.12 * fps)]
-            out.update({"close_max": abs(dm), "close_at": (jm - c_on) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0, "close_onset": c_on / fps})
+    # closing: the surround climbs back to its resting brightness. Anchor = the frame where it has recovered HALF of the way from its plateau (the stock dismissal has a slow start, so the first small brightening is not a
+    # reliable anchor: the film also shows short dips of the whole picture that would be mistaken for it). Window: 0.30 s before the anchor to 0.25 s after it; "final" = its last 0.10 s.
+    plat_part = S[onset + int(0.40 * fps): onset + int(0.80 * fps)]
+    plateau = statistics.median(plat_part) if plat_part else S[onset]
+    c_half = next((j for j in range(onset + int(0.8 * fps), n) if S[j] > (plateau + base) / 2), None)
+    if c_half is not None:
+        c0, c1 = max(0, c_half - int(0.30 * fps)), min(n, c_half + int(0.25 * fps))
+        cd = [(j, dev(j)) for j in range(c0, c1)]
+        jm, dm = max(cd, key=lambda t: abs(t[1]))
+        ctail = [d for (j, d) in cd if j >= c1 - int(0.10 * fps)]
+        out.update({"close_max": abs(dm), "close_at": (jm - c_half) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0, "close_onset": c_half / fps})
     out["frames"] = n
     return out
 
@@ -207,7 +208,7 @@ def main(argv):
     on_idx = int(round(m["onset"] * fps))
     print("PTSERIES label=%s (t_ms:S/P/dev in per-mille from the onset) %s" % (label, series(P, S, fps, on_idx, m["r0"])))
     if "close_onset" in m:   # the same curves around the moment the surround starts to brighten again (the stock dismissal, or the window going away)
-        print("PTCLOSE label=%s (t_ms:S/P/dev in per-mille from the first brightening) %s" % (label, series(P, S, fps, int(round(m["close_onset"] * fps)), m["r0"], span_ms=(-120, 480), step=1)))
+        print("PTCLOSE label=%s (t_ms:S/P/dev in per-mille from the half-recovery of the surround) %s" % (label, series(P, S, fps, int(round(m["close_onset"] * fps)), m["r0"], span_ms=(-300, 250), step=1)))
     print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f" % (
         label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0)))
     return 0
