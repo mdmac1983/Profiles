@@ -23,7 +23,7 @@
 # worse than no checkpoint.
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$D" || exit 0
-[ -d .git ] || exit 0
+[ -e .git ] || exit 0
 
 # --text: emit warnings as plain text rather than as a JSON systemMessage, so
 # tools/hooks/save.sh can combine several repos into ONE JSON object. Two JSON

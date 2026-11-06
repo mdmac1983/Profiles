@@ -13,7 +13,7 @@
 # branch to develop on, so landing on main is Tj's call (see CLAUDE.md "Branches").
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$D" || exit 0
-[ -d .git ] || exit 0
+[ -e .git ] || exit 0
 
 BR="$(git branch --show-current 2>/dev/null || true)"
 [ -z "$BR" ] && exit 0   # detached HEAD — no branch to push to

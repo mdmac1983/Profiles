@@ -13,7 +13,7 @@
 # Prints a count and exits 0, or exits 1 when it genuinely cannot tell.
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$D" || exit 1
-[ -d .git ] || exit 1
+[ -e .git ] || exit 1
 
 BR="$(git branch --show-current 2>/dev/null || true)"
 UP="$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || true)"

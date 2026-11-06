@@ -16,7 +16,7 @@
 # tools/secretscan.sh would otherwise refuse to commit and wedge every later checkpoint).
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$D" || exit 0
-[ -d .git ] || exit 0
+[ -e .git ] || exit 0
 
 INPUT="$(cat)"
 [ -z "$INPUT" ] && exit 0

@@ -26,7 +26,7 @@ BRIEF="$(
   echo "=== Do NOT re-plan or re-read finished work: continue from 'Do this next' below.        ==="
   echo
 
-  if [ -d .git ]; then
+  if [ -e .git ]; then
     find .git -name '*.lock' -mmin +2 -delete 2>/dev/null || true
     timeout 25 git fetch -q --tags origin >/dev/null 2>&1 || echo "  NOTE  could not reach GitHub — working from the local checkout only."
 

@@ -38,7 +38,7 @@ NOTE="${1:-}"; [ -z "$NOTE" ] && { echo "FAIL: a one-line change note is require
 # COMMIT BEFORE BUILDING. A build run against a dirty tree proves nothing about what is
 # actually committed, and leaves the tree looking like the last session was interrupted when
 # it wasn't (see tools/resume.sh's mid-change warning - it must not cry wolf on every ship).
-if [ -d .git ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+if [ -e .git ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   bash tools/ckpt.sh "pre-ship: $NOTE" "ship.sh gates and releases this" >/dev/null 2>&1
   echo "  OK    committed the working tree before releasing"
 fi
