@@ -2332,7 +2332,7 @@ public class TjAccessibilityService extends AccessibilityService {
         patchResting = rest;
         patchView.setAlpha(vis ? 1f : 0f);
         if (!on) setPatchTouchable(false);   // review of v0.8.0: whenever our menu is NOT open the patch can never swallow a touch, whichever path closed the menu (no disk write and no extra binder call in this time-critical path any more)
-        if (changed) { patchView.invalidate(); Log.i(TAG, "PATCH rest " + (rest ? "on" : "off") + (lastBouncer ? " (PIN pad up)" : "") + " top=" + patchRestTop); }
+        if (changed || opening) { patchView.invalidate(); if (changed) Log.i(TAG, "PATCH rest " + (rest ? "on" : "off") + (lastBouncer ? " (PIN pad up)" : "") + " top=" + patchRestTop); }
     }
 
     /**
