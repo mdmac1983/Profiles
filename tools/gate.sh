@@ -98,15 +98,33 @@ for t in table:
         chosen.append(t); reasons[t["name"]] = why
 
 rank = {n: k for k, n in enumerate(order)}
+# sections that read the output files of ANOTHER section (v0.7.6 gate: `b4` greps y2-log.txt, so b4 in a run without y2 fails for nothing): the needed one is added and both stay in ONE run
+BIND = {"b4": "y2"}
+for need_by, need in BIND.items():
+    if need_by in {t["name"] for t in chosen} and need not in {t["name"] for t in chosen}:
+        for t in table:
+            if t["name"] == need:
+                chosen.append(t); reasons[need] = "needed by " + need_by
 chosen.sort(key=lambda t: rank.get(t["name"], 999))
 print("sections:", ",".join(t["name"] for t in chosen))
 for t in chosen:
     print(f'  {t["name"]:7} {t["wait"]:4d}s  {reasons[t["name"]]}')
 
 # ---- balanced split (longest first into the lightest group), each group in scenario order
-g = [{"w": 0, "s": []} for _ in range(min(groups, len(chosen)) or 1)]
-for t in sorted(chosen, key=lambda t: -t["wait"]):
-    lo = min(g, key=lambda x: x["w"]); lo["s"].append(t); lo["w"] += t["wait"]
+units = []   # a unit = sections that must share a run
+by_name = {t["name"]: t for t in chosen}
+used = set()
+for t in chosen:
+    if t["name"] in used: continue
+    unit = [t]; used.add(t["name"])
+    for a, b in BIND.items():
+        if a in by_name and b in by_name and t["name"] in (a, b):
+            for other in (by_name[a], by_name[b]):
+                if other["name"] not in used: unit.append(other); used.add(other["name"])
+    units.append(unit)
+g = [{"w": 0, "s": []} for _ in range(min(groups, len(units)) or 1)]
+for unit in sorted(units, key=lambda u: -sum(t["wait"] for t in u)):
+    lo = min(g, key=lambda x: x["w"]); lo["s"].extend(unit); lo["w"] += sum(t["wait"] for t in unit)
 print(f"\nSPLIT into {len(g)} parallel run(s) (wall time about 3 min boot + 2.5 x waits):")
 tot = 0
 for k, x in enumerate(sorted(g, key=lambda x: -x["w"]), 1):
