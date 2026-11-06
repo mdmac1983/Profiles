@@ -24,6 +24,8 @@ public final class BatterySaverGuard {
     private static ContentObserver observer;    // held strongly: the content resolver only keeps a weak reference
     private static ContentObserver countObserver;
     private static Handler main;
+    /** Review of v0.8.1: when low_power last CHANGED, and when the last accepted turn-ON request was counted. A request that Android really carried out changes low_power (even if the person turns it off again 100 ms later); a SWALLOWED one changes nothing, so only that one is healed. */
+    private static volatile long lowPowerChangedAt = 0, bumpAt = 0;
 
     private BatterySaverGuard() {}
 
@@ -40,6 +42,7 @@ public final class BatterySaverGuard {
             main = new Handler(Looper.getMainLooper());
             observer = new ContentObserver(main) {
                 @Override public void onChange(boolean selfChange) {
+                    lowPowerChangedAt = System.currentTimeMillis();
                     // AG2 (Tj, 2026-11-06: the battery saver TILE in Quickstep does not work): every change of low_power is written to the lock log with the mode and the guard's switches, so a report says WHY
                     try { LockLog.add(app, "BATSAVER", "low_power is now " + Settings.Global.getString(app.getContentResolver(), BatterySaverPolicy.SETTING) + ", mode=" + Mode.get(app) + ", off-in-custom=" + enabled(app) + ", strict=" + strict(app) + ", power=" + powerSource(app) + (CrashGuard.automationOff(app) ? " PAUSED" : "")); } catch (Throwable ignored) { }
                     check(app, "setting changed", true);   // AN1: does nothing unless "strict" is on: a change made on the tile is left alone
@@ -92,6 +95,7 @@ public final class BatterySaverGuard {
             int now = readCount(app), before = lastCount;
             lastCount = now;
             if (!BatterySaverPolicy.activationRequested(before, now) || main == null) return;
+            bumpAt = System.currentTimeMillis();
             main.postDelayed(new Runnable() { @Override public void run() { healIfSwallowed(app); } }, BatterySaverPolicy.HEAL_DELAY_MS);
         } catch (Throwable t) { Log.e(TAG, "activation count failed", t); }
     }
@@ -103,6 +107,7 @@ public final class BatterySaverGuard {
      */
     static void healIfSwallowed(Context c) {
         try {
+            if (lowPowerChangedAt >= bumpAt - 20) { Log.i(TAG, "BATSAVER no heal: low_power changed after the request (it was carried out, then possibly undone)"); return; }
             ContentResolver cr = c.getContentResolver();
             boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
             String src = powerSource(c);
