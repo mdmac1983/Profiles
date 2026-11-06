@@ -951,3 +951,8 @@ Compare the number on the buttom of the lock screen. The accessibility one you b
 ```
 The blue scribble pictures are reference for correct look. The other pictures are what Claude has done so far
 ```
+
+## 2026-11-06T06:39:25Z
+```
+More reference photos. The blue scribble is how i want it to look. The other tablet is Claude
+```
