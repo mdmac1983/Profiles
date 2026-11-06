@@ -886,3 +886,8 @@ Don't worry about those, just do the launcher work
 ```
 Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher
 ```
+
+## 2026-11-06T04:55:39Z
+```
+ fix the patch that obviously doesn't blend in on the home screen, and make it a permanent overlay, or any other way to hide the screenshot button without the current flicker. As you can see in the other tablet photo, the power off and restart buttons look clean. Use this as a template for how it should look
+```
