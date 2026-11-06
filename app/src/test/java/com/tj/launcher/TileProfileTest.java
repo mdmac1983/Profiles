@@ -22,4 +22,26 @@ public class TileProfileTest {
         assertEquals(false, TileProfile.shouldRememberQuickstepList("quickstep", "custom", null, "rotation"));
         assertEquals(false, TileProfile.shouldRememberQuickstepList("quickstep", "custom", "rotation", "rotation"));
     }
+
+    // ---- AW2: the lock screen always shows the custom (rotation-only) list, from any launcher
+    @Test public void theKeyguardForcesTheCustomListWhateverTheModeSays() {
+        assertEquals("custom", TileProfile.effectiveMode("quickstep", true));
+        assertEquals("custom", TileProfile.effectiveMode("custom", true));
+        assertEquals("custom", TileProfile.effectiveMode(null, true));
+    }
+    @Test public void withoutAKeyguardTheModesOwnListComesBack() {
+        assertEquals("quickstep", TileProfile.effectiveMode("quickstep", false));
+        assertEquals("custom", TileProfile.effectiveMode("custom", false));
+        assertEquals("custom", TileProfile.effectiveMode("nonsense", false));
+    }
+    @Test public void locking_FromQuickstepRemembersTjsArrangementAndTheGestureUnlockDoesNotOverwriteIt() {
+        // lock from Quickstep: applied mode quickstep -> effective custom: what Tj arranged with the pencil is remembered as his Quickstep list
+        assertEquals(true, TileProfile.shouldRememberQuickstepList("quickstep", TileProfile.effectiveMode("quickstep", true), "wifi,bt,rotation,battery", "rotation"));
+        // the gesture unlock: applied mode is now custom (the lock list), the new effective mode is quickstep: nothing is remembered, the stored list is written back
+        assertEquals(false, TileProfile.shouldRememberQuickstepList("custom", TileProfile.effectiveMode("quickstep", false), "rotation", "rotation"));
+    }
+    @Test public void aSecondLockMomentDoesNotRememberTheLockListAsTjsList() {
+        // screen off + screen on while locked: applied mode is already custom, so the lock list ("rotation") is never mistaken for Quickstep's
+        assertEquals(false, TileProfile.shouldRememberQuickstepList("custom", TileProfile.effectiveMode("quickstep", true), "rotation", "rotation"));
+    }
 }
