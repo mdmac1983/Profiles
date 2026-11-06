@@ -84,3 +84,7 @@
 ## 2026-11-06T22:34:52Z
 > Status: waiting on the `pt` run (#249) and the three gate runs; the reviewer agent is still working too. Checkpoint 541 holds all run ids. I'll read `pt` first, then decide the fade timing.
 <!-- sha:7e8cc51f1d55 -->
+
+## 2026-11-06T22:38:32Z
+> Status: the reviewer's fixes are in the tree and compiled. I'm waiting on the local test and lint run, and on `pt` run #249 and the three gate runs.
+<!-- sha:a02bdf77dce7 -->
