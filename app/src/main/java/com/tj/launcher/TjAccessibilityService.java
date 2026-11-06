@@ -1196,12 +1196,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private long qsAppAt = 0;
     private String resumedPkg = null;     // the app started for the current gesture (so "is Quickstep in front?" accepts it too)
     private long resumedAt = 0;           // ... and only for a few seconds: a stale value must never decide a LATER unlock
-    private String stockPkgCache = null;
 
-    private String stockPkg() {
-        if (stockPkgCache == null) { ComponentName s = StockLauncher.find(this); if (s != null) stockPkgCache = s.getPackageName(); }   // a failed lookup is retried next time, never remembered
-        return stockPkgCache;
-    }
+    private String stockPkg() { ComponentName s = stockCached(); return s == null ? null : s.getPackageName(); }
 
     private void rememberQuickstepApp(String pk) {
         android.content.Context app = getApplicationContext();
