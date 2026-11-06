@@ -157,33 +157,25 @@ decide an OPEN item for Tj — resolve it with him, one real decision at a time.
 ## Session Learnings (auto-updated by handoff)
 
 ### Implicit Rules
-- Stack: Android 10 API 29 Go-edition launcher com.tj.launcher, Java/Kotlin, tablet MT8168 armv7 2 GB, sideloaded; separate phoneguide module (plain views, no permissions) runs on Tj's phone
-- Project CLAUDE.md wins over generic skills and user-level prefs: Tj's Android 16 preference does not apply, this app targets Android 10
-- First action every session: tools/install-hooks.sh (hooks not auto-loaded under shared session root); verify auto-checkpoint commits appear after edits
-- Save ladder: capture_inbox hook records every Tj message, autosave hook commits+pushes after tool calls, tools/ckpt.sh did/next after each step (keep messages SHORT: run listings echo commit message), ship.sh at versions, GitHub Actions builds and signs, tools/record-release.sh only after green run
-- Release order: ship.sh, then android.yml workflow_dispatch full_build=true on main, then get_release_by_tag, then record-release; tag push from container is refused (403), GitHub creates tag; keystore only in GitHub Secrets, missing local app/sideload.jks is expected, never regenerate
-- Emulator checks: emulator.yml manual dispatch with sections input; results = RESULTS block in job log; get_job_logs needs JOB id from list_workflow_jobs not run id; INFO NATIVE CRASH line precedes crash-caused FAILs; section order base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,rs,ka,rs2,rt,im,rs3,gc,rs4,pf,rb,last
-- Tick TASKS.md box only when written, tested, committed, proving test named; new Tj request goes into TASKS.md in his words before code; answer every Tj message and re-list open ones at end of reply
-- Tablet files: tools/tablet-intake.sh redacts serial/IMEI/MAC/IP/email/Wi-Fi and refuses credentials; read research/tablet/LATEST.md first; never commit raw report or screenshots by hand
-- Never commit credentials (secretscan blocks autosave); never add push triggers to workflows (Actions minutes scarce)
-- Stock launcher photos in research/reference/stock/INDEX.md are ground truth for look; measure against them before claiming a match
-- Use tools/gradle.sh never gradlew directly; one Gradle at a time; read BUILD line and test-result XML not background exit code
-- Hooks block curl to GitHub API and variable rm -rf: do not work around
+- Stack: Java (not Kotlin) Android 10 API 29 Go-edition launcher built on in-repo Launcher3 source (launcher3/PATCHES.md lists deviations); applicationId com.tj.launcher; Tj's Android 16 preference does not apply here
+- First action every session: bash tools/install-hooks.sh; checkpoint after every step with bash tools/ckpt.sh did next; new Tj request goes into TASKS.md in his words before code
+- Local builds only for tests and lint: bash tools/gradle.sh testDebugUnitTest :app:lintDebug; GitHub Actions builds APKs; release order ship.sh then android.yml full_build on main then get_release_by_tag then tools/record-release.sh
+- Emulator checks: emulator.yml sections input; concurrency group includes ref so branch runs do not cancel main runs; gate A and B lists in CLAUDE.md; read RESULTS block in job log tail
+- Hooks block variable rm -rf and curl to api.github.com; do not work around
+- Never commit keys or keystore; tools/MIRROR_MAIN decides whether pushes also fast-forward main; a branch that is not an ancestor of main fails the mirror silently
+- During a live cable session send ONE short step per message, command in last message, then wait; tablet clock is EST; ADB OTG app echoes long lines scrambled but they run
+- Tablet facts: Enforcing SELinux user build, shell helper unreachable, logcat buffer about 3 minutes, DuraSpeed on, accessibility service must be re-bound by tablet restart after a crash loop
+- Write handoff and learnings in English; Tj uses no gendered pronouns in text, refer to Tj by name
 
 ### Key Decisions
-- Decision: treat prior-session branch as merged, ignore orphan branches — Reason: git shows 0 commits missing from HEAD; orphans predate 2026-11-02 re-root, merging corrupts history
-- Decision: finish cut-off change before new work — Reason: autosave committed half-written change, CHECKPOINT.md stale, resume briefing flagged interrupted mid-change
-- Decision: key-test reports 'shell cannot read input devices' separately from 'key not seen' (helper returns total getevent line count) — Reason: false 'not seen' could end Power menu v2 idea for wrong reason
-- Decision: key-test line caps counted separately (24 device lines, 40 key events) — Reason: tablet with many input devices could push KEY_POWER out of one shared cap, false negative
-- Decision: intake flags notification-reader mismatch only if sample has dotted user-0 package records reader missed, or no record parses — Reason: reader skips system pkg=android by design; stock emulator only has those (run 121 evidence)
-- Decision: emulator scenario reopens setup screen and scans in small slow steps; guide checks find nodes via tools/uinode.py row anchor plus seek loop — Reason: autorun screenshot job leaves Settings in front; uiautomator dump lists only on-screen nodes; runs 117/118 failures were test bugs not app bugs
-- Decision: guide adb-shell switch rewrites command boxes only, key-test button has re-entrancy guard — Reason: full rebuild lost scroll/opened parts/typed text; double tap raced two 13 s routines; limited cable time
-- Decision: code-review medium before release, fix 8 of 9, decline 'next step skips cards of closed group' — Reason: L10 safety rule (be highly confident release breaks nothing); plan text defines FALLBACK/EXTRAS/UNDO as outside main path
-- Decision: L10 safety judged OK — Reason: no manifest/permission/resource/dependency change since v0.7.0; KEYTEST helper routine fixed-command, flag held by separate process max 12 s and cleared on death, peer-uid auth unchanged
-- Decision: release gate is two parallel runs A (base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x) + B (v,g,ka,rt,im,gc,pf,rb,last); rs..rs4 research not gate; step timeout 2100 to 2700 s — Reason: everything needs ~42 min, run 124 cut inside rs4
-- Decision: accept union of section runs on identical product code (app/ and phoneguide/ byte-identical between gated 3398b67 and release 4686fda) as gate — Reason: later commits only tools/docs; runs 124, 128, 126, 123, 120 cover every gate section
-- Decision: ship v0.7.1 despite section legacy ALONE failing reset2 — Reason: proven pre-existing (run 129 on v0.7.0 tag identical 19 PASS 1 FAIL), code on path byte-identical, gate config (base first) fully green; guide needed for Tj's imminent cable session
-- Decision: wait for CI with background until-date timer, never poll — Reason: job logs 404 until job ends; polling burns tokens; curl to GitHub API blocked by hook, do not work around
-- Decision: RS1 recorded in TASKS.md as open with RS1a-c, not fixed now — Reason: pre-existing, hypothesis unproven, behaviour change in core reset path risky at release time; Tj's tablet answer sets priority
+- Decision: ACC1 root cause is stale Binding state in accessibility manager from the 12:48 crash loop; fix is a tablet restart — Reason: AMS had no ServiceRecord while Binding set stayed; after restart service bound and logs showed unlock handled; DuraSpeed off changed nothing
+- Decision: notification access is not a missing permission — Reason: low-RAM Go devices refuse managed services for non-whitelisted packages; allow_listener silently leaves enabled_notification_listeners null; ReturnReset already said so; guide must not offer it
+- Decision: keep-alive default OFF, PNG transparent small icon, crash fuse takes first RemoteServiceException Bad notification crash (switches only keep-alive off, sets keep_alive_blocked, not counted toward 3-crash breaker), onCreate refuses to repost when rules say no, test knob keep_alive_test_bad_icon only in debuggable builds — Reason: system crashed app 3x in 7s on MediaTek SystemUI, tripped breaker, wiped switches and stranded accessibility
+- Decision: CBR1 clears only the tripped flag on a newer versionCode and leaves Mode untouched; unreadable version stored as Integer.MAX_VALUE — Reason: new version gets fair try but Tj chooses when to return to custom
+- Decision: updates need no adb (grants, app-ops, battery whitelist, accessibility enabled, Home choice survive in-place update; only optional speed compile is lost) — Reason: same signing key; documented in research/ADB_COMMANDS.txt
+- Decision: this session does not touch v0.7.3 gate or release and never pushes to main; branch ccr-9ab65fa5-vp812y is main plus a commit setting tools/MIRROR_MAIN off — Reason: other session on another account is mid-gate; android.yml builds main HEAD; concurrent pushes would contaminate release or reject fast-forwards; at integration merge main, set MIRROR_MAIN on, run gates A and B
+- Decision: lock-screen power-menu cover must work on any lock screen (cover world = custom mode OR keyguard locked) — Reason: Tj's tablet lock from Quickstep has no cover because mode flips to custom only after helper clean-up
+- Decision: gesture unlock should resume the last Quickstep app (launch intent without RESET_TASK_IF_NEEDED) instead of stock home, fallback stock home — Reason: Tj asked if minimizing apps is necessary; it is not
+- Decision: new secret entrances supersede earlier N3a removal because Tj explicitly asked for several toggleable hidden options; no hardware keys, no accelerometer; ProfileSession.goToQuickstep needs no helper — Reason: Solitaire hotspot unreliable (default off, needs Solitaire configured and in front)
 
 <!-- handoff:learnings:end -->
