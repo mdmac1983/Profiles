@@ -2419,9 +2419,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private void startFade() {
         long now = android.os.SystemClock.uptimeMillis();
         boolean on = patchFadeOn();
-        long lag = on ? PatchFade.lagMs(now, winBurstStartMs) : PatchFade.OPEN_MS;
+        long anchor = dialogEventMs > 0 && now - dialogEventMs <= PatchFade.FRESH_MS && dialogEventMs >= winBurstStartMs ? dialogEventMs : winBurstStartMs;   // the dialog's own event when it is the newest, else the burst's first one
+        long lag = on ? PatchFade.lagMs(now, anchor) : PatchFade.OPEN_MS;
         fadeLeadMs = PatchFade.LEAD_MS;
-        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", -1); if (v >= 0) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt)
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", Integer.MIN_VALUE); if (v != Integer.MIN_VALUE) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt; may be negative)
         fadeLeadMs += Features.getInt(this, PATCH_FADE_SHIFT_KEY, 0);
         fadeStartMs = now - lag;
         fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
