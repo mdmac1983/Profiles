@@ -86,6 +86,8 @@ public class ControlActivity extends Activity {
 
     private void buildPage() {
         page.removeAllViews();
+        box = page;
+        groupSummary = null;
         title("Launcher control");
 
         // status card
