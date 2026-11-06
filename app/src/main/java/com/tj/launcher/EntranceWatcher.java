@@ -29,6 +29,9 @@ public final class EntranceWatcher {
 
     public static boolean on(Context c, SecretEntrances.Method m) { return Features.get(c, m.prefKey(), m.defaultOn); }
 
+    /** True once the rotation observer and the charger receiver are registered in this process (shown in the tablet report). */
+    public static boolean watching() { return rotationObserver != null && powerReceiver != null; }
+
     /** May this entrance count right now? (switch, custom launcher, unlocked, not paused) */
     private static boolean armed(Context c, SecretEntrances.Method m) {
         try {
@@ -65,8 +68,17 @@ public final class EntranceWatcher {
             if (v == lastRotation) return;            // not a change of the lock itself
             lastRotation = v;
             if (!armed(c, SecretEntrances.Method.ROTATE)) { toggles.reset(); return; }
-            if (toggles.onChange(System.currentTimeMillis())) fire(c, SecretEntrances.Method.ROTATE);
+            if (toggles.onChange(System.currentTimeMillis())) { restoreRotation(c, v); fire(c, SecretEntrances.Method.ROTATE); }
         } catch (Throwable t) { Log.e(TAG, "rotation entrance failed", t); }
+    }
+
+    /** Five changes leave the rotation lock the other way round from where it began (an odd count): flip it once more so using the entrance never changes Tj's rotation setting. Needs the WRITE_SETTINGS grant; without it nothing happens. */
+    private static void restoreRotation(Context c, int current) {
+        try {
+            if (current != 0 && current != 1) return;
+            Settings.System.putInt(c.getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 1 - current);
+            lastRotation = 1 - current;      // our own write must not count as a change (the observer runs after this method, on the same thread)
+        } catch (Throwable t) { Log.w(TAG, "could not put the rotation lock back: " + t); }
     }
 
     private static void onPower(Context c, boolean connected) {

@@ -71,6 +71,7 @@ public final class ReportState {
             StringBuilder en = new StringBuilder();
             for (SecretEntrances.Method m : SecretEntrances.Method.values()) en.append(m.id).append(EntranceWatcher.on(c, m) ? " on" : " off").append("; ");
             b.append("secret entrances to Quickstep (AD4): ").append(en).append('\n');
+            b.append("entrance watchers registered in this process (rotation tile, charger): ").append(yes(EntranceWatcher.watching())).append('\n');
             b.append("gesture unlock returns to the app that was open (AD5): ").append(Features.get(c, ResumeTarget.KEY, true) ? "on" : "off").append('\n');
         } catch (Throwable t) { /* not available */ }
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');

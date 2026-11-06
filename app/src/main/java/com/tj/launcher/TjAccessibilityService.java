@@ -723,7 +723,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
                 // The stock home was started behind the lock screen; only if the pre-start did not land (not in front now) press the router's Home.
                 ComponentName stock = StockLauncher.find(this);
-                boolean front = (stock != null && isForeground(stock.getPackageName())) || (resumedPkg != null && isForeground(resumedPkg));   // AD5: the resumed app counts
+                boolean front = (stock != null && isForeground(stock.getPackageName())) || (resumedPkg != null && System.currentTimeMillis() - resumedAt < 15_000 && isForeground(resumedPkg));   // AD5: the resumed app counts (for this unlock only)
                 if (!front) startQuickstepFront("after the unlock");
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
@@ -1188,11 +1188,12 @@ public class TjAccessibilityService extends AccessibilityService {
     private String qsApp = null;          // the last app window of the Quickstep session while unlocked ("" / null = none: the stock home was the last thing, or no session)
     private long qsAppAt = 0;
     private String resumedPkg = null;     // the app started for the current gesture (so "is Quickstep in front?" accepts it too)
+    private long resumedAt = 0;           // ... and only for a few seconds: a stale value must never decide a LATER unlock
     private String stockPkgCache = null;
 
     private String stockPkg() {
-        if (stockPkgCache == null) { ComponentName s = StockLauncher.find(this); stockPkgCache = s == null ? "" : s.getPackageName(); }
-        return stockPkgCache.isEmpty() ? null : stockPkgCache;
+        if (stockPkgCache == null) { ComponentName s = StockLauncher.find(this); if (s != null) stockPkgCache = s.getPackageName(); }   // a failed lookup is retried next time, never remembered
+        return stockPkgCache;
     }
 
     private void rememberQuickstepApp(String pk) {
@@ -1201,7 +1202,21 @@ public class TjAccessibilityService extends AccessibilityService {
         if (keyguardLockedFast()) return;     // what appears under the lock screen is the pre-arm, not Tj's app
         String stock = stockPkg();
         if (ResumeTarget.isStockHome(pk, stock)) { qsApp = null; return; }    // he went home (or to Recents): there is no app to come back to
-        if (ResumeTarget.remember(pk, getPackageName(), stock, false, false)) { qsApp = pk; qsAppAt = System.currentTimeMillis(); }
+        if (!ResumeTarget.remember(pk, getPackageName(), stock, false, false)) return;
+        if (!isLaunchable(pk)) return;        // a dialog or system window without an icon (permission controller, installer) is not "the app Tj had open": it neither replaces nor clears it
+        qsApp = pk; qsAppAt = System.currentTimeMillis();
+    }
+
+    private final java.util.HashMap<String, Boolean> launchableCache = new java.util.HashMap<>();
+    private boolean isLaunchable(String pk) {
+        Boolean b = launchableCache.get(pk);
+        if (b == null) {
+            boolean v = false;
+            try { v = getPackageManager().getLaunchIntentForPackage(pk) != null; } catch (Throwable ignored) { }
+            if (launchableCache.size() > 64) launchableCache.clear();
+            launchableCache.put(pk, v); b = v;
+        }
+        return b;
     }
 
     /**
@@ -1216,7 +1231,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 android.content.Intent li = getPackageManager().getLaunchIntentForPackage(pkg);
                 if (li != null) {
                     li.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                    resumedPkg = pkg;
+                    resumedPkg = pkg; resumedAt = System.currentTimeMillis();
                     startActivity(li);
                     Log.i(TAG, "ROUTER resume " + pkg + " (" + why + ")");
                     LockLog.add(app, "START", "resume " + pkg + " (" + why + ")");
@@ -1479,8 +1494,11 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         try {
-            if (level < android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) return;
+            // real memory pressure only: RUNNING_LOW (10), RUNNING_CRITICAL (15) and the background levels (40+); NOT UI_HIDDEN (20), which fires whenever the launcher's UI goes away
+            boolean pressure = level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL || level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND;
+            if (!pressure) return;
             handler.post(new Runnable() { @Override public void run() {
+                launchableCache.clear();
                 if (patchView == null) { wallpaperBmp = null; lockBmp = null; lockShot = null; lockShotFresh = false; Log.i(TAG, "TRIM released the cached wallpaper bitmaps"); }
             } });
         } catch (Throwable ignored) { }

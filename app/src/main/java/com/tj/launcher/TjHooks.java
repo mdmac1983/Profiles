@@ -50,7 +50,8 @@ public final class TjHooks {
     public static void onTouch(android.app.Activity a, MotionEvent ev) {
         try {
             switch (ev.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN: downX = ev.getRawX(); downY = ev.getRawY(); downAt = ev.getEventTime(); downHome = homeScreenShowing(); multiTouch = false; break;
+                case MotionEvent.ACTION_DOWN: downHome = homeScreenShowing() && EntranceWatcher.on(a.getApplicationContext(), SecretEntrances.Method.FLICK); multiTouch = false;   // nothing else is done for a touch while the entrance is off or the home screen is not showing
+                    if (downHome) { downX = ev.getRawX(); downY = ev.getRawY(); downAt = ev.getEventTime(); } break;
                 case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; break;
                 case MotionEvent.ACTION_UP:
                     if (downHome && !multiTouch) {
