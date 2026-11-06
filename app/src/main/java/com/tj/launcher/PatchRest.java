@@ -7,7 +7,7 @@ package com.tj.launcher;
  * {@link TjAccessibilityService} draws it.
  */
 public final class PatchRest {
-    /** Launcher control switch, default OFF. */
+    /** Launcher control switch, default ON (since v0.8.0; OFF = the patch is only drawn while the menu is open). */
     public static final String KEY = "lock_patch_always";
 
     private PatchRest() {}
