@@ -197,10 +197,27 @@ public final class TabletReport {
         b.append("===== TABLET SUMMARY (short: the full report is the file tablet-report.txt) ").append(new java.util.Date()).append('\n');
         deviceFacts(b, c);
         permissions(b, c);
-        b.append(ReportState.section(c, helper, false));
-        b.append(selfCheck(helper));
-        b.append(ownLog(40, SUMMARY_MAX - b.length()));   // PG3: what is left of the 11 000-character budget, newest log lines first
+        // PG3: the 11 000-character budget is spent in the order of importance: the facts above, the parser self-check, the launcher's state (its TAIL goes first: the power-menu dump, then old lock-log lines),
+        // then the launcher's own log, newest lines first. The output order stays: facts, permissions, state, self-check, log.
+        String check = selfCheck(helper);
+        b.append(cutAtLine(ReportState.section(c, helper, false), SUMMARY_MAX - b.length() - check.length() - LOG_MIN));
+        b.append(check);
+        b.append(ownLog(40, SUMMARY_MAX - b.length()));
         return b.toString();
+    }
+
+    /** The room kept for the launcher's own log in the short summary (about five lines). */
+    private static final int LOG_MIN = 700;
+
+    /** Pure: {@code s} unchanged when it fits in {@code max} characters, else cut at the last line end that leaves room for a one-line note saying so (empty when even the note does not fit). */
+    static String cutAtLine(String s, int max) {
+        if (s == null) return "";
+        if (s.length() <= max) return s;
+        String note = "(cut: the short summary is capped; the full report file has the rest)\n";
+        int room = max - note.length();
+        if (room <= 0) return "";
+        int nl = s.lastIndexOf('\n', room - 1);
+        return (nl < 0 ? "" : s.substring(0, nl + 1)) + note;
     }
 
     /** Builds the whole report (app side + state + parser self-check + helper probe when it runs) and writes it. Blocking: call off the main thread. Returns the file. */
