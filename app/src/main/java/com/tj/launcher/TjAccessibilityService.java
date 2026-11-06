@@ -86,6 +86,14 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private long lastEvalMs = 0;
     private long fullScanUntilMs = 0;
+    /** AM1: a patch window that was just created re-decides whether it RESTS after 400 ms and 1.6 s (the stored crop, the keyguard and the PIN pad may only be settled by then). */
+    private final Runnable restRecheck = new Runnable() { @Override public void run() {
+        try {
+            if (patchView == null || !patchLockMode) return;
+            if (patchShotBmp == null && PatchShot.has(TjAccessibilityService.this, rotation(), shotSig())) loadStoredShot();
+            patchShow(overlayShown);
+        } catch (Throwable t) { Log.e(TAG, "rest recheck failed", t); }
+    } };
     private PickerGuard pickerGuard;   // AO1
     private PickerGuard picker() { if (pickerGuard == null) pickerGuard = new PickerGuard(this, handler); return pickerGuard; }
     private RecentsFilter recentsGuard;   // AP1
@@ -216,7 +224,16 @@ public class TjAccessibilityService extends AccessibilityService {
      * AM1: the patch RESTS over the Screenshot spot (switch default ON) only when it can be INVISIBLE: it needs real pixels of this lock screen (a stored crop from a real screenshot, or the helper's fresh photo),
      * and never while a calibration screenshot is being taken. Without them it stays hidden at rest (a model patch is a visible block: Tj's photo of 2026-11-06).
      */
-    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, true) && lockPatchWanted() && !calibrating() && (patchShotBmp != null || lockShot != null || modelRestAllowed()); }
+    private String lastRestInfo = "";
+    /** AM1: the inputs of the resting decision, newest only, kept in a preference (Launcher control / tablet report / emulator INFO): why does the patch rest, or not? */
+    private void restInfo(String what) {
+        try {
+            String v = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + what + " [always=" + lockPatchAlways() + " switch=" + Features.get(this, PatchRest.KEY, true) + " wanted=" + lockPatchWanted() + " calibrating=" + calibrating() + " shot=" + (patchShotBmp != null) + " bouncer=" + lastBouncer + "]";
+            String key = v.substring(10);
+            if (!key.equals(lastRestInfo)) { lastRestInfo = key; Features.setString(this, "patch_rest_info", v); }
+        } catch (Throwable ignored) { }
+    }
+    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, true) && Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && keyguardLocked() && !calibrating() && (patchShotBmp != null || lockShot != null || modelRestAllowed()); }   // AM1 (run 218): a FRESH keyguard read, not the 250 ms cache: a stale 'unlocked' left the new window hidden until the menu opened
     /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
     private float restDim(boolean photo) {
         if (photo) return 1f;   // v0.7.6 (review of v0.7.5): the photo already has the real keyguard brightness and no dialog scrim is open: exactly 1, whatever the brightness nudge says (it corrects the MODEL's keyguard dim only)
@@ -558,7 +575,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 return true;
             }
         });
-        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); if (patchResting) Log.i(TAG, "PATCH rest on (new window) top=" + patchRestTop); Log.i(TAG, "PATCH window created: resting=" + patchResting + " [always=" + lockPatchAlways() + " switch=" + Features.get(this, PatchRest.KEY, true) + " wanted=" + lockPatchWanted() + " calibrating=" + calibrating() + " shot=" + (patchShotBmp != null) + " bouncer=" + lastBouncer + " overlayShown=" + overlayShown + "]"); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
+        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); handler.removeCallbacks(restRecheck); handler.postDelayed(restRecheck, 400); handler.postDelayed(restRecheck, 1600); if (patchResting) Log.i(TAG, "PATCH rest on (new window) top=" + patchRestTop); Log.i(TAG, "PATCH window created: resting=" + patchResting + " [always=" + lockPatchAlways() + " switch=" + Features.get(this, PatchRest.KEY, true) + " wanted=" + lockPatchWanted() + " calibrating=" + calibrating() + " shot=" + (patchShotBmp != null) + " bouncer=" + lastBouncer + " overlayShown=" + overlayShown + "]"); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
         patchView = v; patchAt.set(r); patchRot = rotation();
         try { Rect cc = cachedCard(); if (cc != null) { Rect ca = cardArea(cc); patchRestTop = PatchRest.restTop(r.top, ca.bottom, r.bottom); } } catch (Throwable ignored) { }   // AE3: the resting patch paints only the part BELOW the card = the Screenshot slot
         patchStatus("active over " + r.toShortString());
@@ -2235,6 +2252,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean rest = vis && !on;
         boolean changed = rest != patchResting;
         patchResting = rest;
+        restInfo("patchShow vis=" + vis + " rest=" + rest + " menuOpen=" + on);
         patchView.setAlpha(vis ? 1f : 0f);
         if (changed) { patchView.invalidate(); Log.i(TAG, "PATCH rest " + (rest ? "on" : "off") + (lastBouncer ? " (PIN pad up)" : "") + " top=" + patchRestTop); }
     }
