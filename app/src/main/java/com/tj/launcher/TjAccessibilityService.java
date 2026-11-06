@@ -78,17 +78,24 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         final boolean quiet = quietBurst(android.os.SystemClock.uptimeMillis(), event);   // AZ1: the heavy work of a window burst on the lock screen waits for the stock dialog's own event
         if (event != null && EventNoise.windowsJustChanged(event.getEventType())) fullScanUntilMs = android.os.SystemClock.uptimeMillis() + 300;   // AB2: look in every window for the next 300 ms (a power menu is a new window)
+        final boolean coverOn = !Features.POWER_OFF.equals(Features.powerMode(this)) && coverWorld();
+        boolean scanned = false;
+        if (overlayShown && !quiet && coverOn) { leadingEdge(event); scanned = true; }   // AZ1: the menu is open: noticing that it CLOSED (the patch must un-dim) comes before the PIN-pad scan and the other per-event work, which can take 100+ ms in a busy SystemUI (run 245: the patch stayed dark 85 ms after the surround was bright again)
         if (!quiet) { scheduleLockUpdate(); scheduleLayerRefresh(); schedulePencil(event); }
         trackDirty(event);
         trackUnlockKey(event);
         if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
-        if (Features.POWER_OFF.equals(Features.powerMode(this)) || !coverWorld()) {
+        if (!coverOn) {
             if (overlay != null || overlayShown) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
         }
-        if (quiet) return;   // AZ1: quietWork runs the scans once, after the dialog's event had its turn (or after FAST_WAIT_MS if it never came)
-        // Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content.
+        if (quiet || scanned) return;   // AZ1: quietWork runs the scans once, after the dialog's event had its turn (or after FAST_WAIT_MS if it never came)
+        leadingEdge(event);
+    }
+
+    /** Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content. */
+    private void leadingEdge(AccessibilityEvent event) {
         long now = android.os.SystemClock.uptimeMillis();
         // AN1 (Tj: the battery saver tile in the shade is slow / unresponsive): a content change of the shade or the status bar (a tile redrawing, the clock) cannot OPEN the power menu, so it starts no scan unless a menu is
         // already up or a window just changed. Every scan is a pair of whole-tree searches run by SystemUI's own UI thread, the thread that handles the tap on the tile (EventNoise.needsPowerMenuScan).
