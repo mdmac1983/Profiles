@@ -749,7 +749,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false; handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false; handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
         Log.i(TAG, "PATCH removed");
     }
 
@@ -1816,7 +1816,7 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onChange(boolean selfChange) {
             try {
                 android.content.Context app = getApplicationContext();
-                if (!(Mode.isCustom(app) || keyguardLockedFast()) || !TileProfile.enabled(app) || !TileProfile.permitted(app)) return;   // AW2: the custom list is also the lock screen's, whatever the mode says
+                if (!(Mode.isCustom(app) || keyguardLockedFast()) || !TileProfile.enabled(app) || !TileProfile.permitted(app) || CrashGuard.automationOff(app)) return;   // AW2: the custom list is also the lock screen's, whatever the mode says; review of v0.8.1: not while automation is paused ("Restore everything"): applyLockTiles / restoreUnlockTiles stand down too
                 String cur = android.provider.Settings.Secure.getString(getContentResolver(), TileProfile.SETTING);
                 if (TileProfile.tilesFor(app, Mode.CUSTOM).equals(cur)) return;
                 long now = System.currentTimeMillis();
@@ -1920,7 +1920,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             stopShotWatch();
             handler.removeCallbacks(restRecheck); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoCalTrigger);
-            handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork); handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
+            handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork); handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
             quietUntilMs = 0;
         } catch (Throwable ignored) { }
     }
@@ -2555,13 +2555,22 @@ public class TjAccessibilityService extends AccessibilityService {
      * frame as the patch's next draw. While the stock dialog animates it blocked the main thread for 100-200 ms: the patch's first dimmed frame was shown 60-400 ms late, events piled up behind it (age 180 ms),
      * and the same call at the close delayed the un-dim. The flag is only needed for a tap on the hidden Screenshot spot, so it follows the draw: ON after the stock fade is over, OFF 40 ms after the patch went back to rest.
      */
-    private final Runnable touchableOn = new Runnable() { @Override public void run() { if (overlayShown) applyPatchTouchable(true); } };
+    private boolean touchableOnPending = false;
+    private final Runnable touchableOn = new Runnable() { @Override public void run() { touchableOnPending = false; if (overlayShown) applyPatchTouchable(true); } };
     private final Runnable touchableOff = new Runnable() { @Override public void run() { if (!overlayShown) applyPatchTouchable(false); } };
     private void setPatchTouchable(boolean t) {
         if (patchView == null || !patchLockMode) return;   // the home patch never swallows a touch
-        handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff);
-        if (t == patchTouchable) return;
-        handler.postDelayed(t ? touchableOn : touchableOff, t ? PatchFade.SETTLE_MS + 20 : 40);
+        if (t) {
+            handler.removeCallbacks(touchableOff);
+            if (patchTouchable || touchableOnPending) return;   // review of v0.8.1: a repeated call (every scan of the open menu) must not restart the wait
+            touchableOnPending = true;
+            handler.postDelayed(touchableOn, PatchFade.SETTLE_MS + 20);
+        } else {
+            handler.removeCallbacks(touchableOn); touchableOnPending = false;
+            if (!patchTouchable) return;
+            handler.removeCallbacks(touchableOff);
+            handler.postDelayed(touchableOff, 40);
+        }
     }
     private void applyPatchTouchable(boolean t) {
         if (patchView == null || t == patchTouchable || !patchLockMode) return;
