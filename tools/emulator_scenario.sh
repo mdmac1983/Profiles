@@ -1542,6 +1542,12 @@ if [ -n "$AOL" ]; then adb shell input tap $(( (AOL + AOR) / 2 )) $(( (AOT + AOB
 resumed > "$OUT/ao-picker-resumed.txt"; shot ao-picker
 info "AO1: after tapping Wallpapers: $(cut -c1-220 "$OUT/ao-picker-resumed.txt"); SET_WALLPAPER handlers: $(adb shell pm query-activities --brief -a android.intent.action.SET_WALLPAPER 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 check "AO1: the Wallpapers entry never shows an 'Open with' / chooser list (one explicit picker)" bash -c "! grep -qE 'ResolverActivity|ChooserActivity' $OUT/ao-picker-resumed.txt"
+# AO1b (Tj: "the reference is the screenshot without the my photos button"): the entry opens the launcher's OWN copy of the AOSP picker, which has no "My photos" tile at all
+check "AO1b: the Wallpapers entry opens the launcher's own picker (com.tj.launcher / WallpaperPickerActivity)" grep -q 'com.tj.launcher/com.android.wallpaperpicker.WallpaperPickerActivity' "$OUT/ao-picker-resumed.txt"
+adb shell uiautomator dump /sdcard/ao-picker.xml >/dev/null 2>&1; adb shell cat /sdcard/ao-picker.xml 2>/dev/null | tr '>' '\n' > "$OUT/ao-picker-dump.txt"
+info "AO1b: picker texts: $(grep -o 'text="[^"]*"' $OUT/ao-picker-dump.txt | grep -v 'text=""' | head -12 | tr '\n' ' '); strip tiles (bounds): $(grep -o 'resource-id="[^"]*wallpaper_list"[^>]*bounds="[^"]*"' $OUT/ao-picker-dump.txt | head -2 | tr '\n' ' ')"
+check "AO1b: there is NO 'My photos' tile in it" bash -c "! grep -qi 'my photos' $OUT/ao-picker-dump.txt"
+check "AO1b: it is the real picker: the 'Set wallpaper' bar and the wallpaper strip are there" bash -c "grep -qi 'set wallpaper' $OUT/ao-picker-dump.txt && grep -q 'wallpaper_strip' $OUT/ao-picker-dump.txt"
 adb shell input keyevent KEYCODE_BACK; sleep 1; home
 
 # ---- the hider on a Settings row (knob): phase 1 = the guard OFF (control: the row is visible and opens), phase 2 = ON (the row is covered, a tap on it opens nothing), phase 3 = gone with Settings

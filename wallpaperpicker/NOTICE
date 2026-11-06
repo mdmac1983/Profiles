@@ -1,0 +1,9 @@
+This directory is a copy of the AOSP legacy wallpaper picker app:
+
+  source:   https://android.googlesource.com/platform/packages/apps/WallpaperPicker
+  tag:      android-10.0.0_r9 (commit f1e69b4 "Move WallpaperPicker to /product in ub branch")
+  licence:  Apache License 2.0 (the header of every source file carries it)
+  copyright The Android Open Source Project
+
+It is the picker Tj's tablet shows for "Wallpapers" (preview on top, a strip of wallpapers below, "Set wallpaper" bar).
+Local changes are listed in PATCHES.md; everything else is unchanged AOSP code.
