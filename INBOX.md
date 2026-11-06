@@ -1000,3 +1000,10 @@ Build all of this into a release that is as polished as possible with all the fe
 ```
 Does this release make the lock screen from any launcher have only the one tile, no wifi or Bluetooth or notifications no matter what?
 ```
+
+## 2026-11-06T19:16:43Z
+```
+If it doesn't already do so:
+
+The lock screen from any launcher at all times should only have the rotation tile in the quick settings, no wifi or Bluetooth or notifications ever, always have the number on the buttom of the lock screen, and always have the power menu hiding screenshot. All of this should happen permanently any time the lock screen is on, from any launcher, at any time
+```
