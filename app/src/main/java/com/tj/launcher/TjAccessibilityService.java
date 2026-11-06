@@ -1779,7 +1779,7 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.post(new Runnable() { @Override public void run() {
             try {
                 List<AccessibilityNodeInfo> cards = findTaskCards();
-                if (cards.size() > 0) { sawCards[0] = true; if (seen[0] == null) seen[0] = cards.size() + " card(s): " + describeCards(cards); }
+                if (cards.size() > 0) { sawCards[0] = true; if (seen[0] == null) seen[0] = cards.size() + " card(s): " + describeCards(cards, closeLabels); }
                 boolean did = false;
                 for (AccessibilityNodeInfo card : cards) {
                     if (!AppOrigin.cardMatches(card.getContentDescription() == null ? null : card.getContentDescription().toString(), closeLabels)) continue;
