@@ -162,6 +162,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private float openScrim() { return PatchRest.openScrim(DIM_OPEN, Features.getInt(this, PATCH_SCRIM_KEY, 0)); }
     private volatile boolean patchResting = false;
     private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
+    private android.graphics.Bitmap patchMaskOpen, patchMaskRest;   // AH3: the soft-edge masks of the slot patch (menu open: hard top under the card; resting: soft top); null = the old hard-edged drawing
     /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Launcher control and in the tablet report. */
     public static final String WALLPAPER_KIND_KEY = "wallpaper_kind";
     private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, false) && lockPatchWanted(); }
@@ -438,11 +439,19 @@ public class TjAccessibilityService extends AccessibilityService {
         final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final Rect rect = new Rect(r);
+        buildPatchMasks(rect, dm);   // AH3
         View v = new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
+            private final android.graphics.Paint maskPaint = newMaskPaint();
             @Override protected void onDraw(android.graphics.Canvas c) {
                 boolean rest = patchResting && patchLockMode;   // AE3: the RESTING patch paints only the Screenshot slot (below the card) and without the dialog's scrim
+                android.graphics.Bitmap mask = rest ? patchMaskRest : patchMaskOpen;
+                if (mask != null && mask.getWidth() == getWidth() && mask.getHeight() == getHeight()) {   // AH3: paint into a layer and fade its edges with the mask (DST_IN), so a residual mismatch is a soft gradient, not a frame
+                    int sc = c.saveLayer(0, 0, getWidth(), getHeight(), null);
+                    try { paintPatch(c, rest); c.drawBitmap(mask, 0, 0, maskPaint); } finally { c.restoreToCount(sc); }
+                    return;
+                }
                 if (rest) { c.save(); c.clipRect(0, patchRestTop, getWidth(), getHeight()); }
                 try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
             }
@@ -465,7 +474,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
         };
         WindowManager.LayoutParams lp = overlayParams(r, false);
-        lp.format = targetIsLock ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden
+        lp.format = PixelFormat.TRANSLUCENT;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden. AH3: the soft edges need an alpha channel for the home patch too
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
         patchLockMode = targetIsLock;
@@ -488,10 +497,42 @@ public class TjAccessibilityService extends AccessibilityService {
         p.setColorFilter(dimFilterCache);
     }
 
+    private static android.graphics.Paint newMaskPaint() {
+        android.graphics.Paint mp = new android.graphics.Paint();
+        mp.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN));
+        return mp;
+    }
+
+    /**
+     * AH3: the two soft-edge masks of the slot patch for the window {@code r}: OPEN menu = the top edge is hard and reaches just under our card (the card hides it, so the stock panel can never show through a
+     * fade), RESTING = the top edge fades too (nothing sits above it). The opaque core = the learned panel plus a couple of px; the fringe fades outward on the other sides. Any failure leaves the masks null = the
+     * old hard-edged drawing, never a crash.
+     */
+    private void buildPatchMasks(Rect r, android.util.DisplayMetrics dm) {
+        patchMaskOpen = null; patchMaskRest = null;
+        try {
+            Rect panel = cachedCard();
+            int w = r.width(), h = r.height();
+            if (panel == null || w <= 0 || h <= 0 || (long) w * h > 500L * 500L) return;   // a slot window is about 130 x 130 px
+            int e = Math.round(PatchRest.EDGE_DP * dm.density), f = Math.round(PatchRest.FEATHER_DP * dm.density), ov = Math.max(1, Math.round(PatchRest.OVERLAP_DP * dm.density));
+            int cb = cardAreaGeom(panel).bottom;
+            int cl = panel.left - e - r.left, cr = panel.right + e - r.left, cbot = panel.bottom + e - r.top;
+            int fl = Math.min(f, Math.max(0, cl)), fr = Math.min(f, Math.max(0, w - cr)), fb = Math.min(f, Math.max(0, h - cbot));
+            patchMaskOpen = alphaBitmap(PatchRest.mask(w, h, cl, cb - ov - r.top, cr, cbot, fl, 0, fr, fb), w, h);
+            patchMaskRest = alphaBitmap(PatchRest.mask(w, h, cl, cb - r.top, cr, cbot, fl, Math.min(f, Math.max(0, cb - r.top)), fr, fb), w, h);
+        } catch (Throwable t) { patchMaskOpen = null; patchMaskRest = null; Log.e(TAG, "patch masks failed", t); }
+    }
+
+    private static android.graphics.Bitmap alphaBitmap(byte[] a, int w, int h) {
+        int[] px = new int[w * h];
+        for (int i = 0; i < px.length; i++) px[i] = (a[i] & 0xff) << 24;
+        return android.graphics.Bitmap.createBitmap(px, w, h, android.graphics.Bitmap.Config.ARGB_8888);
+    }
+
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null;
         Log.i(TAG, "PATCH removed");
     }
 
