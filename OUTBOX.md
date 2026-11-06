@@ -108,3 +108,7 @@
 >
 > I also fixed everything the code reviewer found that was real, with unit tests and lint green.
 <!-- sha:1af4966c3e13 -->
+
+## 2026-11-06T23:07:27Z
+> Status: `ps`, `ae`, `pa` and `lq` all pass when run alone, so the earlier failures came from state left behind by other sections, plus the missing "automatic calibration off" setting in the `v`/`ae` test files. The `v`+`ps` run is the last check of that. Waiting on it.
+<!-- sha:e58cc533974d -->
