@@ -74,6 +74,7 @@ public final class ReportState {
             b.append("entrance watchers registered in this process (rotation tile, charger): ").append(yes(EntranceWatcher.watching())).append('\n');
             b.append("gesture unlock returns to the app that was open (AD5): ").append(Features.get(c, ResumeTarget.KEY, true) ? "on" : "off").append('\n');
         } catch (Throwable t) { /* not available */ }
+        b.append(costLines(c));
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');
         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
