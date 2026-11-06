@@ -214,7 +214,7 @@ public class TjAccessibilityService extends AccessibilityService {
     /** AC6: how much of its brightness the real lock screen keeps: MEASURED on the Android 10 emulator (run 74: (173,96,20) on screen vs (229,122,26) in the wallpaper = 0.755 / 0.787 / 0.77). A first estimate for the tablet's MtkSystemUI. */
     static final float DIM_KEYGUARD = 0.77f;
     /** AC6 / V5: how much brightness the screen around the open stock power menu keeps (the dialog's own scrim). MEASURED on the Android 10 emulator, run 136: the strip next to the menu keeps 0.791 / 0.791 / 0.789 of the closed lock screen. Our patch sits ABOVE that scrim, so it is dimmed the same. */
-    static final float DIM_OPEN = 0.79f;
+    static final float DIM_OPEN = 0.80f;   // AZ1c (Tj: "the darkened patch may be slightly too dark"): was 0.79. The AOSP source says the stock scrim is alpha 0.2 of a black-ish colour = exactly 0.80 (ScrimController.GRADIENT_SCRIM_ALPHA); emulator run 242 section v measured R 0.795 / G 0.800 / B 0.798
     /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Launcher control) scales it. */
     private float lockPatchDim(boolean photo) {
         float open = openScrim();
