@@ -28,12 +28,13 @@ public class LockNumberTest {
         assertTrue(LockNumber.alphaFor(-99) >= 60 && LockNumber.alphaFor(99) <= 255);
     }
     @Test public void measuredLookIsSane() {
-        // 6.png (tablet, v0.3.2, em 0.04045 x 600 px): bbox 180 px wide; 5.png scaled: 190.6 px => em must grow by 1.059..1.07
-        assertTrue(LockNumber.EM_PER_WIDTH > 0.04045f * 1.05f && LockNumber.EM_PER_WIDTH < 0.04045f * 1.08f);
-        assertTrue(LockNumber.BASELINE_PER_HEIGHT > 0.85 && LockNumber.BASELINE_PER_HEIGHT < 0.95);
-        assertTrue(LockNumber.WEIGHT == 300);   // Light
-        assertTrue(LockNumber.ALPHA > 170 && LockNumber.ALPHA < 190);   // ~71 % white (7.png)
-        assertTrue(Math.abs(LockNumber.BASELINE_PER_HEIGHT * 1024 - 925.0) < 1.5);   // 7.png: digits end at y=925
+        // v0.7.6, side-by-side photos (reference and ours in one image): the stock number is 223.3 px wide on a 600 px screen, digit pitch 16.0, Medium-ish strokes, baseline 0.916 of the height, centre 299.6
+        assertTrue(LockNumber.EM_PER_WIDTH > 0.0460f && LockNumber.EM_PER_WIDTH < 0.0480f);                 // em 27.6 .. 28.8 px at 600 px
+        assertTrue(LockNumber.EM_PER_WIDTH * 600 > 0.0429f * 600 * 1.05f);                                  // clearly bigger than the old (too small) 0.0429
+        assertTrue(LockNumber.BASELINE_PER_HEIGHT > 0.912 && LockNumber.BASELINE_PER_HEIGHT < 0.920);       // 934 .. 942 px of 1024
+        assertTrue(LockNumber.WEIGHT == 500);                                                               // Medium (Regular 10 %, Medium 55-60 %, Bold 30 % from the stem fit); Tj can nudge it
+        assertTrue(LockNumber.ALPHA >= 180 && LockNumber.ALPHA <= 215);
+        assertTrue(Math.abs(LockNumber.X_NUDGE_PER_WIDTH) < 0.002);                                         // centred
         assertTrue(LockNumber.DEFAULT_TEXT.equals("71125011907547"));
     }
 }

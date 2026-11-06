@@ -5,23 +5,29 @@ import android.content.Context;
 /**
  * X1 (Tj, 2026-11-03, L10 lock-screen rule relaxed by Tj for THIS feature only): a number at the bottom of the lock screen that disappears when the PIN pad is pulled up.
  * The number is drawn by the accessibility helper as a non-touchable, non-focusable overlay (it can never take a touch or a key, so it cannot block the PIN pad).
- * Look = measured from Tj's photo (research/uploads/2026-11-03/lockscreen-wallpaper-with-number.png): white Roboto digits, 14 characters 304 px wide on a 957 px wide photo shown
- * full-width, cap height 27.5 px, centred, baseline at 90.53 % of the screen height.
+ * Look: white Roboto digits, 14 characters, centred. v0.3.3 measured it from an old overlap photo; v0.7.6 re-measured it from side-by-side photos of the stock lock screen and ours (see the constants).
  */
 public final class LockNumber {
     public static final String KEY = "lock_number";             // switch, default ON ("Restore everything" turns it OFF)
     public static final String TEXT_KEY = "lock_number_text";
     public static final String DEFAULT_TEXT = "71125011907547";
-    /** text size (em) as a fraction of the screen width: 38.7 px em on a 957 px photo = 0.04045 */
-    public static final float EM_PER_WIDTH = 0.0429f;   // v0.3.3: ground truth = 7.png (the real number overlapping ours on the tablet): 192 px wide x 18 px high; ours at 0.04045 was 180 x 17
-    /** baseline as a fraction of the real display height: (1483.5 px * 600/957 - 3 px crop) / 1024 */
-    public static final float BASELINE_PER_HEIGHT = 0.9033f;   // v0.3.3: 7.png: the real digits end at y=925 of 1024 (ours ended at 927)
-    /** Light weight: the photo's strokes carry 19 % less ink than Regular at the same size (alpha-mass measurement of 5.png vs 6.png). */
-    public static final int WEIGHT = 300;
-    /** 7.png, per-pixel solve against the wallpaper just above the text: peak alpha 0.72 on unobstructed stroke pixels; top-bar ink 1.2 px-equivalent = a 1.6 px Light bar (0.062 em x 25.7) at ~0.73 opacity => 186/255 */
-    public static final int ALPHA = 186;
-    /** +1 px to the right (6.png centre 299.5 vs 300.6 in the photo), as a fraction of the screen width */
-    public static final float X_NUDGE_PER_WIDTH = 0.0017f;
+    /**
+     * Text size (em) as a fraction of the screen width. v0.7.6 (Tj, 2026-11-06: "slightly smaller than the correct size and font"): MEASURED on Tj's side-by-side photos (reference tablet and ours in the SAME
+     * photo, each rectified to 600 x 1024): the stock number is 223.3 px wide (ours 195.5 at 0.0429 Light), digit pitch 16.0 px, digit height 20.5 px; Roboto Medium at em 28.2 px reproduces that: 0.0470 x 600.
+     * The v0.3.3 value (0.0429) was fitted to an overlap photo (7.png, two numbers on top of each other), which can only show the LARGER of the two, so it came out too small.
+     */
+    public static final float EM_PER_WIDTH = 0.0470f;
+    /** Baseline as a fraction of the real display height: the stock number's baseline measures 0.9164 / 0.9167 (938 px) in two photos; ours was 0.9033 (925 px), i.e. 13 px too high. */
+    public static final float BASELINE_PER_HEIGHT = 0.916f;
+    /**
+     * Font weight. v0.7.6: the stock strokes are heavier than Regular: after removing the camera blur (calibrated on our own Light number) the vertical stem of a '1' is about 3.5-4.1 px at em 28, against Roboto
+     * Regular 2.6, Medium 3.3, Bold 3.9 px: Medium about 55-60 %, Bold 30 %, Regular 10 %. (The v0.3.3 "Light" came from an alpha-mass comparison with the old overlap photo.) Tj can nudge it in Launcher control.
+     */
+    public static final int WEIGHT = 500;
+    /** Brightness. The stock number peaks at about the same value as ours (camera saturated: not resolved better than +/- 25 %); heavier strokes already look brighter, so only a small step up from 186. */
+    public static final int ALPHA = 190;
+    /** Horizontal nudge as a fraction of the screen width: the stock number's centre measures 299.6 +/- 0.7 px of 600 (the text is centred at 300). */
+    public static final float X_NUDGE_PER_WIDTH = -0.0007f;
 
     /**
      * v0.7.6 (Tj, 2026-11-06: "the accessibility one you built is slightly smaller than the correct size and font"): Tj's own nudges (Launcher control) on top of the measured look, so a photo-based calibration
