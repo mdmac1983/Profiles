@@ -142,7 +142,7 @@ def inside_repo(path):
 
 
 def selftest():
-    """a synthetic 600 x 1024 test screen photographed under a known perspective must come back within 2 % MAE and the quad within 3 photo px"""
+    """a synthetic 600 x 1024 test screen photographed under a known perspective must come back within 2 % MAE and the quad within 5 photo px"""
     yy, xx = np.mgrid[0:DEV_H, 0:DEV_W]
     screen = np.stack([40 + 200 * xx / DEV_W, 60 + 120 * yy / DEV_H, 120 + 100 * ((xx // 60 + yy // 64) % 2)], axis=2).clip(0, 255).astype(np.uint8)
     scr = Image.fromarray(screen)
