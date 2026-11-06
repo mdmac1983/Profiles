@@ -1358,11 +1358,13 @@ check "SE-R3: with the rotation-tile switch OFF nothing happens" bash -c "[ \"\$
 adb shell settings put system accelerometer_rotation $SE_ROT0
 # -------- charger flick (default OFF)
 sefeat true true false; sefresh
-adb shell dumpsys battery set ac 1 >/dev/null 2>&1; adb shell dumpsys battery set ac 0 >/dev/null 2>&1; adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-off.txt"
+adb shell dumpsys battery unplug >/dev/null 2>&1; sleep 1        # the emulator's battery starts "on AC": begin from unplugged so in / out / in are three real changes
+adb shell "dumpsys battery set ac 1; dumpsys battery set ac 0; dumpsys battery set ac 1" >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-off.txt"
 check "SE-C1: the charger flick is OFF by default: in, out, in does nothing" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-off.txt)\" = custom ]"
 adb shell dumpsys battery reset >/dev/null 2>&1; sleep 1
 sefeat true true true; sefresh
-adb shell dumpsys battery set ac 1 >/dev/null 2>&1; adb shell dumpsys battery set ac 0 >/dev/null 2>&1; adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-on.txt"
+adb shell dumpsys battery unplug >/dev/null 2>&1; sleep 1
+adb shell "dumpsys battery set ac 1; dumpsys battery set ac 0; dumpsys battery set ac 1" >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-on.txt"
 check "SE-C2: with the charger flick ON, in / out / in takes Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-on.txt)\" = quickstep ]"
 adb shell dumpsys battery reset >/dev/null 2>&1
 adb logcat -d -s TjEntrance:I > "$OUT/se-log.txt" 2>&1
