@@ -199,7 +199,7 @@ public final class TabletReport {
         permissions(b, c);
         b.append(ReportState.section(c, helper, false));
         b.append(selfCheck(helper));
-        b.append(ownLog(40));
+        b.append(ownLog(40, SUMMARY_MAX - b.length()));   // PG3: what is left of the 11 000-character budget, newest log lines first
         return b.toString();
     }
 
