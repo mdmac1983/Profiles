@@ -1592,7 +1592,7 @@ ensurehome
 beat "before LQ"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 lqfeat(){ # lqfeat <lock_quiet true|false> <restore true|false>
-  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /><string name=\\\"qs_tiles_quickstep\\\">wifi,bt,rotation,flashlight</string></map>\" > shared_prefs/tj_features.xml'"; }
 wifi(){ adb shell settings get global wifi_on | tr -d '\r\n'; }
 lqshow(){ adb shell settings get secure lock_screen_show_notifications | tr -d '\r\n'; }
 adb shell settings put secure lock_screen_show_notifications 1; adb shell settings put secure lock_screen_allow_private_notifications 1       # a KNOWN original, so the restore can be checked
@@ -1601,24 +1601,39 @@ adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_res
 lqfeat true true; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home; sleep 4
 adb shell svc wifi enable; sleep 5
-info "LQ: before the lock: wifi_on=$(wifi) lock_screen_show_notifications=$(lqshow)"
+tiles(){ adb shell settings get secure sysui_qs_tiles | tr -d '\r\n'; }
+adb shell settings put secure sysui_qs_tiles "wifi,bt,rotation,flashlight"; sleep 1      # AW2: Tj's Quickstep arrangement is on screen before the lock
+info "LQ: before the lock: wifi_on=$(wifi) lock_screen_show_notifications=$(lqshow) tiles=$(tiles)"
 check "LQ: the lock screen shows no app notifications (lock_screen_show_notifications = 0 once the helper runs)" bash -c "[ \"$(lqshow)\" = 0 ]"
 adb logcat -c
 lockpad; sleep 9                                                    # the tablet is on the lock screen
 LQW1="$(wifi)"
 adb shell svc wifi enable; sleep 6                                  # something turns Wi-Fi on while locked
 LQW2="$(wifi)"
-info "LQ: on the lock screen wifi_on=$LQW1; after something turned it on again, 6 s later: $LQW2"
+LQT1="$(tiles)"
+info "LQ: on the lock screen wifi_on=$LQW1; after something turned it on again, 6 s later: $LQW2; tiles=$LQT1"
+check "LQ/AW2: on the lock screen (locked from Quickstep) the quick settings hold the rotation tile only" bash -c "[ \"$LQT1\" = rotation ]"
+# AW3: a radio that keeps coming back is switched off every time, never given up on (v0.8.0 stopped after 3 switch-offs a minute)
+for i in 1 2 3 4 5; do adb shell svc wifi enable; sleep 3; done; sleep 12
+LQW5="$(wifi)"; adb logcat -d -s TjA11y:I | grep -c "LOCKRADIOS a radio is on" > "$OUT/lq-lockradios.txt" 2>&1
+info "LQ/AW3: after Wi-Fi was switched on 5 times in a row while locked, 12 s after the last: wifi_on=$LQW5; switch-offs by the lock rule: $(tr -d ' \r\n' < $OUT/lq-lockradios.txt)"
+check "LQ/AW3: Wi-Fi switched on five times in a row while locked is switched off every time (still off at the end)" bash -c "[ \"$LQW5\" = 0 ]"
 check "LQ: on the lock screen Wi-Fi is off (from Quickstep, no custom launcher involved)" bash -c "[ \"$LQW1\" = 0 ]"
 check "LQ: a radio that comes on while the tablet is locked is switched off again" bash -c "[ \"$LQW2\" = 0 ]"
 pad d d 1 2 3 4 e; sleep 8                                          # the gesture: Quickstep again
 LQW3="$(wifi)"
 info "LQ: after the gesture unlock into Quickstep: wifi_on=$LQW3"
 check "LQ: a gesture unlock into Quickstep puts Wi-Fi back as it was before the lock" bash -c "[ \"$LQW3\" = 1 ]"
+LQT2="$(tiles)"
+info "LQ/AW2: after the gesture unlock into Quickstep: tiles=$LQT2"
+check "LQ/AW2: the gesture unlock into Quickstep brings Quickstep's own tile list back" bash -c "[ \"$LQT2\" = wifi,bt,rotation,flashlight ]"
 lockpad; sleep 9; pad 1 2 3 4 e; sleep 8                            # a plain PIN: the custom launcher
 LQW4="$(wifi)"
 info "LQ: after a plain PIN (custom launcher): wifi_on=$LQW4"
 check "LQ: a plain unlock into the custom launcher leaves Wi-Fi off" bash -c "[ \"$LQW4\" = 0 ]"
+LQT3="$(tiles)"
+info "LQ/AW2: after a plain PIN (custom launcher): tiles=$LQT3"
+check "LQ/AW2: a plain unlock into the custom launcher keeps the rotation-only list" bash -c "[ \"$LQT3\" = rotation ]"
 lqfeat false false; adb shell am force-stop "$PKG"; sleep 1; rebind; sleep 6
 check "LQ: with the switch off the original lock-screen notification setting is put back (1)" bash -c "[ \"$(lqshow)\" = 1 ]"
 adb shell locksettings clear --old 1234 > "$OUT/lq-clearpin.txt" 2>&1
