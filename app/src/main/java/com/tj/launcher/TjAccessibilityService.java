@@ -592,7 +592,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 android.graphics.Bitmap photo = !patchLockMode ? null : lockShot != null ? lockShot : patchShotBmp;   // AM1: the helper's fresh photo wins, else the stored REAL-pixel crop
                 if (photo != null) {
                     int px = lockShot != null ? lockShotDx : patchShotLeft - rect.left, py = lockShot != null ? lockShotDy : patchShotTop - rect.top;
-                    setDim(p, rest ? restDim(true) : lockPatchDim(true)); c.drawBitmap(photo, px, py, p); return;
+                    setDim(p, rest ? restDim(true) : PatchFade.mix(restDim(true), lockPatchDim(true), fadeProgress())); c.drawBitmap(photo, px, py, p); return;   // AZ1: the open brightness follows the stock fade-in (1 = complete)
                 }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
