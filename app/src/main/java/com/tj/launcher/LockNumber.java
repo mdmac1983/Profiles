@@ -33,9 +33,9 @@ public final class LockNumber {
      * v0.7.6 (Tj, 2026-11-06: "the accessibility one you built is slightly smaller than the correct size and font"): Tj's own nudges (Launcher control) on top of the measured look, so a photo-based calibration
      * can be corrected on the tablet without a new release. All are plain integers, default 0 = the measured look above.
      */
-    public static final String SIZE_KEY = "lock_number_size_pct";            // percent of the text size
-    public static final String WEIGHT_KEY = "lock_number_weight_nudge";      // steps of 100 on the font weight (Light 300 -> Regular 400 -> Medium 500)
-    public static final String ALPHA_KEY = "lock_number_alpha_pct";         // percent of the brightness (alpha)
+    public static final String SIZE_KEY = "lock_text_size_pct";            // percent of the text size
+    public static final String WEIGHT_KEY = "lock_text_weight_nudge";      // steps of 100 on the font weight (Light 300 -> Regular 400 -> Medium 500)
+    public static final String ALPHA_KEY = "lock_text_alpha_pct";         // percent of the brightness (alpha)
 
     private LockNumber() {}
 
