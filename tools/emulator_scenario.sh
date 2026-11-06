@@ -1659,7 +1659,9 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; REDB64="$(base64 -w0 "$OUT/ps-red.png")"
   adb shell "run-as $PKG sh -c 'echo $REDB64 | base64 -d > files/patchshot_r0.png'"      # not via /data/local/tmp: run-as cannot read it (SELinux)
   info "PS B: red crop installed: $(adb shell "run-as $PKG ls -l files/patchshot_r0.png" | tr -s ' ' | cut -d' ' -f5) bytes (the real crop: $(adb shell "run-as $PKG ls -l files/ps-backup.png" | tr -s ' ' | cut -d' ' -f5) bytes)"
-  rebind; pslock; sleep 5; shot 97-ps-wrong
+  PSPID0="$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r')"
+  adb shell am force-stop "$PKG"; sleep 1; rebind; pslock; sleep 5; shot 97-ps-wrong      # a FRESH process, exactly like every restart of the passing `ae` section: run 223 used a bare `rebind`, the old service instance (and its in-memory REAL crop) kept painting, so the red file on disk was never read and this control failed although the patch rests
+  info "PS B: helper process before / after the restart: ${PSPID0:-none} / $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r')"
   info "PS B: wallpaper patch status after the restart + lock: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'wallpaper_patch_status">[^<]*' | sed 's/.*>//'); resting decision: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'patch_rest_info">[^<]*' | sed 's/.*>//'); card rect: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'power_card_rect_r0">[^<]*' | sed 's/.*>//'); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
   info "PS B: helper log after the restart (tail): $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH|PAD|CAL' | tail -8 | cut -c19-190 | tr '\n' '|')"
   MAEW="$(psmae 97-ps-wrong 94-ps-bare "$SLOT")"
