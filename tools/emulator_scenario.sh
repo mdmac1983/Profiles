@@ -1935,6 +1935,7 @@ ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's pr
   adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/ptset.sed; sed -i -f files/ptset.sed shared_prefs/tj_features.xml'"; }
 # ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
 ptrun(){ local L="$1"
+  adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.2; adb shell input keyevent KEYCODE_BACK; sleep 2.2; adb logcat -c   # one unfilmed opening first: the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured; the real use is the second one on
   adb shell rm -f /sdcard/pt.mp4 >/dev/null 2>&1
   ( adb shell screenrecord --time-limit 6 /sdcard/pt.mp4 >/dev/null 2>&1 & )
   sleep 1.6

@@ -57,11 +57,11 @@ def analyse(P, S, fps, thr=0.006):
     r0 = statistics.mean(pre)
     noise = max(abs(v / r0 - 1) for v in pre)
     dev = lambda j: (P[j] / S[j]) / r0 - 1 if S[j] > 1 else 0.0
-    # opening: from just before the onset to 0.55 s after it; "final" = the last 0.12 s of that stretch
-    o_end = min(n, onset + int(0.55 * fps))
+    # opening: from just before the onset to 0.45 s after it (the stock ramp lasts 0.30 s); "final" = the last 0.10 s of that stretch = the settled end level
+    o_end = min(n, onset + int(0.45 * fps))
     open_devs = [(j, dev(j)) for j in range(max(0, onset - 2), o_end)]
     j_max, d_max = max(open_devs, key=lambda t: abs(t[1]))
-    tail = [d for (j, d) in open_devs if j >= o_end - int(0.12 * fps)]
+    tail = [d for (j, d) in open_devs if j >= o_end - int(0.10 * fps)]
     out = {"onset": onset / fps, "r0": r0, "rest_noise": noise, "open_max": abs(d_max), "open_at": (j_max - onset) / fps,
            "open_final": statistics.mean(tail) if tail else 0.0}
     # closing: after the surround reached its darkest point, the first time it brightens again by thr
