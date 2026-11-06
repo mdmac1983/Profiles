@@ -1598,18 +1598,19 @@ adb shell monkey -p $CN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; s
 info "PF custom account before Quickstep: notifications [$(pf_notifs)]"
 check "PF0b: the custom-only test app posted its notification" pf_has $CN
 # ---------------- pass A: an app only Quickstep opened
-lockpad; pad d d 1 2 3 4 e; sleep 7                                   # the default handshake -> Quickstep
+T_PAD0=$(date -u +%T); lockpad; T_PAD1=$(date -u +%T); pad d d 1 2 3 4 e; T_PAD2=$(date -u +%T); sleep 7        # the default handshake -> Quickstep
 getmode > "$OUT/pf-mode-a.txt"
 check "PF-A0: a Quickstep session began" grep -q quickstep "$OUT/pf-mode-a.txt"
 info "PF A in front right after the handshake: $(resumed | cut -c1-200)"
 adb shell settings put secure sysui_qs_tiles "wifi,bt,rotation,flashlight,airplane" >/dev/null 2>&1   # Tj arranges Quickstep's tiles with the pencil: here, written directly
-adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1
+T_QN=$(date -u +%T); adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; T_HOME=$(date -u +%T); sleep 1
 info "PF A in Quickstep: notifications [$(pf_notifs)]"
 check "PF-A1: the Quickstep app posted its notification (so the test means something)" pf_has $QN
 adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "set name|string|tracked" | tr '\n' ' ' > "$OUT/pf-origin-pre.txt"
 info "PF A tj_origin.xml BEFORE the lock (pending = marked Quickstep-opened): $(cut -c1-400 $OUT/pf-origin-pre.txt)"
 adb logcat -c
-adb shell input keyevent KEYCODE_POWER; sleep 10                      # LOCK: the session ends; the clean-up runs behind the lock screen
+T_LOCK=$(date -u +%T); adb shell input keyevent KEYCODE_POWER; sleep 10                      # LOCK: the session ends; the clean-up runs behind the lock screen
+info "PF A timeline (UTC, same clock as the lock log): lockpad began $T_PAD0, PIN pad up $T_PAD1, Enter typed by $T_PAD2, Quickstep app opened $T_QN, Home pressed $T_HOME, lock pressed $T_LOCK"
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/pf-log-a.txt" 2>&1
 info "PF A after the lock: notifications [$(pf_notifs)]; the clean-up said: $(grep 'AT LOCK' $OUT/pf-log-a.txt | tail -1 | cut -c1-420)"
 adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -45 > "$OUT/pf-lock-events.txt"; adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "set name|string|tracked" | tr '\n' ' ' > "$OUT/pf-origin.txt"
