@@ -13,7 +13,7 @@ Install: open the Release page, download `Launcher-v0.8.0.apk`, install it over 
 **A. Calibrate the patch (once)**
 1. On the lock screen hold the side key once (so the menu spot is known), then close the menu.
 2. Unlock into Quickstep, open **Launcher control**, group **Power menu (side key)**, tap **Calibrate the patch (one screenshot of the lock screen)**. If the top line says "needs permission", tap **Allow wallpaper access** first.
-3. Lock the tablet and wake it. The lock screen takes the screenshot by itself (or press Power + Volume Down yourself).
+3. Lock the tablet and wake it, and leave the plain lock screen alone (no PIN pad, no power menu, no notification panel). It takes the screenshot by itself (or press Power + Volume Down yourself, on that same plain lock screen).
 4. Unlock. The line **Lock-screen patch** at the top should say CALIBRATED.
 
 **B. Look at the lock screen**
