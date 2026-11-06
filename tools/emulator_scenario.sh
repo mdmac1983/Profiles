@@ -1729,6 +1729,48 @@ adb shell input keyevent KEYCODE_HOME; sleep 2
 adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
 fi # section rg
+if want uf; then # section uf
+ensurehome
+# ---- AQ1 (Tj, 2026-11-06: "open each launcher as quickly as possible from the lock screen without flicker or showing quickstep items if i unlock to the custom launcher"): Android's own EVENT LOG says which activity was
+#      resumed, in which order and when, so a launcher that shows up for a moment (a flicker) cannot hide. Three unlocks: a plain PIN in a custom session, a plain PIN after a Quickstep session, the Quickstep handshake.
+beat "before UF"
+adb shell locksettings set-pin 1234 > "$OUT/uf-setpin.txt" 2>&1
+pad(){ for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
+lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+uffeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+ufev(){ adb logcat -b events -d -v time 2>/dev/null | grep am_resume_activity | sed -E 's/^([0-9-]+ [0-9:.]+) .*,([^],]+)\].*$/\1 \2/'; }
+ufspan(){ awk '{split($2,a,":"); ms=int((((a[1]*60)+a[2])*60+a[3])*1000+0.5); if (NR==1) f=ms; l=ms} END {if (NR>0) printf "%d", l-f; else printf "0"}' "$1"; }
+ufnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#g'; }
+# ---- 1) a plain PIN in a custom session: our launcher, never the stock one
+uffeat; setmode custom; rebind; home; sleep 2
+lockpad; adb logcat -b events -c
+pad 1 2 3 4 e; sleep 5
+ufev > "$OUT/uf-custom.txt"
+info "UF1 plain PIN, custom session: resumed in order: $(ufnames "$OUT/uf-custom.txt"); span ${UFSPAN:-$(ufspan "$OUT/uf-custom.txt")} ms"
+check "UF1: a plain PIN in a custom session ends on our launcher" bash -c "tail -1 $OUT/uf-custom.txt | grep -q 'com.tj.launcher/'"
+check "UF1: ... and the stock launcher / Recents was NEVER resumed on the way (no flash of Quickstep)" bash -c "! grep -q ' com.android.launcher3/' $OUT/uf-custom.txt"
+# ---- 2) a plain PIN after a Quickstep session (an app open in Quickstep): no Quickstep item may appear after the Enter
+uffeat; setmode quickstep; rebind; home; sleep 2
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+lockpad; adb logcat -b events -c
+pad 1 2 3 4 e; sleep 8
+ufev > "$OUT/uf-after-qs.txt"
+info "UF2 plain PIN after a Quickstep session (Contacts was open): resumed in order: $(ufnames "$OUT/uf-after-qs.txt"); span $(ufspan "$OUT/uf-after-qs.txt") ms; mode now: $(getmode)"
+check "UF2: after a Quickstep session a plain PIN ends in the custom world (mode custom)" bash -c "[ \"$(getmode)\" = custom ]"
+check "UF2: ... and neither the stock launcher nor the Quickstep app (Contacts) is resumed after the Enter" bash -c "! grep -qE ' (com.android.launcher3/|com.android.contacts/)' $OUT/uf-after-qs.txt"
+# ---- 3) the Quickstep handshake: the stock launcher is the last thing, our launcher does not flash in after it
+uffeat; setmode custom; rebind; home; sleep 2
+lockpad; adb logcat -b events -c
+pad d d 1 2 3 4 e; sleep 6
+ufev > "$OUT/uf-qs.txt"
+info "UF3 Quickstep handshake: resumed in order: $(ufnames "$OUT/uf-qs.txt"); span $(ufspan "$OUT/uf-qs.txt") ms; mode now: $(getmode)"
+check "UF3: the handshake ends on the stock launcher (Quickstep)" bash -c "tail -1 $OUT/uf-qs.txt | grep -q ' com.android.launcher3/'"
+check "UF3: ... and our launcher is not resumed AFTER the stock one (no custom flash into Quickstep)" bash -c "awk '/ com.android.launcher3\\//{s=1; next} s && / com.tj.launcher\\//{bad=1} END{exit bad}' $OUT/uf-qs.txt"
+adb shell locksettings clear --old 1234 > "$OUT/uf-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
+setmode custom; home
+fi # section uf
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
