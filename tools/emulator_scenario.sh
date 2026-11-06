@@ -60,6 +60,14 @@ _sectime(){ local n; n=$(date +%s); [ -n "$_SEC" ] && info "TIME $_SEC $((n-_SEC
 want(){ local r=1; if [ -z "$SECTIONS" ]; then r=0; else case ",$SECTIONS," in *",$1,"*) r=0;; esac; fi; [ "$r" -eq 0 ] && _sectime "$1"; return "$r"; }
 info "sections: ${SECTIONS:-ALL}"
 # helpers that more than one section uses (hoisted here so a section-only run has them)
+# pa* (sections pa and pt): the automatic-calibration test features, the lock screen, the stored-crop status, the pixel compare
+pafeat(){ # pafeat <automatic true|false> <manual calibration window end, epoch ms; 0 = none>: wipes the stored crop and the learned menu place
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/patchshot_r0.png files/patchshot_r1.png; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"$1\\\" /><string name=\\\"patch_cal_until\\\">$2</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+palock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
+pastatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_shot_status">[^<]*' | sed 's/.*>//'; }
+panote(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_auto_note">[^<]*' | sed 's/.*>//'; }
+pamae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+panums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
 # tap an app icon in the OPEN drawer by its label (found with uiautomator), falling back to fixed coordinates: the drawer order is not the same on every emulator boot
 tapapp(){ local l="$1" fx="$2" fy="$3" b; adb shell uiautomator dump /sdcard/tjui.xml >/dev/null 2>&1
   b=$(adb shell cat /sdcard/tjui.xml 2>/dev/null | tr '>' '\n' | grep -F "text=\"$l\"" | grep -o 'bounds="[^"]*"' | head -1 | grep -o '[0-9]\+' | tr '\n' ' ')
@@ -1822,13 +1830,6 @@ ensurehome
 #      resting patch is invisible (MAE against the bare lock screen).  Phase 3 (AU2): a screenshot taken while the power menu is OPEN is refused, the stored crop stays. The PIN is ALWAYS cleared again at the end.
 beat "before PA"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/pa-grant.txt" 2>&1
-pafeat(){ # pafeat <automatic true|false> <manual calibration window end, epoch ms; 0 = none>: wipes the stored crop and the learned menu place
-  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/patchshot_r0.png files/patchshot_r1.png; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"$1\\\" /><string name=\\\"patch_cal_until\\\">$2</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
-palock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
-pastatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_shot_status">[^<]*' | sed 's/.*>//'; }
-panote(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_auto_note">[^<]*' | sed 's/.*>//'; }
-pamae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
-panums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
 adb shell settings put secure lock_screen_show_notifications 0           # a "Screenshot saved" notification must not sit on the lock screen next to the slot
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: the stored real pixels are the only source
 pafeat false 0; adb shell am force-stop "$PKG"; sleep 1
