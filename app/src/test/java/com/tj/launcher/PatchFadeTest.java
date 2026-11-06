@@ -60,7 +60,7 @@ public class PatchFadeTest {
     @Test public void theOldJumpWasAVisibleStep() {
         assertTrue(oldStep(0.80f, 40) > 0.15f);    // noticed 40 ms late: the patch was ~15 % darker than its surround at that moment
         assertTrue(oldStep(0.80f, 80) > 0.08f);
-        assertTrue(oldStep(0.80f, 120) < 0.06f);   // only a late reaction (the scrim nearly there) hides the step
+        assertTrue(oldStep(0.80f, 120) < 0.07f);   // only a late reaction (the scrim nearly there) hides the step (about 0.065 with LEAD_MS 10, 0.044 with 25)
     }
     @Test public void theFadeEndsWithTheFinalBrightness() {
         assertTrue(PatchFade.fading(10_000, 10_000));
