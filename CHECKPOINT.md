@@ -1,23 +1,23 @@
-# CHECKPOINT 533 — read me first, then TASKS.md
+# CHECKPOINT 534 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T21:37:39Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `5893cd8` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T21:38:41Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `6ecfa5c` (this checkpoint is the commit after it)
 
 ## Just done
-AW5 auto-calibration + AU2/AU4/AU6/AU7/AU8 coded; sections pa and pt added; fade lead knob + timing nudge
+TASKS: AZ STATUS block; AW2 and AW3 ticked (run #239); AW4 check in lq; runs pa and pt dispatched on ckpt 533
 
 ## Do this next
-dispatch emulator pa and pt, read RESULTS; tune PatchFade.LEAD_MS from pt metrics; then delta gate + ship v0.8.1
+read runs pa and pt (list_workflow_runs branch filter, perPage 3), tune LEAD_MS, then delta gate
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M app/src/main/java/com/tj/launcher/ControlActivity.java
-     M app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  58c4d76 ckpt 533: AW5 auto-calibration + AU2/AU4/AU6/AU7/AU8 coded; sections pa and pt added; fa
   d40e485 ckpt 532: AZ1 core coded (PatchFade + service fade + scan deferral + fast path), AW2 til
   3fca9b6 ckpt 531: AZ2 PROVEN on real Android 10 (run #238, section bs: 13 PASS; bug reproduced w
   b105cf5 ckpt 530: AZ2 coded: BatterySaverGuard no longer forces ON, heals swallowed turn-ON via 
@@ -27,8 +27,7 @@ dispatch emulator pa and pt, read RESULTS; tune PatchFade.LEAD_MS from pt metric
   3a25324 ckpt 526: Tj chose AW5 = A (auto-calibrate); asked to finish the session for a new one a
   e48123d ckpt 525: AX1 audited from the code: the guard cannot undo a tile tap in v0.8.0 (default
   cd79978 ckpt 524: Tj reports v0.8.0: battery saver tile in Quickstep quick settings still does n
-  4a20366 ckpt 523: handoff manifest saved (.handoff/handoff.md + archive; CLAUDE.md/AGENTS.md lea
 ```
 
-(16 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
