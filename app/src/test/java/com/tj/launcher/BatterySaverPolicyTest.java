@@ -45,6 +45,24 @@ public class BatterySaverPolicyTest {
         assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, old));
         assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, null));
     }
+    // v0.7.6 (review of v0.7.5): the cap protects against a ROM that keeps turning the saver off (REACTIVE switch-ons); a DELIBERATE entry into Quickstep is never counted or capped
+    @Test public void aDeliberateEntrySwitchesItOnEvenWhenTheReactiveCapIsFull() {
+        long[] three = {NOW - 1000, NOW - 60_000, NOW - 300_000};
+        assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, three));   // reactive: capped
+        assertTrue(BatterySaverPolicy.deliberateOn(true, false, false, false));                // deliberate: not capped
+    }
+    @Test public void aDeliberateSwitchOnKeepsEveryOtherExclusion() {
+        assertFalse(BatterySaverPolicy.deliberateOn(false, false, false, false));   // the Quickstep switch is off
+        assertFalse(BatterySaverPolicy.deliberateOn(true, true, false, false));     // never in the custom launcher
+        assertFalse(BatterySaverPolicy.deliberateOn(true, false, true, false));     // never while automation is paused (breaker / Restore everything)
+        assertFalse(BatterySaverPolicy.deliberateOn(true, false, false, true));     // already on: nothing to do
+    }
+    @Test public void theReactiveRuleIsExactlyTheDeliberateRuleAndTheCap() {
+        for (boolean sw : new boolean[] { true, false }) for (boolean custom : new boolean[] { true, false })
+            for (boolean paused : new boolean[] { true, false }) for (boolean on : new boolean[] { true, false }) {
+                assertEquals(BatterySaverPolicy.deliberateOn(sw, custom, paused, on), BatterySaverPolicy.shouldTurnOn(sw, custom, paused, on, NOW, NO_ON));
+            }
+    }
     @Test public void theFollowRuleIsExclusive() {   // never both directions for the same state
         for (boolean custom : new boolean[] { true, false }) for (boolean on : new boolean[] { true, false }) {
             boolean off = BatterySaverPolicy.shouldTurnOff(true, custom, false, on, NOW, NONE);
