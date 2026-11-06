@@ -1794,7 +1794,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   shot 96-ps-menu-open
   adb logcat -d -s TjA11y:I | grep -E "CARD area" > "$OUT/ps-c-log.txt" 2>&1
   check "PS C: the open menu is the stock menu (no card of ours)" bash -c "grep -q 'stock=true' $OUT/ps-c-log.txt && [ \"\$(grep -vc 'stock=true' $OUT/ps-c-log.txt)\" = 0 ]"
-  RING="30x$(( FB - FT ))+$(( FL - 32 ))+$FT"
+  RING="30x$(( FB - FT ))+$(( FL - 100 ))+$FT"      # a strip 70-100 px left of the panel: the strip right next to it (FL-32) carries the panel's shadow and measured a scrim of 0.7497 instead of ~0.799 in runs 209, 242 and 258 (section v measures 0.799 right next to it, but there the lock wallpaper differs)
   MC="$(convert "$OUT/99-ps-bare2.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
   MO="$(convert "$OUT/96-ps-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
   KO="$(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "%.4f", ($5/$1+$6/$2+$7/$3)/3}')"
