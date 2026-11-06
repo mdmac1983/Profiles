@@ -30,3 +30,4 @@ rt     :: 45  :: opt  :: TaskOrigin|AppOrigin|QuickstepUsage|ReturnReset|ShellSe
 pf     :: 84  :: opt  :: ReturnReset|AppOrigin|RecentsDirty|ProfileSession|QuickstepUsage|TaskOrigin :: trackDirty|markQuickstep|runReset|resetRecents :: the notification panel and the clean-up at lock with shared apps
 im     :: 34  :: opt  :: ImmersiveProfile :: policy_control|immersive :: the status-bar switch
 ao     :: 60  :: opt  :: PickerGuard|WallpaperPickerChoice|OptionsPopupView :: PickerGuard|WallpaperPickerChoice|startWallpaperPicker|hide_my_photos :: AO1: the Wallpapers entry opens one picker (no chooser); a picker tile with the label is covered and cannot be tapped
+rg     :: 30  :: opt  :: RecentsGuard|AppOrigin|ReturnReset :: RecentsGuard|recents_drawer_only|closeOneRecentsCard :: AP1: opening Recents in the custom launcher closes the cards of apps that are not in the drawer (a drawer app stays)
