@@ -1476,11 +1476,12 @@ ensurehome
 beat "before LQ"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 lqfeat(){ # lqfeat <lock_quiet true|false> <restore true|false>
-  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
 wifi(){ adb shell settings get global wifi_on | tr -d '\r\n'; }
 lqshow(){ adb shell settings get secure lock_screen_show_notifications | tr -d '\r\n'; }
 adb shell settings put secure lock_screen_show_notifications 1; adb shell settings put secure lock_screen_allow_private_notifications 1       # a KNOWN original, so the restore can be checked
 adb shell locksettings set-pin 1234 > "$OUT/lq-setpin.txt" 2>&1
+adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1   # v0.7.6 (review): a FRESH restore snapshot, so the first value taken is the known 1 set above, not the leftover of an earlier section
 lqfeat true true; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home; sleep 4
 adb shell svc wifi enable; sleep 5
