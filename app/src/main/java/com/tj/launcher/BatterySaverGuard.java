@@ -69,14 +69,24 @@ public final class BatterySaverGuard {
     }
 
     /** AG1 (Tj, 2026-11-06): the saver FOLLOWS the launcher. In Quickstep a saver that is off is switched back ON (switch in Launcher control, default ON); at most {@link BatterySaverPolicy#MAX_ON_WRITES} times per 10 minutes. */
-    private static void keepOnInQuickstep(Context c, ContentResolver cr, String why) {
+    private static void keepOnInQuickstep(Context c, ContentResolver cr, String why, boolean reactive) {
         long now = System.currentTimeMillis();
         if (Mode.isCustom(c)) return;                                  // the custom launcher wants it off: nothing to do
+        boolean limited = false;
         synchronized (BatterySaverGuard.class) {
-            if (!BatterySaverPolicy.shouldTurnOn(qsEnabled(c), false, CrashGuard.automationOff(c), false, now, onWrites)) return;
-            if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  battery saver is off in Quickstep but the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
-            onWrites[onIdx++ % onWrites.length] = now;
+            boolean auto = CrashGuard.automationOff(c);
+            // v0.7.6: only a REACTIVE switch-on (the setting changed to 0 behind our back) uses and counts toward the cap; a deliberate entry into Quickstep always switches it on
+            boolean go = reactive ? BatterySaverPolicy.shouldTurnOn(qsEnabled(c), false, auto, false, now, onWrites) : BatterySaverPolicy.deliberateOn(qsEnabled(c), false, auto, false);
+            if (!go) { limited = reactive && BatterySaverPolicy.deliberateOn(qsEnabled(c), false, auto, false); }
+            else if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  battery saver is off in Quickstep but the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
+            else if (reactive) onWrites[onIdx++ % onWrites.length] = now;
         }
+        if (limited) {   // only the cap held it back: say so (once per window is enough: the log line is rate-limited by LockLog), so a report shows WHY the saver stayed off
+            Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  not switched on again in Quickstep: it was turned off " + BatterySaverPolicy.MAX_ON_WRITES + " times within 10 minutes (power: " + powerSource(c) + ")");
+            LockLog.add(c, "BATSAVER", "cap reached: not switching it on again (" + why + ", power=" + powerSource(c) + ")");
+            return;
+        }
+        if (!(reactive ? true : true) || !BatterySaverPolicy.deliberateOn(qsEnabled(c), false, CrashGuard.automationOff(c), false)) return;
         Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 1);
         Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver ON in Quickstep (" + why + ")");
         Log.i(TAG, "BATSAVER on (" + why + ")");
