@@ -164,6 +164,10 @@ public class ControlActivity extends Activity {
         LinearLayout nbtns = row();
         nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
         page.addView(nbtns);
+        // v0.7.6: nudges on top of the measured look (applied the next time the lock screen shows the number); 0 = as measured
+        stepper("Number size", LockNumber.SIZE_KEY, 2, -30, 30, " %");
+        stepper("Number weight (0 = measured, +1 bolder, -1 lighter)", LockNumber.WEIGHT_KEY, 1, -2, 4, " step");
+        stepper("Number brightness", LockNumber.ALPHA_KEY, 5, -40, 40, " %");
 
         section("Unlock into Quickstep (secret handshakes)");
         note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of the handshakes you SELECT below, done on the lock screen BEFORE the PIN. Select as many as you like; at least one always stays selected, so you can never lock yourself out. Which digits you type is never read.");
