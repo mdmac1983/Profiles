@@ -1526,6 +1526,58 @@ check "LQ: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fa
 adb shell svc wifi enable; adb shell settings put secure lock_screen_show_notifications 1; adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section lq
+
+if want ao; then # section ao
+ensurehome
+# ---- AO1 (Tj, 2026-11-06: "when i hold down on the home screen and select wallpapers, make sure it always uses the default android wallpaper picker and doesn't offer another app ... permanently remove 'my photos'"):
+#      (1) the Wallpapers entry opens ONE picker (never an "Open with" list); (2) a tile of the picker with the label is covered and cannot be tapped. The emulator's picker has no "My photos" tile, so the debug build is
+#      pointed (test knob, debuggable builds only) at a row of the Settings app: "Network & internet".
+beat "before AO"
+setmode custom; home; sleep 2
+adb shell input swipe 300 700 300 700 1200; sleep 2
+adb shell uiautomator dump /sdcard/ao.xml >/dev/null 2>&1; adb shell cat /sdcard/ao.xml 2>/dev/null | tr '>' '\n' > "$OUT/ao-longpress.txt"
+AOB="$(grep -iE 'text="[^"]*wallpapers"' "$OUT/ao-longpress.txt" | head -1 | grep -o 'bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | grep -o '[0-9]*' | tr '\n' ' ')"
+read -r AOL AOT AOR AOBT <<< "$AOB"
+if [ -n "$AOL" ]; then adb shell input tap $(( (AOL + AOR) / 2 )) $(( (AOT + AOBT) / 2 )); sleep 4; else info "AO1: no Wallpapers entry in the long-press dump"; fi
+resumed > "$OUT/ao-picker-resumed.txt"; shot ao-picker
+info "AO1: after tapping Wallpapers: $(cut -c1-220 "$OUT/ao-picker-resumed.txt"); SET_WALLPAPER handlers: $(adb shell pm query-activities --brief -a android.intent.action.SET_WALLPAPER 2>/dev/null | tr '\n' '|' | cut -c1-300)"
+check "AO1: the Wallpapers entry never shows an 'Open with' / chooser list (one explicit picker)" bash -c "! grep -qE 'ResolverActivity|ChooserActivity' $OUT/ao-picker-resumed.txt"
+adb shell input keyevent KEYCODE_BACK; sleep 1; home
+
+# ---- the hider on a Settings row (knob): phase 1 = the guard OFF (control: the row is visible and opens), phase 2 = ON (the row is covered, a tap on it opens nothing), phase 3 = gone with Settings
+aofeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"hide_my_photos\\\" value=\\\"$1\\\" /><string name=\\\"picker_test_comp\\\">com.android.settings/.Settings</string><string name=\\\"picker_test_label\\\">Network &amp; internet</string></map>\" > shared_prefs/tj_features.xml'"; }
+aorow(){   # prints "cx cy" of the label in the Settings home page (from a uiautomator dump), or nothing
+  adb shell uiautomator dump /sdcard/ao2.xml >/dev/null 2>&1; adb shell cat /sdcard/ao2.xml 2>/dev/null | tr '>' '\n' > "$OUT/ao-settings-dump.txt"
+  local b; b="$(grep -E 'text="Network &amp; internet"' "$OUT/ao-settings-dump.txt" | head -1 | grep -o 'bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | grep -o '[0-9]*' | tr '\n' ' ')"
+  local l t r bt; read -r l t r bt <<< "$b"; [ -n "$l" ] && echo "$(( (l + r) / 2 )) $(( (t + bt) / 2 ))"
+}
+aospread(){ # $1 = png, $2 = cx, $3 = cy: the spread (standard deviation x1000) of a 120x24 patch around the label
+  convert "$1" -crop 120x24+$(( $2 - 60 ))+$(( $3 - 12 )) +repage -colorspace Gray -format '%[fx:int(standard_deviation*1000)]' info: 2>/dev/null; }
+aofeat false; setmode custom; rebind; home; sleep 2
+adb shell am start -a android.settings.SETTINGS >/dev/null 2>&1; sleep 4
+AOC="$(aorow)"; read -r AOX AOY <<< "$AOC"
+if [ -z "$AOX" ]; then info "AO1: the Settings home page has no 'Network & internet' row on this image: the cover check is skipped"
+else
+  shot ao-row-off; AOS_OFF="$(aospread "$OUT/ao-row-off.png" "$AOX" "$AOY")"
+  info "AO1: guard OFF: row spread=$AOS_OFF (text is visible)"
+  check "AO1 (control): with the guard OFF the row is visible (text and icon give a high spread)" bash -c "[ \"${AOS_OFF:-0}\" -ge 15 ]"
+  adb shell input keyevent KEYCODE_HOME; sleep 2
+  aofeat true; setmode custom; rebind; home; sleep 2
+  adb shell am start -a android.settings.SETTINGS >/dev/null 2>&1; sleep 4
+  resumed > "$OUT/ao-before-tap.txt"
+  shot ao-row-on; AOS_ON="$(aospread "$OUT/ao-row-on.png" "$AOX" "$AOY")"
+  adb shell dumpsys window windows 2>/dev/null | grep -c TjPhotosCover > "$OUT/ao-cover-count.txt"
+  info "AO1: guard ON: row spread=$AOS_ON, cover windows=$(tr -d ' \r\n' < "$OUT/ao-cover-count.txt"); status: $(adb logcat -d -s TjPickerGuard:I | tail -2 | tr '\n' '|' | cut -c1-240)"
+  check "AO1: with the guard ON the row is covered (one flat colour: spread below 6)" bash -c "[ \"${AOS_ON:-999}\" -lt 6 ]"
+  adb shell input tap "$AOX" "$AOY"; sleep 3
+  resumed > "$OUT/ao-after-tap.txt"
+  check "AO1: a tap on the covered row opens nothing (Settings home is still in front)" bash -c "[ \"\$(cat $OUT/ao-before-tap.txt)\" = \"\$(cat $OUT/ao-after-tap.txt)\" ]"
+  adb shell input keyevent KEYCODE_HOME; sleep 4
+  adb shell dumpsys window windows 2>/dev/null | grep -c TjPhotosCover > "$OUT/ao-cover-gone.txt"
+  check "AO1: the cover goes away with the picker (no cover window after Home)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/ao-cover-gone.txt)\" = 0 ]"
+fi
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
+fi # section ao
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)

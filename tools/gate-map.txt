@@ -29,3 +29,4 @@ lq     :: 75  :: opt  :: LockQuiet|RestoreStore|ProfileSession :: lock_quiet|Loc
 rt     :: 45  :: opt  :: TaskOrigin|AppOrigin|QuickstepUsage|ReturnReset|ShellServer :: - :: the task-precise clean-up at the lock (helper running)
 pf     :: 84  :: opt  :: ReturnReset|AppOrigin|RecentsDirty|ProfileSession|QuickstepUsage|TaskOrigin :: trackDirty|markQuickstep|runReset|resetRecents :: the notification panel and the clean-up at lock with shared apps
 im     :: 34  :: opt  :: ImmersiveProfile :: policy_control|immersive :: the status-bar switch
+ao     :: 60  :: opt  :: PickerGuard|WallpaperPickerChoice|OptionsPopupView :: PickerGuard|WallpaperPickerChoice|startWallpaperPicker|hide_my_photos :: AO1: the Wallpapers entry opens one picker (no chooser); a picker tile with the label is covered and cannot be tapped
