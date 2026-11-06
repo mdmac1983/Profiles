@@ -1991,7 +1991,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     info "PT $LB open curve a: $(echo "$CV" | cut -c1-340)"
     info "PT $LB open curve b: $(echo "$CV" | cut -c341-680)"
     if [ "$LB" = jump ] || [ "$LB" = fade25 ]; then
-      CC="$(grep "PTCLOSE label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/.*brightening) //')"
+      CC="$(grep "PTCLOSE label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/.*surround) //')"
       info "PT $LB close curve a: $(echo "$CC" | cut -c1-340)"
       info "PT $LB close curve b: $(echo "$CC" | cut -c341-680)"
       info "PT $LB close curve c: $(echo "$CC" | cut -c681-1020)"
