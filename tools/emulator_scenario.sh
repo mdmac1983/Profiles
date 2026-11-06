@@ -1595,7 +1595,7 @@ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"
 rgfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"recents_drawer_only\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
 rgcount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|affinity=)$1"; }   # a task of the package, whichever way this Android prints it
 rgshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-150 | head -${1:-8} | tr '\n' '|'; }
-rgopen(){ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; }
+rgopen(){ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 > "$OUT/rg-monkey-cal.txt" 2>&1; sleep 3; resumed > "$OUT/rg-resumed-cal.txt"; adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; info "AP1: opened Calendar then Contacts: calendar was in front: $(cut -c1-110 "$OUT/rg-resumed-cal.txt"); monkey said: $(head -c 80 "$OUT/rg-monkey-cal.txt" | tr '\n' ' ')"; }
 adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
 rgfeat false; setmode custom; rebind; home; sleep 2
 rgopen
