@@ -1652,7 +1652,17 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   MAS="$(psmae 95-ps-rest 94-ps-bare "$SLOT")"
   info "PS B: resting patch (real pixels) vs the bare lock screen over the slot $SLOT: MAE $MAS"
   check "PS B: the resting patch is INVISIBLE (slot MAE < 0.5 % against the bare lock screen)" awk -v m="$MAS" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
-  check "PS B: the patch really rests there (log 'PATCH rest on')" grep -q 'PATCH rest on' "$OUT/ps-b-log.txt"
+  info "PS B: patch log lines: $(tr '\n' '|' < "$OUT/ps-b-log.txt" | cut -c1-300); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
+  # POSITIVE CONTROL (a resting patch that is invisible could also be a patch that is not there): swap the stored crop for a solid RED one and restart the helper: the patch must now be plainly visible at rest. The real crop is put back afterwards.
+  adb shell "run-as $PKG sh -c 'cp files/patchshot_r0.png files/ps-backup.png'"
+  convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; adb push "$OUT/ps-red.png" /data/local/tmp/ps-red.png >/dev/null 2>&1
+  adb shell "run-as $PKG sh -c 'cp /data/local/tmp/ps-red.png files/patchshot_r0.png'"
+  rebind; pslock; sleep 5; shot 97-ps-wrong
+  MAEW="$(psmae 97-ps-wrong 94-ps-bare "$SLOT")"
+  info "PS B: positive control: resting patch with a RED crop vs the bare lock screen over the slot: MAE $MAEW"
+  check "PS B: the patch really rests there (a deliberately wrong red crop shows plainly at rest, slot MAE > 5 %)" awk -v m="$MAEW" 'BEGIN{exit !(m!="" && m+0 > 0.05)}'
+  adb shell "run-as $PKG sh -c 'cp files/ps-backup.png files/patchshot_r0.png'"
+  rebind; pslock; sleep 4
   # ---- phase C: the menu opens as the STOCK menu; the Screenshot spot is covered; a tap on it closes the menu
   adb logcat -c
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
