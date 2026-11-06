@@ -97,6 +97,11 @@ public class ControlActivity extends Activity {
         card.addView(chipLine("Active launcher", "Quickstep (stock)  -  settings only open here", ACCENT));
         card.addView(chipLine("Accessibility helper", helper ? "ON" : "OFF  -  turn it on in Accessibility settings (power menu, reset, lock screen, pencil need it)", helper ? ACCENT : Color.parseColor("#B3261E")));
         card.addView(chipLine("adb permission", grant ? "granted" : "not granted  -  keyboard / tiles / faster reset wait for it (see Advanced > adb setup guide)", grant ? ACCENT : Color.parseColor("#B26A00")));
+        if (Features.isCover(Features.powerMode(this)) && Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true)) {   // AM1: say plainly whether the lock-screen patch can be invisible yet
+            String cal = PatchShot.summary(this);
+            boolean calibrated = !cal.startsWith("not calibrated");
+            card.addView(chipLine("Lock-screen patch", calibrated ? cal : "not calibrated  -  the Screenshot button still shows in the lock-screen power menu (group Power menu > Calibrate the patch)", calibrated ? ACCENT : Color.parseColor("#B26A00")));
+        }
         box.addView(card);
         box = page;
         // problems first: what the launcher did on its own (crash breaker, paused automation)
