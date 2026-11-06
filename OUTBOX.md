@@ -124,3 +124,7 @@
 ## 2026-11-06T23:29:58Z
 > Status: waiting about three minutes on the last gate group and the `ps` re-run.
 <!-- sha:680461f33bcf -->
+
+## 2026-11-06T23:35:18Z
+> Status: waiting on the last confirmation run (`pa` alone). Release note text is drafted. Once `pa` is green I run `ship.sh` and start the signed build.
+<!-- sha:c0f51a97310e -->
