@@ -35,6 +35,49 @@ public final class PatchRest {
         return Math.max(0, Math.min(t, h));
     }
 
+    // ------------------------------------------------------------------------------------------------------------------------------------------------
+    // AH3 (Tj, 2026-11-06, with side-by-side photos: our card is the right size and sits flush, but a flat bluish block beside / below it shows where the wallpaper patch does not match the live lock screen).
+    // The old patch covered the WHOLE menu rectangle plus a 12 px ring on every side with hard edges. The new one covers ONLY the Screenshot slot (below our card), reaches just past the stock panel's edge and
+    // fades out softly beyond it, so any residual mismatch is a gentle gradient instead of a visible frame. Pure geometry + mask, JVM-tested; {@link TjAccessibilityService} draws it.
+    // ------------------------------------------------------------------------------------------------------------------------------------------------
+
+    /** dp: how far the opaque core reaches beyond the stock panel's edge (covers its antialiased edge), the soft fringe outside that, and how far the OPEN patch reaches up under our card (hidden by it). */
+    public static final float EDGE_DP = 2f, FEATHER_DP = 8f, OVERLAP_DP = 3f;
+
+    /**
+     * The slot window {left, top, right, bottom} in display px: the learned panel's left / right / bottom plus the margin (edge + feather), starting one feather width ABOVE the card's bottom edge (room for the soft
+     * top edge of the RESTING patch; while the menu is open that strip is transparent and the card covers the rest). Clamped to the display.
+     */
+    public static int[] slotWindow(int panelLeft, int cardBottom, int panelRight, int panelBottom, int edge, int feather, int dispW, int dispH) {
+        int m = edge + feather;
+        return new int[] { Math.max(0, panelLeft - m), Math.max(0, cardBottom - feather), Math.min(dispW, panelRight + m), Math.min(dispH, panelBottom + m) };
+    }
+
+    /**
+     * 0..255: how much of the patch shows at (x, y) of its window (window coordinates). The core [cl, cr) x [ct, cb) is fully opaque; fl / ft / fr / fb are the widths of the soft fringe OUTSIDE it on each side
+     * (0 = a hard edge: nothing shows beyond it). The two directions multiply, so a corner fades in both; the ramp is a smoothstep so there is no visible slope break.
+     */
+    public static int alphaAt(int x, int y, int cl, int ct, int cr, int cb, int fl, int ft, int fr, int fb) {
+        float ax = 1f, ay = 1f;
+        if (x < cl) ax = ramp(cl - x, fl); else if (x >= cr) ax = ramp(x - cr + 1, fr);
+        if (y < ct) ay = ramp(ct - y, ft); else if (y >= cb) ay = ramp(y - cb + 1, fb);
+        return Math.round(255f * ax * ay);
+    }
+
+    private static float ramp(int dist, int width) {
+        if (width <= 0) return 0f;
+        float t = 1f - dist / (float) (width + 1);
+        if (t <= 0f) return 0f;
+        return t * t * (3f - 2f * t);
+    }
+
+    /** The mask (w * h bytes, row-major, 0..255 as unsigned) for {@link #alphaAt}. */
+    public static byte[] mask(int w, int h, int cl, int ct, int cr, int cb, int fl, int ft, int fr, int fb) {
+        byte[] m = new byte[Math.max(0, w) * Math.max(0, h)];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) m[y * w + x] = (byte) alphaAt(x, y, cl, ct, cr, cb, fl, ft, fr, fb);
+        return m;
+    }
+
     /**
      * AH1: brightness the patch keeps while the stock power dialog is open. The dialog dims everything behind it ({@code stock} = the share of brightness that is kept, 0.79 measured on the emulator); the patch is drawn
      * ABOVE that scrim, so it must be dimmed the same or it shows as a lighter block (Tj: the patch "obviously doesn't blend in on the home screen"). {@code nudgePct} is Tj's own correction for his tablet.
