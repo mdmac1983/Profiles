@@ -1898,8 +1898,12 @@ setmode custom; rebind; home; palock; adb logcat -c
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3                 # the menu is OPEN
 adb shell "mkdir -p /sdcard/Pictures/Screenshots; screencap -p /sdcard/Pictures/Screenshots/Screenshot_pa_menu.png"
 adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/Screenshots/Screenshot_pa_menu.png >/dev/null 2>&1
-for i in 1 2 3 4 5 6; do pastatus | grep -qiE "refused|ignored|CALIBRATED" && break; sleep 2; done
+PA3A="$(pastatus)"
+for i in 1 2 3 4 5 6 7 8; do [ "$(pastatus)" != "$PA3A" ] && break; sleep 2; done
 PA3="$(pastatus)"; pastatus > "$OUT/pa-s3.txt"
+info "PA 3 prefs: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'patch_cal_until">[0-9]*\|patch_auto_shot_off[^/]*' | tr '\n' ' ')"
+info "PA 3 media rows: $(adb shell content query --uri content://media/external/images/media --projection _id:_display_name:date_added:owner_package_name 2>&1 | tail -3 | cut -c1-200 | tr '\n' '|')"
+info "PA 3 log: $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHSHOT|PATCH rest|PATCH fast|PATCH menu|PATCH fade' | tail -8 | cut -c19-140 | tr '\n' '|' | cut -c1-360)"
 info "PA 3: a screenshot taken with the power menu OPEN: status='$PA3'"
 check "PA 3: a screenshot taken while the power menu is open is refused (not stored)" bash -c "grep -qiE 'refused a screenshot|ignored a screenshot' $OUT/pa-s3.txt && ! grep -q CALIBRATED $OUT/pa-s3.txt"
 adb shell input keyevent KEYCODE_BACK; sleep 2
