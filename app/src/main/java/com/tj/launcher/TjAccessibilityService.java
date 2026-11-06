@@ -123,7 +123,7 @@ public class TjAccessibilityService extends AccessibilityService {
         menuUpAtMs = now;
         Log.i(TAG, "PATCH fast open: the dialog's window event is " + Math.max(0, now - event.getEventTime()) + " ms old, " + Math.max(0, event.getEventTime() - winBurstStartMs) + " ms after the first window event of the burst");
         showOverlay(cached);
-        deferScan(now);
+        if (fading) deferScan(now); else deferWork(now, 60);   // the patch is drawn (and, while it fades, redrawn every frame) before any heavy work of this burst runs
     }
 
     /** AZ1: null = the fast path may open the patch now; else why not (the normal scan path then does it, a little later). */
