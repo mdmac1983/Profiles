@@ -67,4 +67,17 @@ public class WallpaperPickerChoiceTest {
         assertFalse(WallpaperPickerChoice.isMediaApp("com.android.wallpaper"));
         assertFalse(WallpaperPickerChoice.isMediaApp("com.android.wallpaperpicker"));
     }
+
+    // ---- AO1b: where the stock picker's wallpapers are looked for
+    @Test public void theStockWallpapersAreLookedForInTheRightOrder() {
+        String[] pk = { "com.android.gallery3d", "com.vendor.tool", "com.mediatek.wallpaperpicker", OWN };
+        boolean[] sys = { true, true, true, true };
+        java.util.List<String> o = WallpaperPickerChoice.wallpaperPackages(pk, sys, "com.vendor.hint", "com.android.launcher3", OWN);
+        assertEquals(java.util.Arrays.asList("com.android.wallpaperpicker", "com.vendor.hint", "com.mediatek.wallpaperpicker", "com.vendor.tool", "com.android.launcher3"), o);   // no gallery, never ourselves
+    }
+    @Test public void aUserAppIsNeverALookupPlaceAndMissingInputIsFine() {
+        java.util.List<String> o = WallpaperPickerChoice.wallpaperPackages(new String[] { "org.free.wallpaper" }, new boolean[] { false }, "", null, OWN);
+        assertEquals(java.util.Arrays.asList("com.android.wallpaperpicker"), o);
+        assertEquals(java.util.Arrays.asList("com.android.wallpaperpicker"), WallpaperPickerChoice.wallpaperPackages(null, null, null, null, OWN));
+    }
 }
