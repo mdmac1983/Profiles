@@ -1787,18 +1787,19 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   adb shell "run-as $PKG sh -c 'cp files/ps-backup.png files/patchshot_r0.png'"
   adb shell am force-stop "$PKG"; sleep 1; rebind; pslock; sleep 4                         # fresh process again: the real crop is read back from disk
   # ---- phase C: the menu opens as the STOCK menu; the Screenshot spot is covered; a tap on it closes the menu
+  shot 99-ps-bare2          # a FRESH reference of the settled lock screen right before the menu (the old reference, 94, was taken seconds after the wake; runs 209 and 242 measured a scrim of 0.75 against it instead of ~0.797)
   adb logcat -c
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
   shot 96-ps-menu-open
   adb logcat -d -s TjA11y:I | grep -E "CARD area" > "$OUT/ps-c-log.txt" 2>&1
   check "PS C: the open menu is the stock menu (no card of ours)" bash -c "grep -q 'stock=true' $OUT/ps-c-log.txt && [ \"\$(grep -vc 'stock=true' $OUT/ps-c-log.txt)\" = 0 ]"
   RING="30x$(( FB - FT ))+$(( FL - 32 ))+$FT"
-  MC="$(convert "$OUT/94-ps-bare.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
+  MC="$(convert "$OUT/99-ps-bare2.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
   MO="$(convert "$OUT/96-ps-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
   KO="$(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "%.4f", ($5/$1+$6/$2+$7/$3)/3}')"
   FREE="$(( FR - FL ))x$(( FB - CB - 2 ))+$FL+$(( CB + 2 ))"
   if [ -n "$KO" ]; then
-    convert "$OUT/94-ps-bare.png" -crop "$FREE" +repage -channel RGB -evaluate Multiply "$KO" +channel "$OUT/ps-bare-slot-dimmed.png" 2>/dev/null
+    convert "$OUT/99-ps-bare2.png" -crop "$FREE" +repage -channel RGB -evaluate Multiply "$KO" +channel "$OUT/ps-bare-slot-dimmed.png" 2>/dev/null
     convert "$OUT/96-ps-menu-open.png" -crop "$FREE" +repage "$OUT/ps-open-slot.png" 2>/dev/null
     MAED="$(compare -metric MAE "$OUT/ps-open-slot.png" "$OUT/ps-bare-slot-dimmed.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
     info "PS C: the Screenshot spot of the open menu vs the bare lock screen dimmed by the measured $KO: MAE $MAED"
