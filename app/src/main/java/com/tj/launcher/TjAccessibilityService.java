@@ -2320,10 +2320,10 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void patchShow(boolean on) {
-        if (patchView == null) return;
-        boolean opening = on && !patchOpenFlag;   // AZ1: only the closed -> open transition starts a fade (repeated "still open" calls must not restart it)
+        boolean opening = on && !patchOpenFlag;   // AZ1: only the closed -> open transition starts a fade (repeated "still open" calls must not restart it); decided even while the patch window does not exist yet
         patchOpenFlag = on;
         if (opening) startFade(); else if (!on) fading = false;
+        if (patchView == null) return;
         if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch || opening) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
         // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
         boolean vis = PatchRest.visible(on, lockPatchAlways(), true, lastBouncer);
