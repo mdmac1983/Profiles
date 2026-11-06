@@ -2,7 +2,10 @@ package com.tj.launcher;
 
 import android.app.Application;
 
-/** Installs the crash-loop breaker before anything else of ours runs. Does nothing else at start-up (no receivers, no services, no work at boot) except one content observer on battery saver (AC3). */
+/**
+ * Installs the crash-loop breaker before anything else of ours runs. Does nothing else at start-up (no services, no work at boot, nothing declared in the manifest) except three passive listeners in the MAIN
+ * process, each registered once: a content observer on battery saver (AC3), one on the rotation lock and one dynamic power-connected/disconnected receiver (AD4, the hidden entrances; idle unless Tj uses them).
+ */
 public class TjApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
