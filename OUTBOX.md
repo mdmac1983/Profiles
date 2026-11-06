@@ -128,3 +128,7 @@
 ## 2026-11-06T23:35:18Z
 > Status: waiting on the last confirmation run (`pa` alone). Release note text is drafted. Once `pa` is green I run `ship.sh` and start the signed build.
 <!-- sha:c0f51a97310e -->
+
+## 2026-11-06T23:38:33Z
+> Status: the session restarted, and I'm back on track. The `pa`-alone confirmation run is finishing; after it I run `ship.sh` and start the signed build.
+<!-- sha:1cb4e3d9ca84 -->
