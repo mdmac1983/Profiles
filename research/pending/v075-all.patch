@@ -1,0 +1,282 @@
+diff --git a/app/src/main/java/com/tj/launcher/ControlActivity.java b/app/src/main/java/com/tj/launcher/ControlActivity.java
+index 7867978..03a27b1 100644
+--- a/app/src/main/java/com/tj/launcher/ControlActivity.java
++++ b/app/src/main/java/com/tj/launcher/ControlActivity.java
+@@ -135,6 +135,11 @@ public class ControlActivity extends Activity {
+         action("Allow wallpaper access", "Needed by the wallpaper patch.", new Runnable() { public void run() { requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7); } });
+         toggle("Lock screen: patch of my lock wallpaper + stock-size two-button menu", "On the lock screen only, while the custom launcher is active and the cover is on: a piece of your LOCK-screen wallpaper hides the real menu and my Power off / Restart menu has the stock item size (the stock menu minus Screenshot). The patch is invisible until the menu opens. Needs the wallpaper permission; if it looks off, use the nudges below.",
+                 Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.LOCK_PATCH_KEY, v); rebuild(); } });
++        if (Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true) && Features.isCover(mode)) {   // AE3 / AD7b (Tj, 2026-11-06)
++            toggle("Keep the patch over the Screenshot spot ALL the time on the lock screen", "Default OFF. ON: the wallpaper patch stays over the place where the stock menu's Screenshot button appears, so the button is hidden from the very first frame of the menu (no delay). It hides itself while the PIN pad is up. Open the power menu once on the lock screen first, so the app learns where the menu sits. The nudges below work while the menu is CLOSED, so you can line the patch up by looking at it.",
++                    Features.get(this, PatchRest.KEY, false), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, PatchRest.KEY, v); rebuild(); } });
++            note("Wallpaper type: " + Features.getString(this, TjAccessibilityService.WALLPAPER_KIND_KEY, "(not read yet: lock the tablet once)"));
++        }
+         if (Features.POWER_WALLPAPER.equals(mode) || Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true) && Features.isCover(mode)) {
+             note("Wallpaper patch: " + Features.getString(this, TjAccessibilityService.PATCH_STATUS_KEY, "(not reported yet)"));
+             note("Lock-screen patch alignment: " + Features.getString(this, TjAccessibilityService.CAL_STATUS_KEY, "(lock the tablet once with the adb helper running; it photographs the lock screen and finds the right part of the wallpaper by itself)"));
+diff --git a/app/src/main/java/com/tj/launcher/PatchRest.java b/app/src/main/java/com/tj/launcher/PatchRest.java
+new file mode 100644
+index 0000000..5b171d8
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/PatchRest.java
+@@ -0,0 +1,37 @@
++package com.tj.launcher;
++
++/**
++ * AE3 / AD7b (Tj, 2026-11-06: "any time I'm on the lock screen, there should be an accessibility overlay of the wallpaper patch exactly where the screenshot button shows up, so that when I hold the side key
++ * to open the power menu, the screenshot button is hidden without delay"). Until now the lock-screen patch window stayed invisible and was shown only when the power menu had been DETECTED (a short delay in which
++ * the stock Screenshot entry could be seen). With the switch on, the patch rests visible over the Screenshot slot the whole time the lock screen is up, except while the PIN pad is showing. Pure rules, JVM-tested;
++ * {@link TjAccessibilityService} draws it.
++ */
++public final class PatchRest {
++    /** Launcher control switch, default OFF. */
++    public static final String KEY = "lock_patch_always";
++
++    private PatchRest() {}
++
++    /**
++     * Is the patch window visible?
++     * @param menuOpen   our cover is up for an open power menu (the full, dimmed patch)
++     * @param always     the Control switch (and the lock-screen patch itself) is on
++     * @param lockMode   this is the lock-screen patch (the home-screen patch never rests)
++     * @param pinPadUp   the PIN / password / pattern pad is showing: the resting patch must never sit over it
++     */
++    public static boolean visible(boolean menuOpen, boolean always, boolean lockMode, boolean pinPadUp) {
++        if (!lockMode) return menuOpen;      // home-screen patch: only while the menu is open, as before
++        if (menuOpen) return true;           // an open menu always gets its patch (a power menu can also open over the PIN pad)
++        return always && !pinPadUp;
++    }
++
++    /**
++     * Where the RESTING patch starts to paint, in the patch window's own coordinates: the top of the Screenshot slot = the bottom of our two-button card. The part above it (where the card will appear) is left
++     * alone so the resting patch covers as little of the lock screen (clock, notifications) as possible. A card bottom above the window paints everything; below the window paints nothing.
++     */
++    public static int restTop(int windowTop, int cardBottom, int windowBottom) {
++        int h = Math.max(0, windowBottom - windowTop);
++        int t = cardBottom - windowTop;
++        return Math.max(0, Math.min(t, h));
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+index 236a398..0ba38c7 100644
+--- a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
++++ b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+@@ -153,6 +153,17 @@ public class TjAccessibilityService extends AccessibilityService {
+     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
+     private android.graphics.Bitmap lockBmp;
+     private boolean patchLockMode, targetIsLock;
++    /** AE3 / AD7b: the resting state of the lock-screen patch (see {@link PatchRest}): visible over the Screenshot slot while the lock screen is up and the menu is closed; the switch is in Launcher control, default OFF. */
++    private volatile boolean patchResting = false;
++    private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
++    /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Launcher control and in the tablet report. */
++    public static final String WALLPAPER_KIND_KEY = "wallpaper_kind";
++    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, false) && lockPatchWanted(); }
++    /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
++    private float restDim(boolean photo) {
++        float k = (photo ? 1f : DIM_KEYGUARD) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
++        return Math.max(0.3f, Math.min(1f, k));
++    }
+     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
+     private long lastOffTop = -1, lastItemH = -1;
+     private int lastPitch = -1;   // AC6: distance between the tops of neighbouring menu entries (Power off -> Restart), measured on every scan
+@@ -178,6 +189,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
+             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
++            if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
+             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
+             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
+             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
+@@ -288,12 +300,15 @@ public class TjAccessibilityService extends AccessibilityService {
+         if (android.os.SystemClock.elapsedRealtime() - lastShotTry < 4000) { handler.postDelayed(calTrigger, 4000); return; }   // never a screenshot storm if a photo keeps failing
+         lastShotTry = android.os.SystemClock.elapsedRealtime();
+         calBusy = true;
++        final boolean hideRest = patchResting;   // AE3: a RESTING patch must not photograph itself: hide it for the screenshot, restore it afterwards
++        if (hideRest && patchView != null) patchView.setAlpha(0f);
+         final android.graphics.Bitmap wall = lockBmp;
+         final float skew = testSkew();
+         new Thread(new Runnable() { @Override public void run() {
+             String result = "failed";
+             try {
+                 ShellHelper.run("MKDIR_PUBLISH");
++                if (hideRest) { try { Thread.sleep(250); } catch (InterruptedException ignored) { } }   // let the window really disappear before the shot
+                 String out = ShellHelper.run("CAL_SHOT");
+                 if (out == null) throw new IllegalStateException("the screenshot job did not answer");
+                 android.graphics.Bitmap shot = android.graphics.BitmapFactory.decodeFile("/sdcard/Download/launcher-probe/cal.png");
+@@ -324,7 +339,10 @@ public class TjAccessibilityService extends AccessibilityService {
+                 } });
+                 Log.i(TAG, "CAL lock patch " + result + " [" + PatchCalibrator.lastNote + "]");
+             } catch (Throwable t) { result = "failed: " + t; Log.e(TAG, "lock patch calibration failed", t); }
+-            finally { calBusy = false; calStatus(now() + "  " + result); }
++            finally {
++                calBusy = false; calStatus(now() + "  " + result);
++                if (hideRest) handler.post(new Runnable() { @Override public void run() { patchShow(overlayShown); } });   // AE3: back to resting (or whatever the state is by now)
++            }
+         } }, "tj-patch-cal").start();
+     }
+ 
+@@ -336,6 +354,11 @@ public class TjAccessibilityService extends AccessibilityService {
+         }
+         try {
+             android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
++            try {   // AE3 / AE8: is the wallpaper an animated LIVE wallpaper? A still patch can never match one exactly (the specks and streaks move). Shown in Launcher control and in the tablet report (Features dump).
++                android.app.WallpaperInfo wi = wm.getWallpaperInfo();
++                String kind = wi == null ? "still picture" : "LIVE wallpaper " + wi.getComponent().flattenToShortString() + " (animated: a still patch cannot match it exactly)";
++                if (!kind.equals(Features.getString(this, WALLPAPER_KIND_KEY, ""))) Features.setString(this, WALLPAPER_KIND_KEY, kind);
++            } catch (Throwable ignored) { }
+             android.os.ParcelFileDescriptor pfd = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK) > 0 ? wm.getWallpaperFile(android.app.WallpaperManager.FLAG_LOCK) : null;
+             if (pfd != null) {
+                 try {
+@@ -405,11 +428,16 @@ public class TjAccessibilityService extends AccessibilityService {
+             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+             private final android.graphics.Matrix m = new android.graphics.Matrix();
+             @Override protected void onDraw(android.graphics.Canvas c) {
+-                if (patchLockMode && lockShot != null) { setDim(p, lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
++                boolean rest = patchResting && patchLockMode;   // AE3: the RESTING patch paints only the Screenshot slot (below the card) and without the dialog's scrim
++                if (rest) { c.save(); c.clipRect(0, patchRestTop, getWidth(), getHeight()); }
++                try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
++            }
++            private void paintPatch(android.graphics.Canvas c, boolean rest) {
++                if (patchLockMode && lockShot != null) { setDim(p, rest ? restDim(true) : lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
+                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
+                 if (b == null) return;
+                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
+-                if (patchLockMode) setDim(p, lockPatchDim(false)); else p.setColorFilter(null);
++                if (patchLockMode) setDim(p, rest ? restDim(false) : lockPatchDim(false)); else p.setColorFilter(null);
+                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
+                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
+                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
+@@ -427,8 +455,9 @@ public class TjAccessibilityService extends AccessibilityService {
+         lp.setTitle("TjWallpaperPatch");
+         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
+         patchLockMode = targetIsLock;
+-        if (patchLockMode) v.setAlpha(0f);   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad)
++        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
+         patchView = v; patchAt.set(r); patchRot = rotation();
++        try { Rect cc = cachedCard(); if (cc != null) { Rect ca = cardArea(cc); patchRestTop = PatchRest.restTop(r.top, ca.bottom, r.bottom); } } catch (Throwable ignored) { }   // AE3: the resting patch paints only the part BELOW the card = the Screenshot slot
+         patchStatus("active over " + r.toShortString());
+         Log.i(TAG, "PATCH shown " + r.toShortString());
+     }
+@@ -448,7 +477,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private void removePatch() {
+         if (patchView == null) return;
+         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
+-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; lockShot = null; lockShotFresh = false;
++        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; lockShot = null; lockShotFresh = false;
+         Log.i(TAG, "PATCH removed");
+     }
+ 
+@@ -1031,7 +1060,7 @@ public class TjAccessibilityService extends AccessibilityService {
+             boolean on = pm != null && pm.isInteractive();
+             boolean locked = km != null && km.isKeyguardLocked();
+             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
+-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); }
++            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
+             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
+         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
+     }
+@@ -1977,7 +2006,14 @@ public class TjAccessibilityService extends AccessibilityService {
+ 
+     /** V1: on the lock screen the patch is invisible until the power menu opens (and again afterwards). */
+     private void patchShow(boolean on) {
+-        if (patchView != null && patchLockMode) patchView.setAlpha(on ? 1f : 0f);
++        if (patchView == null || !patchLockMode) return;
++        // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
++        boolean vis = PatchRest.visible(on, lockPatchAlways(), true, lastBouncer);
++        boolean rest = vis && !on;
++        boolean changed = rest != patchResting;
++        patchResting = rest;
++        patchView.setAlpha(vis ? 1f : 0f);
++        if (changed) { patchView.invalidate(); Log.i(TAG, "PATCH rest " + (rest ? "on" : "off") + (lastBouncer ? " (PIN pad up)" : "") + " top=" + patchRestTop); }
+     }
+ 
+     /**
+diff --git a/app/src/test/java/com/tj/launcher/PatchRestTest.java b/app/src/test/java/com/tj/launcher/PatchRestTest.java
+new file mode 100644
+index 0000000..ec00cf4
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/PatchRestTest.java
+@@ -0,0 +1,36 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import org.junit.Test;
++
++/** AE3 / AD7b: the lock-screen patch rests visible over the Screenshot slot, but never over the PIN pad, and never at home. */
++public class PatchRestTest {
++    @Test public void theSwitchKeyIsStable() { assertEquals("lock_patch_always", PatchRest.KEY); }
++
++    @Test public void switchOffKeepsTheOldBehaviourInvisibleUntilTheMenuOpens() {
++        assertFalse(PatchRest.visible(false, false, true, false));
++        assertTrue(PatchRest.visible(true, false, true, false));
++    }
++    @Test public void switchOnRestsVisibleOnTheLockScreen() { assertTrue(PatchRest.visible(false, true, true, false)); }
++    @Test public void neverRestsOverThePinPad() {
++        assertFalse(PatchRest.visible(false, true, true, true));
++        assertTrue("an open power menu still gets its patch over the pad", PatchRest.visible(true, true, true, true));
++    }
++    @Test public void theHomeScreenPatchNeverRests() {
++        assertFalse(PatchRest.visible(false, true, false, false));
++        assertTrue(PatchRest.visible(true, true, false, false));
++    }
++
++    @Test public void theRestingPatchPaintsOnlyBelowTheCard() {
++        assertEquals(150, PatchRest.restTop(100, 250, 400));
++        assertEquals(0, PatchRest.restTop(100, 100, 400));
++    }
++    @Test public void aCardOutsideTheWindowIsClamped() {
++        assertEquals(0, PatchRest.restTop(100, 40, 400));        // card bottom above the window: paint it all
++        assertEquals(300, PatchRest.restTop(100, 900, 400));     // card bottom below the window: paint nothing
++        assertEquals(0, PatchRest.restTop(400, 500, 300));       // an empty / inverted window never goes negative
++    }
++}
+diff --git a/launcher3/PATCHES.md b/launcher3/PATCHES.md
+index e123838..e8f9e1e 100644
+--- a/launcher3/PATCHES.md
++++ b/launcher3/PATCHES.md
+@@ -25,3 +25,4 @@ Imported dirs: `src`, `src_ui_overrides`, `go` (minus `go/quickstep`), `res`, `p
+ - `WallpaperOffsetInterpolator.setOffsetSafely`: calls `TjHooks.onWallpaperOffset` (W3b: the wallpaper patch over the power-menu area needs the current wallpaper x offset).
+ - `Launcher.onCreate`: `TjHooks.watchState(mStateManager)` (D0: the power-menu wallpaper patch is shown only while the home screen is in the NORMAL state, not during All Apps / transitions, not over other apps).
+ - `Launcher.dispatchTouchEvent` (AD4, 2026-11-06): calls `TjHooks.onTouch` first, then `super`. A passive observer (never consumes or alters an event) for the hidden page-flick entrance to Quickstep (`SecretEntrances.Flick`); it replaces nothing of the N3a removal: no two-finger gesture, only a count of alternating single-finger swipes that start on the settled home screen, switchable in Launcher control.
++- `views/OptionsPopupView.showDefaultOptions` (AE7, 2026-11-06): the long-press menu on the home screen (and the menu key) offers ONLY the Wallpapers entry; the stock Widgets and Home settings entries are no longer added (Tj: "it should show wallpapers only"). `onWidgetsClicked` / `startSettings` stay for ScrimView's accessibility actions.
+diff --git a/launcher3/src/com/android/launcher3/views/OptionsPopupView.java b/launcher3/src/com/android/launcher3/views/OptionsPopupView.java
+index 63f7427..d525d63 100644
+--- a/launcher3/src/com/android/launcher3/views/OptionsPopupView.java
++++ b/launcher3/src/com/android/launcher3/views/OptionsPopupView.java
+@@ -158,12 +158,8 @@ public class OptionsPopupView extends ArrowPopup
+                 R.drawable.ic_palette : R.drawable.ic_wallpaper;
+         options.add(new OptionItem(resString, resDrawable,
+                 ControlType.WALLPAPER_BUTTON, OptionsPopupView::startWallpaperPicker));
+-        if (!FeatureFlags.GO_DISABLE_WIDGETS) {
+-            options.add(new OptionItem(R.string.widget_button_text, R.drawable.ic_widget,
+-                    ControlType.WIDGETS_BUTTON, OptionsPopupView::onWidgetsClicked));
+-        }
+-        options.add(new OptionItem(R.string.settings_button_text, R.drawable.ic_setting,
+-                ControlType.SETTINGS_BUTTON, OptionsPopupView::startSettings));
++        // TJ (2026-11-06, AE7): "when i long press the home screen in the custom launcher, it should show wallpapers only". The stock Widgets and Home settings entries are
++        // NOT added any more (onWidgetsClicked / startSettings stay: ScrimView's accessibility actions still use them). See launcher3/PATCHES.md.
+ 
+         show(launcher, target, options);
+     }
+diff --git a/tools/emulator_scenario.sh b/tools/emulator_scenario.sh
+index d292daf..9702484 100755
+--- a/tools/emulator_scenario.sh
++++ b/tools/emulator_scenario.sh
+@@ -83,7 +83,13 @@ check "HOME resolves to our router" grep -q 'com.tj.launcher.RouterActivity' "$O
+ # ---- CUSTOM mode: Home shows our Launcher
+ setmode custom; home; shot 01-home; resumed | tee "$OUT/resumed-custom.txt"
+ check "custom mode: our Launcher is on screen" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom.txt"
+-adb shell input swipe 300 700 300 700 1200; sleep 2; shot 02-longpress; adb shell input keyevent KEYCODE_BACK; sleep 1
++adb shell input swipe 300 700 300 700 1200; sleep 2; shot 02-longpress
++# AE7 (Tj, 2026-11-06, photo of the stock popup): a long press on the home screen shows WALLPAPERS ONLY (no Widgets, no Home settings). The label may read "Styles & wallpapers" on an image that has a style picker.
++adb shell uiautomator dump /sdcard/lp.xml >/dev/null 2>&1; adb shell cat /sdcard/lp.xml 2>/dev/null | tr '>' '\n' > "$OUT/longpress-dump.txt"
++info "AE7 long-press menu texts: $(grep -o 'text="[^"]*"' $OUT/longpress-dump.txt | grep -iE 'wallpaper|widget|setting|style' | tr '\n' ' ')"
++check "AE7: a long press on the home screen offers Wallpapers" grep -qiE 'text="[^"]*wallpapers"' "$OUT/longpress-dump.txt"
++check "AE7: ... and ONLY that: no Widgets, no Home settings" bash -c "! grep -qE 'text=\"(Widgets|Home settings)\"' $OUT/longpress-dump.txt"
++adb shell input keyevent KEYCODE_BACK; sleep 1
+ adb shell input swipe 300 900 300 200 400; sleep 3; shot 03-drawer
+ adb shell input keyevent KEYCODE_HOME; sleep 3
+ 
