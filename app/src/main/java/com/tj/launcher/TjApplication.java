@@ -22,6 +22,7 @@ public class TjApplication extends Application {
         final boolean main = getPackageName().equals(Application.getProcessName());   // the short-lived :wallpaper_chooser process has no business with the watchers below
         try { if (main) SwitchMigration.run(this); } catch (Throwable ignored) { }   // v0.7.3: undo the old breaker reset's "false" values once (all three switches stored as off = its signature)
         try { if (main) EntranceWatcher.start(this); } catch (Throwable ignored) { }   // AD4: the rotation-tile and charger entrances (the page flick is fed by the Launcher touch hook)
+        try { if (main) LockQuiet.applyNotificationsAsync(this); } catch (Throwable ignored) { }   // AK1: the lock screen shows no app notifications (setting written / put back by the switch)
         try { if (main) BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the MAIN process (one observer, no polling)
         try {
             startMs = android.os.SystemClock.uptimeMillis() - t0;

@@ -52,6 +52,18 @@ public final class RestoreStore {
 
     public static boolean hasSnapshot(Context c) { return !p(c).getAll().isEmpty(); }
 
+    /** AK1: puts ONE snapshotted secure setting back and forgets that snapshot (a switch that turns a single feature off). True when something was restored. Never throws. */
+    public static boolean restoreSecure(Context c, String key) {
+        try {
+            SharedPreferences sp = p(c);
+            String v = sp.getString("secure:" + key, null);
+            if (v == null) return false;
+            Settings.Secure.putString(c.getContentResolver(), key, "\u0000null".equals(v) ? null : v);
+            sp.edit().remove("secure:" + key).commit();
+            return true;
+        } catch (Throwable t) { android.util.Log.e("TjRestore", "could not restore " + key, t); return false; }
+    }
+
     /** Restores every snapshotted secure setting that we can write, forgets the snapshot, and turns every launcher feature switch off. */
     public static void restoreAll(Context c) {
         SharedPreferences sp = p(c);
@@ -70,6 +82,8 @@ public final class RestoreStore {
         sp.edit().clear().commit();
         Features.allOff(c);
         Features.set(c, LockNumber.KEY, false);
+        Features.set(c, LockQuiet.KEY, false);   // AK1: restore = the lock screen shows notifications again (the two settings were put back above) and nothing of ours switches Wi-Fi / Bluetooth off at the lock
+        Features.set(c, LockQuiet.RESTORE_KEY, false);
         // AC1 (v0.7.3): the Two-profiles switches (pre-arm, radios, pre-clean) are NOT written false here any more. The old code did, so a breaker trip silently disabled the very things Tj depends on and he had to find and
         // re-enable them by hand. "Nothing of ours switches launchers for you" is now the PAUSE ({@link CrashGuard#automationOff}), which every one of those rules reads; Restore and the breaker set it, and the next deliberate
         // way back to the custom launcher clears it.

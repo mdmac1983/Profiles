@@ -34,7 +34,11 @@ public final class BatterySaverGuard {
             if (observer != null) return;
             final Context app = c.getApplicationContext();
             observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
-                @Override public void onChange(boolean selfChange) { check(app, "setting changed"); }
+                @Override public void onChange(boolean selfChange) {
+                    // AG2 (Tj, 2026-11-06: the battery saver TILE in Quickstep does not work): every change of low_power is written to the lock log with the mode and the guard's switches, so a report says WHY
+                    try { LockLog.add(app, "BATSAVER", "low_power is now " + Settings.Global.getString(app.getContentResolver(), BatterySaverPolicy.SETTING) + ", mode=" + Mode.get(app) + ", off-in-custom=" + enabled(app) + ", on-in-Quickstep=" + qsEnabled(app) + (CrashGuard.automationOff(app) ? " PAUSED" : "")); } catch (Throwable ignored) { }
+                    check(app, "setting changed");
+                }
             };
             app.getContentResolver().registerContentObserver(Settings.Global.getUriFor(BatterySaverPolicy.SETTING), false, observer);
             check(app, "process start");
@@ -57,6 +61,7 @@ public final class BatterySaverGuard {
             if (BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.STICKY_SETTING))) Settings.Global.putInt(cr, BatterySaverPolicy.STICKY_SETTING, 0);
             Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver off in the custom launcher (" + why + ")");
             Log.i(TAG, "BATSAVER off (" + why + ")");
+            LockLog.add(c, "BATSAVER", "guard switched it OFF (custom launcher active; " + why + ")");   // AG2
         } catch (Throwable t) { Log.e(TAG, "battery saver check failed", t); }
     }
 
@@ -72,6 +77,7 @@ public final class BatterySaverGuard {
         Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 1);
         Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver ON in Quickstep (" + why + ")");
         Log.i(TAG, "BATSAVER on (" + why + ")");
+        LockLog.add(c, "BATSAVER", "guard switched it ON (Quickstep active; " + why + ")");   // AG2
     }
 
     private static String stamp(long ms) { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(ms)); }

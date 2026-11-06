@@ -132,6 +132,7 @@ public class TjAccessibilityService extends AccessibilityService {
         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
+        try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
     }
 
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
@@ -194,6 +195,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+            if (LockQuiet.KEY.equals(key)) LockQuiet.applyNotificationsAsync(getApplicationContext());   // AK1: the switch changed: hide / put back the lock-screen notification setting now
             if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
@@ -698,6 +700,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean armed = unlock.armedMethod() != null;
             boolean paused = CrashGuard.automationOff(app);
             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
+            if (locked && !paused) LockQuiet.onLockAsync(app);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock)
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
                     preCleanedThisLock = true;
@@ -766,10 +769,12 @@ public class TjAccessibilityService extends AccessibilityService {
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
                 Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: this lock ended in a handshake, so the safety net below must not end this Quickstep session
                 LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
+                LockQuiet.onUnlockAsync(app, true);   // AK1: a gesture unlock into Quickstep puts Wi-Fi / Bluetooth back as they were before the lock
                 verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
                 return;
             }
             qsApp = null; resumedPkg = null;   // AD5: a plain unlock ends the session: no app to come back to
+            LockQuiet.onUnlockAsync(app, false);   // AK1: a plain unlock (custom launcher): the radios stay off; forget the memory of this lock
             boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
             if (ends) {
                 Mode.set(app, Mode.CUSTOM);
@@ -1489,6 +1494,8 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
+    private final long[] lqHist = new long[LockQuiet.MAX_WRITES];   // AK1: when the lock-screen rule last switched a radio off
+    private int lqIdx = 0;
     private final long[] radioHist = new long[3];
     private int radioIdx = 0;
     private boolean radioGuardOn = false;
@@ -1506,8 +1513,11 @@ public class TjAccessibilityService extends AccessibilityService {
                 } else return;
                 if (!turnedOn) return;
                 long now = System.currentTimeMillis();
-                if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) return;
-                radioHist[radioIdx++ % radioHist.length] = now;
+                if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) {
+                    // AK1: not the custom account's rule: is the tablet on the LOCK SCREEN? Then a radio that comes on is switched off again, whatever launcher is active
+                    if (!LockQuiet.enforceRadios(LockQuiet.enabled(TjAccessibilityService.this), keyguardLockedFast(), CrashGuard.automationOff(TjAccessibilityService.this), now, lqHist)) return;
+                    lqHist[lqIdx++ % lqHist.length] = now;
+                } else radioHist[radioIdx++ % radioHist.length] = now;
                 final android.content.Context app = getApplicationContext();
                 new Thread(new Runnable() { @Override public void run() { try { ReturnReset.radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); } } }, "tj-radio-guard").start();
                 Log.i(TAG, "RADIOS switched on in the custom account -> switching off");

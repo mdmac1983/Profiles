@@ -1467,6 +1467,48 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ae
+if want lq; then # section lq
+ensurehome
+# ---- AK1 (Tj, 2026-11-06): "make it so wifi, Bluetooth, and all notifications are cleared and off whenever the tablet is on the lock screen, from any launcher".
+#      Notifications: the lock screen shows NONE (Settings.Secure lock_screen_show_notifications = 0, the original is put back by the switch). Radios: off the moment the tablet is on the lock screen and kept off;
+#      a GESTURE unlock into Quickstep puts them back, a plain unlock into custom leaves them off. The PIN is ALWAYS cleared again at the end.
+beat "before LQ"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+lqfeat(){ # lqfeat <lock_quiet true|false> <restore true|false>
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+wifi(){ adb shell settings get global wifi_on | tr -d '\r\n'; }
+lqshow(){ adb shell settings get secure lock_screen_show_notifications | tr -d '\r\n'; }
+adb shell settings put secure lock_screen_show_notifications 1; adb shell settings put secure lock_screen_allow_private_notifications 1       # a KNOWN original, so the restore can be checked
+adb shell locksettings set-pin 1234 > "$OUT/lq-setpin.txt" 2>&1
+lqfeat true true; adb shell am force-stop "$PKG"; sleep 1
+setmode quickstep; rebind; home; sleep 4
+adb shell svc wifi enable; sleep 5
+info "LQ: before the lock: wifi_on=$(wifi) lock_screen_show_notifications=$(lqshow)"
+check "LQ: the lock screen shows no app notifications (lock_screen_show_notifications = 0 once the helper runs)" bash -c "[ \"$(lqshow)\" = 0 ]"
+adb logcat -c
+lockpad; sleep 9                                                    # the tablet is on the lock screen
+LQW1="$(wifi)"
+adb shell svc wifi enable; sleep 6                                  # something turns Wi-Fi on while locked
+LQW2="$(wifi)"
+info "LQ: on the lock screen wifi_on=$LQW1; after something turned it on again, 6 s later: $LQW2"
+check "LQ: on the lock screen Wi-Fi is off (from Quickstep, no custom launcher involved)" bash -c "[ \"$LQW1\" = 0 ]"
+check "LQ: a radio that comes on while the tablet is locked is switched off again" bash -c "[ \"$LQW2\" = 0 ]"
+pad d d 1 2 3 4 e; sleep 8                                          # the gesture: Quickstep again
+LQW3="$(wifi)"
+info "LQ: after the gesture unlock into Quickstep: wifi_on=$LQW3"
+check "LQ: a gesture unlock into Quickstep puts Wi-Fi back as it was before the lock" bash -c "[ \"$LQW3\" = 1 ]"
+lockpad; sleep 9; pad 1 2 3 4 e; sleep 8                            # a plain PIN: the custom launcher
+LQW4="$(wifi)"
+info "LQ: after a plain PIN (custom launcher): wifi_on=$LQW4"
+check "LQ: a plain unlock into the custom launcher leaves Wi-Fi off" bash -c "[ \"$LQW4\" = 0 ]"
+lqfeat false false; adb shell am force-stop "$PKG"; sleep 1; rebind; sleep 6
+check "LQ: with the switch off the original lock-screen notification setting is put back (1)" bash -c "[ \"$(lqshow)\" = 1 ]"
+adb shell locksettings clear --old 1234 > "$OUT/lq-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "LQ: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/lq-clearpin.txt"
+adb shell svc wifi enable; adb shell settings put secure lock_screen_show_notifications 1; adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section lq
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)

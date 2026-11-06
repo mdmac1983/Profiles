@@ -109,6 +109,11 @@ public final class ReportState {
         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
         try { b.append("crash breaker tripped: ").append(yes(CrashGuard.wasTripped(c))).append('\n'); } catch (Throwable t) { /* not available */ }
         try { b.append("automation paused (Restore everything, or the breaker cleared by an update; the lock-screen rules do nothing while paused): ").append(yes(CrashGuard.isPaused(c))).append('\n'); } catch (Throwable t) { /* not available */ }
+        try {   // AK1: the lock screen quiet rule (radios off + no app notifications on the lock screen)
+            b.append("lock screen quiet: switch ").append(LockQuiet.enabled(c) ? "on" : "off").append(", restore after a gesture unlock ").append(LockQuiet.restoreEnabled(c) ? "on" : "off")
+                    .append(", lock_screen_show_notifications = ").append(setting("secure", c, LockQuiet.SHOW)).append(", lock_screen_allow_private_notifications = ").append(setting("secure", c, LockQuiet.PRIVATE))
+                    .append(", last: ").append(Features.getString(c, LockQuiet.LAST_KEY, "(nothing yet)")).append('\n');
+        } catch (Throwable t) { /* not available */ }
         try {
             b.append("battery saver guard: switch ").append(BatterySaverGuard.enabled(c) ? "on" : "off").append(", low_power = ").append(setting("global", c, BatterySaverPolicy.SETTING)).append(", low_power_sticky = ").append(setting("global", c, BatterySaverPolicy.STICKY_SETTING))
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
