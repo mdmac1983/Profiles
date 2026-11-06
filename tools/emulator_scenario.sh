@@ -1321,7 +1321,7 @@ adb shell locksettings clear --old 1234 > "$OUT/ad-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "AD: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/ad-clearpin.txt"
 adb logcat -c
-setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+setfeat; setmode custom; adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_origin.xml"; ensurehome; rebind; home   # (the origin marks of this section must not leak into the next one: run 181, rt AA3)
 fi # section ad
 if want se; then # section se
 ensurehome
@@ -1377,7 +1377,7 @@ adb logcat -d -s TjEntrance:I > "$OUT/se-log.txt" 2>&1
 info "SE entrance log: $(grep -c 'ENTRANCE' $OUT/se-log.txt) entrance(s): $(grep 'ENTRANCE' $OUT/se-log.txt | sed 's/.*ENTRANCE //' | tr '\n' ',' | cut -c1-120)"
 check "SE-L: each success is in the lock log / entrance log (flick, rotate_tile, charger)" bash -c "grep -q 'ENTRANCE flick' $OUT/se-log.txt && grep -q 'ENTRANCE rotate_tile' $OUT/se-log.txt && grep -q 'ENTRANCE charger' $OUT/se-log.txt"
 adb shell settings put system accelerometer_rotation $SE_ROT0
-setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+setfeat; setmode custom; adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_origin.xml"; ensurehome; rebind; home   # (the origin marks of this section must not leak into the next one: run 181, rt AA3)
 fi # section se
 if want rs2; then # section rs2
 ensurehome
@@ -1451,7 +1451,7 @@ ensurehome
 # ---- AA3: the task-precise clean-up. With the shell helper running when a Quickstep session BEGINS, the tasks that exist then belong to the custom account. At the lock that ends the session only the NEW
 #      tasks go: apps that exist only in Quickstep are closed as before, an app the custom account also has (Contacts here) is spared and loses only Quickstep's own extra task.
 beat "before RT"
-setfeat; setmode custom; rebind; home; sleep 2
+setfeat; setmode custom; adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_origin.xml"; rebind; home; sleep 2   # AA3 starts from a clean origin record: Quickstep-opened marks left by an earlier section (ad opens Contacts in Quickstep) made the clean-up close Contacts (run 181)
 adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
 rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
 adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT what Android prints for Recents (first lines): $(sed -n 1,16p $OUT/rt-recents-dump.txt | sed 's/^ *//' | cut -c1-110 | tr '\n' '|')"
