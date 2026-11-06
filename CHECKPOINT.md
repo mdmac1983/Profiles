@@ -1,22 +1,22 @@
-# CHECKPOINT 452 — read me first, then TASKS.md
+# CHECKPOINT 453 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T05:43:12Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `bf2fe2f` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T05:43:34Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `979b450` (this checkpoint is the commit after it)
 
 ## Just done
-TK3 GATE COMPLETE: v0.7.4 cleared (A split runs 183/184/185 green, B' 181 + 182); shipping
+v0.7.4: main=979b450, android.yml full_build dispatched
 
 ## Do this next
-main ff to this commit, android.yml full_build, get_release_by_tag v0.7.4, record via main worktree, ls-remote check, link to Tj
+wait ~3 min, check android.yml run on main (perPage 1), get_release_by_tag v0.7.4 (2 APKs), record via main worktree + ls-remote check, link to Tj; DO NOT dispatch again
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  979b450 ckpt 452: TK3 GATE COMPLETE: v0.7.4 cleared (A split runs 183/184/185 green, B' 181 + 18
   a3852d8 ckpt 451: TK3 gate A run 180 cut at 45 min in section o (W3b x2 after a native crash, O1
   2386d4f ckpt 450: AI1: usage-log merge (QuickstepUsage/AppOrigin.mergeUsage/Mode qsStartAt) + re
   ad8e719 ckpt 449: AH1: Tj thinks wrong wallpaper piece is copied; plan = geometry line + calibra
@@ -26,8 +26,4 @@ main ff to this commit, android.yml full_build, get_release_by_tag v0.7.4, recor
   49ac6de ckpt 445: TK3: rerun ad,se,rt = run 182 (id 42166392626) on 7defd73 (product == 364e8c0)
   7defd73 ckpt 444: TK3 gate B': AD5 passes; rt AA3 x2 = leftover origin marks from ad (test order
   b541689 ckpt 443: AG1 battery saver follows the launcher (Quickstep ON, custom OFF) coded in the
-  3bfc319 ckpt 442: v0.7.5 prep: emulator section ae (resting patch, phases A wrong-model / B phot
 ```
-
-(3 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
