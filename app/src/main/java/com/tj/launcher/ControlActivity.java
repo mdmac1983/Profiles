@@ -228,6 +228,11 @@ public class ControlActivity extends Activity {
         toggle(ReturnMethods.Method.HOME2.title, ReturnMethods.Method.HOME2.how + "  (This one is always on.)", true, new Chg() { public void on(boolean v) { rebuild(); } });
         note("The \"Back to custom\" icon is in Quickstep's app drawer (arrow icon). Put it on the home screen if you like. The tile is added from the tile editor (pencil) - or tick it under Quick settings below.");
 
+        section("Secret ways to Quickstep (from the custom launcher)");
+        note("Hidden ways to leave the custom launcher for Quickstep, tablet unlocked. No hardware button and no motion sensor is used; each one is made to be hard to trigger by accident, and each can be switched off here. (The lock-screen handshakes above and the ladder below are separate.)");
+        for (final SecretEntrances.Method m : SecretEntrances.Method.values()) {
+            toggle(m.title, m.how, EntranceWatcher.on(this, m), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
+        }
         section("Master failsafe: always reach Quickstep");
         note("Ladder, easiest first: 1) the lock-screen handshakes above; 2) the key code below; 3) the hidden Solitaire hotspot below; 4) if the Accessibility helper is OFF: press Home three times quickly; 5) Android itself: Settings > Apps > Default apps > Home app, or Safe mode (hold Power off), or adb (see the adb guide).");
         toggle("Key code anywhere in the custom launcher", "Volume Up, Up, Down, Down, Back, Back, Up, Down within 20 seconds, screen unlocked. Needs the helper's key access.", FailsafeKeys.konami(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.KONAMI_KEY, v); } });
