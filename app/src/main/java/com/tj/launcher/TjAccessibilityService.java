@@ -1925,7 +1925,7 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable ignored) { }
     }
 
-    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); try { stopShotWatch(); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); } catch (Throwable ignored) { } }
+    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); try { stopShotWatch(); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); Features.setString(this, PatchShot.CAL_UNTIL_KEY, "0"); } catch (Throwable ignored) { } }
 
     @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); cancelPatchWork(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("unbound"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
@@ -2720,7 +2720,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 long id = android.content.ContentUris.parseId(u);
                 if (id == lastShotId) return;
                 lastShotId = id;
-                if (!AutoCalibration.ownerOk(shotRow.owner)) { shotStatus(now() + "  ignored a screenshot written by another app (" + shotRow.owner + "): only screenshots made by the system itself count"); return; }   // AU2
+                if (!AutoCalibration.ownerOk(shotRow.owner) && !isSystemPackage(shotRow.owner)) { shotStatus(now() + "  ignored a screenshot written by another app (" + shotRow.owner + "): only screenshots made by the system itself count"); return; }   // AU2
                 long shotUptime = android.os.SystemClock.uptimeMillis() - Math.max(0L, System.currentTimeMillis() - shotRow.addedSec * 1000L);
                 String refused = AutoCalibration.refusal(shotUptime, menuSeen, menuNow, padSeen, padNow, unlockAt);   // AU2: the power menu / the PIN pad around the capture, an unlock right after it
                 if (!refused.isEmpty()) { shotStatus(now() + "  refused a screenshot: " + refused); autoCalNote("refused a screenshot (" + refused + ")"); return; }
@@ -2750,6 +2750,14 @@ public class TjAccessibilityService extends AccessibilityService {
                 } catch (Throwable t) { Log.e(TAG, "patch shot apply failed", t); } } });
             } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); shotStatus(now() + "  failed: " + t); }
         } }, "tj-patchshot").start();
+    }
+
+    /** Review of v0.8.1: a vendor ROM (the tablet is a MediaTek one) may save its screenshots under another SYSTEM package than com.android.systemui; any package that ships with the device counts as "the system itself", an app the person installed does not. */
+    private boolean isSystemPackage(String pkg) {
+        try {
+            android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+            return (ai.flags & (android.content.pm.ApplicationInfo.FLAG_SYSTEM | android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0;
+        } catch (Throwable t) { return false; }
     }
 
     /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
