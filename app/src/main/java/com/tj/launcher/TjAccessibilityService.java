@@ -973,7 +973,8 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** The unlock succeeded (USER_PRESENT). Handshake given = Quickstep (already in front); plain = the custom account (a Quickstep session ends here). */
     private void applyUnlockChoice() {
-        try { applyUnlockChoiceBody(); } finally { lqLastWrite = 0; lqWrites = 0; restoreUnlockTiles(); }   // AW2 / AW3: whichever way the unlock went, the mode's own tile list is back and the lock-screen radio count starts afresh
+        lastUnlockUptime = android.os.SystemClock.uptimeMillis();   // AU2: a screenshot taken just before an unlock is refused
+        try { applyUnlockChoiceBody(); } finally { lqLastWrite = 0; lqWrites = 0; autoCalThisLock = 0; restoreUnlockTiles(); }   // AW2 / AW3: whichever way the unlock went, the mode's own tile list is back and the lock-screen radio count starts afresh
     }
 
     private void applyUnlockChoiceBody() {
@@ -1343,6 +1344,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean on = pm != null && pm.isInteractive();
             boolean locked = km != null && km.isKeyguardLocked();
             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
+            if (bouncer) lastPadSeenMs = android.os.SystemClock.uptimeMillis();   // AU2: a screenshot taken around a PIN pad is refused
             if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
@@ -1842,9 +1844,18 @@ public class TjAccessibilityService extends AccessibilityService {
         radioGuardOn = false;
     }
 
-    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); }
+    /** AU6 (review of v0.8.0): the calibration watcher and the delayed patch jobs must not outlive this service instance (a rebind inside the calibration window leaked the old one through its ContentObserver). */
+    private void cancelPatchWork() {
+        try {
+            stopShotWatch();
+            handler.removeCallbacks(restRecheck); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoCalTrigger);
+            handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced);
+        } catch (Throwable ignored) { }
+    }
 
-    @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("unbound"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
+    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); try { stopShotWatch(); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); } catch (Throwable ignored) { } }
+
+    @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); cancelPatchWork(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("unbound"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
     /**
      * AD8 (Go discipline, Tj: "optimized for my tablet": 2 GB RAM, memory class 128 MB): when Android reports memory pressure, drop the cached wallpaper / lock-screen bitmaps that nothing is drawing right now
@@ -1865,7 +1876,7 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable ignored) { }
     }
 
-    @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("destroyed"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
+    @Override public void onDestroy() { instance = null; cancelPatchWork(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("destroyed"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
 
     // ---------------------------------------------------------------- AD8: what the helper costs on THIS tablet (plain counters on the main thread; read by the report)
     private long connectedAtMs = 0, evSeen = 0, evNoise = 0, scanCount = 0, scanTotalMs = 0, scanMaxMs = 0;
