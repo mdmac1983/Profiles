@@ -237,6 +237,8 @@ public class TjAccessibilityService extends AccessibilityService {
      * own fade-in instead of jumping (see {@link PatchFade}); Control switch, default ON (OFF = the v0.8.0 jump).
      */
     public static final String PATCH_FADE_KEY = "patch_fade";
+    /** AZ1: Tj's nudge of the fade timing in ms (+ = the patch darkens earlier, - = later): the tablet's timing may differ from the emulator's. */
+    public static final String PATCH_FADE_SHIFT_KEY = "patch_fade_shift";
     private volatile long lastWinEventMs = 0;          // AZ1: event time (uptime ms) of the newest window-state / windows-changed event: the stock fade began about then
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
@@ -2387,6 +2389,7 @@ public class TjAccessibilityService extends AccessibilityService {
         long lag = on ? PatchFade.lagMs(now, lastWinEventMs) : PatchFade.OPEN_MS;
         fadeLeadMs = PatchFade.LEAD_MS;
         if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", -1); if (v >= 0) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt)
+        fadeLeadMs += Features.getInt(this, PATCH_FADE_SHIFT_KEY, 0);
         fadeStartMs = now - lag;
         fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
         fadeLagLast = lag;

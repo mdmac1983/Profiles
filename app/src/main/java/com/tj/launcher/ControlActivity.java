@@ -232,6 +232,7 @@ public class ControlActivity extends Activity {
             stepper("Menu dimming (patch brightness while the menu is OPEN, lock and home)", TjAccessibilityService.PATCH_SCRIM_KEY, 2, -40, 40, " %");
             toggle("Fade the patch together with the stock menu (no flicker)", "Default ON. The stock power menu darkens the screen around it with a 0.3 s fade; the patch follows the SAME fade, started the moment the menu appears, so it never shows as a darker or lighter block. OFF = the old way: the patch jumps to its dim in one step (a slight flicker).",
                     Features.get(this, TjAccessibilityService.PATCH_FADE_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PATCH_FADE_KEY, v); } });
+            stepper("Fade timing (+ = the patch darkens earlier, - = later; only if the patch still flashes)", TjAccessibilityService.PATCH_FADE_SHIFT_KEY, 10, -100, 100, " ms");
         }
         note("Speed of the last menu: " + Features.getString(this, TjAccessibilityService.LATENCY_KEY, "(open the menu once)"));
 
