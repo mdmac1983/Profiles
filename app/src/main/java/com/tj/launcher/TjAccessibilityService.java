@@ -260,7 +260,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
             if (loadLockWallpaper() == null) return null;
             targetIsLock = true;
-            return patchRect(r);
+            return patchRect(r, true);
         }
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
         if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
@@ -268,7 +268,7 @@ public class TjAccessibilityService extends AccessibilityService {
         Rect r = cachedCard();
         if (r == null) { patchStatus("waiting: open the power menu once so the helper learns where it sits (this screen orientation)"); return null; }
         if (loadWallpaper() == null) return null;
-        return patchRect(r);
+        return patchRect(r, false);
     }
 
     /**
@@ -276,9 +276,13 @@ public class TjAccessibilityService extends AccessibilityService {
      * bluish block around it shows where the patch does not match the live lock screen): the patch now covers ONLY the Screenshot slot (below our card) plus a soft fringe, see {@link PatchRest#slotWindow}.
      * If the learned geometry is nonsense (the card would be the whole panel) the window is a thin strip at the panel's bottom and the card covers the whole panel, so no Screenshot entry can show.
      */
-    private Rect patchRect(Rect r) {
+    private Rect patchRect(Rect r, boolean lock) {
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        if (!lock) {   // v0.7.6: the HOME-screen patch keeps its v0.7.5 geometry (the whole menu rectangle plus a 12 px ring); only the lock-screen patch became a soft slot patch
+            int m = (int) (12 * dm.density);
+            return new Rect(Math.max(0, r.left - m), Math.max(0, r.top - m), Math.min(dm.widthPixels, r.right + m), Math.min(dm.heightPixels, r.bottom + m));
+        }
         int[] w = PatchRest.slotWindow(r.left, cardAreaGeom(r).bottom, r.right, r.bottom, Math.round(PatchRest.EDGE_DP * dm.density), Math.round(PatchRest.FEATHER_DP * dm.density), dm.widthPixels, dm.heightPixels);
         return new Rect(w[0], w[1], w[2], w[3]);
     }
@@ -449,7 +453,7 @@ public class TjAccessibilityService extends AccessibilityService {
         final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final Rect rect = new Rect(r);
-        buildPatchMasks(rect, dm);   // AH3
+        if (targetIsLock) buildPatchMasks(rect, dm); else { patchMaskOpen = null; patchMaskRest = null; }   // AH3: the soft-edge masks belong to the lock patch; the home patch is drawn exactly as in v0.7.5
         View v = new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
@@ -484,7 +488,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
         };
         WindowManager.LayoutParams lp = overlayParams(r, false);
-        lp.format = PixelFormat.TRANSLUCENT;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden. AH3: the soft edges need an alpha channel for the home patch too
+        lp.format = targetIsLock ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden. The home patch keeps OPAQUE (v0.7.5 behaviour)
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
         patchLockMode = targetIsLock;
