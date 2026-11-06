@@ -1,21 +1,23 @@
-# CHECKPOINT 471 — read me first, then TASKS.md
+# CHECKPOINT 472 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T06:55:39Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-7a9vpi` · **builds on:** `b9f13aa` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T07:06:46Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-7a9vpi` · **builds on:** `aef107b` (this checkpoint is the commit after it)
 
 ## Just done
-v0.7.6 WIP: review fixes done (CrashGuard order, saver cap, RESET log, card privacy, patch after wake, restDim, SAFE_VALUES, AI1 window rule); 397 tests green
+v0.7.6 WIP: number constants + nudges, card layout, slot-only soft patch; AL1 + AH3 results saved
 
 ## Do this next
-next: lock number nudges (LockNumber helpers + showLockNumber + Control steppers + SAFE_VALUES + tests); then AL1 constants from agent ad1dc2155919e11f1 and AH3 patch (slot-only, feather, brightness) from agent a1090ac7c4068a97a; ae-section SLOT geometry in tools/emulator_scenario.sh must follow the new patch rect; version 0.7.6/23 LAST; gate.sh c0e044d; ship; record
+wait for unit tests (bezffnb8q) then continue: patch hue/alignment from agent a1090ac7c4068a97a (dx dy scale), wallpaper geometry line in ReportState, decide lock_patch_always default, then bash tools/gate.sh c0e044d, bump 0.7.6/23 LAST, ship.sh, dispatch android.yml on branch, record
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  9040fe4 ckpt 471: v0.7.6 WIP: review fixes done (CrashGuard order, saver cap, RESET log, card pr
   013c849 ckpt 470: v0.7.5 RELEASED + RECORDED (run 24, from c0e044d on the branch); v0.7.6 WIP: A
   0cd8ac2 ckpt 469: v0.7.5 build dispatched: android.yml run 24 (id 42176728625) on c0e044d, branc
   c0e044d ckpt 468: intake redacts Recents card titles (v0.7.5 review privacy item); reviews clear
@@ -25,8 +27,7 @@ next: lock number nudges (LockNumber helpers + showLockNumber + Control steppers
   7c92edd ckpt 464: Tj clarified photos: blue scribble = reference, others = ours (recorded)
   621baf2 ckpt 463: recovered dead-chat measurements + partial v0.7.5 review into TASKS
   5e56532 ckpt 462: takeover: AL1 lock number size/font recorded, AH3 findings recovered
-  609bca1 ckpt 461: AG2 logging added to the v0.7.6 patch (low_power changes + guard actions in th
 ```
 
-(8 automatic checkpoint(s) since the last deliberate one — the
+(18 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
