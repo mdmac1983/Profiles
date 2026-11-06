@@ -112,3 +112,7 @@
 ## 2026-11-06T23:07:27Z
 > Status: `ps`, `ae`, `pa` and `lq` all pass when run alone, so the earlier failures came from state left behind by other sections, plus the missing "automatic calibration off" setting in the `v`/`ae` test files. The `v`+`ps` run is the last check of that. Waiting on it.
 <!-- sha:e58cc533974d -->
+
+## 2026-11-06T23:12:14Z
+> Status: the final delta gate is running on the release code (version 0.8.1, code 26). It's four parallel emulator runs, including the `pt` flicker film. The release steps and run ids are saved in the checkpoint. I'll read the results when they finish.
+<!-- sha:1402a6148ce7 -->
