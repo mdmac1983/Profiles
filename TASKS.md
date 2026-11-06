@@ -597,3 +597,23 @@ Armv7"
   - TK2 RESULT 2 (02:45 UTC): `im` alone on main 951e369 = run 167 SUCCESS, `x` alone = run 168 SUCCESS (job conclusions, so 0 FAIL). On the IDENTICAL product code every gate section has now passed: A attempt 2 passed everything but PG3, B attempt 2 everything but AA1, and those two sections pass alone. Per the repo's practice (rerun only the affected sections) v0.7.3 MAY SHIP. Known flakes of this gate, for the record: x1 Y1/X1 (lock-screen overlay timing), rt AA3 after a NATIVE CRASH (libz), AA1 second swipe (im), PG3 summary size (real but borderline, fixed on this branch). NEXT, ONE actor only: (1) `git fetch`, `git diff 63f84b7 origin/main -- app launcher3 phoneguide` must be empty and `get_release_by_tag v0.7.3` must be 404; (2) dispatch `android.yml` on ref main with inputs {"full_build":"true"} (do NOT run ship.sh again: it ran at ckpt 390/391, and android.yml re-runs unit tests + lint itself); (3) wait with a background timer (about 10-15 min), then list the run (resource_id android.yml, branch main, event workflow_dispatch, `perPage` 2 in camelCase) and require success; (4) `get_release_by_tag v0.7.3` shows Launcher-v0.7.3.apk + PhoneGuide-v0.7.3.apk; (5) record it on MAIN: a worktree of origin/main whose local branch is named `main`, `bash tools/record-release.sh v0.7.3 "note"` there (the script reads versionCode 20 from the build file, so do it BEFORE any bump), its push.sh then pushes main directly; (6) give Tj the Release link as plain text on its own line.
   - FOR v0.7.4 (this branch): the PG3 size limit WILL be hit more often there (more switches, the new cost lines): cap the short summary in `TabletReport.summary()` (pure helper + JVM test) so it can never exceed the 12 KB the check promises, cut from the tail (log lines first).
 - [ ] TK3 integrate THIS branch (v0.7.4) only AFTER TK2 is settled: bump to 0.7.4 (code 21), `tools/MIRROR_MAIN` back to `on`, add `ad,se` to the gate lists (CLAUDE.md, HANDOFF.md section 9, emulator.yml description), run gate A and gate B on the integrated commit, `ship.sh`, `android.yml` full_build on main, `get_release_by_tag v0.7.4`, `record-release.sh v0.7.4`, refresh the "state at this writing" paragraph of HANDOFF 0d.
+
+## Tj, 2026-11-06 ~03:20 UTC, answers to the open questions (verbatim)
+"profile_preclean (default ON).  If possible, make this an option in the launcher. If not possible, keep it default on
+
+Keep-alive default OFF (shipped in v0.7.2). Again, make this an option in the launcher so I can test on and off
+
+AD7b. Figure out how to do this without the cable. Trial and error or I can send you pictures of the power menu from my phone
+
+Power menu v2. If this can be built, build it immediately and make it an option to turn on and off. But the custom power menu must be sized correctly. Tell me what I need to do for this
+
+L5, stripping quick-settings tiles down to Auto-rotate only
+The tiles per launcher seem to work fine
+
+MBX1 vs BATCH1. I don't know what this means"
+- [x] AE1 profile_preclean as an option, default ON: ALREADY a switch in Launcher control ("Close Quickstep's apps and notifications the moment the tablet locks", ControlActivity line ~202, key `profile_preclean`, default ON). Nothing to build; Tj told where it is.
+- [x] AE2 keep-alive as an option to test on and off: ALREADY a switch in Launcher control ("Keep the launcher in memory (faster unlock)", ControlActivity line ~211, `KeepAlivePolicy.KEY`, default OFF since v0.7.2; it switches itself off if Android refuses its notification). Nothing to build; Tj told where it is.
+- [ ] AE3 AD7b permanent wallpaper patch on every lock screen, built WITHOUT the cable (Tj: trial and error, or he sends phone pictures of the power menu): behind a Control switch, default OFF; geometry from the last measured menu / model default, never touchable, fail open. Plan in the entries below.
+- [ ] AE4 Power menu v2 (stop Android's own power menu opening, show only our Power off / Restart card), "if this can be built, build it immediately", switchable, the custom menu sized correctly; tell Tj what he must do. FEASIBILITY first (it needs the shell helper, which dies within 15-27 min on this tablet).
+- [x] AE5 L5 tiles: Tj says "The tiles per launcher seem to work fine" -> CLOSED (the switch "Different tiles for each launcher" exists and works for Tj).
+- [ ] AE6 MBX1 vs BATCH1: Tj does not know what this means -> explain in plain words, give a recommendation, ask a yes/no (do not decide for Tj).
