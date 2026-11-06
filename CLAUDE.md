@@ -45,6 +45,7 @@ it did not fire.
 - *Another branch has N commits this one lacks* — a cut-off session's work. Look (`git log --oneline HEAD..origin/X`),
   then `git merge origin/X`. If it contradicts this branch, tell Tj before merging blind.
 - Check the `INBOX.md` tail against `TASKS.md`: anything in INBOX that TASKS lacks is a request nobody wrote down.
+- **Taking over from a cut-off session or another Claude account** (Tj, 2026-11-06: "be very careful, do not lose progress or break anything"): follow `HANDOFF.md` section 0d (find the newest work, judge whether the other session is alive from its newest commit, read its "Do this next", check CI runs and Releases BEFORE dispatching anything, align your branch, ship one version at a time).
 
 ## The save ladder (assume you can be cut off at ANY moment)
 
