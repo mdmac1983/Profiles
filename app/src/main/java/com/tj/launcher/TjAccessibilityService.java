@@ -64,7 +64,7 @@ public class TjAccessibilityService extends AccessibilityService {
         trackUnlockKey(event);
         if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
-        if (Features.POWER_OFF.equals(Features.powerMode(this)) || !Mode.isCustom(this)) {
+        if (Features.POWER_OFF.equals(Features.powerMode(this)) || !coverWorld()) {
             if (overlay != null) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
         }
@@ -215,20 +215,23 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!layerRefreshPending) { layerRefreshPending = true; handler.postDelayed(layerRefresh, 250); }
     }
 
+    /** AD7a: see {@link PowerMenuRule#coverWorld}. Cheap: the keyguard answer is cached for 250 ms. */
+    private boolean coverWorld() { return PowerMenuRule.coverWorld(Mode.isCustom(this), keyguardLockedFast()); }
+
     private void patchStatus(String s) {
         if (!s.equals(Features.getString(this, PATCH_STATUS_KEY, ""))) Features.setString(this, PATCH_STATUS_KEY, s);
     }
 
     /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Launcher control. */
     private boolean lockPatchWanted() {
-        return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && Mode.isCustom(this) && keyguardLockedFast();
+        return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && keyguardLockedFast();   // AD7a: any lock screen, whatever the mode flag says
     }
 
     private Rect patchTarget() {
         targetIsLock = false;
         if (keyguardLocked()) {   // V1: the lock screen has its own rules (the wallpaper there may be another picture, and nothing may be painted over the clock / PIN pad)
             if (!Features.get(this, LOCK_PATCH_KEY, true)) { patchStatus("off: lock-screen patch switched off"); return null; }
-            if (!Features.isCover(Features.powerMode(this)) || !Mode.isCustom(this)) { patchStatus("off: lock screen, power menu cover off or Quickstep mode"); return null; }
+            if (!Features.isCover(Features.powerMode(this))) { patchStatus("off: lock screen, power menu cover off"); return null; }   // AD7a: no mode condition on the lock screen
             Rect r = cachedCard();
             if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
             if (loadLockWallpaper() == null) return null;
@@ -375,7 +378,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (patchView != null) { removeOverlay(); removePatch(); }
                 if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) wallpaperBmp = null;
                 if (!keyguardLocked()) lockBmp = null;   // V1: not needed off the lock screen (memory)
-                if (Features.isCover(Features.powerMode(this)) && Mode.isCustom(this)) warmUp();   // plain cover mode keeps its pre-built card
+                if (Features.isCover(Features.powerMode(this)) && coverWorld()) warmUp();   // plain cover mode keeps its pre-built card
                 return;
             }
             if (patchView != null && (!patchAt.equals(want) || patchRot != rotation() || patchLockMode != targetIsLock)) { removeOverlay(); removePatch(); }
@@ -1425,9 +1428,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void evaluate() {
         String mode = Features.powerMode(this);
-        boolean custom = Mode.isCustom(this);
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         boolean locked = km != null && km.isKeyguardLocked();
+        boolean custom = PowerMenuRule.coverWorld(Mode.isCustom(this), locked);   // AD7a: "custom" here = the cover world (custom launcher or ANY lock screen)
         Rect shot = new Rect();
         boolean menuOpen = false, found = false;
         if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
@@ -1886,7 +1889,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
     private void warmUp() {
-        if (overlay != null || !Mode.isCustom(this) || !Features.isCover(Features.powerMode(this))) return;
+        if (overlay != null || !coverWorld() || !Features.isCover(Features.powerMode(this))) return;
         Rect cached = cachedCard();
         if (cached == null) return;
         ensurePatch();   // the wallpaper patch must be added BEFORE the card so the card is on top
