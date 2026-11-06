@@ -1,21 +1,23 @@
-# CHECKPOINT 427 — read me first, then TASKS.md
+# CHECKPOINT 428 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T03:46:32Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `ce94c91` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T03:49:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `9b152bb` (this checkpoint is the commit after it)
 
 ## Just done
-TK3: b6 alone run 171 = SUCCESS on f869db3 (gate A b6 fails = flake pending composition); g dropped (AF1); waiting run 173 ac+ad+se
+TK3 review: 7 confirmed (all low), 6 refuted; RV1-RV5 written to TASKS
 
 ## Do this next
-~03:53 read run 173 (id 42157826815, job 127696086652): AD5 pass => B composition ok except the g drop; AD5 fail => debug the ac->ad state interaction (ResumeTarget / resume_qs_app)
+wait run 173 (ac,ad,se) for AD5; then fix RV1-RV4 in TjAccessibilityService/ReportState + unit tests, rerun ad, x, b6
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  9b152bb ckpt 427: TK3: b6 alone run 171 = SUCCESS on f869db3 (gate A b6 fails = flake pending co
   ce94c91 ckpt 426: AF1: Tj says stop on the phone guide: g rerun cancelled, g dropped from v0.7.4
   d8271fe ckpt 425: TK3 reruns: b6=run 171 (id 42157821447), g=run 172 (id 42157824026), ac+ad+se=
   f869db3 ckpt 424: TK3 gate 1 NOT green (A: b6 x2; B: g x8, ad AD5 x2); reruns b6, g, ac+ad+se di
@@ -25,5 +27,4 @@ TK3: b6 alone run 171 = SUCCESS on f869db3 (gate A b6 fails = flake pending comp
   26789ed ckpt 420: TK3: gates dispatched on 76fad6a: A=run 169 (id 42154508863), B=run 170 (id 42
   76fad6a ckpt 419: TK3: merged main (v0.7.3 record), bumped to 0.7.4 / code 21
   1b68379 ckpt 418: TK2 DONE: v0.7.3 released + recorded (main 6e06c39); push.sh/-e .git worktree 
-  3d6e2c1 ckpt 417: v0.7.3 PUBLISHED (run 22 id 42153666541 success, both APKs on the Release); NO
 ```
