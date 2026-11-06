@@ -1728,6 +1728,13 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
         return (event.getKeyCode() == KeyEvent.KEYCODE_HOME) || super.dispatchKeyEvent(event);
     }
 
+    /** Tj (AD4): a PASSIVE observer of every touch for the hidden page-flick entrance to Quickstep (it never consumes or changes an event; the hook is exception-safe). */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        com.tj.launcher.TjHooks.onTouch(this, ev);
+        return super.dispatchTouchEvent(ev);
+    }
+
     @Override
     public void onBackPressed() {
         if (finishAutoCancelActionMode()) {

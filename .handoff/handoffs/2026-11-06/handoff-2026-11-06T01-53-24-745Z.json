@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-06T01:53:24.745Z",
+  "project": "Launcher",
+  "session": "4307daaa",
+  "headline": "Goal: Tj's custom Android 10 Go launcher com.tj.launcher (repo tjshea90/Launcher, tablet tb8168p1_bsp, sideloaded, GitHu",
+  "summary": "Session resumed from active-memory handoff #1. Ran Tj's live OTG-cable session step by step: DuraSpeed not the helper killer; accessibility helper stuck in stale Binding state after the 12:48 first-open crash loop, cleared by one tablet restart; all adb permissions, app-ops, battery whitelist and accessibility verified persisted after restart; notification access impossible on Go; lock number overlay and double-erase lock gesture proven on the real tablet; Tj set custom launcher as default Home himself. Coded v0.7.2 here (KA1 PNG icon + keep-alive default off + crash fuse, CBR1 breaker auto-clear on newer version, UX1 wording), code-reviewed (8 fixed, 2 declined), unit tests green; worker restarted at 22:14 UTC; a second Claude session on another account (branch ccr-0e021d44-iyicti) shipped and recorded v0.7.2 at 23:05 and built v0.7.3 (AC1-AC9: plain unlock always custom, battery-saver guard, Solitaire switch gates pre-arm, card geometry from panel, V5 dim, gesture grace, lock log) now in final gate round 3. Then Tj sent a 7-item message (lock screen, power menu, secret entrances, unlock behavior). This session rebased branch ccr-9ab65fa5-vp812y on main, set tools/MIRROR_MAIN off on this branch only, recorded the items and design notes in TASKS.md, replied to Tj with the mapping, and scheduled a resume for v0.7.4 work.",
+  "taskDescription": "Goal: Tj's custom Android 10 Go launcher com.tj.launcher (repo tjshea90/Launcher, tablet tb8168p1_bsp, sideloaded, GitHub Actions builds, Claude codes) runs on his real tablet without crashing, looks and functions identical to stock Quickstep, lock-screen gestures and power-menu overlay reliable. Core intent: Tj owns only this tablet, must never need factory reset or lose lock-screen login (rule L10 safety overrides everything); cable time is short; Claude sessions get cut off so every step is saved to repo (CHECKPOINT.md, TASKS.md, HANDOFF.md, INBOX.md).",
+  "currentStatus": "DONE: cable session finished and documented (CBL1 closed, ACC1 solved, LK1 number+gesture proven). v0.7.2 released and recorded (by the other session) - Tj knows. Tj's 7 items mapped: items 1,2,3,6 and most of 7 are in v0.7.3 (other session, gate in flight at 01:35 UTC: emulator runs A 158, B 159, validation v,ac,rt 160); items 4, 5 and 7a are new. REMAINING in this session (v0.7.4 on branch ccr-9ab65fa5-vp812y): AD7a cover works whenever keyguard up (root cause: PowerMenuRule and Mode.isCustom conditions make cover custom-only and lockPrepare only flips mode after helper clean-up which never works on this tablet); AD5 gesture unlock resumes last Quickstep app instead of starting stock home (root cause: secretAccepted/applyUnlockChoice start stock home, prearm covers app with custom home); AD4 new toggleable secret entrances (page-flick code via passive Launcher.dispatchTouchEvent hook, Auto-rotate tile toggles via ContentObserver on accelerometer_rotation, charger flick, later app-order code and icon long-press chain). Also open: AD7b permanent lock-screen wallpaper patch (needs measurement), optional cable items (probe file, side-key test, old Browser), BATCH1-vs-mailbox decision for Tj, confirm keep-alive default OFF with Tj, RS1 question.",
+  "keyDecisions": [
+    "Decision: ACC1 root cause is stale Binding state in accessibility manager from the 12:48 crash loop; fix is a tablet restart — Reason: AMS had no ServiceRecord while Binding set stayed; after restart service bound and logs showed unlock handled; DuraSpeed off changed nothing",
+    "Decision: notification access is not a missing permission — Reason: low-RAM Go devices refuse managed services for non-whitelisted packages; allow_listener silently leaves enabled_notification_listeners null; ReturnReset already said so; guide must not offer it",
+    "Decision: keep-alive default OFF, PNG transparent small icon, crash fuse takes first RemoteServiceException Bad notification crash (switches only keep-alive off, sets keep_alive_blocked, not counted toward 3-crash breaker), onCreate refuses to repost when rules say no, test knob keep_alive_test_bad_icon only in debuggable builds — Reason: system crashed app 3x in 7s on MediaTek SystemUI, tripped breaker, wiped switches and stranded accessibility",
+    "Decision: CBR1 clears only the tripped flag on a newer versionCode and leaves Mode untouched; unreadable version stored as Integer.MAX_VALUE — Reason: new version gets fair try but Tj chooses when to return to custom",
+    "Decision: updates need no adb (grants, app-ops, battery whitelist, accessibility enabled, Home choice survive in-place update; only optional speed compile is lost) — Reason: same signing key; documented in research/ADB_COMMANDS.txt",
+    "Decision: this session does not touch v0.7.3 gate or release and never pushes to main; branch ccr-9ab65fa5-vp812y is main plus a commit setting tools/MIRROR_MAIN off — Reason: other session on another account is mid-gate; android.yml builds main HEAD; concurrent pushes would contaminate release or reject fast-forwards; at integration merge main, set MIRROR_MAIN on, run gates A and B",
+    "Decision: lock-screen power-menu cover must work on any lock screen (cover world = custom mode OR keyguard locked) — Reason: Tj's tablet lock from Quickstep has no cover because mode flips to custom only after helper clean-up",
+    "Decision: gesture unlock should resume the last Quickstep app (launch intent without RESET_TASK_IF_NEEDED) instead of stock home, fallback stock home — Reason: Tj asked if minimizing apps is necessary; it is not",
+    "Decision: new secret entrances supersede earlier N3a removal because Tj explicitly asked for several toggleable hidden options; no hardware keys, no accelerometer; ProfileSession.goToQuickstep needs no helper — Reason: Solitaire hotspot unreliable (default off, needs Solitaire configured and in front)"
+  ],
+  "userContribution": "Tj ran every adb step on the phone with the ADB OTG app and sent screenshots; restarted the tablet when asked; set the custom launcher as default Home himself; turned the lock number on in Launcher control and tested the lock-screen gesture and number; reported the lock-screen defects and wrote the 7-item request; asked for the next release; corrected the process earlier by demanding short one-step cable messages.",
+  "userDecisions": [
+    {
+      "decision": "Make the custom launcher the default Home app himself while the cable was still connected",
+      "reason": "wanted the custom launcher set up while he had the cable",
+      "alternativesRejected": "stay on stock launcher until v0.7.2 (Claude's try-or-stock question)"
+    },
+    {
+      "decision": "Do the optional cable extras (probe file, side-key test, old Browser disable) at a later cable session",
+      "reason": "cable time ending; said he will have the cable later",
+      "alternativesRejected": "run them immediately"
+    },
+    {
+      "decision": "Release the next version now",
+      "reason": "wanted fixes delivered; also asked whether update needs adb",
+      "alternativesRejected": "hold until more fixes"
+    },
+    {
+      "decision": "Plain PIN must never open Quickstep; custom launcher is always the default; Quickstep apps should stay open at lock if possible",
+      "reason": "stated default is custom at all times; gesture or hidden shortcut is the only way to Quickstep",
+      "alternativesRejected": "plain unlock returning to Quickstep"
+    },
+    {
+      "decision": "Wants several toggleable hidden entrances to Quickstep from inside the custom launcher without hardware keys or accelerometer",
+      "reason": "hidden Solitaire box does not work",
+      "alternativesRejected": "Solitaire hotspot, Konami volume keys, shake or knock"
+    }
+  ],
+  "failedApproaches": [
+    "Approach: DuraSpeed off to keep shell helper alive → Result: helper dead after 27 minutes anyway → Lesson: killer unknown; treat helper as ephemeral, prefer one-shot batch (BATCH1) or no helper",
+    "Approach: unix and TCP sockets between launcher and shell helper → Result: SELinux Permission denied and socket EPERM on this ROM → Lesson: no socket channel; file mailbox has no authentication (sdcard owner uid derived from folder), so BATCH1 one-shot proposed instead",
+    "Approach: grant notification access with cmd notification allow_listener → Result: enabled_notification_listeners stayed null (my audit wrongly listed it as missing) → Lesson: Go device refuses it; read ReturnReset comments before claiming a missing permission",
+    "Approach: Solitaire hidden hotspot as the way into Quickstep from custom → Result: Tj reports it does not work → Lesson: it is default OFF and needs Solitaire target app configured and in front; replace with independent entrances",
+    "Approach: run local rm -rf with variables in a test command → Result: PreToolUse hook blocked it → Lesson: use mktemp and fresh dirs, never work around hooks",
+    "Approach: wait for fresh logcat evidence of events minutes later → Result: tablet log buffer holds only about 3 minutes → Lesson: read logs immediately after an event; consider larger buffer"
+  ],
+  "blockers": "No hard blocker. Risks: two Claude sessions on one repo (other account owns v0.7.3 gate and release; do not dispatch android.yml for v0.7.3 here); shell helper unreachable and short-lived on the tablet; everything real-device (power-menu card/patch, gestures, entrances) needs Tj's eyes after install; Android emulator SystemUI never crashes on a bad icon so the keep-alive fuse proof there is conditional.",
+  "modifiedFiles": [
+    "app/src/main/java/com/tj/launcher/KeepAlivePolicy.java: default OFF, blocked/why keys, single shouldRun rule, isBadNotificationCrash string and Throwable forms, fuseHandles first-crash-only",
+    "app/src/main/java/com/tj/launcher/KeepAliveService.java: mayRun at ensure/onCreate/onStartCommand, blowFuse, setUserChoice, debuggable-only test icon knob, PNG icon",
+    "app/src/main/java/com/tj/launcher/CrashGuard.java: fuse in record, trip_version, tripVersionToStore, shouldAutoClear, clearIfNewer, cleared note",
+    "app/src/main/java/com/tj/launcher/ControlActivity.java, ReportState.java, SetupActivity.java, TjApplication.java: keep-alive switch via setUserChoice and fuse note, report fuse line and allow-list key, honest DONE wording, CBR1 call",
+    "app/src/main/res/drawable-*/tj_ic_blank.png: five transparent PNG densities replace deleted drawable/tj_ic_blank.xml empty vector",
+    "app/src/test/java/com/tj/launcher/KeepAlivePolicyTest.java, CrashGuardTest.java, KeepAliveIconTest.java: fuse, version, icon resource tests (app unit 245 at v0.7.2)",
+    "tools/emulator_scenario.sh: ka section default-OFF check and conditional fuse end-to-end check",
+    "TASKS.md and CHECKPOINT.md: tablet step results, ACC1/LK1/CBL1 closure, REL072 notes, AD1-AD7 request and design notes",
+    "tools/MIRROR_MAIN: off on branch ccr-9ab65fa5-vp812y only (restore to on at integration)"
+  ],
+  "implicitRules": [
+    "Stack: Java (not Kotlin) Android 10 API 29 Go-edition launcher built on in-repo Launcher3 source (launcher3/PATCHES.md lists deviations); applicationId com.tj.launcher; Tj's Android 16 preference does not apply here",
+    "First action every session: bash tools/install-hooks.sh; checkpoint after every step with bash tools/ckpt.sh did next; new Tj request goes into TASKS.md in his words before code",
+    "Local builds only for tests and lint: bash tools/gradle.sh testDebugUnitTest :app:lintDebug; GitHub Actions builds APKs; release order ship.sh then android.yml full_build on main then get_release_by_tag then tools/record-release.sh",
+    "Emulator checks: emulator.yml sections input; concurrency group includes ref so branch runs do not cancel main runs; gate A and B lists in CLAUDE.md; read RESULTS block in job log tail",
+    "Hooks block variable rm -rf and curl to api.github.com; do not work around",
+    "Never commit keys or keystore; tools/MIRROR_MAIN decides whether pushes also fast-forward main; a branch that is not an ancestor of main fails the mirror silently",
+    "During a live cable session send ONE short step per message, command in last message, then wait; tablet clock is EST; ADB OTG app echoes long lines scrambled but they run",
+    "Tablet facts: Enforcing SELinux user build, shell helper unreachable, logcat buffer about 3 minutes, DuraSpeed on, accessibility service must be re-bound by tablet restart after a crash loop",
+    "Write handoff and learnings in English; Tj uses no gendered pronouns in text, refer to Tj by name"
+  ],
+  "nextSteps": [
+    "Read CHECKPOINT.md and TASKS.md (AD section) on branch ccr-9ab65fa5-vp812y; answer any new Tj message first",
+    "Implement AD7a: power-menu cover and lock patch active whenever keyguard is up (PowerMenuRule.decide, Mode.isCustom conditions in TjAccessibilityService) with JVM test",
+    "Implement AD5: remember last Quickstep app in trackForeground, start it on gesture unlock without RESET_TASK_IF_NEEDED, fall back to stock home; emulator proof",
+    "Implement AD4: SecretEntrances pure rule classes plus TjHooks.onTouch via passive Launcher.dispatchTouchEvent (page-flick code), Auto-rotate tile ContentObserver code, charger flick, Control section with per-method switches, JVM tests, emulator section; update launcher3/PATCHES.md",
+    "Run emulator sections only on this branch ref; never push to main or dispatch android.yml for v0.7.3 (other session owns it); check get_release_by_tag v0.7.3 before integration",
+    "Integration: merge origin/main, resolve CHECKPOINT/TASKS/CLAUDE learnings conflicts, set tools/MIRROR_MAIN back to on, run gates A and B, ship.sh, android.yml full_build on main, record-release for v0.7.4, tell Tj",
+    "Ask Tj later: BATCH1 one-shot batch versus file mailbox, confirm keep-alive default OFF, RS1 shade clear question, optional cable items"
+  ],
+  "keywords": [
+    "launcher",
+    "v0.7.4",
+    "secret entrances",
+    "power menu overlay",
+    "lock screen gesture",
+    "v0.7.3",
+    "keep-alive fuse",
+    "accessibility binding"
+  ]
+}

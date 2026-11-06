@@ -72,7 +72,16 @@ public class ControlActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- the page
+    /** AD8: the whole page is rebuilt from the stored state on every change; how long that takes on THIS tablet goes into the report, so the cost is known before anyone optimises it. */
+    static volatile long lastBuildMs = -1;
+
     private void build() {
+        long t0 = android.os.SystemClock.uptimeMillis();
+        buildPage();
+        lastBuildMs = android.os.SystemClock.uptimeMillis() - t0;
+    }
+
+    private void buildPage() {
         page.removeAllViews();
         title("Launcher control");
 
@@ -189,6 +198,7 @@ public class ControlActivity extends Activity {
 
         section("Two profiles (custom launcher / Quickstep)");
         note("Locking the tablet ALWAYS ends a Quickstep session (no switch any more): a plain PIN or fingerprint gives the custom launcher again and closes what Quickstep left open. Only the crash breaker and \"Restore everything\" pause this, until you switch to the custom launcher yourself.");
+        toggle("A gesture unlock comes back to the app I had open", "ON: after the lock-screen gesture, Quickstep opens the app that was in front when you locked the tablet, exactly as you left it (like tapping its icon). OFF: it opens the Quickstep home screen instead, with the apps minimised. With no app open it is always the home screen.", Features.get(this, ResumeTarget.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ResumeTarget.KEY, v); } });
         toggle("Close Quickstep's apps and notifications the moment the tablet locks", "Needs the adb helper (Invisible clean-up below): apps, their notifications and their Recents cards are closed at lock, and the custom account is already active when you unlock, so the unlock has nothing left to do. Without the helper the clean-up happens at unlock under a black cover.", ProfileSession.preClean(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PRECLEAN_KEY, v); } });
         toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
@@ -227,6 +237,11 @@ public class ControlActivity extends Activity {
         toggle(ReturnMethods.Method.HOME2.title, ReturnMethods.Method.HOME2.how + "  (This one is always on.)", true, new Chg() { public void on(boolean v) { rebuild(); } });
         note("The \"Back to custom\" icon is in Quickstep's app drawer (arrow icon). Put it on the home screen if you like. The tile is added from the tile editor (pencil) - or tick it under Quick settings below.");
 
+        section("Secret ways to Quickstep (from the custom launcher)");
+        note("Hidden ways to leave the custom launcher for Quickstep, tablet unlocked. No hardware button and no motion sensor is used; each one is made to be hard to trigger by accident, and each can be switched off here. (The lock-screen handshakes above and the ladder below are separate.)");
+        for (final SecretEntrances.Method m : SecretEntrances.Method.values()) {
+            toggle(m.title, m.how, EntranceWatcher.on(this, m), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
+        }
         section("Master failsafe: always reach Quickstep");
         note("Ladder, easiest first: 1) the lock-screen handshakes above; 2) the key code below; 3) the hidden Solitaire hotspot below; 4) if the Accessibility helper is OFF: press Home three times quickly; 5) Android itself: Settings > Apps > Default apps > Home app, or Safe mode (hold Power off), or adb (see the adb guide).");
         toggle("Key code anywhere in the custom launcher", "Volume Up, Up, Down, Down, Back, Back, Up, Down within 20 seconds, screen unlocked. Needs the helper's key access.", FailsafeKeys.konami(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.KONAMI_KEY, v); } });

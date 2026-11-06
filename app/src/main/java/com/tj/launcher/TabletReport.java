@@ -154,7 +154,24 @@ public final class TabletReport {
     }
 
     /** The launcher's own log lines, as far as the app itself may read them (an app sees only its own lines; the shell helper's probe adds the rest when it runs). */
-    private static String ownLog(int maxLines) {
+    private static String ownLog(int maxLines) { return ownLog(maxLines, Integer.MAX_VALUE); }
+
+    /** PG3 (gate A of v0.7.3: the short summary was over 12 KB once in two runs): the short summary promises to stay under 12 KB, so the log gets whatever is left of the budget, newest lines first. */
+    static final int SUMMARY_MAX = 11_000;
+    private static final String LOG_CUT_NOTE = "(older log lines left out: the short summary is capped; the full report file has them)\n";
+
+    /** Pure: the newest lines of {@code lines} (oldest first) whose lengths, one newline each, add up to at most {@code room}; none when even the last line does not fit. */
+    static List<String> newestWithin(List<String> lines, int room) {
+        int total = 0, from = lines.size();
+        while (from > 0) {
+            int add = lines.get(from - 1).length() + 1;
+            if (total + add > room) break;
+            total += add; from--;
+        }
+        return new java.util.ArrayList<>(lines.subList(from, lines.size()));
+    }
+
+    private static String ownLog(int maxLines, int roomChars) {
         StringBuilder b = new StringBuilder("\n\n===== THE LAUNCHER'S OWN LOG (what the app itself may read)\n");
         Process p = null;
         try {
@@ -163,7 +180,9 @@ public final class TabletReport {
             java.util.ArrayDeque<String> last = new java.util.ArrayDeque<>();
             String l;
             while ((l = r.readLine()) != null) { last.add(l); if (last.size() > maxLines) last.removeFirst(); }
-            for (String s : last) b.append(s).append('\n');
+            List<String> fit = newestWithin(new java.util.ArrayList<>(last), roomChars - b.length() - LOG_CUT_NOTE.length());
+            if (fit.size() < last.size()) b.append(LOG_CUT_NOTE);
+            for (String s : fit) b.append(s).append('\n');
         } catch (Throwable t) { b.append("(not readable: ").append(t).append(")\n"); }
         finally { if (p != null) p.destroy(); }   // a read that failed half way must not leave the logcat child running
         return b.toString();
@@ -178,10 +197,27 @@ public final class TabletReport {
         b.append("===== TABLET SUMMARY (short: the full report is the file tablet-report.txt) ").append(new java.util.Date()).append('\n');
         deviceFacts(b, c);
         permissions(b, c);
-        b.append(ReportState.section(c, helper, false));
-        b.append(selfCheck(helper));
-        b.append(ownLog(40));
+        // PG3: the 11 000-character budget is spent in the order of importance: the facts above, the parser self-check, the launcher's state (its TAIL goes first: the power-menu dump, then old lock-log lines),
+        // then the launcher's own log, newest lines first. The output order stays: facts, permissions, state, self-check, log.
+        String check = selfCheck(helper);
+        b.append(cutAtLine(ReportState.section(c, helper, false), SUMMARY_MAX - b.length() - check.length() - LOG_MIN));
+        b.append(check);
+        b.append(ownLog(40, SUMMARY_MAX - b.length()));
         return b.toString();
+    }
+
+    /** The room kept for the launcher's own log in the short summary (about five lines). */
+    private static final int LOG_MIN = 700;
+
+    /** Pure: {@code s} unchanged when it fits in {@code max} characters, else cut at the last line end that leaves room for a one-line note saying so (empty when even the note does not fit). */
+    static String cutAtLine(String s, int max) {
+        if (s == null) return "";
+        if (s.length() <= max) return s;
+        String note = "(cut: the short summary is capped; the full report file has the rest)\n";
+        int room = max - note.length();
+        if (room <= 0) return "";
+        int nl = s.lastIndexOf('\n', room - 1);
+        return (nl < 0 ? "" : s.substring(0, nl + 1)) + note;
     }
 
     /** Builds the whole report (app side + state + parser self-check + helper probe when it runs) and writes it. Blocking: call off the main thread. Returns the file. */

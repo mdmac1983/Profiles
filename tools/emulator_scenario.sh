@@ -807,6 +807,8 @@ python3 -I tools/tablet_intake.py - --out "$OUT/x-intake-sum" --date 2026-01-01 
 check "PG3: the intake tool reads the short summary too (exit 0, FACTS.md says it is the short one)" bash -c "[ $RCS = 0 ] && grep -q 'SHORT summary' $OUT/x-intake-sum/2026-01-01/FACTS.md"
 info "PG2: report $(wc -c < "$OUT/x-report.txt" 2>/dev/null) bytes, $(wc -l < "$OUT/x-report.txt" 2>/dev/null) lines; keytest: $(grep '^keytest:' "$OUT/x-autorun-done.txt" | cut -c1-330)"
 check "PG2: the report holds the launcher's own state (version, mode, helper, accessibility, crash breaker)" rep_all 'THE LAUNCHER ON THIS TABLET' '^launcher version: ' '^mode: ' '^shell helper reachable: yes' '^accessibility helper bound: ' '^crash breaker tripped: '
+check "AD8: the report shows what the launcher costs here (process memory, start-up time, helper load)" rep_all '^process memory \(AD8\): total PSS [0-9]+ MB, java heap [0-9]+ of [0-9]+ MB' '^start-up \(AD8\): Application\.onCreate [0-9]+ ms, process fork to the end of it [0-9]+ ms' '^accessibility helper load \(AD8\): connected [0-9]+ min, [0-9]+ events'
+info "AD8: $(grep -E '^(process memory|start-up|accessibility helper load) \(AD8\)' "$OUT/x-report.txt" 2>/dev/null | tr '\n' '|' | cut -c1-420)"
 check "PG2: the report ran the launcher's own readers on this system (PARSER SELF-CHECK: Recents tasks, apps with a notification)" rep_all 'PARSER SELF-CHECK' '^Recents tasks parsed: [0-9]' '^Apps with a notification now'
 check "PG2: the probe list added the samples (notification records, side-key device, policy_control, crash log, the launcher's log)" rep_all 'NotificationRecord\(' 'getevent -pl' 'settings get global policy_control' 'logcat -b crash' 'TjReset:I'
 check "PG2: the side-key routine ran end to end in the emulator (KEYTEST markers, the 'no power menu' flag answered OK, then cleared)" kt_all 'KEYTEST-START' 'KEYTEST-END' 'disable2(0x8) -> OK' 'cleared'
@@ -1266,6 +1268,113 @@ adb shell locksettings clear --old 1234 > "$OUT/ac-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ac
+if want ad; then # section ad
+ensurehome
+# ---- AD5 + AD7a (Tj, 2026-11-06). AD5: "when I unlock to quickstep, it minimizes my open apps and goes to the home screen. Is this necessary?" -> a gesture unlock brings back the Quickstep app that was open at the lock (switch
+#      "A gesture unlock comes back to the app I had open", default ON; OFF = the Quickstep home as before). AD7a: "when I lock the screen from quickstep, the power menu overlay doesn't work" -> the cover works on EVERY lock screen.
+#      The PIN is ALWAYS cleared again at the end.
+beat "before AD"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON)
+  case "$1" in
+    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'";;
+    *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'";;
+  esac; }
+adopen(){ adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; }   # an app opened IN Quickstep
+adb shell locksettings set-pin 1234 > "$OUT/ad-setpin.txt" 2>&1
+# ---------------- round 1: the switch has no stored value (default ON)
+adfeat none; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7                           # custom -> handshake -> a Quickstep session begins (the Quickstep home)
+adopen; sleep 2
+adb logcat -c
+lockpad; pad d d 1 2 3 4 e; sleep 7                           # locked from Quickstep with an app open, the same gesture again
+resumed > "$OUT/ad-r1.txt"; shot 150-ad-resume
+adb logcat -d -s TjA11y:I > "$OUT/ad-r1-log.txt" 2>&1
+check "AD5: after the gesture the app that was open (Contacts) is back in front, not the Quickstep home" grep -q 'com.android.contacts' "$OUT/ad-r1.txt"
+check "AD5: the helper says it brought that app back" grep -q 'ROUTER resume com.android.contacts' "$OUT/ad-r1-log.txt"
+# ---------------- AD7a: lock again from this Quickstep session: the cover must still work on the lock screen
+getmode > "$OUT/ad-mode-at-lock.txt"
+lockpad; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 151-ad-lock-menu-from-quickstep
+adb logcat -d -s TjA11y:I > "$OUT/ad-lockmenu-log.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 2
+info "AD7a: the mode flag at this lock: $(cat $OUT/ad-mode-at-lock.txt); menu log: $(grep -E 'menuOpen' $OUT/ad-lockmenu-log.txt | tail -1 | cut -c1-160)"
+check "AD7a: the lock began in Quickstep (the mode flag still says quickstep)" grep -q 'quickstep' "$OUT/ad-mode-at-lock.txt"
+check "AD7a: the power-menu cover works on that lock screen (action=1)" grep -q 'action=1' "$OUT/ad-lockmenu-log.txt"
+# the same lock screen, plain PIN, no gesture: the custom launcher (AD1)
+adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 7
+resumed > "$OUT/ad-plain.txt"
+check "AD1: a plain PIN after that Quickstep session opens the custom launcher" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/ad-plain.txt && ! grep -q 'com.android.contacts' $OUT/ad-plain.txt"
+# ---------------- round 2: the switch OFF = the Quickstep home as before
+adfeat false; adb shell am force-stop "$PKG"; ensurehome; rebind; home; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7
+adopen; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7
+resumed > "$OUT/ad-r2.txt"; shot 152-ad-switch-off
+check "AD5: with the switch OFF the gesture opens the Quickstep home (the open app stays minimised)" grep -q 'com.android.launcher3/' "$OUT/ad-r2.txt"
+adb shell locksettings clear --old 1234 > "$OUT/ad-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "AD: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/ad-clearpin.txt"
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section ad
+if want se; then # section se
+ensurehome
+# ---- AD4 (Tj, 2026-11-06): hidden, switchable entrances to Quickstep from the custom launcher (no hardware key, no motion sensor): (1) PAGE FLICK = six alternating swipes on the home screen, (2) ROTATION TILE = five changes of the
+#      rotation lock in 10 s, (3) CHARGER FLICK = in, out, in. Each is proven (it takes Tj to Quickstep) AND given a negative control (one swipe short / three toggles / switched off) so the check cannot pass by accident.
+beat "before SE"
+sefeat(){ # sefeat <flick> <rotate> <charger> (true|false)
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"entrance_flick\\\" value=\\\"$1\\\" /><boolean name=\\\"entrance_rotate_tile\\\" value=\\\"$2\\\" /><boolean name=\\\"entrance_charger\\\" value=\\\"$3\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+sefresh(){ adb shell am force-stop "$PKG"; setmode custom; ensurehome; rebind; home; sleep 3; }   # a fresh custom home screen with the new switches
+flickchain(){ # flickchain R L R L ...: the swipes run in ONE adb call (each `input swipe` starts in about 0.3 s, so every gap stays far below the 2.5 s limit); R = finger moves right (400 px of 600), L = left
+  local cmd="" d; for d in "$@"; do if [ "$d" = R ]; then cmd="$cmd input swipe 100 600 500 600 120;"; else cmd="$cmd input swipe 500 600 100 600 120;"; fi; done
+  adb shell "$cmd"; }
+SE_ROT0="$(adb shell settings get system accelerometer_rotation | tr -d '\r\n')"; [ "$SE_ROT0" = "1" ] || SE_ROT0=0
+rotchain(){ # rotchain N: N changes of the rotation lock in ONE adb call, 0.3 s apart (the observer treats changes closer than 120 ms as one; the code needs 5 inside 10 s)
+  adb shell "v=\$(settings get system accelerometer_rotation); i=0; while [ \$i -lt $1 ]; do if [ \"\$v\" = 1 ]; then v=0; else v=1; fi; settings put system accelerometer_rotation \$v; i=\$((i+1)); sleep 0.3; done"; }
+# -------- page flick
+sefeat true true false; sefresh; adb logcat -c
+flickchain R L R L R; sleep 3; getmode > "$OUT/se-flick5.txt"                       # five alternating swipes
+check "SE-F1: five alternating swipes are NOT enough (still the custom launcher)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick5.txt)\" = custom ]"
+sefresh
+flickchain R L R L R L; sleep 3; getmode > "$OUT/se-flick6.txt"; resumed > "$OUT/se-flick6-front.txt"      # six alternating swipes (no pause in the middle: each gap must stay under 2.5 s)
+check "SE-F2: six alternating swipes take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick6.txt)\" = quickstep ]"
+check "SE-F3: and the Quickstep home is in front" grep -q 'com.android.launcher3/' "$OUT/se-flick6-front.txt"
+sefresh
+flickchain R R R R R R; sleep 3; getmode > "$OUT/se-flick-same.txt"                # six swipes the SAME way: not a code
+check "SE-F4: six swipes in the same direction are NOT a code" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-same.txt)\" = custom ]"
+sefeat false true false; sefresh
+flickchain R L R L R L; sleep 3; getmode > "$OUT/se-flick-off.txt"
+check "SE-F5: with the page-flick switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-off.txt)\" = custom ]"
+# -------- rotation tile
+sefeat true true false; sefresh
+rotchain 3; sleep 3; getmode > "$OUT/se-rot3.txt"
+check "SE-R1: three changes of the rotation lock are NOT enough" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot3.txt)\" = custom ]"
+sefresh
+rotchain 5; sleep 3; getmode > "$OUT/se-rot5.txt"
+check "SE-R2: five changes in 10 s take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot5.txt)\" = quickstep ]"
+sefeat true false false; sefresh
+rotchain 5; sleep 3; getmode > "$OUT/se-rot-off.txt"
+check "SE-R3: with the rotation-tile switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot-off.txt)\" = custom ]"
+adb shell settings put system accelerometer_rotation $SE_ROT0
+# -------- charger flick (default OFF)
+sefeat true true false; sefresh
+adb shell dumpsys battery unplug >/dev/null 2>&1; sleep 1        # the emulator's battery starts "on AC": begin from unplugged so in / out / in are three real changes
+adb shell "dumpsys battery set ac 1; dumpsys battery set ac 0; dumpsys battery set ac 1" >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-off.txt"
+check "SE-C1: the charger flick is OFF by default: in, out, in does nothing" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-off.txt)\" = custom ]"
+adb shell dumpsys battery reset >/dev/null 2>&1; sleep 1
+sefeat true true true; sefresh
+adb shell dumpsys battery unplug >/dev/null 2>&1; sleep 1
+adb shell "dumpsys battery set ac 1; dumpsys battery set ac 0; dumpsys battery set ac 1" >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-on.txt"
+check "SE-C2: with the charger flick ON, in / out / in takes Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-on.txt)\" = quickstep ]"
+adb shell dumpsys battery reset >/dev/null 2>&1
+adb logcat -d -s TjEntrance:I > "$OUT/se-log.txt" 2>&1
+info "SE entrance log: $(grep -c 'ENTRANCE' $OUT/se-log.txt) entrance(s): $(grep 'ENTRANCE' $OUT/se-log.txt | sed 's/.*ENTRANCE //' | tr '\n' ',' | cut -c1-120)"
+check "SE-L: each success is in the lock log / entrance log (flick, rotate_tile, charger)" bash -c "grep -q 'ENTRANCE flick' $OUT/se-log.txt && grep -q 'ENTRANCE rotate_tile' $OUT/se-log.txt && grep -q 'ENTRANCE charger' $OUT/se-log.txt"
+adb shell settings put system accelerometer_rotation $SE_ROT0
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section se
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)

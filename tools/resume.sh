@@ -62,9 +62,12 @@ BRIEF="$(
       # session work, and merging them would drag in an unrelated root commit. Say so once, quietly, instead of a false alarm every session.
       case "$RB" in origin/dependabot/*) continue ;; esac
       if ! git merge-base HEAD "$RB" >/dev/null 2>&1; then echo "  note  ${RB#origin/} shares no history with this branch (orphan): ignored."; continue; fi
-      echo "  !!    ${RB#origin/} has $N commit(s) this branch lacks (last: $(git log -1 --format='%s' "$RB" | cut -c1-70))."
+      echo "  !!    ${RB#origin/} has $N commit(s) this branch lacks (last: $(git log -1 --format='%s' "$RB" | cut -c1-70); newest commit $(git log -1 --format=%cr "$RB"))."
       echo "        Look first:  git log --oneline HEAD..$RB | head   — then:  git merge $RB   (tell Tj if it contradicts this branch)"
+      SIBLING=1
     done
+    # Another session / another Claude account? Its newest commit is its heartbeat (HANDOFF.md 0d "TAKEOVER").
+    [ -n "${SIBLING:-}" ] && echo "  NOTE  Another session's work is ahead of you: newest commit under ~20 min old = it MAY still be running (do not touch main, releases or its CI runs; ask Tj); older with no CI run of its in flight = cut off: TAKE OVER, steps in HANDOFF.md 0d."
 
     LASTAUTO="$(git log -1 --format=%cr --grep='^auto-checkpoint:' 2>/dev/null || true)"
     if [ -n "$LASTAUTO" ]; then
