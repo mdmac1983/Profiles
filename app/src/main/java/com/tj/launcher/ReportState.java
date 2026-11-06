@@ -67,6 +67,12 @@ public final class ReportState {
         b.append("accessibility helper bound: ").append(yes(TjAccessibilityService.get() != null)).append('\n');
         b.append("keep-alive service running: ").append(yes(KeepAliveService.running())).append(" (switch ").append(KeepAliveService.enabled(c) ? "on" : "off").append(")\n");
         b.append("keep-alive crash fuse blown (Android refused its notification, so it stays off until you switch it on again): ").append(yes(KeepAliveService.blocked(c))).append(KeepAliveService.blocked(c) ? "  " + KeepAliveService.blockedWhy(c) : "").append('\n');
+        try {
+            StringBuilder en = new StringBuilder();
+            for (SecretEntrances.Method m : SecretEntrances.Method.values()) en.append(m.id).append(EntranceWatcher.on(c, m) ? " on" : " off").append("; ");
+            b.append("secret entrances to Quickstep (AD4): ").append(en).append('\n');
+            b.append("gesture unlock returns to the app that was open (AD5): ").append(Features.get(c, ResumeTarget.KEY, true) ? "on" : "off").append('\n');
+        } catch (Throwable t) { /* not available */ }
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');
         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
