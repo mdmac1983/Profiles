@@ -1659,6 +1659,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; adb push "$OUT/ps-red.png" /data/local/tmp/ps-red.png >/dev/null 2>&1
   adb shell "run-as $PKG sh -c 'cp /data/local/tmp/ps-red.png files/patchshot_r0.png'"
   rebind; pslock; sleep 5; shot 97-ps-wrong
+  info "PS B: wallpaper patch status after the restart + lock: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'wallpaper_patch_status">[^<]*' | sed 's/.*>//'); card rect: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'power_card_rect_r0">[^<]*' | sed 's/.*>//'); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
   info "PS B: helper log after the restart (tail): $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH|PAD|CAL' | tail -8 | cut -c19-190 | tr '\n' '|')"
   MAEW="$(psmae 97-ps-wrong 94-ps-bare "$SLOT")"
   info "PS B: positive control: resting patch with a RED crop vs the bare lock screen over the slot: MAE $MAEW"

@@ -311,8 +311,9 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!Features.isCover(Features.powerMode(this))) { patchStatus("off: lock screen, power menu cover off"); return null; }   // AD7a: no mode condition on the lock screen
             Rect r = cachedCard();
             if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
-            if (loadLockWallpaper() == null) return null;
+            if (loadLockWallpaper() == null) { patchStatus("waiting: the lock-screen wallpaper could not be read (Launcher control > Allow wallpaper access)"); return null; }
             targetIsLock = true;
+            patchStatus("lock screen: patch window wanted at " + r.toShortString());
             return patchRect(r, true);
         }
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
