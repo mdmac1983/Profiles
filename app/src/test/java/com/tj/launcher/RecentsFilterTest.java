@@ -54,12 +54,14 @@ public class RecentsFilterTest {
         assertEquals("my files", RecentsFilter.matchingLabel("My Files, Downloads", set("my", "my files")));
     }
     @Test public void onlyWindowChangesOfTheStockLauncherOrSystemUiCanOpenRecents() {
-        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.launcher3", "com.android.launcher3"));
-        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOWS_CHANGED, "com.vendor.home", "com.vendor.home"));
-        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.systemui", null));
-        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.android.launcher3", "com.android.launcher3"));   // a redraw is no new screen
-        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_VIEW_CLICKED, "com.android.systemui", null));
-        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.calendar", "com.android.launcher3"));    // an app's own window
-        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, null, "com.android.launcher3"));
+        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.launcher3", "com.android.launcher3", "com.android.quickstep.RecentsActivity"));
+        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOWS_CHANGED, "com.vendor.home", "com.vendor.home", null));
+        assertTrue(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.systemui", null, "com.android.systemui.recents.RecentsActivity"));   // an old-style SystemUI Recents
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.systemui", null, "android.widget.FrameLayout"));   // the shade / quick settings: never scanned (AN1)
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.systemui", null, null));
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, "com.android.launcher3", "com.android.launcher3", "x"));   // a redraw is no new screen
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_VIEW_CLICKED, "com.android.systemui", null, "recents"));
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, "com.android.calendar", "com.android.launcher3", "Recents"));    // an app's own window
+        assertFalse(RecentsFilter.mayOpenRecents(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, null, "com.android.launcher3", null));
     }
 }

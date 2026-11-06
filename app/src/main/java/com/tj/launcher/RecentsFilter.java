@@ -73,11 +73,16 @@ final class RecentsFilter {
         return best;
     }
 
-    /** Pure: can this event mean "the Recents screen just opened"? A window change of the stock launcher (it hosts Recents) or of SystemUI. */
-    static boolean mayOpenRecents(int eventType, String pkg, String stockPkg) {
+    /**
+     * Pure: can this event mean "the Recents screen just opened"? A window change of the stock launcher (it hosts Quickstep's Recents), or of SystemUI ONLY when the window says "Recents": SystemUI also owns the
+     * shade and the quick settings, and a scan there (a tree walk run by SystemUI's own UI thread) is exactly what must not happen while Tj taps a tile (AN1).
+     */
+    static boolean mayOpenRecents(int eventType, String pkg, String stockPkg, CharSequence className) {
         if (pkg == null) return false;
         boolean windowChange = eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED;
-        return windowChange && (pkg.equals(stockPkg) || pkg.startsWith("com.android.launcher3") || "com.android.systemui".equals(pkg));
+        if (!windowChange) return false;
+        if (pkg.equals(stockPkg) || pkg.startsWith("com.android.launcher3")) return true;
+        return "com.android.systemui".equals(pkg) && className != null && className.toString().toLowerCase(Locale.ROOT).contains("recents");
     }
 
     // ---------------------------------------------------------------- Android side
@@ -87,7 +92,7 @@ final class RecentsFilter {
         try {
             if (e == null || pending) return;
             CharSequence pkg = e.getPackageName();
-            if (pkg == null || !mayOpenRecents(e.getEventType(), pkg.toString(), svc.stockPackageOrNull())) return;
+            if (pkg == null || !mayOpenRecents(e.getEventType(), pkg.toString(), svc.stockPackageOrNull(), e.getClassName())) return;
             if (!wanted(Mode.isCustom(svc), Features.get(svc, KEY, true), svc.keyguardLockedNow(), CrashGuard.automationOff(svc), svc.resetDrivesRecents())) return;
             schedule(150);
             rounds = 0;
