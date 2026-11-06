@@ -881,3 +881,8 @@ If possible, delete these photos from github when you are finished. Or somehow m
 ```
 Don't worry about those, just do the launcher work
 ```
+
+## 2026-11-06T04:55:17Z
+```
+Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher
+```
