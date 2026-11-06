@@ -9,6 +9,7 @@ base   :: 76  :: core :: - :: - :: manifest cannot touch the lock screen, HOME r
 n      :: 41  :: core :: - :: - :: ways back to custom, the master failsafe, lock-screen profile switch
 o      :: 60  :: core :: - :: - :: lock-screen unlock methods (handshakes), closing at lock, instant unlock
 ac     :: 78  :: core :: - :: - :: AC1-AC9: a plain PIN is ALWAYS the custom launcher, the handshake, battery saver (AC3, AG1), the lock log holds no digit
+bs     :: 100 :: opt  :: BatterySaverGuard|BatterySaverPolicy|Mode\.java :: low_power|BatterySaver|batterySaver|battery_saver :: AZ2: the REAL Settings screen can switch battery saver on and off after the launcher's switch-off (Android 10's state machine is not left out of step)
 e1     :: 21  :: core :: - :: - :: unlock-time launcher choice; a plain PIN returns to custom
 x1     :: 17  :: core :: - :: - :: the power-menu cover and the number overlay work on the lock screen and go with the PIN pad
 rb     :: 52  :: core :: - :: - :: restart survival and "Restore everything" (never a factory reset)
