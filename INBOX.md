@@ -961,3 +961,8 @@ More reference photos. The blue scribble is how i want it to look. The other tab
 ```
 You are trying to rebuild and match the custom power menu to the reference power menu, but you are missing the point. If the patch of wallpaper matches perfectly and can't be seen, it will automatically cover the screenshot button. The power menu doesn't need to be rebuilt or changed at all. As long as the wallpaper patch is always on place, the screenshot button will be covered, and no changes at all need to be made to the power menu, it can stay completely stock
 ```
+
+## 2026-11-06T07:26:57Z
+```
+You can see the patch clearly. It doesn't blend in
+```
