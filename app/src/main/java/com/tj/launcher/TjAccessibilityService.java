@@ -1828,9 +1828,17 @@ public class TjAccessibilityService extends AccessibilityService {
             final boolean everyWindow = android.os.SystemClock.uptimeMillis() < fullScanUntilMs;
             if (menuSeenMs == 0 && dialogUp) menuSeenMs = android.os.SystemClock.uptimeMillis();
             if (dialogUp) menuUpAtMs = android.os.SystemClock.uptimeMillis();   // AN1: a menu is up: its content changes are followed
+            if (dialogUp && overlayShown && fading && android.os.SystemClock.uptimeMillis() < scanNotBeforeMs) {   // AZ1: the stock menu is still fading in and the patch follows it: no node scan now (it would block the redraws); a closed menu (dialogUp false) is handled at once
+                handler.removeCallbacks(recheck);
+                handler.postDelayed(recheck, Math.max(20, scanNotBeforeMs - android.os.SystemClock.uptimeMillis() + 20));
+                return;
+            }
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
-                if (cached != null && dialogUp) showOverlay(cached);   // instant: no node scan yet
+                if (cached != null && dialogUp) {
+                    showOverlay(cached);   // instant: no node scan yet
+                    if (fading) { deferScan(android.os.SystemClock.uptimeMillis()); return; }   // AZ1: the fade is running: the scan (and everything after it) waits for its end
+                }
             }
             if (windows != null) {
                 for (AccessibilityWindowInfo w : windows) {
