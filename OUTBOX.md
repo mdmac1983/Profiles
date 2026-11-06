@@ -92,3 +92,7 @@
 ## 2026-11-06T22:39:08Z
 > Status: the local tests and lint pass, and checkpoint 542 with the reviewer fixes is pushed. The `pt` run should finish within a couple of minutes; I'll read it when it lands.
 <!-- sha:89cefc8a459f -->
+
+## 2026-11-06T22:47:31Z
+> Status: the tablet checklist and HANDOFF now describe the real cause and the fix. The timer for `pt` #253 and the gate runs is set. I'll read them when it fires.
+<!-- sha:4f75e052e022 -->
