@@ -2299,9 +2299,32 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** V1: on the lock screen the patch is invisible until the power menu opens (and again afterwards). */
+    /** AZ1: the stock menu has just opened: start following its fade-in. {@code lastWinEventMs} is the window event that told us (the stock fade began about then); an old one means "complete", i.e. no fade. */
+    private void startFade() {
+        long now = android.os.SystemClock.uptimeMillis();
+        boolean on = patchFadeOn();
+        long lag = on ? PatchFade.lagMs(now, lastWinEventMs) : PatchFade.OPEN_MS;
+        fadeStartMs = now - lag;
+        fading = on && PatchFade.fading(now, fadeStartMs);
+        fadeLagLast = lag;
+        Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms");
+    }
+
+    /** AZ1: how far the stock scrim will be when the frame drawn now is SEEN: 0..1 (1 = complete, also when no fade is running). Main thread (onDraw) only. */
+    private float fadeProgress() {
+        if (!fading) return 1f;
+        long now = android.os.SystemClock.uptimeMillis();
+        float p = PatchFade.progressAt(now, fadeStartMs);
+        if (!PatchFade.fading(now, fadeStartMs)) fading = false;   // this frame is the last one: the final brightness
+        return p;
+    }
+
     private void patchShow(boolean on) {
         if (patchView == null) return;
-        if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
+        boolean opening = on && !patchOpenFlag;   // AZ1: only the closed -> open transition starts a fade (repeated "still open" calls must not restart it)
+        patchOpenFlag = on;
+        if (opening) startFade(); else if (!on) fading = false;
+        if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch || opening) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
         // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
         boolean vis = PatchRest.visible(on, lockPatchAlways(), true, lastBouncer);
         boolean rest = vis && !on;
