@@ -132,3 +132,41 @@
 ## 2026-11-06T23:38:33Z
 > Status: the session restarted, and I'm back on track. The `pa`-alone confirmation run is finishing; after it I run `ship.sh` and start the signed build.
 <!-- sha:1cb4e3d9ca84 -->
+
+## 2026-11-06T23:41:05Z
+> Status: `pa` alone passes on the release code, so the whole gate is green apart from one test-order flake that I've written down as task AZ4. `ship.sh` is running now; it runs the handoff test, version check, unit tests and lint, then pushes. After that I start the signed build.
+>
+> **📌 Chat checkpoint: 🔴 Red**
+>
+> **Goal:** Ship v0.8.1 of Tj's Android 10 Go launcher: the lock-screen power-menu flicker fix and the battery-saver fix.
+>
+> **Decisions made:**
+> - Battery saver: the launcher never switches it on; a swallowed turn-on is completed.
+> - Flicker fix: reaction on the menu's own window event, the heavy per-event work waits, `PatchFade.LEAD_MS` is 10.
+> - Version is 0.8.1 (code 26).
+>
+> **Changed / rejected:**
+> - "The patch dims too early" was wrong; the patch was in fact too late and showed as a light block.
+> - The window-list "hold" idea was replaced by a time-based confirmation.
+>
+> **Key details:**
+> - Branch `ccr-019b8e69-16dn91`.
+> - Final-gate runs: `pt` #262 ✓, group {x1…rb} #260 ✓, {base…uf} #259 (only PS C, now 4%, `ps` alone #263 ✓), {n…last} #261 (only PA 2 in the long run, `pa` alone #264 ✓).
+>
+> **Done so far:** root causes found and fixed, reviewer findings fixed, 21 task boxes ticked, AZ4 logged.
+>
+> **Open / next steps:**
+> 1. Read the `ship.sh` result.
+> 2. Dispatch `android.yml` with `full_build=true` on the branch.
+> 3. `get_release_by_tag` v0.8.1.
+> 4. `bash tools/record-release.sh v0.8.1 "…"`.
+> 5. Tick AW6, AZ0, AZ1 and AZ2 parents.
+> 6. Give Tj the Release link and the tablet checklist.
+>
+> **Rules to remember:** `ckpt` after every step; photos never go in the repo; GitHub MCP tools only.
+>
+> 🔴 **Health:** Red. The session is very long, so any new session should start from `CHECKPOINT.md`.
+>
+> 🔴 I'd move to a fresh chat now after the release. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:bd64ec15e963 -->
