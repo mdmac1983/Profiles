@@ -109,8 +109,8 @@ You are continuing work from a previous chat. That chat is gone; this file is th
 | Gated product commit of v0.7.3 | `63f84b7` ("ckpt 393"); `git diff 63f84b7 origin/main -- app launcher3 phoneguide` was EMPTY at 02:17 UTC (only docs/checkpoints since) |
 | v0.7.2 | released 2026-11-05T23:06Z, code 19, `android.yml` run 21 (id 42125529945) on `1079dbb`; https://github.com/tjshea90/Launcher/releases/tag/v0.7.2 ; BUILDLOG.md ends with it |
 | v0.7.3 | `versionCode = 20`, `versionName = "0.7.3"` in `app/build.gradle.kts` on `main`; `get_release_by_tag v0.7.3` = 404 (not released) at 02:21 UTC |
-| This session's branch | `ccr-9ab65fa5-vp812y`, last checkpoint ckpt 413 (about 40 commits ahead of `main`, 0 behind), `tools/MIRROR_MAIN` = `off` |
-| Orphan/old branches | `ccr-3bcc29a7-cuz0x0`, `ccr-4ff66321-chzhhg`, `ccr-8b1c3755-1tp147`, `claude/*`: no common history, ignore |
+| This session's branch | `ccr-9ab65fa5-vp812y`: `main` plus the v0.7.4 work and checkpoints (0 commits behind `main` at 02:17 UTC), last deliberate checkpoint ckpt 413, `tools/MIRROR_MAIN` = `off` |
+| Orphan/old branches | `ccr-3bcc29a7-cuz0x0`, `ccr-4ff66321-chzhhg`, `ccr-8b1c3755-1tp147`, `claude/*`: no common history, ignore; `ccr-888039cc-xwzdeh` (handoff #1's branch) is fully contained in `main` |
 
 **v0.7.3 gate on `63f84b7` (emulator runs, identical product code)**
 | Run | Result |
