@@ -1214,13 +1214,11 @@ acfeat true false false false true; setmode custom; rebind; sleep 2
 adb shell settings put global low_power 1; sleep 3
 AC3S="$(lowpower)"
 check "AC3: with its switch OFF the guard leaves battery saver alone (control)" bash -c "[ \"$AC3S\" = 1 ]"
-# ---- AG1 (Tj, 2026-11-06: "Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher"): the saver FOLLOWS the launcher: Quickstep turns it ON and keeps it on
-acfeat true false true true true; setmode quickstep; rebind; home; sleep 2
+# ---- AZ2 (Tj, 2026-11-06 20:40; replaces AG1): Quickstep is 100 % STOCK. The v0.7.5 - v0.8.0 launcher switched the saver ON when Quickstep began (a direct write of low_power), which left Android 10's battery saver
+#      state machine out of step: the tile and Settings could not turn it off any more. Now the launcher never writes the saver ON, not even in strict mode (section bs proves the Settings screen end to end).
+acfeat true false true false true; setmode quickstep; rebind; home; sleep 2
 adb shell settings put global low_power 0; sleep 3
-check "AG1 (strict): in Quickstep with the switch on, a battery saver that is OFF is switched back ON (it stays on)" bash -c "[ \"$(lowpower)\" = 1 ]"
-acfeat true false true false true; setmode quickstep; rebind; sleep 2
-adb shell settings put global low_power 0; sleep 3
-check "AG1: with the Quickstep switch OFF the saver is left alone in Quickstep (control)" bash -c "[ \"$(lowpower)\" = 0 ]"
+check "AZ2: in Quickstep a battery saver that is off stays off (the launcher never switches it ON, not even in strict mode)" bash -c "[ \"$(lowpower)\" = 0 ]"
 # ---- AN1 (Tj, 2026-11-06: "the battery saver tile sometimes works. But it is mostly unresponsive. When it does work it turns on very slow ... It wasn't happening before"): WITHOUT strict the tile is the boss between launcher changes
 acfeat true false true true; setmode quickstep; rebind; home; sleep 2     # strict OFF (the default), both rules on
 adb shell settings put global low_power 1; sleep 2
@@ -1309,6 +1307,99 @@ adb shell locksettings clear --old 1234 > "$OUT/ac-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ac
+if want bs; then # section bs
+ensurehome
+beat "before BS"
+# ---- AZ2 (Tj, 2026-11-06 20:40: "If I open the full settings and go to battery saver, then try to turn it off there, it says it turned off but it never does").
+#      ROOT CAUSE (Android 10 source, research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md): BatterySaverStateMachine switches the saver when Settings.Global low_power is WRITTEN but keeps its own state, so the real
+#      "Turn on now" / "Turn off now" button of the Settings screen is then ignored. This section drives the REAL Settings screen (what a person does) on the real Android 10 system image:
+#        BS1 control: the stock path works.  BS2 the bug as Tj saw it (INFO only: it documents Android, with the state machine's own dump).
+#        BS3 the launcher's switch-off in the custom launcher, then a "Turn on now" tap: it must still work (the self-heal), and so must "Turn off now" after it.  BS4 a saver an older version left stuck is cleared once.
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
+lowpower(){ adb shell settings get global low_power | tr -d '\r\n'; }
+# bsfeat <guard switch true|false> <battery_saver_last text> <bs_unstick_done true|false>: the usual test features (the custom launcher opens no app)
+bsfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_strict\\\" value=\\\"false\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"true\\\" /><boolean name=\\\"profile_end_on_lock\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"$1\\\" /><boolean name=\\\"bs_unstick_done\\\" value=\\\"$3\\\" /><string name=\\\"battery_saver_last\\\">$2</string><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+# bsfind <ui dump> <resource-id suffix> <text fragment>: the centre "x y" of the node whose resource-id ends with the suffix OR whose text contains the fragment (case-insensitive); nothing when there is none
+bsfind(){ python3 -I -c '
+import re, sys
+import xml.etree.ElementTree as ET
+path, rid, frag = sys.argv[1], sys.argv[2], sys.argv[3].lower()
+try:
+    root = ET.parse(path).getroot()
+except Exception:
+    sys.exit(0)
+for n in root.iter("node"):
+    t = (n.get("text") or "").lower()
+    i = n.get("resource-id") or ""
+    if (rid and i.endswith(rid)) or (frag and frag in t):
+        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", n.get("bounds", ""))
+        if m:
+            x1, y1, x2, y2 = (int(g) for g in m.groups())
+            print((x1 + x2) // 2, (y1 + y2) // 2)
+            break
+' "$1" "$2" "$3"; }
+# bstap on|off: open the Battery saver screen of Settings and tap its "Turn on now" / "Turn off now" button, like a person; 0 = tapped
+bstap(){ local id="state_$1_button" frag="turn $1 now" xy
+  adb shell am start -a android.settings.BATTERY_SAVER_SETTINGS >/dev/null 2>&1; sleep 3
+  adb shell uiautomator dump /sdcard/bsui.xml >/dev/null 2>&1; adb exec-out cat /sdcard/bsui.xml > "$OUT/bs-ui-$1.xml" 2>/dev/null
+  xy=$(bsfind "$OUT/bs-ui-$1.xml" "$id" "$frag")
+  [ -n "$xy" ] || { info "BS: no '$frag' button on the Battery saver screen (dump bs-ui-$1.xml)"; return 1; }
+  adb shell input tap $xy; sleep 2; return 0; }
+# the state machine's own view, for the evidence (Android 10 prints it in `dumpsys power`)
+bsstate(){ adb shell dumpsys power 2>/dev/null | tr -d '\r' | grep -iA12 'battery saver state machine' | grep -iE 'mState|Enabled|full=' | tr -s ' ' | tr '\n' ';' | cut -c1-200; }
+
+# ---- BS1 control: nothing of ours is involved; the stock path must work on this image
+bsfeat true "" true; setmode quickstep; rebind; home; sleep 2
+adb shell settings put global low_power 0; sleep 1
+bstap on; BS1ON="$(lowpower)"
+info "BS1: Settings 'Turn on now' -> low_power=$BS1ON; state machine: $(bsstate)"
+check "BS1 (control): the Settings button 'Turn on now' switches battery saver on" bash -c "[ \"$BS1ON\" = 1 ]"
+bstap off; BS1OFF="$(lowpower)"
+check "BS1 (control): the Settings button 'Turn off now' switches it off again" bash -c "[ \"$BS1OFF\" = 0 ]"
+home
+
+# ---- BS2 the bug as Tj saw it: the saver is switched ON by a direct write (what v0.7.5 - v0.8.0 did when Quickstep began), then the person taps 'Turn off now'. INFO only: it documents what Android does.
+adb shell settings put global low_power 1; sleep 2
+BS2PRE="$(bsstate)"
+bstap off; BS2="$(lowpower)"
+info "BS2 (the old bug): after a direct write low_power=1, Settings 'Turn off now' left low_power=$BS2 (1 = ignored by Android = Tj's report); state machine before: $BS2PRE; after: $(bsstate)"
+adb shell dumpsys power 2>/dev/null | tr -d '\r' | grep -iA14 'battery saver state machine' > "$OUT/bs-state-machine.txt" 2>&1
+adb shell settings put global low_power 0; sleep 2; home
+
+# ---- BS3 the launcher's switch-off in the custom launcher, then 'Turn on now': Android's state machine is out of step (MANUAL_ON, saver off) and ignores the tap; the self-heal must carry it out
+bsfeat true "" true; setmode quickstep; rebind; home; sleep 2
+adb shell settings put global low_power 0; sleep 1
+bstap on; BS3A="$(lowpower)"
+check "BS3a: in Quickstep the Settings button switches battery saver on" bash -c "[ \"$BS3A\" = 1 ]"
+home; adb logcat -c
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 5     # the real way back to custom (double Home): Mode.set(CUSTOM) -> the guard writes low_power = 0
+BS3B="$(lowpower)"; BS3BSTATE="$(bsstate)"
+check "BS3b: back in the custom launcher the saver is switched off (AC3 still works)" bash -c "[ \"$BS3B\" = 0 ]"
+setmode quickstep; rebind; home; sleep 2
+adb logcat -c
+bstap on; sleep 1; BS3C="$(lowpower)"
+adb logcat -d -s TjBatSaver:I | grep BATSAVER > "$OUT/bs3-log.txt" 2>&1
+info "BS3: after the switch-off (state machine: $BS3BSTATE) 'Turn on now' -> low_power=$BS3C; heal log: $(grep -c 'BATSAVER healed' $OUT/bs3-log.txt) line(s); $(head -c 200 $OUT/bs3-log.txt | tr '\n' '|')"
+check "BS3c: after the launcher switched it off, the Settings button 'Turn on now' still switches battery saver on (the self-heal)" bash -c "[ \"$BS3C\" = 1 ]"
+bstap off; BS3D="$(lowpower)"
+check "BS3d: and 'Turn off now' switches it off again (the state machine agrees again)" bash -c "[ \"$BS3D\" = 0 ]"
+home
+
+# ---- BS4 a saver that v0.7.5 - v0.8.0 forced on (its last note says so) is cleared ONCE when the new version starts; Settings then works from a consistent state
+bsfeat true "12:00:00  switched battery saver ON in Quickstep (the process start)" false
+adb shell settings put global low_power 1; sleep 1
+setmode quickstep; rebind; sleep 4
+BS4A="$(lowpower)"
+info "BS4: the old version's forced-on saver after the new version started: low_power=$BS4A"
+check "BS4a: a battery saver the old launcher had forced on is cleared once by the new version" bash -c "[ \"$BS4A\" = 0 ]"
+bstap on; BS4B="$(lowpower)"
+check "BS4b: and then the Settings button switches it on" bash -c "[ \"$BS4B\" = 1 ]"
+bstap off; BS4C="$(lowpower)"
+check "BS4c: and off again" bash -c "[ \"$BS4C\" = 0 ]"
+adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
+setmode custom; rebind; home
+fi # section bs
 if want ad; then # section ad
 ensurehome
 # ---- AD5 + AD7a (Tj, 2026-11-06). AD5: "when I unlock to quickstep, it minimizes my open apps and goes to the home screen. Is this necessary?" -> a gesture unlock brings back the Quickstep app that was open at the lock (switch
