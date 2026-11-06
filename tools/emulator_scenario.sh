@@ -1815,6 +1815,86 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ps
+if want pa; then # section pa
+ensurehome
+# ---- AW5 (Tj, 2026-11-06 evening, chose A: "auto calibrate the screenshot") + review AU2. The lock-screen patch is cut from ONE real screenshot of the plain lock screen. Until v0.8.0 Tj had to start that by hand.
+#      Phase 1: with the automatic switch OFF nothing calibrates by itself.  Phase 2: switch ON: after the menu's place is known (what Tj's tablet already has) the helper takes the screenshot ITSELF, stores the crop and the
+#      resting patch is invisible (MAE against the bare lock screen).  Phase 3 (AU2): a screenshot taken while the power menu is OPEN is refused, the stored crop stays. The PIN is ALWAYS cleared again at the end.
+beat "before PA"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/pa-grant.txt" 2>&1
+pafeat(){ # pafeat <automatic true|false> <manual calibration window end, epoch ms; 0 = none>: wipes the stored crop and the learned menu place
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/patchshot_r0.png files/patchshot_r1.png; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"$1\\\" /><string name=\\\"patch_cal_until\\\">$2</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+palock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
+pastatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_shot_status">[^<]*' | sed 's/.*>//'; }
+panote(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_auto_note">[^<]*' | sed 's/.*>//'; }
+pamae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+panums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
+adb shell settings put secure lock_screen_show_notifications 0           # a "Screenshot saved" notification must not sit on the lock screen next to the slot
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: the stored real pixels are the only source
+pafeat false 0; adb shell am force-stop "$PKG"; sleep 1
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6      # a lock wallpaper to calibrate against
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/pa-setpin.txt" 2>&1
+
+# ---- phase 1: the switch is OFF: the menu's place is learned (the only manual act), and NOTHING calibrates by itself
+palock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
+adb shell input keyevent KEYCODE_BACK; sleep 12
+shot 99-pa-bare                                                           # the bare lock screen (no crop, the resting patch is hidden): the reference
+adb logcat -d -s TjA11y:I | grep -E "CARD area|PATCHSHOT" > "$OUT/pa-1-log.txt" 2>&1
+info "PA 1: switch OFF, 12 s after the menu was learned: status='$(pastatus)' note='$(panote)'"
+pastatus > "$OUT/pa-s1.txt"
+check "PA 1: with the automatic switch OFF nothing calibrates by itself" bash -c "! grep -q 'automatic calibration started' $OUT/pa-1-log.txt && ! grep -q CALIBRATED $OUT/pa-s1.txt"
+CL="$(grep 'CARD area' "$OUT/pa-1-log.txt" | tail -1)"
+set -- $(panums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(panums "$CL" area); CB=${4:-}
+
+# ---- phase 2: the switch is ON: the helper takes the screenshot by itself
+pafeat true 0; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; home
+palock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
+adb shell input keyevent KEYCODE_BACK; sleep 3
+for i in $(seq 1 30); do pastatus | grep -q CALIBRATED && break; sleep 2; done
+PAS="$(pastatus)"; pastatus > "$OUT/pa-s2.txt"
+adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest|PATCH window" > "$OUT/pa-2-log.txt" 2>&1
+info "PA 2: switch ON: status='$PAS' note='$(panote)'; log: $(tr '\n' '|' < "$OUT/pa-2-log.txt" | cut -c1-500)"
+check "PA 2: the helper calibrated the patch BY ITSELF (the status says CALIBRATED, nobody started a calibration)" grep -q CALIBRATED "$OUT/pa-s2.txt"
+check "PA 2: the automatic start is logged (PATCHSHOT automatic calibration started)" grep -q "automatic calibration started" "$OUT/pa-2-log.txt"
+check "PA 2: the crop was stored in the app's private files" bash -c "adb shell \"run-as $PKG ls files/patchshot_r0.png\" | grep -q patchshot_r0"
+sleep 6; shot 98-pa-rest
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"
+  MAA="$(pamae 98-pa-rest 99-pa-bare "$SLOT")"
+  info "PA 2: resting patch (automatic calibration) vs the bare lock screen over the slot $SLOT: MAE $MAA"
+  check "PA 2: the automatically calibrated patch is INVISIBLE at rest (slot MAE < 0.5 %)" awk -v m="$MAA" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+else info "PA 2: no slot geometry"; check "PA 2: the menu rectangle was learned" false; fi
+
+# ---- phase 3 (review AU2): a screenshot taken while the power menu is OPEN is refused
+adb shell am force-stop "$PKG"; sleep 1
+UNTIL=$(( $(adb shell date +%s | tr -d '\r\n') * 1000 + 120000 ))
+adb shell "run-as $PKG sed -i 's#name=\"patch_cal_until\">[0-9]*<#name=\"patch_cal_until\">$UNTIL<#' shared_prefs/tj_features.xml"
+setmode custom; rebind; home; palock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3                 # the menu is OPEN
+adb shell "mkdir -p /sdcard/Pictures/Screenshots; screencap -p /sdcard/Pictures/Screenshots/Screenshot_pa_menu.png"
+adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/Screenshots/Screenshot_pa_menu.png >/dev/null 2>&1
+for i in 1 2 3 4 5 6; do pastatus | grep -qiE "refused|ignored|CALIBRATED" && break; sleep 2; done
+PA3="$(pastatus)"; pastatus > "$OUT/pa-s3.txt"
+info "PA 3: a screenshot taken with the power menu OPEN: status='$PA3'"
+check "PA 3: a screenshot taken while the power menu is open is refused (not stored)" bash -c "grep -qiE 'refused a screenshot|ignored a screenshot' $OUT/pa-s3.txt && ! grep -q CALIBRATED $OUT/pa-s3.txt"
+adb shell input keyevent KEYCODE_BACK; sleep 2
+adb shell "rm -f /sdcard/Pictures/Screenshots/Screenshot_pa_menu.png" >/dev/null 2>&1
+
+# ---------------- clean up
+adb shell input swipe 300 900 300 300 300; sleep 2
+adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 4
+adb shell locksettings clear --old 1234 > "$OUT/pa-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "PA: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/pa-clearpin.txt"
+adb shell settings put secure lock_screen_show_notifications 1
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section pa
 if want rg; then # section rg
 ensurehome
 # ---- AP1 (Tj, 2026-11-06: "No hidden apps should ever show up in the recent apps list for the custom launcher"): when Recents opens in the custom launcher the cards of apps that are NOT in the drawer are closed.

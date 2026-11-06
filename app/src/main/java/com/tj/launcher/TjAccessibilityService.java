@@ -2608,7 +2608,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 long id = android.content.ContentUris.parseId(u);
                 if (id == lastShotId) return;
                 lastShotId = id;
-                if (!AutoCalibration.ownerOk(shotRow.owner)) { shotStatus(now() + "  ignored a screenshot written by another app (" + shotRow.owner + "): only the system's own screenshots count"); return; }   // AU2
+                if (!AutoCalibration.ownerOk(shotRow.owner)) { shotStatus(now() + "  ignored a screenshot written by another app (" + shotRow.owner + "): only screenshots made by the system itself count"); return; }   // AU2
                 long shotUptime = android.os.SystemClock.uptimeMillis() - Math.max(0L, System.currentTimeMillis() - shotRow.addedSec * 1000L);
                 String refused = AutoCalibration.refusal(shotUptime, menuSeen, menuNow, padSeen, padNow, unlockAt);   // AU2: the power menu / the PIN pad around the capture, an unlock right after it
                 if (!refused.isEmpty()) { shotStatus(now() + "  refused a screenshot: " + refused); autoCalNote("refused a screenshot (" + refused + ")"); return; }
