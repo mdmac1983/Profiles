@@ -155,7 +155,13 @@ check "outbox captures Claude's last reply on Stop, quoted, key redacted, and co
 printf '{"hook_event_name":"Stop","transcript_path":"%s"}' "$OB_T" | bash tools/capture_outbox.sh
 check "outbox does not repeat an identical reply" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
 printf '{"hook_event_name":"PostToolUse","transcript_path":"%s"}' "$OB_T" | bash tools/autosave.sh >/dev/null 2>&1
-check "outbox is written on Stop only (a tool-call hook adds nothing)" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
+check "outbox: a tool-call hook adds nothing for the same short reply" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
+printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Short narration\"}]}}" > "$OB_T"
+printf '{"hook_event_name":"PostToolUse","transcript_path":"%s"}' "$OB_T" | bash tools/autosave.sh >/dev/null 2>&1
+check "outbox: a tool-call hook skips short narration (under 200 characters)" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
+printf '%s\n' "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Finding two, mid-turn: $(printf 'z%.0s' $(seq 1 260))\"}]}}" > "$OB_T"
+printf '{"hook_event_name":"PostToolUse","transcript_path":"%s"}' "$OB_T" | bash tools/autosave.sh >/dev/null 2>&1
+check "outbox: a tool-call hook keeps substantial text, so a chat that dies mid-turn still leaves its findings" '[ "$(grep -c "^## 20" OUTBOX.md)" = 2 ]'
 
 # ---------------------------------------------------------------- ship gate: version must increase
 echo '| v0.1.0 | code 1 | 2026-01-01T00:00Z | first' >> BUILDLOG.md
