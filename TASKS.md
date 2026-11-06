@@ -655,3 +655,7 @@ MBX1 vs BATCH1. I don't know what this means"
 ## Tj, 2026-11-06 ~04:55 UTC (verbatim)
 "Don't worry about those, just do the launcher work"
 - [x] AF3 PARKED by Tj: no more questions about (a) which of the 7 photos are "preferred"/"custom" and (b) the old public lock-screen photos (AF2 decision stays OPEN and unacted: nothing deleted, repo visibility untouched; the CLAUDE.md "photos never in the repo" rule stays). Claude proceeds on its own reading of the photos: photo 7 = long-press shows WALLPAPERS ONLY (AE7); photo 3 vs 5 = the lock-screen patch must blend (AE3 / AD7b; in landscape it visibly does not).
+
+## Tj, 2026-11-06 ~05:00 UTC (verbatim)
+"Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher"
+- [ ] AG1 BATTERY SAVER (v0.7.3 AC3 regression?): in QUICKSTEP battery saver must turn on and STAY on; only in the CUSTOM launcher is it switched off. Tj says it does not work in Quickstep now. INVESTIGATE first: `BatterySaverGuard` / `BatterySaverPolicy` (AC3), how "Quickstep" vs "custom" is decided, what switches `low_power` off, the lock/unlock paths; emulator section `ac` (AC3 lines) proves "Quickstep: left alone" only on the emulator.
