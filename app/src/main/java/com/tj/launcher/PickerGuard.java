@@ -46,6 +46,7 @@ final class PickerGuard {
     private boolean pending = false;
     private String pickerPkg = "";
     private ComponentName pickerComp;
+    private String label = LABEL;
     private int color = 0xFFFFFFFF;
 
     PickerGuard(AccessibilityService svc, android.os.Handler handler) { this.svc = svc; this.handler = handler; }
@@ -53,10 +54,11 @@ final class PickerGuard {
     // ---------------------------------------------------------------- pure rules (JVM-tested)
 
     /** Pure: is this node's label the "My photos" tile? Exact (ignoring case and spaces), on the text or on the content description. */
-    static boolean isMyPhotos(CharSequence text, CharSequence desc) {
-        return same(text) || same(desc);
-    }
-    private static boolean same(CharSequence s) { return s != null && LABEL.equals(s.toString().trim().toLowerCase(Locale.ROOT)); }
+    static boolean isMyPhotos(CharSequence text, CharSequence desc) { return matches(LABEL, text, desc); }
+
+    /** Pure: does the node's text or content description equal {@code label} (lower case) exactly, ignoring case and surrounding spaces? */
+    static boolean matches(String label, CharSequence text, CharSequence desc) { return same(label, text) || same(label, desc); }
+    private static boolean same(String label, CharSequence s) { return s != null && label.equals(s.toString().trim().toLowerCase(Locale.ROOT)); }
 
     /** Pure: does the guard work now? Only in the custom launcher, with its switch on, the tablet unlocked and the automation not paused by the crash breaker. */
     static boolean wanted(boolean custom, boolean switchOn, boolean locked, boolean automationOff) { return custom && switchOn && !locked && !automationOff; }
@@ -123,6 +125,14 @@ final class PickerGuard {
         WallpaperPickerChoice.Result r = WallpaperPickerChoice.resolve(svc);
         pickerComp = r.component;
         pickerPkg = r.component == null ? "" : r.component.getPackageName();
+        label = LABEL;
+        try {   // TEST KNOB (debuggable builds only): the emulator's picker has no "My photos" tile, so the scenario points the guard at a row of the Settings app and proves the find / cover / swallow / remove machinery on it
+            if ((svc.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                ComponentName tc = ComponentName.unflattenFromString(Features.getString(svc, "picker_test_comp", ""));
+                String tl = Features.getString(svc, "picker_test_label", "").trim().toLowerCase(Locale.ROOT);
+                if (tc != null && !tl.isEmpty()) { pickerComp = tc; pickerPkg = tc.getPackageName(); label = tl; }
+            }
+        } catch (Throwable ignored) { }
         if (pickerComp != null) color = themeBackground(svc, pickerComp);
     }
 
@@ -179,10 +189,10 @@ final class PickerGuard {
     }
 
     private Rect searchTile(AccessibilityNodeInfo root) {
-        List<AccessibilityNodeInfo> hits = root.findAccessibilityNodeInfosByText("My photos");
+        List<AccessibilityNodeInfo> hits = root.findAccessibilityNodeInfosByText(label);
         if (hits == null) return null;
         for (AccessibilityNodeInfo n : hits) {
-            if (!isMyPhotos(n.getText(), n.getContentDescription())) continue;
+            if (!matches(label, n.getText(), n.getContentDescription())) continue;
             Rect label = new Rect(); n.getBoundsInScreen(label);
             AccessibilityNodeInfo t = clickableAncestor(n);
             Rect tb = new Rect(); (t == null ? n : t).getBoundsInScreen(tb);
