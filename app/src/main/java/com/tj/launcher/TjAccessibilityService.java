@@ -1097,6 +1097,13 @@ public class TjAccessibilityService extends AccessibilityService {
     // ---------------------------------------------------------------- W5: keep the stock launcher's home screen away unless Tj did the gesture
     private ComponentName stockCache;
     private long stockCacheAt = 0;
+
+    /** AD8: the stock launcher, looked up at most once a minute (a package-manager binder call per window change is too much for a Go tablet); a failed lookup is retried at the next call, never remembered. */
+    private ComponentName stockCached() {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (stockCache == null || now - stockCacheAt > 60_000) { stockCache = StockLauncher.find(this); stockCacheAt = now; }
+        return stockCache;
+    }
     private final long[] guardHist = new long[StrayHomeGuard.MAX];
     private int guardIdx = 0;
     private long standDownUntil = 0, lastGuardMs = 0, guardPausedUntil = 0;
