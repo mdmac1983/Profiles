@@ -57,9 +57,11 @@ public final class CrashGuard {
         int n = countInWindow(prev, now);
         p.edit().putLong("t3", prev[1]).putLong("t2", prev[0]).putLong("t1", now).commit();
         if (n >= LIMIT) {
+            // v0.7.6 (review of v0.7.5): mark the breaker tripped FIRST. Mode.set(QUICKSTEP) runs BatterySaverGuard.check, which reads CrashGuard.automationOff: with the flag still false the guard would switch
+            // the battery saver ON in the middle of a crash loop, and restoreAll takes no snapshot of it. A Throwable inside Mode.set must not leave the breaker untripped either.
+            p.edit().putBoolean("tripped", true).putInt(TRIP_VERSION_KEY, tripVersionToStore(installedVersion(app))).commit();
             Mode.set(app, Mode.QUICKSTEP);
             RestoreStore.restoreAll(app);
-            p.edit().putBoolean("tripped", true).putInt(TRIP_VERSION_KEY, tripVersionToStore(installedVersion(app))).commit();
         }
     }
 
