@@ -87,6 +87,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (overlay != null || overlayShown) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
         }
+        if (quiet) return;   // AZ1: quietWork runs the scans once, after the dialog's event had its turn (or after FAST_WAIT_MS if it never came)
         // Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content.
         long now = android.os.SystemClock.uptimeMillis();
         // AN1 (Tj: the battery saver tile in the shade is slow / unresponsive): a content change of the shade or the status bar (a tile redrawing, the clock) cannot OPEN the power menu, so it starts no scan unless a menu is
