@@ -99,8 +99,10 @@ public class ControlActivity extends Activity {
         card.addView(chipLine("adb permission", grant ? "granted" : "not granted  -  keyboard / tiles / faster reset wait for it (see Advanced > adb setup guide)", grant ? ACCENT : Color.parseColor("#B26A00")));
         if (Features.isCover(Features.powerMode(this)) && Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true)) {   // AM1: say plainly whether the lock-screen patch can be invisible yet
             String cal = PatchShot.summary(this);
-            boolean calibrated = !cal.startsWith("not calibrated");
-            card.addView(chipLine("Lock-screen patch", calibrated ? cal : "not calibrated  -  the Screenshot button still shows in the lock-screen power menu (group Power menu > Calibrate the patch)", calibrated ? ACCENT : Color.parseColor("#B26A00")));
+            boolean never = cal.startsWith("not calibrated");
+            boolean valid = cal.contains("(valid for");   // AU7: a stored crop that no longer matches the wallpaper / screen is NOT green
+            boolean auto = Features.get(this, AutoCalibration.KEY, true);
+            card.addView(chipLine("Lock-screen patch", valid ? cal : never ? "not calibrated yet  -  " + (auto ? "the launcher takes one screenshot of your lock screen by itself the next time it shows plainly (hold the side key once first, so it knows where the menu is); until then the Screenshot button still shows in the lock-screen power menu" : "the Screenshot button still shows in the lock-screen power menu (group Power menu > Calibrate the patch)") : cal, valid ? ACCENT : Color.parseColor("#B26A00")));
         }
         box.addView(card);
         box = page;
@@ -211,6 +213,9 @@ public class ControlActivity extends Activity {
                     Features.get(this, TjAccessibilityService.POWER_CARD_KEY, false), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.POWER_CARD_KEY, v); rebuild(); } });
             String shotLast = Features.getString(this, PatchShot.STATUS_KEY, "");
             note("Patch from a real screenshot: " + PatchShot.summary(this) + (shotLast.isEmpty() ? "" : "   last: " + shotLast));
+            toggle("Calibrate the patch by itself (default ON)", "When no valid calibration exists for the current wallpaper and screen, the helper takes ONE screenshot of the plain lock screen by itself (waiting for a lock screen with no PIN pad and no power menu; at most 3 tries per lock, 8 per day) and keeps only the crop around the Screenshot spot. Every try leaves one screenshot in the tablet's gallery. OFF = only the button below.",
+                    Features.get(this, AutoCalibration.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AutoCalibration.KEY, v); rebuild(); } });
+            note("Automatic calibration: " + Features.getString(this, "patch_auto_note", "(nothing yet)"));
             action("Calibrate the patch (one screenshot of the lock screen)", "1) Hold the side key once on the lock screen (so the menu spot is known), then close the menu. 2) Tap this button. 3) Lock the tablet and wake it: the lock screen takes the screenshot by itself (or press Power + Volume Down yourself). 4) Unlock: the line above says CALIBRATED. The patch hides while you calibrate so it cannot be in the picture. Do it again if you change the wallpaper or turn the tablet.",
                     new Runnable() { public void run() { Features.setString(ControlActivity.this, PatchShot.CAL_UNTIL_KEY, String.valueOf(System.currentTimeMillis() + PatchShot.WINDOW_MS)); Features.setString(ControlActivity.this, PatchShot.STATUS_KEY, "calibrating: lock the tablet and wake it"); rebuild(); } });
             action("Forget the patch calibration", "The patch then stays hidden at rest until you calibrate again.", new Runnable() { public void run() { PatchShot.forget(ControlActivity.this); rebuild(); } });
