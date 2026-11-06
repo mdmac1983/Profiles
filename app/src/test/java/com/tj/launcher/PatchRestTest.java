@@ -74,6 +74,14 @@ public class PatchRestTest {
         assertEquals(0, PatchRest.alphaAt(50, 9, 10, 10, 90, 90, 8, 0, 8, 8));
         assertEquals(255, PatchRest.alphaAt(50, 10, 10, 10, 90, 90, 8, 0, 8, 8));
     }
+    @Test public void aWobbleOfAFewPixelsDoesNotRebuildThePatch() {
+        int[] a = { 470, 692, 595, 840 };
+        assertTrue(PatchRest.sameWindow(a, new int[] { 470, 693, 595, 840 }, 2));
+        assertTrue(PatchRest.sameWindow(a, new int[] { 472, 690, 593, 842 }, 2));
+        assertFalse(PatchRest.sameWindow(a, new int[] { 470, 695, 595, 840 }, 2));   // a real change (3 px) rebuilds it
+        assertFalse(PatchRest.sameWindow(a, null, 2));
+        assertFalse(PatchRest.sameWindow(a, new int[] { 1, 2, 3 }, 2));
+    }
     @Test public void theMaskHasOneByteForEveryPixelAndMatchesAlphaAt() {
         byte[] m = PatchRest.mask(100, 100, 10, 10, 90, 90, 8, 8, 8, 8);
         assertEquals(100 * 100, m.length);
