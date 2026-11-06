@@ -1642,17 +1642,17 @@ if ! psstatus | grep -q "CALIBRATED"; then
   for i in 1 2 3 4 5 6 7 8 9 10; do psstatus | grep -q "CALIBRATED" && break; sleep 2; done
 fi
 info "PS B: status: $(psstatus)"
-adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest" > "$OUT/ps-b-log.txt" 2>&1
+adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest|PATCH window" > "$OUT/ps-b-log.txt" 2>&1
 check "PS B: the patch was calibrated from a real screenshot (status says CALIBRATED)" bash -c "adb shell \"run-as $PKG cat shared_prefs/tj_features.xml\" | grep -q 'patch_shot_status\">[^<]*CALIBRATED'"
 check "PS B: the crop was stored in the app's private files" bash -c "adb shell \"run-as $PKG ls files/patchshot_r0.png\" | grep -q patchshot_r0"
 sleep 6; shot 95-ps-rest
-adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest" > "$OUT/ps-b-log.txt" 2>&1      # read AFTER the settle time: the patch starts resting a moment after the calibration (run 208 read it too early)
+adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest|PATCH window" > "$OUT/ps-b-log.txt" 2>&1      # read AFTER the settle time: the patch starts resting a moment after the calibration (run 208 read it too early)
 if [ -n "$FL" ] && [ -n "$CB" ]; then
   SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"
   MAS="$(psmae 95-ps-rest 94-ps-bare "$SLOT")"
   info "PS B: resting patch (real pixels) vs the bare lock screen over the slot $SLOT: MAE $MAS"
   check "PS B: the resting patch is INVISIBLE (slot MAE < 0.5 % against the bare lock screen)" awk -v m="$MAS" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
-  info "PS B: patch log lines: $(tr '\n' '|' < "$OUT/ps-b-log.txt" | cut -c1-300); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
+  info "PS B: patch log lines: $(tr '\n' '|' < "$OUT/ps-b-log.txt" | cut -c1-700); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
   # POSITIVE CONTROL (a resting patch that is invisible could also be a patch that is not there): swap the stored crop for a solid RED one and restart the helper: the patch must now be plainly visible at rest. The real crop is put back afterwards.
   adb shell "run-as $PKG sh -c 'cp files/patchshot_r0.png files/ps-backup.png'"
   convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; adb push "$OUT/ps-red.png" /data/local/tmp/ps-red.png >/dev/null 2>&1
