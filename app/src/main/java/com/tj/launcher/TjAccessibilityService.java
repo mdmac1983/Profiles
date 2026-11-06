@@ -29,7 +29,7 @@ import com.android.launcher3.R;
  */
 public class TjAccessibilityService extends AccessibilityService {
     private static final String TAG = "TjA11y";
-    private static final int PANEL_COLOR = Color.parseColor("#EFF1F3");   // measured on the AOSP Android 10 power menu; Tj's panel may differ slightly
+    private static final int PANEL_COLOR = Color.parseColor("#E8F0F1");   // v0.7.6: was #EFF1F3 (AOSP emulator). Tj's side-by-side photo: the stock card is about 4 % less red than ours in the same photo (low reliability: screens differ), so only half way: #E8F0F1
 
     private static volatile TjAccessibilityService instance;
     /** The running helper, or null when Tj has not turned it on in Accessibility settings. */
@@ -1997,20 +1997,27 @@ public class TjAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    private View cardButton(String label, int iconRes, final String realLabel) {
+    /**
+     * AH3 (v0.7.6): the layout INSIDE the card follows the stock menu, measured on Tj's side-by-side photos (stock card 110.8 x 208.0 px = 105 x 196 dp): 16 dp top padding, then two entries of 90 dp; in each the
+     * icon (24 dp, its glyph 2 dp inside) starts 20 dp down and the 12 dp label starts 5 dp below the icon. The stock label ignores the font scale (its "Power off" is 54 px wide, ours was 64). Before: two equal
+     * halves with centred content, which put the first icon about 11 px too high, the entries about 9 px too far apart and the labels 16 % too big. {@code k} scales everything with the card's height.
+     */
+    private View cardButton(String label, int iconRes, final String realLabel, float d, float k) {
         LinearLayout b = new LinearLayout(this);
         b.setOrientation(LinearLayout.VERTICAL);
-        b.setGravity(Gravity.CENTER);
-        b.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        b.setGravity(Gravity.CENTER_HORIZONTAL);
+        b.setPadding(0, Math.round(20 * d * k), 0, 0);
+        b.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.round(90 * d * k)));
         android.widget.ImageView icon = new android.widget.ImageView(this);
         icon.setImageDrawable(getDrawable(iconRes));
-        b.addView(icon, new LinearLayout.LayoutParams((int) (24 * getResources().getDisplayMetrics().density), (int) (24 * getResources().getDisplayMetrics().density)));
+        b.addView(icon, new LinearLayout.LayoutParams(Math.round(24 * d * k), Math.round(24 * d * k)));
         TextView t = new TextView(this);
         t.setText(label);
-        t.setTextSize(12);
+        t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 12 * d * k);   // dp, not sp: the stock label does not follow the font scale
+        t.setIncludeFontPadding(false);
         t.setTextColor(Color.parseColor("#FF5F6368"));
         t.setGravity(Gravity.CENTER);
-        t.setPadding(0, (int) (8 * getResources().getDisplayMetrics().density), 0, 0);
+        t.setPadding(0, Math.round(5 * d * k), 0, 0);
         b.addView(t);
         b.setOnTouchListener(new View.OnTouchListener() {
             @Override public boolean onTouch(View v, android.view.MotionEvent e) {
@@ -2028,12 +2035,16 @@ public class TjAccessibilityService extends AccessibilityService {
         return b;
     }
 
-    private View buildCard() {
+    /** {@code heightPx} = the card window's height; the layout (16 dp + 2 x 90 dp = 196 dp at the stock size) scales with it between 0.8 and 1.25, so another panel size still fits. */
+    private View buildCard(int heightPx) {
+        float d = getResources().getDisplayMetrics().density;
+        float k = Math.max(0.8f, Math.min(1.25f, heightPx / (196f * d)));
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackgroundColor(PANEL_COLOR);
-        card.addView(cardButton("Power off", R.drawable.tj_ic_power, "Power off"));
-        card.addView(cardButton("Restart", R.drawable.tj_ic_restart, "Restart"));
+        card.setPadding(0, Math.round(16 * d * k), 0, 0);
+        card.addView(cardButton("Power off", R.drawable.tj_ic_power, "Power off", d, k));
+        card.addView(cardButton("Restart", R.drawable.tj_ic_restart, "Restart", d, k));
         return card;
     }
 
@@ -2095,7 +2106,7 @@ public class TjAccessibilityService extends AccessibilityService {
         ensurePatch();   // the wallpaper patch must be added BEFORE the card so the card is on top
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         Rect area = cardArea(cached);
-        overlay = buildCard();
+        overlay = buildCard(area.height());
         overlay.setAlpha(0f);
         wm.addView(overlay, overlayParams(area, false));
         shownAt.set(area);
@@ -2109,7 +2120,7 @@ public class TjAccessibilityService extends AccessibilityService {
             Rect r0 = cardArea(full);
             Log.i(TAG, "CARD area=" + r0.toShortString() + " full=" + full.toShortString() + " lockPatch=" + patchLockMode);
             patchShow(true);
-            overlay = buildCard();
+            overlay = buildCard(r0.height());
             wm.addView(overlay, overlayParams(r0, true));
             shownAt.set(r0);
             overlayShown = true; overlayTouchable = true;
