@@ -42,3 +42,37 @@
 > - **Service:** the patch now reacts to the menu's own window event, with no window-list call, and starts the fade from that event's time.
 > - **`pt` test:** it runs with animations on and sweeps the fade timing from −25 ms to +80 ms. It also prints the open and close curves.
 <!-- sha:d5e0fe3bd952 -->
+
+## 2026-11-06T22:17:51Z
+> Status: I'm waiting for the next `pt` emulator run (animations on, with the main-thread fixes). A reviewer agent is also still reading the diff. Checkpoint 538 is pushed. I'll read the `pt` curves when the run ends, pick the fade timing, then run the delta gate and ship v0.8.1.
+>
+> 📌 **Chat checkpoint: 🟡 Yellow**
+>
+> **Goal:** Ship v0.8.1 of Tj's Android 10 Go launcher (`com.tj.launcher`, repo `tjshea90/Launcher`, branch `ccr-019b8e69-16dn91`). That means fixing the lock-screen patch flicker at the side-key power menu and the battery-saver toggle that "says off but never is".
+>
+> **Decisions made:**
+> - Battery saver: the launcher never switches the saver ON; the custom launcher still switches it OFF; swallowed "turn ON" requests are self-healed (proved on the emulator, `bs` run #238).
+> - Flicker: the patch follows the stock scrim's 300 ms fade (`PatchFade`). The lock screen's darkening cannot be switched off from outside.
+> - `DIM_OPEN` is 0.80.
+>
+> **Changed / rejected:**
+> - My earlier reading was "patch dark before the scrim". The data (runs #243 and #245) says the patch is *light* for 150–550 ms, because the main thread stalled on the PIN-pad and power-menu scans.
+> - The old fast path asked `getWindows()` and found the dialog late. It now reacts to the dialog's own window event, with no binder call.
+>
+> **Key details:** `quietBurst`/`quietWork` with `FAST_WAIT_MS` = 120; menu-open scan first at close; async `recordLatency`; `pt` runs with animations 1.0 and two surround boxes. Run #246 (`pa`) passed 11/0.
+>
+> **Done so far:** `bs`, `lq`, `pa` proven. 487 JVM tests green. Lint OK. Checkpoint 538 pushed.
+>
+> **Open / next steps:**
+> 1. Read the new `pt` run and pick `LEAD_MS`.
+> 2. Read the reviewer's findings.
+> 3. Delta gate `bash tools/gate.sh 51eb264`, then `bash ship.sh`, `android.yml` with `full_build=true`, `tools/record-release.sh`.
+> 4. Update the docs and the tablet checklist.
+>
+> **Rules to remember:** Checkpoint after every step with `bash tools/ckpt.sh`; photos never go into the repo; no network egress from Bash; write Tj's requests into `TASKS.md` first.
+>
+> ⚠️ **Health:** Yellow. This is a long session with one compaction, and details are tracked in `CHECKPOINT.md` and `TASKS.md`.
+>
+> 💡 This chat is getting long. Consider `/amhandoff` at the next good stopping point.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:1a3ef59b90ef -->
