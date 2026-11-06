@@ -276,7 +276,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
     private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
-    private long scanNotBeforeMs = 0, fastTryMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade; one fast look per 20 ms
+    private long scanNotBeforeMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade
     private boolean patchFadeOn() { return Features.get(this, PATCH_FADE_KEY, true); }
     private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
     /** AM1 (Tj, 2026-11-06): switch, default OFF: draw my own Power off / Restart card over the stock entries (the old cover). OFF = the stock menu stays completely stock; the patch alone hides the Screenshot spot. */
