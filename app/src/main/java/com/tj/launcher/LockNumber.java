@@ -23,7 +23,24 @@ public final class LockNumber {
     /** +1 px to the right (6.png centre 299.5 vs 300.6 in the photo), as a fraction of the screen width */
     public static final float X_NUDGE_PER_WIDTH = 0.0017f;
 
+    /**
+     * v0.7.6 (Tj, 2026-11-06: "the accessibility one you built is slightly smaller than the correct size and font"): Tj's own nudges (Launcher control) on top of the measured look, so a photo-based calibration
+     * can be corrected on the tablet without a new release. All are plain integers, default 0 = the measured look above.
+     */
+    public static final String SIZE_KEY = "lock_number_size_pct";            // percent of the text size
+    public static final String WEIGHT_KEY = "lock_number_weight_nudge";      // steps of 100 on the font weight (Light 300 -> Regular 400 -> Medium 500)
+    public static final String ALPHA_KEY = "lock_number_alpha_pct";         // percent of the brightness (alpha)
+
     private LockNumber() {}
+
+    /** Pure: the text size (em, px) for a screen {@code widthPx} wide, with Tj's size nudge (clamped to -30..+30 percent). */
+    public static float emFor(float widthPx, int sizePct) { return widthPx * EM_PER_WIDTH * (1f + Math.max(-30, Math.min(30, sizePct)) / 100f); }
+
+    /** Pure: the Android font weight (100..900 in steps of 100) for Tj's weight nudge. */
+    public static int weightFor(int nudgeSteps) { return Math.max(100, Math.min(900, WEIGHT + 100 * Math.max(-2, Math.min(4, nudgeSteps)))); }
+
+    /** Pure: the paint alpha (0..255) for Tj's brightness nudge (clamped to -40..+40 percent, never below 60 so the number cannot vanish). */
+    public static int alphaFor(int pct) { return Math.max(60, Math.min(255, Math.round(ALPHA * (1f + Math.max(-40, Math.min(40, pct)) / 100f)))); }
 
     /** What Tj may type as the lock-screen text: letters, digits, space - : . / _ ; at most 24 characters; empty = the default number. */
     public static String sanitize(String in) {
