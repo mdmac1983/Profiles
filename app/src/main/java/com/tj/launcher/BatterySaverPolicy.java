@@ -17,6 +17,16 @@ public final class BatterySaverPolicy {
     public static final int MAX_WRITES = 4;
     public static final long WINDOW_MS = 60_000;
 
+    /**
+     * AG1 (Tj, 2026-11-06: "Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher"): the battery saver FOLLOWS the launcher. Quickstep turns it ON and keeps it on;
+     * the custom launcher turns it off (AC3 above). Needed because since v0.7.3 every plain-PIN unlock ends a Quickstep session (the custom launcher then switched the saver off) and nothing switched it back on
+     * when Tj returned to Quickstep with the gesture. Switch in Launcher control, default ON.
+     */
+    public static final String QS_KEY = "profile_battery_saver_on_quickstep";
+    /** At most this many switch-ONs per window: Android turns the saver off by itself in some situations (charging, battery recovered); that is never fought in a tight loop. */
+    public static final int MAX_ON_WRITES = 3;
+    public static final long ON_WINDOW_MS = 10 * 60_000;
+
     private BatterySaverPolicy() {}
 
     /** Pure: is this stored setting value "battery saver on"? */
@@ -31,5 +41,16 @@ public final class BatterySaverPolicy {
         int n = 0;
         if (recentWrites != null) for (long t : recentWrites) if (t > 0 && now - t <= WINDOW_MS) n++;
         return n < MAX_WRITES;
+    }
+
+    /**
+     * Pure (AG1): switch battery saver ON now? Only in Quickstep (never in the custom launcher), only while the Quickstep switch is on, never while automation is paused (breaker tripped / "Restore everything"),
+     * only when it really is off, and not more than {@link #MAX_ON_WRITES} times per {@link #ON_WINDOW_MS}.
+     */
+    public static boolean shouldTurnOn(boolean switchOn, boolean customMode, boolean automationOff, boolean saverOn, long now, long[] recentOnWrites) {
+        if (!switchOn || customMode || automationOff || saverOn) return false;
+        int n = 0;
+        if (recentOnWrites != null) for (long t : recentOnWrites) if (t > 0 && now - t <= ON_WINDOW_MS) n++;
+        return n < MAX_ON_WRITES;
     }
 }

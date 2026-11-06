@@ -27,6 +27,32 @@ public class BatterySaverPolicyTest {
         assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, old));
     }
     @Test public void aMissingHistoryIsTreatedAsEmpty() { assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, null)); }
+    // AG1: Quickstep turns the saver ON and keeps it on
+    private static final long[] NO_ON = {0, 0, 0};
+    @Test public void quickstepSwitchesItOn() { assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, NO_ON)); }
+    @Test public void neverInTheCustomLauncherOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, true, false, false, NOW, NO_ON)); }
+    @Test public void onlyWhenTheQuickstepSwitchIsOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(false, false, false, false, NOW, NO_ON)); }
+    @Test public void onNeverWhileAutomationIsPaused() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, true, false, NOW, NO_ON)); }
+    @Test public void nothingToDoWhenItIsAlreadyOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, true, NOW, NO_ON)); }
+    @Test public void androidTurningItOffByItselfIsNotFoughtInATightLoop() {
+        long[] three = {NOW - 1000, NOW - 60_000, NOW - 300_000};
+        assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, three));
+        long[] two = {NOW - 1000, NOW - 60_000, 0};
+        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, two));
+    }
+    @Test public void oldSwitchOnsDoNotCount() {
+        long[] old = {NOW - 11 * 60_000, NOW - 20 * 60_000, NOW - 30 * 60_000};
+        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, old));
+        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, null));
+    }
+    @Test public void theFollowRuleIsExclusive() {   // never both directions for the same state
+        for (boolean custom : new boolean[] { true, false }) for (boolean on : new boolean[] { true, false }) {
+            boolean off = BatterySaverPolicy.shouldTurnOff(true, custom, false, on, NOW, NONE);
+            boolean up = BatterySaverPolicy.shouldTurnOn(true, custom, false, on, NOW, NO_ON);
+            assertFalse("custom=" + custom + " saverOn=" + on, off && up);
+        }
+        assertEquals("profile_battery_saver_on_quickstep", BatterySaverPolicy.QS_KEY);
+    }
     @Test public void theSettingValueIsParsedStrictly() {
         assertTrue(BatterySaverPolicy.isOn("1")); assertTrue(BatterySaverPolicy.isOn(" 1 "));
         assertFalse(BatterySaverPolicy.isOn("0")); assertFalse(BatterySaverPolicy.isOn(null)); assertFalse(BatterySaverPolicy.isOn("")); assertFalse(BatterySaverPolicy.isOn("true"));

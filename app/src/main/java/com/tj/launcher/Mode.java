@@ -26,6 +26,10 @@ public final class Mode {
     /** The Home press before the last one (the L10 failsafe needs three in a row). */
     public static long homePressBeforeLastMs(Context c) { return prefs(c).getLong("lastHome2", 0); }
 
+    /** AI1: when the current / last Quickstep session began and ended (ms; 0 = unknown, e.g. a session that began before this version). */
+    public static long qsStartAt(Context c) { return prefs(c).getLong("qsStartAt", 0); }
+    public static long qsEndAt(Context c) { return prefs(c).getLong("qsEndAt", 0); }
+
     /** When the mode last changed (ms): the stray-Quickstep guard waits a moment after a deliberate change (late window events from the screen we just left). */
     public static long changedAt(Context c) { return prefs(c).getLong("changedAt", 0); }
 
@@ -59,12 +63,17 @@ public final class Mode {
     public static void set(Context c, String mode) {
         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
         boolean quickstepBegins = QUICKSTEP.equals(m) && CUSTOM.equals(get(c));
-        prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
+        boolean quickstepEnds = CUSTOM.equals(m) && QUICKSTEP.equals(get(c));
+        long nowMs = System.currentTimeMillis();
+        SharedPreferences.Editor ed = prefs(c).edit().putString(KEY, m).putLong("changedAt", nowMs);
+        if (quickstepBegins) ed.putLong("qsStartAt", nowMs);   // AI1: the Quickstep session's own start and end (changedAt moves at EVERY change): the clean-up asks Android's usage log what was used in between
+        if (quickstepEnds) ed.putLong("qsEndAt", nowMs);
+        ed.commit();
         if (quickstepBegins) TaskOrigin.sessionStart(c);   // AA3: remember which tasks are the custom account's BEFORE Quickstep opens anything (needs the shell helper; otherwise a no-op)
         KeyboardSwitch.apply(c, m);
         TileProfile.apply(c, m);
         ImmersiveProfile.apply(c, m);  // AA1: status bar hidden while the custom launcher is active (opt-in, needs the adb grant)
-        if (CUSTOM.equals(m)) BatterySaverGuard.check(c, "the custom launcher became active");   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins (the observer covers everything after)
+        BatterySaverGuard.check(c, CUSTOM.equals(m) ? "the custom launcher became active" : "Quickstep became active");   // AG1: the saver follows the launcher (custom: off, Quickstep: on)   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins (the observer covers everything after)
         // (Q3's retail-demo flag was REMOVED by the AB1 safety audit: see DemoModeProfile)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }

@@ -37,7 +37,47 @@ public final class AppOrigin {
         if (qs.add(pkg)) p(c).edit().putStringSet("quickstep", qs).apply();
     }
 
-    public static void clearQuickstep(Context c) { p(c).edit().putStringSet("quickstep", new HashSet<String>()).apply(); }
+    public static void clearQuickstep(Context c) { p(c).edit().putStringSet("quickstep", new HashSet<String>()).putLong("usageFrom", System.currentTimeMillis()).apply(); }   // AI1: usage events up to now are dealt with
+
+    private static long lastMergeAt = 0;
+
+    /**
+     * AI1 (Tj, 2026-11-06: Portfolio, opened only in Quickstep, was still in Recents after "back to custom"): the accessibility tracking above can miss an app (an event never arrived, the marks were cleared early).
+     * Android's own usage events say which apps were used during the Quickstep session ({@link QuickstepUsage}); every such app that is not ours, not the stock launcher / keyboard / target and not started from the
+     * custom launcher is marked as opened in Quickstep too. Bounded to the session ({@link Mode#qsStartAt} .. {@link Mode#qsEndAt}, or now while it is still on) and to what has not been cleared yet. Cheap, never throws.
+     */
+    public static void mergeUsage(Context c) {
+        try {
+            long now = System.currentTimeMillis();
+            long start = Mode.qsStartAt(c);
+            if (start <= 0) return;
+            long end = Mode.isCustom(c) ? Mode.qsEndAt(c) : now;
+            if (end <= start) return;
+            long from = Math.max(start, p(c).getLong("usageFrom", 0));
+            if (from >= end) return;
+            synchronized (AppOrigin.class) { if (now - lastMergeAt < 1000) return; lastMergeAt = now; }
+            java.util.Set<String> used = QuickstepUsage.resumedDuring(c, from, end);
+            if (used.isEmpty()) return;
+            android.content.ComponentName stock = StockLauncher.find(c);
+            String ime = null;
+            String cur = android.provider.Settings.Secure.getString(c.getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
+            String target = ReturnReset.targetPackage(c);
+            java.util.Set<String> known = quickstep(c), custom = custom(c);
+            StringBuilder added = new StringBuilder();
+            for (String pkg : used) {
+                if (known.contains(pkg) || custom.contains(pkg)) continue;
+                if (!RecentsDirty.shouldMark(pkg, c.getPackageName(), stock == null ? null : stock.getPackageName(), ime, target, true)) continue;
+                markQuickstep(c, pkg);
+                if (added.length() > 0) added.append(", ");
+                added.append(pkg);
+            }
+            if (added.length() > 0) {
+                RecentsDirty.mark(c);
+                LockLog.add(c, "USAGE", "the usage log shows apps used in Quickstep that the window tracker missed: " + added + " (now counted as opened in Quickstep)");
+            }
+        } catch (Throwable t) { android.util.Log.e("TjOrigin", "usage merge failed", t); }
+    }
     /** False until the first successful Recents clear after install: older Quickstep apps are unknown, so the first reset clears everything. */
     public static boolean tracked(Context c) { return p(c).getBoolean("tracked", false); }
     public static void setTracked(Context c) { p(c).edit().putBoolean("tracked", true).apply(); }
@@ -49,7 +89,7 @@ public final class AppOrigin {
         return r;
     }
 
-    public static Set<String> pending(Context c) { return pending(custom(c), quickstep(c)); }
+    public static Set<String> pending(Context c) { mergeUsage(c); return pending(custom(c), quickstep(c)); }   // AI1: every clean-up asks here, so every clean-up also sees what Android's usage log says
 
     /** Pure rule: does a Recents card description (the app label, maybe followed by extra text) belong to one of these labels? */
     public static boolean cardMatches(String description, Set<String> labels) {

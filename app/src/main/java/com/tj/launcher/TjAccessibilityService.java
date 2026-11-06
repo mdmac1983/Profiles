@@ -145,7 +145,8 @@ public class TjAccessibilityService extends AccessibilityService {
     static final float DIM_OPEN = 0.79f;
     /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Launcher control) scales it. */
     private float lockPatchDim(boolean photo) {
-        float k = (photo ? DIM_OPEN : DIM_KEYGUARD * DIM_OPEN) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        float open = openScrim();
+        float k = (photo ? open : DIM_KEYGUARD * open) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
         return Math.max(0.3f, Math.min(1f, k));
     }
     private View patchView;
@@ -153,6 +154,21 @@ public class TjAccessibilityService extends AccessibilityService {
     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
     private android.graphics.Bitmap lockBmp;
     private boolean patchLockMode, targetIsLock;
+    /** AE3 / AD7b: the resting state of the lock-screen patch (see {@link PatchRest}): visible over the Screenshot slot while the lock screen is up and the menu is closed; the switch is in Launcher control, default OFF. */
+    /** AH1: Tj's nudge (percent points) of how much the stock dialog's scrim darkens the screen around the OPEN menu; the patch is dimmed the same (lock and home). */
+    public static final String PATCH_SCRIM_KEY = "patch_scrim_pct";
+    private volatile boolean patchOpenHome = false;   // AH1: the HOME-screen patch is dimmed like the dialog's scrim only while the menu is open (closed = invisible seam)
+    private float openScrim() { return PatchRest.openScrim(DIM_OPEN, Features.getInt(this, PATCH_SCRIM_KEY, 0)); }
+    private volatile boolean patchResting = false;
+    private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
+    /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Launcher control and in the tablet report. */
+    public static final String WALLPAPER_KIND_KEY = "wallpaper_kind";
+    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, false) && lockPatchWanted(); }
+    /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
+    private float restDim(boolean photo) {
+        float k = (photo ? 1f : DIM_KEYGUARD) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        return Math.max(0.3f, Math.min(1f, k));
+    }
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
     private long lastOffTop = -1, lastItemH = -1;
     private int lastPitch = -1;   // AC6: distance between the tops of neighbouring menu entries (Power off -> Restart), measured on every scan
@@ -178,6 +194,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+            if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key) || FailsafeKeys.KONAMI_KEY.equals(key))) handler.post(new Runnable() { @Override public void run() { updateKeyFilter(); } });
@@ -288,12 +305,15 @@ public class TjAccessibilityService extends AccessibilityService {
         if (android.os.SystemClock.elapsedRealtime() - lastShotTry < 4000) { handler.postDelayed(calTrigger, 4000); return; }   // never a screenshot storm if a photo keeps failing
         lastShotTry = android.os.SystemClock.elapsedRealtime();
         calBusy = true;
+        final boolean hideRest = patchResting;   // AE3: a RESTING patch must not photograph itself: hide it for the screenshot, restore it afterwards
+        if (hideRest && patchView != null) patchView.setAlpha(0f);
         final android.graphics.Bitmap wall = lockBmp;
         final float skew = testSkew();
         new Thread(new Runnable() { @Override public void run() {
             String result = "failed";
             try {
                 ShellHelper.run("MKDIR_PUBLISH");
+                if (hideRest) { try { Thread.sleep(250); } catch (InterruptedException ignored) { } }   // let the window really disappear before the shot
                 String out = ShellHelper.run("CAL_SHOT");
                 if (out == null) throw new IllegalStateException("the screenshot job did not answer");
                 android.graphics.Bitmap shot = android.graphics.BitmapFactory.decodeFile("/sdcard/Download/launcher-probe/cal.png");
@@ -324,7 +344,10 @@ public class TjAccessibilityService extends AccessibilityService {
                 } });
                 Log.i(TAG, "CAL lock patch " + result + " [" + PatchCalibrator.lastNote + "]");
             } catch (Throwable t) { result = "failed: " + t; Log.e(TAG, "lock patch calibration failed", t); }
-            finally { calBusy = false; calStatus(now() + "  " + result); }
+            finally {
+                calBusy = false; calStatus(now() + "  " + result);
+                if (hideRest) handler.post(new Runnable() { @Override public void run() { patchShow(overlayShown); } });   // AE3: back to resting (or whatever the state is by now)
+            }
         } }, "tj-patch-cal").start();
     }
 
@@ -336,6 +359,11 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         try {
             android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
+            try {   // AE3 / AE8: is the wallpaper an animated LIVE wallpaper? A still patch can never match one exactly (the specks and streaks move). Shown in Launcher control and in the tablet report (Features dump).
+                android.app.WallpaperInfo wi = wm.getWallpaperInfo();
+                String kind = wi == null ? "still picture" : "LIVE wallpaper " + wi.getComponent().flattenToShortString() + " (animated: a still patch cannot match it exactly)";
+                if (!kind.equals(Features.getString(this, WALLPAPER_KIND_KEY, ""))) Features.setString(this, WALLPAPER_KIND_KEY, kind);
+            } catch (Throwable ignored) { }
             android.os.ParcelFileDescriptor pfd = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK) > 0 ? wm.getWallpaperFile(android.app.WallpaperManager.FLAG_LOCK) : null;
             if (pfd != null) {
                 try {
@@ -405,11 +433,16 @@ public class TjAccessibilityService extends AccessibilityService {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
             @Override protected void onDraw(android.graphics.Canvas c) {
-                if (patchLockMode && lockShot != null) { setDim(p, lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
+                boolean rest = patchResting && patchLockMode;   // AE3: the RESTING patch paints only the Screenshot slot (below the card) and without the dialog's scrim
+                if (rest) { c.save(); c.clipRect(0, patchRestTop, getWidth(), getHeight()); }
+                try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
+            }
+            private void paintPatch(android.graphics.Canvas c, boolean rest) {
+                if (patchLockMode && lockShot != null) { setDim(p, rest ? restDim(true) : lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
-                if (patchLockMode) setDim(p, lockPatchDim(false)); else p.setColorFilter(null);
+                if (patchLockMode) setDim(p, rest ? restDim(false) : lockPatchDim(false)); else setDim(p, patchOpenHome ? openScrim() : 1f);   // AH1: the home patch was always drawn UNDIMMED = a lighter block while the stock dialog dims the screen
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
@@ -427,8 +460,9 @@ public class TjAccessibilityService extends AccessibilityService {
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
         patchLockMode = targetIsLock;
-        if (patchLockMode) v.setAlpha(0f);   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad)
+        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
         patchView = v; patchAt.set(r); patchRot = rotation();
+        try { Rect cc = cachedCard(); if (cc != null) { Rect ca = cardArea(cc); patchRestTop = PatchRest.restTop(r.top, ca.bottom, r.bottom); } } catch (Throwable ignored) { }   // AE3: the resting patch paints only the part BELOW the card = the Screenshot slot
         patchStatus("active over " + r.toShortString());
         Log.i(TAG, "PATCH shown " + r.toShortString());
     }
@@ -448,7 +482,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; lockShot = null; lockShotFresh = false;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false;
         Log.i(TAG, "PATCH removed");
     }
 
@@ -1031,7 +1065,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean on = pm != null && pm.isInteractive();
             boolean locked = km != null && km.isKeyguardLocked();
             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); }
+            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
     }
@@ -1731,10 +1765,11 @@ public class TjAccessibilityService extends AccessibilityService {
         final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
         final int[] closed = {0}, idle = {0};
         final boolean[] sawCards = {false};
+        final String[] seen = {null};   // AI1: what the Recents cards looked like (for the lock log)
         handler.post(new Runnable() { @Override public void run() {
             try {
                 List<AccessibilityNodeInfo> cards = findTaskCards();
-                if (cards.size() > 0) sawCards[0] = true;
+                if (cards.size() > 0) { sawCards[0] = true; if (seen[0] == null) seen[0] = cards.size() + " card(s): " + describeCards(cards); }
                 boolean did = false;
                 for (AccessibilityNodeInfo card : cards) {
                     if (!AppOrigin.cardMatches(card.getContentDescription() == null ? null : card.getContentDescription().toString(), closeLabels)) continue;
@@ -1748,17 +1783,31 @@ public class TjAccessibilityService extends AccessibilityService {
                     AppOrigin.clearQuickstep(TjAccessibilityService.this); AppOrigin.setTracked(TjAccessibilityService.this);
                     resetReport.append("recents: closed ").append(closed[0]).append(" card(s) of apps opened from Quickstep, others kept (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                     Log.i(TAG, "RESET recents selective closed=" + closed[0]);
+                    LockLog.add(getApplicationContext(), "RESET", "recents: closed " + closed[0] + " card(s) of " + closeLabels + "; saw " + seen[0]);
                     finishReset(t0, done);
                     return;
                 }
             } catch (Throwable t) { Log.e(TAG, "selective recents failed", t); }
             if (android.os.SystemClock.uptimeMillis() >= deadline) {
-                if (!sawCards[0]) { Log.i(TAG, "RESET recents: cards not recognised, falling back to Clear all"); recentsClearAll(t0, done); }
-                else { resetReport.append("recents: stopped after ").append(closed[0]).append(" card(s)\n"); finishReset(t0, done); }
+                if (!sawCards[0]) { Log.i(TAG, "RESET recents: cards not recognised, falling back to Clear all"); LockLog.add(getApplicationContext(), "RESET", "recents: no card with a 'Close' action found for " + closeLabels + " (this Recents screen is not recognised): falling back to Clear all"); recentsClearAll(t0, done); }
+                else { resetReport.append("recents: stopped after ").append(closed[0]).append(" card(s)\n"); LockLog.add(getApplicationContext(), "RESET", "recents: stopped after " + closed[0] + " card(s) of " + closeLabels + "; saw " + seen[0]); finishReset(t0, done); }
                 return;
             }
             handler.postDelayed(this, 40);
         } });
+    }
+
+    /** AI1: up to five card descriptions, shortened (the lock log shows what this tablet's Recents screen really looks like to accessibility). */
+    private static String describeCards(List<AccessibilityNodeInfo> cards) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < cards.size() && i < 5; i++) {
+            CharSequence d = cards.get(i).getContentDescription();
+            String s = d == null ? "(no description)" : d.toString().replace('\n', ' ');
+            if (s.length() > 28) s = s.substring(0, 28);
+            if (i > 0) b.append(" | ");
+            b.append(s);
+        }
+        return b.toString();
     }
 
     /** Recents task cards: nodes (in the stock launcher / SystemUI windows) that offer a "Close" action. */
@@ -1791,6 +1840,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found")
                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
+                LockLog.add(getApplicationContext(), "RESET", "recents: Clear all " + (result == PRESSED ? "pressed" : result == EMPTY ? "found the list empty" : "button NOT FOUND: nothing was cleared"));   // AI1: the lock log says what really happened
                 finishReset(t0, done);
             }
         });
@@ -1977,7 +2027,15 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** V1: on the lock screen the patch is invisible until the power menu opens (and again afterwards). */
     private void patchShow(boolean on) {
-        if (patchView != null && patchLockMode) patchView.setAlpha(on ? 1f : 0f);
+        if (patchView == null) return;
+        if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
+        // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
+        boolean vis = PatchRest.visible(on, lockPatchAlways(), true, lastBouncer);
+        boolean rest = vis && !on;
+        boolean changed = rest != patchResting;
+        patchResting = rest;
+        patchView.setAlpha(vis ? 1f : 0f);
+        if (changed) { patchView.invalidate(); Log.i(TAG, "PATCH rest " + (rest ? "on" : "off") + (lastBouncer ? " (PIN pad up)" : "") + " top=" + patchRestTop); }
     }
 
     /**

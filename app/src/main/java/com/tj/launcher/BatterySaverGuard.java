@@ -21,7 +21,11 @@ public final class BatterySaverGuard {
 
     private BatterySaverGuard() {}
 
+    private static final long[] onWrites = new long[BatterySaverPolicy.MAX_ON_WRITES];   // AG1: when the guard last switched the saver ON
+    private static int onIdx = 0;
+
     public static boolean enabled(Context c) { return Features.get(c, BatterySaverPolicy.KEY, true); }
+    public static boolean qsEnabled(Context c) { return Features.get(c, BatterySaverPolicy.QS_KEY, true); }
     public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED; }
 
     /** Registers the observer once per process (idempotent) and checks once. Called from {@link TjApplication#onCreate}. */
@@ -42,7 +46,7 @@ public final class BatterySaverGuard {
         try {
             ContentResolver cr = c.getContentResolver();
             boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
-            if (!on) return;   // the common case costs one settings read
+            if (!on) { keepOnInQuickstep(c, cr, why); return; }   // custom: nothing to do (one settings read + one preference read); Quickstep: AG1 keeps it on
             long now = System.currentTimeMillis();
             synchronized (BatterySaverGuard.class) {
                 if (!BatterySaverPolicy.shouldTurnOff(enabled(c), Mode.isCustom(c), CrashGuard.automationOff(c), true, now, writes)) return;
@@ -54,6 +58,20 @@ public final class BatterySaverGuard {
             Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver off in the custom launcher (" + why + ")");
             Log.i(TAG, "BATSAVER off (" + why + ")");
         } catch (Throwable t) { Log.e(TAG, "battery saver check failed", t); }
+    }
+
+    /** AG1 (Tj, 2026-11-06): the saver FOLLOWS the launcher. In Quickstep a saver that is off is switched back ON (switch in Launcher control, default ON); at most {@link BatterySaverPolicy#MAX_ON_WRITES} times per 10 minutes. */
+    private static void keepOnInQuickstep(Context c, ContentResolver cr, String why) {
+        long now = System.currentTimeMillis();
+        if (Mode.isCustom(c)) return;                                  // the custom launcher wants it off: nothing to do
+        synchronized (BatterySaverGuard.class) {
+            if (!BatterySaverPolicy.shouldTurnOn(qsEnabled(c), false, CrashGuard.automationOff(c), false, now, onWrites)) return;
+            if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  battery saver is off in Quickstep but the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
+            onWrites[onIdx++ % onWrites.length] = now;
+        }
+        Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 1);
+        Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver ON in Quickstep (" + why + ")");
+        Log.i(TAG, "BATSAVER on (" + why + ")");
     }
 
     private static String stamp(long ms) { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(ms)); }

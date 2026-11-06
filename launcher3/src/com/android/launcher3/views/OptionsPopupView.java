@@ -158,12 +158,8 @@ public class OptionsPopupView extends ArrowPopup
                 R.drawable.ic_palette : R.drawable.ic_wallpaper;
         options.add(new OptionItem(resString, resDrawable,
                 ControlType.WALLPAPER_BUTTON, OptionsPopupView::startWallpaperPicker));
-        if (!FeatureFlags.GO_DISABLE_WIDGETS) {
-            options.add(new OptionItem(R.string.widget_button_text, R.drawable.ic_widget,
-                    ControlType.WIDGETS_BUTTON, OptionsPopupView::onWidgetsClicked));
-        }
-        options.add(new OptionItem(R.string.settings_button_text, R.drawable.ic_setting,
-                ControlType.SETTINGS_BUTTON, OptionsPopupView::startSettings));
+        // TJ (2026-11-06, AE7): "when i long press the home screen in the custom launcher, it should show wallpapers only". The stock Widgets and Home settings entries are
+        // NOT added any more (onWidgetsClicked / startSettings stay: ScrimView's accessibility actions still use them). See launcher3/PATCHES.md.
 
         show(launcher, target, options);
     }
