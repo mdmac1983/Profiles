@@ -36,6 +36,9 @@ public class ControlActivity extends Activity {
     private static final int ACCENT = Color.parseColor("#00796B"), INK = Color.parseColor("#202124"), MUTED = Color.parseColor("#5F6368"), CARD = Color.parseColor("#F1F3F4");
     private boolean unlockOpen = false;    // the lock-screen method drop-down
     private LinearLayout page;
+    private LinearLayout box;            // AR1: where the rows of the current group go (the page itself outside any group)
+    private TextView groupSummary;       // the header of the current group: how many of its switches are on
+    private int groupOn, groupTotal;
     private ScrollView scroll;
     private float dp;
 
@@ -92,9 +95,19 @@ public class ControlActivity extends Activity {
         card.addView(chipLine("Active launcher", "Quickstep (stock)  -  settings only open here", ACCENT));
         card.addView(chipLine("Accessibility helper", helper ? "ON" : "OFF  -  turn it on in Accessibility settings (power menu, reset, lock screen, pencil need it)", helper ? ACCENT : Color.parseColor("#B3261E")));
         card.addView(chipLine("adb permission", grant ? "granted" : "not granted  -  keyboard / tiles / faster reset wait for it (see adb guide below)", grant ? ACCENT : Color.parseColor("#B26A00")));
-        page.addView(card);
+        box.addView(card);
+        box = page;
+        // problems first: what the launcher did on its own (crash breaker, paused automation)
+        if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
+        if (!CrashGuard.clearedNote(this).isEmpty()) note(CrashGuard.clearedNote(this));
+        if (!Features.getString(this, SwitchMigration.NOTE_KEY, "").isEmpty()) note(Features.getString(this, SwitchMigration.NOTE_KEY, ""));
+        if (CrashGuard.isPaused(this)) note("Automatic switching is PAUSED: while you are in Quickstep nothing switches back to the custom launcher by itself (after \"Restore everything\", or after an update cleared the crash breaker). Press \"Switch to the custom launcher\" above when you want it back.");
+        LinearLayout both = row();
+        both.addView(smallButton("Open all groups", new Runnable() { public void run() { setAllGroups(true); } }));
+        both.addView(smallButton("Close all groups", new Runnable() { public void run() { setAllGroups(false); } }));
+        box.addView(both);
 
-        section("Launchers");
+        group("everyday", "Everyday", true);
         action("Switch to the custom launcher", "Also closes the apps you opened from Quickstep.", new Runnable() { public void run() {
             CrashGuard.clearTripped(ControlActivity.this);
             Mode.set(ControlActivity.this, Mode.CUSTOM);
@@ -104,36 +117,73 @@ public class ControlActivity extends Activity {
         action("Choose the apps shown in the custom launcher", "Everything else stays hidden there (new installs start hidden).", new Runnable() { public void run() {
             startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
         }});
-        toggle("Keep Quickstep away unless I use a handshake", "Quickstep opens ONLY after a secret unlock handshake (Lock screen section). If its home screen appears any other way in custom mode, send me back.", Features.get(this, StrayHomeGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, StrayHomeGuard.KEY, v); } });
+        action("Accessibility helper settings", "Turn the helper on or off (the power menu patch, the lock screen, the reset and the Recents filter need it).", new Runnable() { public void run() { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } });
 
-        section("Double-Home return  (Quickstep to custom)");
-        toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
-        toggle("Open Solitaire automatically", "ON: Solitaire is put in front after boot / a launcher restart AND behind the lock screen when the tablet wakes. OFF: it is never opened for you (it then also stays out of Quickstep's Recents). The return from Quickstep has its own control right below: \"Plain (no app)\".", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
-        final EditText appBox = new EditText(this);
-        appBox.setSingleLine(true);
-        appBox.setText(ReturnReset.appLabel(this));
-        appBox.setHint("app to open (blank = none, plain home screen)");
-        page.addView(appBox);
-        LinearLayout abtn = row();
-        abtn.addView(smallButton("Save app name", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, appBox.getText().toString().trim()); rebuild(); } }));
-        abtn.addView(smallButton("Plain (no app)", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, ""); rebuild(); } }));
-        page.addView(abtn);
-        toggle("Clear notifications", "Skipped by itself when the status bar shows none.", ReturnReset.clearNotifications(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, v); } });
-        toggle("Close the apps opened from Quickstep", "Only those apps; apps opened from the custom launcher stay.", ReturnReset.clearRecents(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, v); } });
-        toggle("Black cover while it works", "Hides the shade / Recents flicker.", Features.get(this, ReturnReset.COVER_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.COVER_KEY, v); } });
-        toggle("Animations off during the reset", AnimationSpeedup.permitted(this) ? "Put back exactly as they were afterwards." : "Needs the adb permission (not granted yet).", AnimationSpeedup.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AnimationSpeedup.KEY, v); } });
-        note("Last reset:\n" + Features.getString(this, TjAccessibilityService.RESET_REPORT_KEY, "(not run yet)"));
+        group("lock", "Lock screen", false);
+        toggle("Show my number at the bottom", "Disappears when you pull up the PIN pad.", LockNumber.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockNumber.KEY, v); } });
+        final EditText numberBox = new EditText(this);
+        numberBox.setSingleLine(true);
+        numberBox.setText(LockNumber.text(this));
+        numberBox.setHint("lock-screen number");
+        box.addView(numberBox);
+        LinearLayout nbtns = row();
+        nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
+        box.addView(nbtns);
+        // v0.7.6: nudges on top of the measured look (applied the next time the lock screen shows the number); 0 = as measured
+        stepper("Number size", LockNumber.SIZE_KEY, 2, -30, 30, " %");
+        stepper("Number weight (0 = measured, +1 bolder, -1 lighter)", LockNumber.WEIGHT_KEY, 1, -2, 4, " step");
+        stepper("Number brightness", LockNumber.ALPHA_KEY, 5, -40, 40, " %");
+        toggle("Lock screen: no Wi-Fi, no Bluetooth, no app notifications (every launcher)", LockQuiet.permitted(this) ? "The moment the tablet is on the lock screen, from ANY launcher: Wi-Fi and Bluetooth are switched off and kept off (a radio that comes on again is switched off again, at most 3 times a minute), and the lock screen shows no app notifications and no notification icons (Android's own lock-screen setting, put back by this switch, \"Restore everything\" and the crash breaker). The notifications themselves stay in the shade until they are cleared." : "Needs the adb permission (not granted yet): without it only Wi-Fi and Bluetooth are switched off.",
+                LockQuiet.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.KEY, v); LockQuiet.applyNotificationsAsync(ControlActivity.this); rebuild(); } });   // v0.7.6 (review): do not wait for a bound accessibility helper to put the setting back
+        toggle("A gesture unlock into Quickstep puts Wi-Fi and Bluetooth back", "Whatever was on before the lock comes back after the lock-screen gesture opens Quickstep. A plain PIN into the custom launcher leaves them off (the custom launcher's own rule).", LockQuiet.restoreEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.RESTORE_KEY, v); } });
+        note("Lock screen quiet: " + Features.getString(this, LockQuiet.LAST_KEY, "(has not had to act yet)") + "   (lock_screen_show_notifications = " + android.provider.Settings.Secure.getString(getContentResolver(), LockQuiet.SHOW) + ")");
+        toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
+        toggle("A gesture unlock comes back to the app I had open", "ON: after the lock-screen gesture, Quickstep opens the app that was in front when you locked the tablet, exactly as you left it (like tapping its icon). OFF: it opens the Quickstep home screen instead, with the apps minimised. With no app open it is always the home screen.", Features.get(this, ResumeTarget.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ResumeTarget.KEY, v); } });
 
-        section("Recents");
-        toggle("Hide the launcher from Recents completely", "Home-type launcher: never listed. If the launcher ever crashes Android asks you to choose the Home app again (adb guide, step 6, fixes it).", Features.get(this, RouterActivity.HOME_TYPE_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, v); } });
-        toggle("Keep apps from the custom launcher OUT of Recents", "Off = they appear in Recents like normal apps. On = only Solitaire is listed.", RecentsPolicy.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsPolicy.KEY, v); } });
+        group("handshakes", "Unlock into Quickstep (secret handshakes)", false);
+        note("Locking the tablet ALWAYS ends a Quickstep session (no switch any more): a plain PIN or fingerprint gives the custom launcher again and closes what Quickstep left open. Only the crash breaker and \"Restore everything\" pause this, until you switch to the custom launcher yourself.");
+        note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of the handshakes you SELECT below, done on the lock screen BEFORE the PIN. Select as many as you like; at least one always stays selected, so you can never lock yourself out. Which digits you type is never read.");
+        final UnlockMethods.Enabled stored = new UnlockMethods.Enabled() { @Override public boolean on(UnlockMethods.Method m) { return Features.get(ControlActivity.this, m.prefKey(), m.defaultOn); } };
+        final java.util.List<UnlockMethods.Method> chosen = UnlockMethods.selected(stored);
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < chosen.size(); i++) { if (i == 2 && chosen.size() > 3) { names.append(", +").append(chosen.size() - 2).append(" more"); break; } if (i > 0) names.append(", "); names.append(chosen.get(i).title); }
+        // the drop-down: a field that opens / closes the list of methods
+        LinearLayout dd = row();
+        dd.setBackground(fieldBackground());
+        LinearLayout ddText = new LinearLayout(this);
+        ddText.setOrientation(LinearLayout.VERTICAL);
+        ddText.addView(text("Lock-screen methods: " + chosen.size() + " of " + UnlockMethods.Method.values().length + " selected", 16, INK, true));
+        ddText.addView(text(names.toString(), 13, MUTED, false));
+        dd.addView(ddText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        dd.addView(text(unlockOpen ? "^" : "v", 22, ACCENT, true));
+        dd.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { unlockOpen = !unlockOpen; rebuild(); } });
+        box.addView(dd);
+        if (unlockOpen) {
+            for (final UnlockMethods.Method m : UnlockMethods.Method.values()) {
+                boolean on = chosen.contains(m);
+                toggle(m.title, m.how, on, new Chg() { public void on(boolean v) {
+                    Features.set(ControlActivity.this, m.prefKey(), v);
+                    if (!v) {
+                        boolean any = false;
+                        for (UnlockMethods.Method x : UnlockMethods.Method.values()) if (stored.on(x)) any = true;
+                        if (!any) {   // the last one was just switched off: put it back
+                            Features.set(ControlActivity.this, m.prefKey(), true);
+                            android.widget.Toast.makeText(ControlActivity.this, "At least one method must stay selected", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                } });
+            }
+        }
+        toggle("Buzz when a handshake is accepted", "A 40 ms vibration so you know it counted.", ProfileSession.buzz(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.BUZZ_KEY, v); } });
+        note("The volume / Back methods need the helper's key-event access (it asks for it only while one of them is selected; turn the helper off and on once after selecting one). Shake and knock read the accelerometer only while the lock screen is showing.");
+        note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)") + "\nLast lock-screen switch: " + Features.getString(this, ProfileSession.PREARM_REPORT_KEY, "(none yet)"));
 
-        section("Power menu");
+        group("power", "Power menu (side key)", false);
         final String mode = Features.powerMode(this);
         radio("When you hold the side key in the custom launcher", new String[] { "Leave it alone", "Hide the Screenshot button with a wallpaper patch (the stock Power off / Restart stay completely stock)", "Hide it under a wallpaper patch + my card (home screen only)", "Block it completely" },
                 new String[] { Features.POWER_OFF, Features.POWER_HIDE_SCREENSHOT, Features.POWER_WALLPAPER, Features.POWER_BLOCK }, mode, new Str() { public void on(String v) { Features.setString(ControlActivity.this, Features.POWER_MODE, v); } });
         action("Allow wallpaper access", "Needed by the wallpaper patch.", new Runnable() { public void run() { requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7); } });
-        toggle("Lock screen: patch of my lock wallpaper + stock-size two-button menu", "On the lock screen only, while the custom launcher is active and the cover is on: a piece of your LOCK-screen wallpaper hides the real menu and my Power off / Restart menu has the stock item size (the stock menu minus Screenshot). The patch is invisible until the menu opens. Needs the wallpaper permission; if it looks off, use the nudges below.",
+        toggle("Lock screen: hide the Screenshot button with a patch of my lock wallpaper", "On the lock screen only, while the custom launcher is active: a piece of your LOCK-screen wallpaper covers the place where the stock power menu shows its Screenshot button, so the menu reads Power off + Restart. The stock menu itself is not changed. For the patch to be invisible it is cut from ONE real screenshot of your lock screen (Calibrate below).",
                 Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.LOCK_PATCH_KEY, v); rebuild(); } });
         if (Features.get(this, TjAccessibilityService.LOCK_PATCH_KEY, true) && Features.isCover(mode)) {   // AE3 / AD7b (Tj, 2026-11-06)
             toggle("Keep the patch over the Screenshot spot ALL the time on the lock screen", "Default ON. The patch stays over the place where the stock menu's Screenshot button appears, so the button is covered from the very first frame of the menu (no flicker). It only shows once it can be INVISIBLE: after you calibrate it with one real screenshot of your lock screen (see below). It hides itself while the PIN pad is up. Open the power menu once on the lock screen first, so the app learns where the menu sits. The nudges below work while the menu is CLOSED, so you can line the patch up by looking at it.",
@@ -157,122 +207,79 @@ public class ControlActivity extends Activity {
             stepper("Patch brightness (lock screen)", TjAccessibilityService.PATCH_DIM_KEY, 2, -40, 40, " %");
             stepper("Menu dimming (patch brightness while the menu is OPEN, lock and home)", TjAccessibilityService.PATCH_SCRIM_KEY, 2, -40, 40, " %");
         }
-        note("Last unlock: " + Features.getString(this, TjAccessibilityService.UNLOCK_SPEED_KEY, "(unlock once to measure)"));
         note("Speed of the last menu: " + Features.getString(this, TjAccessibilityService.LATENCY_KEY, "(open the menu once)"));
-        action("Open Accessibility settings", "To turn the helper on or off.", new Runnable() { public void run() { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } });
 
-        section("Lock screen");
-        toggle("Show my number at the bottom", "Disappears when you pull up the PIN pad.", LockNumber.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockNumber.KEY, v); } });
-        final EditText numberBox = new EditText(this);
-        numberBox.setSingleLine(true);
-        numberBox.setText(LockNumber.text(this));
-        numberBox.setHint("lock-screen number");
-        page.addView(numberBox);
-        LinearLayout nbtns = row();
-        nbtns.addView(smallButton("Save number", new Runnable() { public void run() { Features.setString(ControlActivity.this, LockNumber.TEXT_KEY, LockNumber.sanitize(numberBox.getText().toString())); rebuild(); } }));
-        page.addView(nbtns);
-        // v0.7.6: nudges on top of the measured look (applied the next time the lock screen shows the number); 0 = as measured
-        stepper("Number size", LockNumber.SIZE_KEY, 2, -30, 30, " %");
-        stepper("Number weight (0 = measured, +1 bolder, -1 lighter)", LockNumber.WEIGHT_KEY, 1, -2, 4, " step");
-        stepper("Number brightness", LockNumber.ALPHA_KEY, 5, -40, 40, " %");
-
-        section("Unlock into Quickstep (secret handshakes)");
-        note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of the handshakes you SELECT below, done on the lock screen BEFORE the PIN. Select as many as you like; at least one always stays selected, so you can never lock yourself out. Which digits you type is never read.");
-        final UnlockMethods.Enabled stored = new UnlockMethods.Enabled() { @Override public boolean on(UnlockMethods.Method m) { return Features.get(ControlActivity.this, m.prefKey(), m.defaultOn); } };
-        final java.util.List<UnlockMethods.Method> chosen = UnlockMethods.selected(stored);
-        StringBuilder names = new StringBuilder();
-        for (int i = 0; i < chosen.size(); i++) { if (i == 2 && chosen.size() > 3) { names.append(", +").append(chosen.size() - 2).append(" more"); break; } if (i > 0) names.append(", "); names.append(chosen.get(i).title); }
-        // the drop-down: a field that opens / closes the list of methods
-        LinearLayout dd = row();
-        dd.setBackground(fieldBackground());
-        LinearLayout ddText = new LinearLayout(this);
-        ddText.setOrientation(LinearLayout.VERTICAL);
-        ddText.addView(text("Lock-screen methods: " + chosen.size() + " of " + UnlockMethods.Method.values().length + " selected", 16, INK, true));
-        ddText.addView(text(names.toString(), 13, MUTED, false));
-        dd.addView(ddText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        dd.addView(text(unlockOpen ? "^" : "v", 22, ACCENT, true));
-        dd.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { unlockOpen = !unlockOpen; rebuild(); } });
-        page.addView(dd);
-        if (unlockOpen) {
-            for (final UnlockMethods.Method m : UnlockMethods.Method.values()) {
-                boolean on = chosen.contains(m);
-                toggle(m.title, m.how, on, new Chg() { public void on(boolean v) {
-                    Features.set(ControlActivity.this, m.prefKey(), v);
-                    if (!v) {
-                        boolean any = false;
-                        for (UnlockMethods.Method x : UnlockMethods.Method.values()) if (stored.on(x)) any = true;
-                        if (!any) {   // the last one was just switched off: put it back
-                            Features.set(ControlActivity.this, m.prefKey(), true);
-                            android.widget.Toast.makeText(ControlActivity.this, "At least one method must stay selected", android.widget.Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                } });
-            }
-        }
-        toggle("Buzz when a handshake is accepted", "A 40 ms vibration so you know it counted.", ProfileSession.buzz(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.BUZZ_KEY, v); } });
-        note("The volume / Back methods need the helper's key-event access (it asks for it only while one of them is selected; turn the helper off and on once after selecting one). Shake and knock read the accelerometer only while the lock screen is showing.");
-        note("Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)") + "\nLast lock-screen switch: " + Features.getString(this, ProfileSession.PREARM_REPORT_KEY, "(none yet)"));
-
-        section("Two profiles (custom launcher / Quickstep)");
-        note("Locking the tablet ALWAYS ends a Quickstep session (no switch any more): a plain PIN or fingerprint gives the custom launcher again and closes what Quickstep left open. Only the crash breaker and \"Restore everything\" pause this, until you switch to the custom launcher yourself.");
-        toggle("A gesture unlock comes back to the app I had open", "ON: after the lock-screen gesture, Quickstep opens the app that was in front when you locked the tablet, exactly as you left it (like tapping its icon). OFF: it opens the Quickstep home screen instead, with the apps minimised. With no app open it is always the home screen.", Features.get(this, ResumeTarget.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ResumeTarget.KEY, v); } });
-        toggle("Close Quickstep's apps and notifications the moment the tablet locks", "Needs the adb helper (Invisible clean-up below): apps, their notifications and their Recents cards are closed at lock, and the custom account is already active when you unlock, so the unlock has nothing left to do. Without the helper the clean-up happens at unlock under a black cover.", ProfileSession.preClean(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PRECLEAN_KEY, v); } });
-        toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
-        toggle("Lock screen: no Wi-Fi, no Bluetooth, no app notifications (every launcher)", LockQuiet.permitted(this) ? "The moment the tablet is on the lock screen, from ANY launcher: Wi-Fi and Bluetooth are switched off and kept off (a radio that comes on again is switched off again, at most 3 times a minute), and the lock screen shows no app notifications and no notification icons (Android's own lock-screen setting, put back by this switch, \"Restore everything\" and the crash breaker). The notifications themselves stay in the shade until they are cleared." : "Needs the adb permission (not granted yet): without it only Wi-Fi and Bluetooth are switched off.",
-                LockQuiet.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.KEY, v); LockQuiet.applyNotificationsAsync(ControlActivity.this); rebuild(); } });   // v0.7.6 (review): do not wait for a bound accessibility helper to put the setting back
-        toggle("A gesture unlock into Quickstep puts Wi-Fi and Bluetooth back", "Whatever was on before the lock comes back after the lock-screen gesture opens Quickstep. A plain PIN into the custom launcher leaves them off (the custom launcher's own rule).", LockQuiet.restoreEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.RESTORE_KEY, v); } });
-        note("Lock screen quiet: " + Features.getString(this, LockQuiet.LAST_KEY, "(has not had to act yet)") + "   (lock_screen_show_notifications = " + android.provider.Settings.Secure.getString(getContentResolver(), LockQuiet.SHOW) + ")");
-        toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
-        toggle("Turn battery saver off in the custom launcher", BatterySaverGuard.permitted(this) ? "When the custom launcher becomes active (Quickstep ends, a PIN unlock, the tablet starts) and battery saver is on, it is switched off at once (Android's own setting, no delay). In between, the tile in the shade works as usual: what you tap stays (the Strict switch below changes that)." : "Needs the adb permission (not granted yet).", BatterySaverGuard.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
-        toggle("Battery saver ON in Quickstep (stays on)", BatterySaverGuard.permitted(this) ? "The battery saver follows the launcher: when Quickstep BEGINS it is switched ON; the custom launcher switches it off (the switch above). In between, the tile in the shade works as usual: if you turn it off in Quickstep it stays off (the Strict switch below changes that). Turn this off to keep whatever you set in Quickstep." : "Needs the adb permission (not granted yet).", BatterySaverGuard.qsEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.QS_KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
-        toggle("Strict battery saver (the old way)", "OFF (default): the tile in the shade always answers. ON: the rule is also forced whenever something changes the saver against it (a tap on the tile in Quickstep is switched back on within a moment, a tap in the custom launcher is switched off again; at most 3 and 4 times per 10 and 1 minutes) and it is re-applied at every start of the launcher process. Turn it on only if Android keeps changing the saver by itself.", BatterySaverGuard.strict(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.STRICT_KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "strict switched on in Launcher control"); } });
-        toggle("Hide \"My photos\" in the wallpaper picker", "Long-press on the home screen > Wallpapers opens the launcher's own copy of the stock wallpaper picker WITHOUT the \"My photos\" tile (nothing else is offered). If the stock picker is opened some other way (Settings), its \"My photos\" tile is covered in the picker's own colour and cannot be tapped. Quickstep's picker stays stock.", Features.get(this, PickerGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, PickerGuard.KEY, v); } });
+        group("recents", "Recents & wallpaper", false);
         toggle("Recents of the custom launcher: only apps of its drawer", "Whenever the Recents screen opens in the custom launcher, the cards of apps that are NOT in the custom app drawer (hidden apps, apps you opened in Quickstep that have no drawer entry) are closed at once. A card that matches no known app is never touched.", Features.get(this, RecentsFilter.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsFilter.KEY, v); } });
         String recentsStatus = Features.getString(this, RecentsFilter.STATUS_KEY, "");
         if (!recentsStatus.isEmpty()) note("Recents filter, last: " + recentsStatus);
+        toggle("Keep apps from the custom launcher OUT of Recents", "Off = they appear in Recents like normal apps. On = only Solitaire is listed.", RecentsPolicy.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsPolicy.KEY, v); } });
+        toggle("Hide the launcher from Recents completely", "Home-type launcher: never listed. If the launcher ever crashes Android asks you to choose the Home app again (adb guide, step 6, fixes it).", Features.get(this, RouterActivity.HOME_TYPE_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RouterActivity.HOME_TYPE_KEY, v); } });
+        toggle("Hide \"My photos\" in the wallpaper picker", "Long-press on the home screen > Wallpapers opens the launcher's own copy of the stock wallpaper picker WITHOUT the \"My photos\" tile (nothing else is offered). If the stock picker is opened some other way (Settings), its \"My photos\" tile is covered in the picker's own colour and cannot be tapped. Quickstep's picker stays stock.", Features.get(this, PickerGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, PickerGuard.KEY, v); } });
         note("Wallpaper picker: the launcher\'s own copy (no \"My photos\"). Stock picker found on this tablet: " + WallpaperPickerChoice.summary(this));
         String pickerStatus = Features.getString(this, PickerGuard.STATUS_KEY, "");
         if (!pickerStatus.isEmpty()) note("Wallpaper picker, last: " + pickerStatus);
-        note("Battery saver guard: " + Features.getString(this, BatterySaverPolicy.LAST_KEY, "(has not had to act yet)"));
-        note("Lock screen log (newest last):\n" + (LockLog.tail(this, 8).isEmpty() ? "(nothing yet: lock and unlock the tablet once)" : LockLog.tail(this, 8)));
-        note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 
-        section("Speed");
-        toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\") sits in the notification shade. Its status-bar icon is transparent; Android, not the app, decides whether it also shows on the lock screen (hide it under Settings > Notifications if it does). Off = Android may close the launcher when memory is short. OFF by default (version 0.7.2): on one tablet its notification crashed the launcher, so it must be proven first; if Android ever refuses the notification again, this switch turns itself off.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
-            KeepAliveService.setUserChoice(ControlActivity.this, v);
-            KeepAliveService.ensure(ControlActivity.this);
-        } });
-        if (KeepAliveService.blocked(this)) note("Keep-alive switched ITSELF off because Android refused its notification (" + KeepAliveService.blockedWhy(this) + "). Nothing else was changed. Switch it on again only to try once more.");
-        note("Keep-alive now: " + (KeepAliveService.running() ? "RUNNING (the launcher process is a foreground service)" : "not running") + ".  Last unlock: " + Features.getString(this, UnlockPick.LAST_KEY, "(none yet)"));
-
-        section("Invisible clean-up (needs adb after every restart)");
-        final boolean helperUp = ShellHelper.reachable();
-        LinearLayout hc = card();
-        hc.addView(chipLine("Shell helper", helperUp ? "RUNNING - the clean-up is invisible" : "not running - the black-cover method is used instead", helperUp ? ACCENT : Color.parseColor("#B26A00")));
-        page.addView(hc);
-        toggle("Use the invisible clean-up when the helper is running", "Quickstep's apps are force-stopped behind Solitaire: their Recents cards, notifications and processes vanish with no black cover, no notification shade and no Recents screen. Off = always the cover method.", ShellHelper.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ShellHelper.KEY, v); } });
-        action("Copy the adb command that starts the helper", "Run it on the computer with the tablet plugged in. It lasts until the tablet restarts, then run it again. (Two-step version for Windows: adb guide, step 10.)", new Runnable() { public void run() {
-            ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("adb", ShellProtocol.START_ONE_LINER));
-            android.widget.Toast.makeText(ControlActivity.this, "Copied", android.widget.Toast.LENGTH_SHORT).show();
-        }});
-        note("Link: a local-only connection (127.0.0.1). The launcher declares the Internet permission only so Android lets it open that connection; nothing else in the launcher uses it.");
-        note("The helper is a small process the adb command starts as the shell user. It only answers this app, and only knows two commands: \"are you there\" and \"force-stop these apps\" (never the system, the keyboard, this launcher or the stock launcher). Stop it any time with: " + ShellProtocol.STOP_LINE);
-
-        section("Back to the custom launcher (from Quickstep)");
+        group("return", "Return to the custom launcher (from Quickstep)", false);
+        toggle("Run the return reset", "Master switch for everything in this section.", ReturnReset.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.KEY, v); } });
+        toggle("Open Solitaire automatically", "ON: Solitaire is put in front after boot / a launcher restart AND behind the lock screen when the tablet wakes. OFF: it is never opened for you (it then also stays out of Quickstep's Recents). The return from Quickstep has its own control right below: \"Plain (no app)\".", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
+        final EditText appBox = new EditText(this);
+        appBox.setSingleLine(true);
+        appBox.setText(ReturnReset.appLabel(this));
+        appBox.setHint("app to open (blank = none, plain home screen)");
+        box.addView(appBox);
+        LinearLayout abtn = row();
+        abtn.addView(smallButton("Save app name", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, appBox.getText().toString().trim()); rebuild(); } }));
+        abtn.addView(smallButton("Plain (no app)", new Runnable() { public void run() { Features.setString(ControlActivity.this, ReturnReset.APP_KEY, ""); rebuild(); } }));
+        box.addView(abtn);
+        toggle("Clear notifications", "Skipped by itself when the status bar shows none.", ReturnReset.clearNotifications(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_NOTIF_KEY, v); } });
+        toggle("Close the apps opened from Quickstep", "Only those apps; apps opened from the custom launcher stay.", ReturnReset.clearRecents(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAR_RECENTS_KEY, v); } });
+        toggle("Black cover while it works", "Hides the shade / Recents flicker.", Features.get(this, ReturnReset.COVER_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.COVER_KEY, v); } });
+        toggle("Animations off during the reset", AnimationSpeedup.permitted(this) ? "Put back exactly as they were afterwards." : "Needs the adb permission (not granted yet).", AnimationSpeedup.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AnimationSpeedup.KEY, v); } });
+        note("Last reset:\n" + Features.getString(this, TjAccessibilityService.RESET_REPORT_KEY, "(not run yet)"));
+        toggle("Close Quickstep's apps and notifications the moment the tablet locks", "Needs the adb helper (Invisible clean-up below): apps, their notifications and their Recents cards are closed at lock, and the custom account is already active when you unlock, so the unlock has nothing left to do. Without the helper the clean-up happens at unlock under a black cover.", ProfileSession.preClean(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PRECLEAN_KEY, v); } });
         note("Any one of these ends the Quickstep session: it switches to the custom launcher, closes what Quickstep opened, clears notifications, turns Wi-Fi/Bluetooth off and opens Solitaire. They only work while Quickstep is active. Locking the tablet also ends it.");
         for (final ReturnMethods.Method m : ReturnMethods.Method.values()) {
             if (m == ReturnMethods.Method.HOME2) continue;   // the router reads Home presses itself: shown below
             toggle(m.title, m.how, ReturnMethods.on(this, m), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
         }
-        toggle(ReturnMethods.Method.HOME2.title, ReturnMethods.Method.HOME2.how + "  (This one is always on.)", true, new Chg() { public void on(boolean v) { rebuild(); } });
+        note(ReturnMethods.Method.HOME2.title + ": " + ReturnMethods.Method.HOME2.how + "  (always on, nothing to switch)");
         note("The \"Back to custom\" icon is in Quickstep's app drawer (arrow icon). Put it on the home screen if you like. The tile is added from the tile editor (pencil) - or tick it under Quick settings below.");
 
-        section("Secret ways to Quickstep (from the custom launcher)");
+        group("battery", "Battery, radios & speed", false);
+        toggle("Turn battery saver off in the custom launcher", BatterySaverGuard.permitted(this) ? "When the custom launcher becomes active (Quickstep ends, a PIN unlock, the tablet starts) and battery saver is on, it is switched off at once (Android's own setting, no delay). In between, the tile in the shade works as usual: what you tap stays (the Strict switch below changes that)." : "Needs the adb permission (not granted yet).", BatterySaverGuard.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
+        toggle("Battery saver ON in Quickstep (stays on)", BatterySaverGuard.permitted(this) ? "The battery saver follows the launcher: when Quickstep BEGINS it is switched ON; the custom launcher switches it off (the switch above). In between, the tile in the shade works as usual: if you turn it off in Quickstep it stays off (the Strict switch below changes that). Turn this off to keep whatever you set in Quickstep." : "Needs the adb permission (not granted yet).", BatterySaverGuard.qsEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.QS_KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
+        toggle("Strict battery saver (the old way)", "OFF (default): the tile in the shade always answers. ON: the rule is also forced whenever something changes the saver against it (a tap on the tile in Quickstep is switched back on within a moment, a tap in the custom launcher is switched off again; at most 3 and 4 times per 10 and 1 minutes) and it is re-applied at every start of the launcher process. Turn it on only if Android keeps changing the saver by itself.", BatterySaverGuard.strict(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.STRICT_KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "strict switched on in Launcher control"); } });
+        note("Battery saver guard: " + Features.getString(this, BatterySaverPolicy.LAST_KEY, "(has not had to act yet)"));
+        toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
+        toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\") sits in the notification shade. Its status-bar icon is transparent; Android, not the app, decides whether it also shows on the lock screen (hide it under Settings > Notifications if it does). Off = Android may close the launcher when memory is short. OFF by default (version 0.7.2): on one tablet its notification crashed the launcher, so it must be proven first; if Android ever refuses the notification again, this switch turns itself off.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
+            KeepAliveService.setUserChoice(ControlActivity.this, v);
+            KeepAliveService.ensure(ControlActivity.this);
+        } });
+        if (KeepAliveService.blocked(this)) note("Keep-alive switched ITSELF off because Android refused its notification (" + KeepAliveService.blockedWhy(this) + "). Nothing else was changed. Switch it on again only to try once more.");
+        note("Keep-alive now: " + (KeepAliveService.running() ? "RUNNING (the launcher process is a foreground service)" : "not running") );
+
+        group("qs", "Quick settings & keyboard", false);
+        toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
+        toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", ImmersiveProfile.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, ImmersiveProfile.KEY, v);
+            ImmersiveProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+        } });
+        toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
+        tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
+        tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
+        toggle("Stock keyboard in custom, SwiftKey in Quickstep", KeyboardSwitch.status(this), KeyboardSwitch.enabled(this), new Chg() { public void on(boolean v) {
+            Features.set(ControlActivity.this, KeyboardSwitch.KEY, v);
+            KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this));
+        } });
+
+        group("safety", "Safety & secret ways to Quickstep", false);
+        toggle("Keep Quickstep away unless I use a handshake", "Quickstep opens ONLY after a secret unlock handshake (Lock screen section). If its home screen appears any other way in custom mode, send me back.", Features.get(this, StrayHomeGuard.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, StrayHomeGuard.KEY, v); } });
+        note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
         note("Hidden ways to leave the custom launcher for Quickstep, tablet unlocked. No hardware button and no motion sensor is used; each one is made to be hard to trigger by accident, and each can be switched off here. (The lock-screen handshakes above and the ladder below are separate.)");
         for (final SecretEntrances.Method m : SecretEntrances.Method.values()) {
             toggle(m.title, m.how, EntranceWatcher.on(this, m), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, m.prefKey(), v); } });
         }
-        section("Master failsafe: always reach Quickstep");
         note("Ladder, easiest first: 1) the lock-screen handshakes above; 2) the key code below; 3) the hidden Solitaire hotspot below; 4) if the Accessibility helper is OFF: press Home three times quickly; 5) Android itself: Settings > Apps > Default apps > Home app, or Safe mode (hold Power off), or adb (see the adb guide).");
         toggle("Key code anywhere in the custom launcher", "Volume Up, Up, Down, Down, Back, Back, Up, Down within 20 seconds, screen unlocked. Needs the helper's key access.", FailsafeKeys.konami(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.KONAMI_KEY, v); } });
         toggle("Hidden Solitaire hotspot", "An invisible 56 dp square in a corner of Solitaire: tap it 5 times quickly, then touch and HOLD it for a second. The game cannot use that corner while this is on.", FailsafeKeys.hotspot(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, FailsafeKeys.HOTSPOT_KEY, v); } });
@@ -284,25 +291,28 @@ public class ControlActivity extends Activity {
         }});
         note("Probe result: " + Features.getString(this, FailsafeKeys.PROBE_REPORT_KEY, "(not run)") + "\nLast failsafe / return: " + Features.getString(this, FailsafeKeys.LAST_KEY, "(none yet)"));
 
-        section("Quick settings");
-        toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
-        toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", ImmersiveProfile.enabled(this), new Chg() { public void on(boolean v) {
-            Features.set(ControlActivity.this, ImmersiveProfile.KEY, v);
-            ImmersiveProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
-        } });
-        toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
-        tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
-        tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
-
-        section("Keyboard");
-        toggle("Stock keyboard in custom, SwiftKey in Quickstep", KeyboardSwitch.status(this), KeyboardSwitch.enabled(this), new Chg() { public void on(boolean v) {
-            Features.set(ControlActivity.this, KeyboardSwitch.KEY, v);
-            KeyboardSwitch.apply(ControlActivity.this, Mode.get(ControlActivity.this));
-        } });
-
-        section("Advanced");
+        group("advanced", "Advanced & diagnostics", false);
+        final boolean helperUp = ShellHelper.reachable();
+        LinearLayout hc = card();
+        hc.addView(chipLine("Shell helper", helperUp ? "RUNNING - the clean-up is invisible" : "not running - the black-cover method is used instead", helperUp ? ACCENT : Color.parseColor("#B26A00")));
+        box.addView(hc);
+        toggle("Use the invisible clean-up when the helper is running", "Quickstep's apps are force-stopped behind Solitaire: their Recents cards, notifications and processes vanish with no black cover, no notification shade and no Recents screen. Off = always the cover method.", ShellHelper.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ShellHelper.KEY, v); } });
+        action("Copy the adb command that starts the helper", "Run it on the computer with the tablet plugged in. It lasts until the tablet restarts, then run it again. (Two-step version for Windows: adb guide, step 10.)", new Runnable() { public void run() {
+            ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("adb", ShellProtocol.START_ONE_LINER));
+            android.widget.Toast.makeText(ControlActivity.this, "Copied", android.widget.Toast.LENGTH_SHORT).show();
+        }});
+        note("Link: a local-only connection (127.0.0.1). The launcher declares the Internet permission only so Android lets it open that connection; nothing else in the launcher uses it.");
+        note("The helper is a small process the adb command starts as the shell user. It only answers this app, and only knows two commands: \"are you there\" and \"force-stop these apps\" (never the system, the keyboard, this launcher or the stock launcher). Stop it any time with: " + ShellProtocol.STOP_LINE);
         action("Tablet setup & report", "Every adb to-do item on one screen (permissions, battery, accessibility, helper), a \"Do everything\" button, and a report + copies of the system apps for Claude.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, SetupActivity.class)); } });
         action("adb setup guide", "Every command, step by step, with copy buttons.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class)); } });
+        note("Last unlock: " + Features.getString(this, TjAccessibilityService.UNLOCK_SPEED_KEY, "(unlock once to measure)"));
+        note("Lock screen log (newest last):\n" + (LockLog.tail(this, 8).isEmpty() ? "(nothing yet: lock and unlock the tablet once)" : LockLog.tail(this, 8)));
+        note("Stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")"
+
+                + "\nWill open: " + describeTarget());
+
+        box = page;
+        section("Restore");
         action("Restore everything", "Turns every change of the launcher off and puts the settings back as they were.", new Runnable() { public void run() {
             new AlertDialog.Builder(ControlActivity.this).setTitle("Restore everything?").setMessage("Every launcher feature is switched off and the original system settings are put back. You stay in Quickstep.")
                     .setPositiveButton("Restore", new DialogInterface.OnClickListener() { public void onClick(DialogInterface d, int w) {
@@ -312,13 +322,6 @@ public class ControlActivity extends Activity {
                         rebuild();
                     } }).setNegativeButton("Cancel", null).show();
         }});
-        note("Stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")"
-
-                + "\nWill open: " + describeTarget());
-        if (CrashGuard.wasTripped(this)) note("The launcher crashed 3 times in a row, so it switched itself back to the stock launcher and restored everything.");
-        if (!CrashGuard.clearedNote(this).isEmpty()) note(CrashGuard.clearedNote(this));
-        if (!Features.getString(this, SwitchMigration.NOTE_KEY, "").isEmpty()) note(Features.getString(this, SwitchMigration.NOTE_KEY, ""));
-        if (CrashGuard.isPaused(this)) note("Automatic switching is PAUSED: while you are in Quickstep nothing switches back to the custom launcher by itself (after \"Restore everything\", or after an update cleared the crash breaker). Press \"Switch to the custom launcher\" above when you want it back.");
     }
 
     private String describeTarget() {
@@ -340,17 +343,58 @@ public class ControlActivity extends Activity {
     private void title(String t) {
         TextView v = text(t, 26, INK, true);
         v.setPadding(px(4), 0, 0, px(12));
-        page.addView(v);
+        box.addView(v);
+    }
+
+
+    // ---------------------------------------------------------------- AR1: collapsible groups
+    private static final String[] GROUPS = { "everyday", "lock", "handshakes", "power", "recents", "return", "battery", "qs", "safety", "advanced" };
+
+    private void setAllGroups(boolean open) {
+        for (String id : GROUPS) Features.set(this, "ctl_open_" + id, open);
+        rebuild();
+    }
+
+    /** A group: a tappable header (title, "n of m on", an arrow) and the box its rows go into. Open / closed is remembered per group. */
+    private void group(final String id, String title, boolean openByDefault) {
+        final boolean open = Features.get(this, "ctl_open_" + id, openByDefault);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(px(4), px(18), px(4), px(10));
+        LinearLayout mid = new LinearLayout(this);
+        mid.setOrientation(LinearLayout.VERTICAL);
+        mid.addView(text(title, 18, INK, true));
+        groupSummary = text("", 13, MUTED, false);
+        mid.addView(groupSummary);
+        head.addView(mid, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        head.addView(text(open ? "v" : ">", 22, ACCENT, true));
+        head.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { Features.set(ControlActivity.this, "ctl_open_" + id, !open); rebuild(); } });
+        page.addView(head);
+        View line = new View(this);
+        line.setBackgroundColor(Color.parseColor("#DADCE0"));
+        page.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setVisibility(open ? View.VISIBLE : View.GONE);
+        page.addView(box);
+        groupOn = 0; groupTotal = 0;
+    }
+
+    private void countSwitch(boolean on) {
+        groupTotal++;
+        if (on) groupOn++;
+        if (groupSummary != null) groupSummary.setText(groupOn + " of " + groupTotal + " switches on");
     }
 
     private void section(String t) {
         TextView v = text(t.toUpperCase(java.util.Locale.ROOT), 12, ACCENT, true);
         v.setLetterSpacing(0.08f);
         v.setPadding(px(4), px(26), 0, px(6));
-        page.addView(v);
+        box.addView(v);
         View line = new View(this);
         line.setBackgroundColor(Color.parseColor("#DADCE0"));
-        page.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        box.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
     private GradientDrawable fieldBackground() {
@@ -387,6 +431,7 @@ public class ControlActivity extends Activity {
     }
 
     private void toggle(String title, String desc, boolean on, final Chg c) {
+        countSwitch(on);
         LinearLayout r = row();
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
@@ -401,7 +446,7 @@ public class ControlActivity extends Activity {
         });
         r.addView(sw);
         r.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { sw.toggle(); } });
-        page.addView(r);
+        box.addView(r);
     }
 
     private void action(String title, String desc, final Runnable run) {
@@ -413,13 +458,13 @@ public class ControlActivity extends Activity {
         r.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         r.addView(text(">", 20, ACCENT, true));
         r.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { run.run(); } });
-        page.addView(r);
+        box.addView(r);
     }
 
     private void note(String t) {
         TextView v = text(t, 13, MUTED, false);
         v.setPadding(px(4), px(8), px(4), px(8));
-        page.addView(v);
+        box.addView(v);
     }
 
     private Button smallButton(String label, final Runnable r) {
@@ -430,7 +475,7 @@ public class ControlActivity extends Activity {
     }
 
     private void radio(String title, String[] labels, final String[] values, String current, final Str s) {
-        page.addView(text(title, 14, MUTED, false));
+        box.addView(text(title, 14, MUTED, false));
         RadioGroup g = new RadioGroup(this);
         g.setOrientation(RadioGroup.VERTICAL);
         for (int i = 0; i < labels.length; i++) {
@@ -444,7 +489,7 @@ public class ControlActivity extends Activity {
         g.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(RadioGroup group, int id) { int i = id - 1000; if (i >= 0 && i < values.length) { s.on(values[i]); rebuild(); } }
         });
-        page.addView(g);
+        box.addView(g);
     }
 
     private void stepper(String label, final String key, final int step, final int min, final int max, final String unit) {
@@ -452,12 +497,12 @@ public class ControlActivity extends Activity {
         r.addView(text(label + ":  " + Features.getInt(this, key, 0) + unit, 15, INK, false), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         r.addView(smallButton("-", new Runnable() { public void run() { Features.setInt(ControlActivity.this, key, Math.max(min, Features.getInt(ControlActivity.this, key, 0) - step)); rebuild(); } }));
         r.addView(smallButton("+", new Runnable() { public void run() { Features.setInt(ControlActivity.this, key, Math.min(max, Features.getInt(ControlActivity.this, key, 0) + step)); rebuild(); } }));
-        page.addView(r);
+        box.addView(r);
     }
 
     /** A row of tick boxes for the quick-settings tiles of one launcher; stored as the comma list SystemUI wants. */
     private void tileChooser(String title, final String key, String def) {
-        page.addView(text(title, 14, MUTED, false));
+        box.addView(text(title, 14, MUTED, false));
         String cur = TileProfile.sanitize(Features.getString(this, key, def), def);
         final Set<String> on = new HashSet<>(Arrays.asList(cur.split(",")));
         LinearLayout wrap = new LinearLayout(this);
@@ -483,7 +528,7 @@ public class ControlActivity extends Activity {
             });
             line.addView(cb, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         }
-        page.addView(wrap);
+        box.addView(wrap);
     }
 
     private void goHome() {
