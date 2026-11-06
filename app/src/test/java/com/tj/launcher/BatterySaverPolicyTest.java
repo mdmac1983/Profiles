@@ -6,11 +6,15 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/** AC3: the battery-saver guard's rules. The guard itself needs Android; emulator section "ac" proves it on a real Android 10 system. */
+/**
+ * AC3 / AN1 / AZ2: the battery-saver guard's rules. The guard itself needs Android; emulator sections "ac" (the switch-off) and "bs" (the real Settings screen against Android 10's state machine)
+ * prove it on a real Android 10 system.
+ */
 public class BatterySaverPolicyTest {
     private static final long NOW = 1_000_000;
     private static final long[] NONE = {0, 0, 0, 0};
 
+    // ---- AC3: the custom launcher switches the saver off
     @Test public void switchesItOffInTheCustomLauncher() { assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, NONE)); }
     @Test public void neverInQuickstep() { assertFalse(BatterySaverPolicy.shouldTurnOff(true, false, false, true, NOW, NONE)); }
     @Test public void neverWhenTheSwitchIsOff() { assertFalse(BatterySaverPolicy.shouldTurnOff(false, true, false, true, NOW, NONE)); }
@@ -27,50 +31,7 @@ public class BatterySaverPolicyTest {
         assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, old));
     }
     @Test public void aMissingHistoryIsTreatedAsEmpty() { assertTrue(BatterySaverPolicy.shouldTurnOff(true, true, false, true, NOW, null)); }
-    // AG1: Quickstep turns the saver ON and keeps it on
-    private static final long[] NO_ON = {0, 0, 0};
-    @Test public void quickstepSwitchesItOn() { assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, NO_ON)); }
-    @Test public void neverInTheCustomLauncherOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, true, false, false, NOW, NO_ON)); }
-    @Test public void onlyWhenTheQuickstepSwitchIsOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(false, false, false, false, NOW, NO_ON)); }
-    @Test public void onNeverWhileAutomationIsPaused() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, true, false, NOW, NO_ON)); }
-    @Test public void nothingToDoWhenItIsAlreadyOn() { assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, true, NOW, NO_ON)); }
-    @Test public void androidTurningItOffByItselfIsNotFoughtInATightLoop() {
-        long[] three = {NOW - 1000, NOW - 60_000, NOW - 300_000};
-        assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, three));
-        long[] two = {NOW - 1000, NOW - 60_000, 0};
-        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, two));
-    }
-    @Test public void oldSwitchOnsDoNotCount() {
-        long[] old = {NOW - 11 * 60_000, NOW - 20 * 60_000, NOW - 30 * 60_000};
-        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, old));
-        assertTrue(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, null));
-    }
-    // v0.7.6 (review of v0.7.5): the cap protects against a ROM that keeps turning the saver off (REACTIVE switch-ons); a DELIBERATE entry into Quickstep is never counted or capped
-    @Test public void aDeliberateEntrySwitchesItOnEvenWhenTheReactiveCapIsFull() {
-        long[] three = {NOW - 1000, NOW - 60_000, NOW - 300_000};
-        assertFalse(BatterySaverPolicy.shouldTurnOn(true, false, false, false, NOW, three));   // reactive: capped
-        assertTrue(BatterySaverPolicy.deliberateOn(true, false, false, false));                // deliberate: not capped
-    }
-    @Test public void aDeliberateSwitchOnKeepsEveryOtherExclusion() {
-        assertFalse(BatterySaverPolicy.deliberateOn(false, false, false, false));   // the Quickstep switch is off
-        assertFalse(BatterySaverPolicy.deliberateOn(true, true, false, false));     // never in the custom launcher
-        assertFalse(BatterySaverPolicy.deliberateOn(true, false, true, false));     // never while automation is paused (breaker / Restore everything)
-        assertFalse(BatterySaverPolicy.deliberateOn(true, false, false, true));     // already on: nothing to do
-    }
-    @Test public void theReactiveRuleIsExactlyTheDeliberateRuleAndTheCap() {
-        for (boolean sw : new boolean[] { true, false }) for (boolean custom : new boolean[] { true, false })
-            for (boolean paused : new boolean[] { true, false }) for (boolean on : new boolean[] { true, false }) {
-                assertEquals(BatterySaverPolicy.deliberateOn(sw, custom, paused, on), BatterySaverPolicy.shouldTurnOn(sw, custom, paused, on, NOW, NO_ON));
-            }
-    }
-    @Test public void theFollowRuleIsExclusive() {   // never both directions for the same state
-        for (boolean custom : new boolean[] { true, false }) for (boolean on : new boolean[] { true, false }) {
-            boolean off = BatterySaverPolicy.shouldTurnOff(true, custom, false, on, NOW, NONE);
-            boolean up = BatterySaverPolicy.shouldTurnOn(true, custom, false, on, NOW, NO_ON);
-            assertFalse("custom=" + custom + " saverOn=" + on, off && up);
-        }
-        assertEquals("profile_battery_saver_on_quickstep", BatterySaverPolicy.QS_KEY);
-    }
+
     // ---- AN1: the tile in the shade is the boss between launcher changes
     @Test public void aChangeBehindOurBackIsLeftAloneUnlessStrict() {
         assertFalse(BatterySaverPolicy.mayAct(true, false));   // the tile / Android changed it: hands off
@@ -86,15 +47,68 @@ public class BatterySaverPolicyTest {
         assertTrue(BatterySaverPolicy.startCheckWanted(true, 6 * 3_600_000L));                            // strict: every start, as before
         assertFalse(BatterySaverPolicy.startCheckWanted(false, -1));                                      // a clock that makes no sense never applies it
     }
-    @Test public void repeatingTheSameModeIsNotAChange() {
-        assertTrue(BatterySaverPolicy.modeSetChecks(true, false));
-        assertFalse(BatterySaverPolicy.modeSetChecks(false, false));   // an unlock that sets custom again while custom is already active
-        assertTrue(BatterySaverPolicy.modeSetChecks(false, true));
+
+    // ---- AZ2: Quickstep is stock; only the arrival of the custom launcher runs the guard
+    @Test public void onlyTheCustomLauncherRunsTheGuard() {
+        assertTrue(BatterySaverPolicy.modeSetChecks(true, true, false));    // Quickstep -> custom: the saver is switched off
+        assertFalse(BatterySaverPolicy.modeSetChecks(false, true, false));  // custom -> Quickstep: NOTHING is written (the old switch-ON left Android's state machine out of step)
+        assertFalse(BatterySaverPolicy.modeSetChecks(false, true, true));   // not even in strict mode
+        assertFalse(BatterySaverPolicy.modeSetChecks(false, false, true));
     }
-    @Test public void strictIsOffByDefaultAndNamed() {
+    @Test public void repeatingCustomIsNotAChangeUnlessStrict() {
+        assertFalse(BatterySaverPolicy.modeSetChecks(true, false, false));  // an unlock that sets custom again while custom is already active
+        assertTrue(BatterySaverPolicy.modeSetChecks(true, false, true));
+    }
+    @Test public void theRetiredKeysStayNamedSoOldPreferenceFilesAreUnderstood() {
+        assertEquals("profile_battery_saver_on_quickstep", BatterySaverPolicy.QS_KEY);
         assertEquals("profile_battery_saver_strict", BatterySaverPolicy.STRICT_KEY);
         assertTrue(BatterySaverPolicy.BOOT_GRACE_MS >= 60_000 && BatterySaverPolicy.BOOT_GRACE_MS <= 10 * 60_000);
     }
+
+    // ---- AZ2: the self-heal of a swallowed "turn ON"
+    @Test public void aGrowingCounterIsARequest() {
+        assertTrue(BatterySaverPolicy.activationRequested(3, 4));
+        assertFalse(BatterySaverPolicy.activationRequested(4, 4));          // same value: a different change of that setting
+        assertFalse(BatterySaverPolicy.activationRequested(5, 2));          // a reset of the setting is not a request
+        assertFalse(BatterySaverPolicy.activationRequested(-1, 7));         // first read of this process: never a request
+        assertTrue(BatterySaverPolicy.activationRequested(0, 1));
+    }
+    @Test public void aSwallowedRequestIsCarriedOut() {
+        assertTrue(BatterySaverPolicy.healWanted(false, false, NOW, null));                         // asked to turn ON, still OFF, on battery
+        assertTrue(BatterySaverPolicy.healWanted(false, false, NOW, new long[] {0, 0, 0, 0, 0, 0}));
+    }
+    @Test public void anAcceptedRequestNeedsNoHelp() { assertFalse(BatterySaverPolicy.healWanted(true, false, NOW, null)); }
+    @Test public void neverWhileCharging() {
+        assertFalse(BatterySaverPolicy.healWanted(false, true, NOW, null));   // Android 10 will not run the saver on charge (and does not count the request)
+        assertTrue(BatterySaverPolicy.charging("ac")); assertTrue(BatterySaverPolicy.charging("usb")); assertTrue(BatterySaverPolicy.charging("wireless")); assertTrue(BatterySaverPolicy.charging("other"));
+        assertFalse(BatterySaverPolicy.charging("no")); assertFalse(BatterySaverPolicy.charging("?")); assertFalse(BatterySaverPolicy.charging(null));
+    }
+    @Test public void aPersonTappingIsNeverALoop() {
+        long[] six = {NOW - 1000, NOW - 2000, NOW - 3000, NOW - 4000, NOW - 5000, NOW - 6000};
+        assertFalse(BatterySaverPolicy.healWanted(false, false, NOW, six));
+        long[] five = {NOW - 1000, NOW - 2000, NOW - 3000, NOW - 4000, NOW - 5000, 0};
+        assertTrue(BatterySaverPolicy.healWanted(false, false, NOW, five));
+        long[] old = {NOW - 61_000, NOW - 70_000, NOW - 80_000, NOW - 90_000, NOW - 100_000, NOW - 110_000};
+        assertTrue(BatterySaverPolicy.healWanted(false, false, NOW, old));
+    }
+    @Test public void theCounterIsAndroidsOwn() { assertEquals("low_power_manual_activation_count", BatterySaverPolicy.COUNT_SETTING); }
+
+    // ---- AZ2: the one-time clean-up of a saver the old versions forced ON
+    @Test public void aSaverTheOldGuardForcedOnIsClearedOnce() {
+        String note = "20:11:05  switched battery saver ON in Quickstep (Quickstep became active)";
+        assertTrue(BatterySaverPolicy.unstickWanted(false, true, note));
+        assertFalse(BatterySaverPolicy.unstickWanted(true, true, note));                 // already done
+        assertFalse(BatterySaverPolicy.unstickWanted(false, false, note));               // not on: nothing stuck
+        assertFalse(BatterySaverPolicy.unstickWanted(false, true, "20:11:05  switched battery saver off in the custom launcher (x)"));   // somebody turned it on by hand later: leave it
+        assertFalse(BatterySaverPolicy.unstickWanted(false, true, ""));
+        assertFalse(BatterySaverPolicy.unstickWanted(false, true, null));
+    }
+    @Test public void theMarkMatchesWhatTheOldGuardWrote() {
+        // v0.7.5 - v0.8.0 stored: stamp + "  switched battery saver ON in Quickstep (" + why + ")"
+        assertTrue(("12:00:00  switched battery saver ON in Quickstep (the process start)").contains(BatterySaverPolicy.FORCED_ON_MARK));
+    }
+
+    // ---- the setting value is parsed strictly
     @Test public void theSettingValueIsParsedStrictly() {
         assertTrue(BatterySaverPolicy.isOn("1")); assertTrue(BatterySaverPolicy.isOn(" 1 "));
         assertFalse(BatterySaverPolicy.isOn("0")); assertFalse(BatterySaverPolicy.isOn(null)); assertFalse(BatterySaverPolicy.isOn("")); assertFalse(BatterySaverPolicy.isOn("true"));
