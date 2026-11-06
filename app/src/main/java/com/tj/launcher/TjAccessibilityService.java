@@ -49,10 +49,12 @@ public class TjAccessibilityService extends AccessibilityService {
     };
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
+        evSeen++;
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
         if (event != null && getPackageName().contentEquals(event.getPackageName() == null ? "" : event.getPackageName())) return;
         if (event != null && EventNoise.isNoise(event.getEventType(), event.getPackageName())) {   // AB2: another app's content change: it cannot open the power menu, the shade or the PIN pad
+            evNoise++;
             if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }   // only the (rare, 10-minute) Solitaire probe wants those
             return;
         }
