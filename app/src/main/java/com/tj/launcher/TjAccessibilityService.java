@@ -69,7 +69,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
         if (Features.POWER_OFF.equals(Features.powerMode(this)) || !coverWorld()) {
-            if (overlay != null) removeOverlay();
+            if (overlay != null || overlayShown) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
         }
         // Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content.
@@ -159,6 +159,7 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
         try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
+        try { if (calibrating()) calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration resume failed", t); }   // AM1
     }
 
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
@@ -188,10 +189,34 @@ public class TjAccessibilityService extends AccessibilityService {
     private float openScrim() { return PatchRest.openScrim(DIM_OPEN, Features.getInt(this, PATCH_SCRIM_KEY, 0)); }
     private volatile boolean patchResting = false;
     private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
+    /** AM1 (Tj, 2026-11-06): switch, default OFF: draw my own Power off / Restart card over the stock entries (the old cover). OFF = the stock menu stays completely stock; the patch alone hides the Screenshot spot. */
+    public static final String POWER_CARD_KEY = "power_card";
+    private android.graphics.Bitmap patchShotBmp; private int patchShotLeft, patchShotTop;   // AM1: the stored REAL-pixel crop of the lock screen for this rotation, and where its top-left corner lies on the screen
+    private boolean patchTouchable = false;                                                    // AM1: only while the stock menu is open, the patch swallows a tap on the hidden Screenshot spot
+    private android.database.ContentObserver shotObserver;
+    private long lastShotId = -1;
+    private int autoShotTries = 0;
+    private boolean autoShotDone = false;
     private android.graphics.Bitmap patchMaskOpen, patchMaskRest;   // AH3: the soft-edge masks of the slot patch (menu open: hard top under the card; resting: soft top); null = the old hard-edged drawing
     /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Launcher control and in the tablet report. */
     public static final String WALLPAPER_KIND_KEY = "wallpaper_kind";
-    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, false) && lockPatchWanted(); }
+    /**
+     * AM1: cardless only on the LOCK screen, where the real-pixel patch hides the Screenshot spot. The HOME screen has no patch in "hide_screenshot" mode (the card stretched over the whole panel is what hides the
+     * Screenshot entry there), and the "wallpaper" mode IS "patch + my card": both keep the card, as before. The switch forces the card everywhere.
+     */
+    private boolean cardWanted() {
+        if (Features.get(this, POWER_CARD_KEY, false)) return true;
+        if (Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return true;
+        return !keyguardLockedFast();
+    }
+    /** Debug builds only (the emulator tests): the resting patch may also rest on the wallpaper MODEL, which is otherwise forbidden because a model patch is a visible block. */
+    private boolean modelRestAllowed() { return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && Features.get(this, "patch_rest_model", false); }
+    private boolean calibrating() { return PatchShot.calibrating(Features.getString(this, PatchShot.CAL_UNTIL_KEY, "0"), System.currentTimeMillis()); }
+    /**
+     * AM1: the patch RESTS over the Screenshot spot (switch default ON) only when it can be INVISIBLE: it needs real pixels of this lock screen (a stored crop from a real screenshot, or the helper's fresh photo),
+     * and never while a calibration screenshot is being taken. Without them it stays hidden at rest (a model patch is a visible block: Tj's photo of 2026-11-06).
+     */
+    private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, true) && lockPatchWanted() && !calibrating() && (patchShotBmp != null || lockShot != null || modelRestAllowed()); }
     /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
     private float restDim(boolean photo) {
         if (photo) return 1f;   // v0.7.6 (review of v0.7.5): the photo already has the real keyguard brightness and no dialog scrim is open: exactly 1, whatever the brightness nudge says (it corrects the MODEL's keyguard dim only)
@@ -223,6 +248,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+            if (PatchShot.CAL_UNTIL_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { try { calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration change failed", t); } } });   // AM1
+            if (POWER_CARD_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { try { removeOverlay(); refreshLayers(); } catch (Throwable t) { Log.e(TAG, "card switch failed", t); } } });   // AM1: the card appears / disappears now
             if (LockQuiet.KEY.equals(key)) { try { LockQuiet.applyNotificationsAsync(getApplicationContext()); } catch (Throwable ignored) { } }   // AK1: the switch changed: hide / put back the lock-screen notification setting now
             if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
@@ -479,7 +506,8 @@ public class TjAccessibilityService extends AccessibilityService {
         final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final Rect rect = new Rect(r);
-        if (targetIsLock) buildPatchMasks(rect, dm); else { patchMaskOpen = null; patchMaskRest = null; }   // AH3: the soft-edge masks belong to the lock patch; the home patch is drawn exactly as in v0.7.5
+        if (targetIsLock) buildPatchMasks(rect, dm); else { patchMaskOpen = null; patchMaskRest = null; }
+        if (targetIsLock) loadStoredShot(); else patchShotBmp = null;   // AM1: the real pixels, if this lock screen was calibrated (must be loaded BEFORE the resting state is decided below)   // AH3: the soft-edge masks belong to the lock patch; the home patch is drawn exactly as in v0.7.5
         View v = new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
             private final android.graphics.Matrix m = new android.graphics.Matrix();
@@ -496,7 +524,11 @@ public class TjAccessibilityService extends AccessibilityService {
                 try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
             }
             private void paintPatch(android.graphics.Canvas c, boolean rest) {
-                if (patchLockMode && lockShot != null) { setDim(p, rest ? restDim(true) : lockPatchDim(true)); c.drawBitmap(lockShot, lockShotDx, lockShotDy, p); return; }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
+                android.graphics.Bitmap photo = !patchLockMode ? null : lockShot != null ? lockShot : patchShotBmp;   // AM1: the helper's fresh photo wins, else the stored REAL-pixel crop
+                if (photo != null) {
+                    int px = lockShot != null ? lockShotDx : patchShotLeft - rect.left, py = lockShot != null ? lockShotDy : patchShotTop - rect.top;
+                    setDim(p, rest ? restDim(true) : lockPatchDim(true)); c.drawBitmap(photo, px, py, p); return;
+                }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
                 android.graphics.Bitmap b = patchLockMode ? lockBmp : wallpaperBmp;
                 if (b == null) return;
                 // AC6: the real lock screen is darker than its wallpaper (keyguard scrim), so the MODEL patch is drawn darker too (the photo path above already has the real colours)
@@ -517,7 +549,14 @@ public class TjAccessibilityService extends AccessibilityService {
         lp.format = targetIsLock ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden. The home patch keeps OPAQUE (v0.7.5 behaviour)
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
-        patchLockMode = targetIsLock;
+        patchLockMode = targetIsLock; patchTouchable = false;
+        v.setOnTouchListener(new View.OnTouchListener() {   // AM1: the window is NOT_TOUCHABLE except while the stock menu is open: then a tap on the hidden Screenshot spot closes the menu (like a tap outside) instead of taking a screenshot
+            @Override public boolean onTouch(View view, android.view.MotionEvent e) {
+                if (!patchTouchable) return false;
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) { try { performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { } }
+                return true;
+            }
+        });
         if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
         patchView = v; patchAt.set(r); patchRot = rotation();
         try { Rect cc = cachedCard(); if (cc != null) { Rect ca = cardArea(cc); patchRestTop = PatchRest.restTop(r.top, ca.bottom, r.bottom); } } catch (Throwable ignored) { }   // AE3: the resting patch paints only the part BELOW the card = the Screenshot slot
@@ -572,7 +611,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
-        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null;
+        patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false;
         Log.i(TAG, "PATCH removed");
     }
 
@@ -1155,7 +1194,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
             }
-            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); if (calibrating()) { autoShotTries = 0; handler.removeCallbacks(autoShot); handler.postDelayed(autoShot, 2500); } flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
@@ -2222,12 +2261,154 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (NumberFormatException e) { return full; }
     }
 
+    /**
+     * AM1 (Tj, 2026-11-06: "the power menu doesn't need to be rebuilt or changed at all ... it can stay completely stock"): CARDLESS. The stock Power off / Restart entries stay untouched. The patch over the
+     * Screenshot spot, resting there since the lock screen came up, only switches to its open-menu brightness and swallows a tap on the hidden Screenshot spot (a tap there closes the menu, like a tap outside).
+     * The "CARD area" log line is kept: the emulator sections parse it for the geometry.
+     */
+    private void showStock(Rect full) {
+        ensurePatch();
+        if (!overlayShown) {
+            Log.i(TAG, "CARD area=" + cardAreaGeom(full).toShortString() + " full=" + full.toShortString() + " lockPatch=" + patchLockMode + " stock=true");
+            overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
+        }
+        patchShow(true);
+        setPatchTouchable(true);
+    }
+
+    private WindowManager.LayoutParams patchParams(boolean touchable) {
+        WindowManager.LayoutParams lp = overlayParams(patchAt, touchable);
+        lp.format = patchLockMode ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;
+        lp.setTitle("TjWallpaperPatch");
+        return lp;
+    }
+
+    private void setPatchTouchable(boolean t) {
+        if (patchView == null || t == patchTouchable || !patchLockMode) return;   // the home patch never swallows a touch
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).updateViewLayout(patchView, patchParams(t)); patchTouchable = t; } catch (Throwable ignored) { }
+    }
+
+    // ---------------------------------------------------------------- AM1: the patch from a REAL screenshot of the lock screen (see PatchShot)
+    private void loadStoredShot() {
+        patchShotBmp = null;
+        try {
+            PatchShot.Loaded l = PatchShot.load(this, rotation(), shotSig());
+            if (l != null) { patchShotBmp = l.bmp; patchShotLeft = l.left; patchShotTop = l.top; }
+        } catch (Throwable t) { Log.e(TAG, "stored patch shot failed", t); }
+    }
+
+    /** What a stored crop is valid for: this wallpaper picture, this rotation, this display size. */
+    private String shotSig() {
+        long id = 0;
+        try { android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
+              id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK); if (id <= 0) id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        return PatchShot.sig(id, rotation(), dm.widthPixels, dm.heightPixels);
+    }
+
+    private void shotStatus(String s) { try { Features.setString(this, PatchShot.STATUS_KEY, s); } catch (Throwable ignored) { } }
+
+    private long calibrationUntilMs() { try { return Long.parseLong(Features.getString(this, PatchShot.CAL_UNTIL_KEY, "0").trim()); } catch (NumberFormatException e) { return 0; } }
+
+    private final Runnable shotIngest = new Runnable() { @Override public void run() { try { ingestShot(); } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); } } };
+    private final Runnable shotEnd = new Runnable() { @Override public void run() {
+        try {
+            if (calibrating()) return;
+            if (Features.getString(TjAccessibilityService.this, PatchShot.CAL_UNTIL_KEY, "0").length() > 1) { shotStatus(now() + "  the calibration window ended without a usable screenshot"); Features.setString(TjAccessibilityService.this, PatchShot.CAL_UNTIL_KEY, "0"); }
+            calibrationChanged();
+        } catch (Throwable t) { Log.e(TAG, "calibration end failed", t); }
+    } };
+    private final Runnable autoShot = new Runnable() { @Override public void run() {
+        try {
+            if (!calibrating() || autoShotDone) return;
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            boolean ready = pm != null && pm.isInteractive() && keyguardLockedFast() && !lastBouncer && !overlayShown && patchView != null;
+            if (!ready) { if (++autoShotTries < 12) handler.postDelayed(this, 2000); return; }   // wait for the lock screen to be up, the menu closed, no PIN pad
+            autoShotDone = true;
+            Log.i(TAG, "PATCHSHOT asking the system for a screenshot of the lock screen");
+            shotStatus(now() + "  taking the screenshot of the lock screen ...");
+            performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT);
+        } catch (Throwable t) { Log.e(TAG, "auto screenshot failed", t); }
+    } };
+
+    /** The calibration window opened or closed (Launcher control, the end of the window, a service connect): hide / bring back the resting patch, watch the media store, schedule the screenshot. */
+    private void calibrationChanged() {
+        if (calibrating()) {
+            startShotWatch();
+            autoShotDone = false; autoShotTries = 0;
+            handler.removeCallbacks(autoShot); handler.postDelayed(autoShot, 2500);
+            handler.removeCallbacks(shotEnd); handler.postDelayed(shotEnd, Math.max(1000, calibrationUntilMs() - System.currentTimeMillis() + 500));
+        } else { stopShotWatch(); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); }
+        layerRefresh.run();
+        patchShow(overlayShown);   // the resting patch is hidden while calibrating (it must not be inside the screenshot) and comes back afterwards
+    }
+
+    private void startShotWatch() {
+        if (shotObserver != null) return;
+        shotObserver = new android.database.ContentObserver(handler) {
+            @Override public void onChange(boolean selfChange) { handler.removeCallbacks(shotIngest); handler.postDelayed(shotIngest, 900); }
+        };
+        try { getContentResolver().registerContentObserver(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, shotObserver); } catch (Throwable t) { Log.e(TAG, "media watch failed", t); shotObserver = null; }
+    }
+
+    private void stopShotWatch() {
+        if (shotObserver == null) return;
+        try { getContentResolver().unregisterContentObserver(shotObserver); } catch (Throwable ignored) { }
+        shotObserver = null;
+    }
+
+    /** A screenshot appeared while calibrating: crop the patch window out of it (worker thread) and keep the crop. Every refusal says why in Launcher control. */
+    private void ingestShot() {
+        if (!calibrating()) return;
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) { shotStatus(now() + "  needs permission: Launcher control > Allow wallpaper access"); return; }
+        final android.content.Context app = getApplicationContext();
+        final long start = calibrationUntilMs() - PatchShot.WINDOW_MS;
+        final boolean locked = keyguardLockedFast();
+        final Rect win = patchView != null && patchLockMode ? new Rect(patchAt) : null;
+        final int rot = rotation(); final String sig = shotSig();
+        final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        new Thread(new Runnable() { @Override public void run() {
+            try {
+                android.net.Uri u = PatchShot.newestScreenshot(app, start);
+                if (u == null) return;
+                long id = android.content.ContentUris.parseId(u);
+                if (id == lastShotId) return;
+                lastShotId = id;
+                if (!locked) { shotStatus(now() + "  that screenshot was NOT taken on the lock screen: lock the tablet, wake it and take it there"); return; }
+                if (win == null) { shotStatus(now() + "  the power menu rectangle is not learned yet: hold the side key once on the lock screen, then calibrate again"); return; }
+                android.graphics.Bitmap full = PatchShot.decode(app, u);
+                if (full == null) { shotStatus(now() + "  the screenshot could not be read"); return; }
+                int W = full.getWidth(), H = full.getHeight();
+                if (W != dm.widthPixels || H != dm.heightPixels) { shotStatus(now() + "  the screenshot is " + W + "x" + H + " but the screen is " + dm.widthPixels + "x" + dm.heightPixels + ": take it in the same orientation"); full.recycle(); return; }
+                long sr = 0, sg = 0, sb = 0; int n = 0;
+                for (int y = Math.max(0, win.top); y < Math.min(H, win.bottom); y += 3) for (int x = Math.max(0, win.left); x < Math.min(W, win.right); x += 3) { int q = full.getPixel(x, y); sr += (q >> 16) & 255; sg += (q >> 8) & 255; sb += q & 255; n++; }
+                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { shotStatus(now() + "  the power menu was open in that screenshot: take it with the lock screen showing and the menu closed"); full.recycle(); return; }
+                int[] cr = PatchShot.cropRect(win.left, win.top, win.right, win.bottom, PatchShot.MARGIN_PX, W, H);
+                android.graphics.Bitmap crop = android.graphics.Bitmap.createBitmap(full, cr[0], cr[1], cr[2] - cr[0], cr[3] - cr[1]);
+                final boolean saved = PatchShot.save(app, rot, crop, sig, cr[0], cr[1]);
+                final String dims = crop.getWidth() + "x" + crop.getHeight();
+                full.recycle();
+                handler.post(new Runnable() { @Override public void run() { try {
+                    if (!saved) { shotStatus(now() + "  the crop could not be stored"); return; }
+                    Features.setString(TjAccessibilityService.this, PatchShot.CAL_UNTIL_KEY, "0");
+                    removeOverlay(); removePatch(); refreshLayers();   // rebuild the patch with the stored real pixels
+                    calibrationChanged();
+                    shotStatus(now() + "  PATCH CALIBRATED (" + dims + "): the patch now shows your real lock screen at the Screenshot spot");
+                    Log.i(TAG, "PATCHSHOT stored a " + dims + " crop for rotation " + rot);
+                } catch (Throwable t) { Log.e(TAG, "patch shot apply failed", t); } } });
+            } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); shotStatus(now() + "  failed: " + t); }
+        } }, "tj-patchshot").start();
+    }
+
     /** W3/W4: the card window can stay attached but invisible and untouchable (alpha 0 + NOT_TOUCHABLE) so showing it costs one redraw, not a window creation. */
     private void warmUp() {
         if (overlay != null || !coverWorld() || !Features.isCover(Features.powerMode(this))) return;
         Rect cached = cachedCard();
         if (cached == null) return;
         ensurePatch();   // the wallpaper patch must be added BEFORE the card so the card is on top
+        if (!cardWanted()) return;   // AM1 (Tj): the stock menu stays completely stock: the patch alone hides the Screenshot spot
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         Rect area = cardArea(cached);
         overlay = buildCard(area.height());
@@ -2238,6 +2419,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void showOverlay(Rect full) {
+        if (!cardWanted()) { showStock(full); return; }
         WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (overlay == null) {
             ensurePatch();
@@ -2264,6 +2446,11 @@ public class TjAccessibilityService extends AccessibilityService {
     /** Back to the warm state: still attached, invisible, untouchable. */
     private void hideOverlay() {
         handler.removeCallbacks(recheck);
+        if (overlay == null && !cardWanted()) {   // AM1: cardless: the patch goes back to resting (or hidden)
+            if (overlayShown) { overlayShown = false; patchShow(false); setPatchTouchable(false); if (patchLockMode) { handler.removeCallbacks(calTrigger); handler.postDelayed(calTrigger, 1200); } }
+            else warmUp();
+            return;
+        }
         if (overlay == null) { warmUp(); return; }
         if (!overlayShown) return;
         patchShow(false);
@@ -2278,7 +2465,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void removeOverlay() {
         handler.removeCallbacks(recheck);
-        if (overlay == null) return;
+        if (overlay == null) { if (overlayShown) { overlayShown = false; try { patchShow(false); setPatchTouchable(false); } catch (Throwable ignored) { } } return; }   // AM1: cardless cover state
         patchShow(false);
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(overlay); } catch (Throwable ignored) { }
         overlay = null;
