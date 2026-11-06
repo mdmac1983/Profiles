@@ -941,3 +941,8 @@ Also, make it so wifi, Bluetooth, and all notifications are cleared and off when
 ```
 The modified power menu isn't right. On the lock screen, when i hold the side key, it should show power off and restart only. It should have no flicker. Compare the two attached photos.  Also, notice the gray square itself should be just as wide as the original power menu, and just as tall. The only part that needs to be cropped is the bottom.
 ```
+
+## 2026-11-06T06:18:46Z
+```
+Compare the number on the buttom of the lock screen. The accessibility one you built is slightly smaller than the correct size and font shown in the photo i sent which has the blue blur in the middle to cover the name. Make the font and size match that reference
+```
