@@ -1645,6 +1645,7 @@ adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest" > "$OUT/ps-b-log.txt"
 check "PS B: the patch was calibrated from a real screenshot (status says CALIBRATED)" bash -c "adb shell \"run-as $PKG cat shared_prefs/tj_features.xml\" | grep -q 'patch_shot_status\">[^<]*CALIBRATED'"
 check "PS B: the crop was stored in the app's private files" bash -c "adb shell \"run-as $PKG ls files/patchshot_r0.png\" | grep -q patchshot_r0"
 sleep 6; shot 95-ps-rest
+adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest" > "$OUT/ps-b-log.txt" 2>&1      # read AFTER the settle time: the patch starts resting a moment after the calibration (run 208 read it too early)
 if [ -n "$FL" ] && [ -n "$CB" ]; then
   SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"
   MAS="$(psmae 95-ps-rest 94-ps-bare "$SLOT")"
