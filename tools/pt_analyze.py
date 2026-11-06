@@ -194,7 +194,12 @@ def main(argv):
         w, h = max(4, int(box * sx)), max(4, int(box * sy))
         return (max(0, int(x * sx - w / 2)), max(0, int(y * sy - h / 2)), w, h)
     P = means(video, cut(opt["--p"]), fps, vs)
-    S = means(video, cut(opt["--s"]), fps, vs)
+    # --s may name several surround boxes ("x,y;x,y"): the stock panel's own shadow or a sliding panel darkens the box NEXT to it for a moment (seen as a dip to 70 %), which the scrim never does. Each box is
+    # normalised by its own resting brightness and the BRIGHTEST one is used at every frame: a dip in one box cannot lower the reference.
+    boxes = [means(video, cut(xy), fps, vs) for xy in opt["--s"].split(";") if xy.strip()]
+    n_all = min([len(P)] + [len(b) for b in boxes])
+    bases = [statistics.median(b[: max(3, int(0.4 * fps))]) or 1.0 for b in boxes]
+    S = [100.0 * max(b[i] / bs for b, bs in zip(boxes, bases)) for i in range(n_all)]
     m = analyse(P, S, fps)
     if "error" in m:
         print("PTMETRIC label=%s frames=%d error=%s" % (label, min(len(P), len(S)), m["error"]))
