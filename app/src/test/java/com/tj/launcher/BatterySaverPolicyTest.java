@@ -71,6 +71,30 @@ public class BatterySaverPolicyTest {
         }
         assertEquals("profile_battery_saver_on_quickstep", BatterySaverPolicy.QS_KEY);
     }
+    // ---- AN1: the tile in the shade is the boss between launcher changes
+    @Test public void aChangeBehindOurBackIsLeftAloneUnlessStrict() {
+        assertFalse(BatterySaverPolicy.mayAct(true, false));   // the tile / Android changed it: hands off
+        assertTrue(BatterySaverPolicy.mayAct(true, true));     // strict = the old behaviour
+        assertTrue(BatterySaverPolicy.mayAct(false, false));   // a real launcher change always applies the rule
+        assertTrue(BatterySaverPolicy.mayAct(false, true));
+    }
+    @Test public void aProcessRestartLaterNeverUndoesATap() {
+        assertTrue(BatterySaverPolicy.startCheckWanted(false, 30_000));                                   // just booted: apply the rule once
+        assertTrue(BatterySaverPolicy.startCheckWanted(false, BatterySaverPolicy.BOOT_GRACE_MS - 1));
+        assertFalse(BatterySaverPolicy.startCheckWanted(false, BatterySaverPolicy.BOOT_GRACE_MS));        // minutes later: a Go device killed and restarted us, not a boot
+        assertFalse(BatterySaverPolicy.startCheckWanted(false, 6 * 3_600_000L));
+        assertTrue(BatterySaverPolicy.startCheckWanted(true, 6 * 3_600_000L));                            // strict: every start, as before
+        assertFalse(BatterySaverPolicy.startCheckWanted(false, -1));                                      // a clock that makes no sense never applies it
+    }
+    @Test public void repeatingTheSameModeIsNotAChange() {
+        assertTrue(BatterySaverPolicy.modeSetChecks(true, false));
+        assertFalse(BatterySaverPolicy.modeSetChecks(false, false));   // an unlock that sets custom again while custom is already active
+        assertTrue(BatterySaverPolicy.modeSetChecks(false, true));
+    }
+    @Test public void strictIsOffByDefaultAndNamed() {
+        assertEquals("profile_battery_saver_strict", BatterySaverPolicy.STRICT_KEY);
+        assertTrue(BatterySaverPolicy.BOOT_GRACE_MS >= 60_000 && BatterySaverPolicy.BOOT_GRACE_MS <= 10 * 60_000);
+    }
     @Test public void theSettingValueIsParsedStrictly() {
         assertTrue(BatterySaverPolicy.isOn("1")); assertTrue(BatterySaverPolicy.isOn(" 1 "));
         assertFalse(BatterySaverPolicy.isOn("0")); assertFalse(BatterySaverPolicy.isOn(null)); assertFalse(BatterySaverPolicy.isOn("")); assertFalse(BatterySaverPolicy.isOn("true"));
