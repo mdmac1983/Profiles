@@ -1275,7 +1275,10 @@ ensurehome
 #      The PIN is ALWAYS cleared again at the end.
 beat "before AD"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
-adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON)
+# NOTE (2026-11-06, bisect runs 176/177): "Close Quickstep's apps ... the moment the tablet locks" (profile_preclean, default ON, Tj: keep it ON) closes the Quickstep apps AT LOCK whenever the shell helper is
+#      running. Section v starts the helper and leaves it running, so in the long gate order AD5 had nothing to resume (the lock log said "Quickstep's apps + notifications closed"): a test-order artifact, not a bug.
+#      AD5's premise is "the apps are still open at the lock", so this section switches the clean-up OFF explicitly instead of depending on whether a helper happens to be alive.
+adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON); profile_preclean is always written OFF here
   case "$1" in
     none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
     *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
