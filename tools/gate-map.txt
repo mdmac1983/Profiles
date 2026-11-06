@@ -1,0 +1,30 @@
+# The emulator gate, as DATA (Tj, 2026-11-06: "Only keep reasonable tests from now on and make them as fast and efficient as possible").
+# Read by tools/gate.sh. One section per line, fields separated by ::
+#   section :: fixed waits in seconds (measured by counting `sleep` in tools/emulator_scenario.sh) :: tier :: path regex :: content regex :: what it protects
+# tier  core = runs for EVERY release that touches app/ or launcher3/ (the lock-safety core: never locked out, never a crash loop, never a factory reset).
+#       opt  = runs only when a changed file matches the path regex, or a changed line of the product code matches the content regex ("-" = never by that field).
+# NOT in the gate (kept in the scenario for manual runs): u s p rs rs2 rs3 rs4 (research: info lines, ZERO checks) and g gc (the phone guide: Tj has done the adb steps).
+# Wall time of a run is about 3 min (emulator boot) + 2.5 x the fixed waits of its sections (fits runs 173, 179, 183, 184, 185).
+base   :: 76  :: core :: - :: - :: manifest cannot touch the lock screen, HOME resolves to the router, mode switching, crash breaker, uninstall falls back to the stock launcher
+n      :: 41  :: core :: - :: - :: ways back to custom, the master failsafe, lock-screen profile switch
+o      :: 60  :: core :: - :: - :: lock-screen unlock methods (handshakes), closing at lock, instant unlock
+ac     :: 78  :: core :: - :: - :: AC1-AC9: a plain PIN is ALWAYS the custom launcher, the handshake, battery saver (AC3, AG1), the lock log holds no digit
+e1     :: 21  :: core :: - :: - :: unlock-time launcher choice; a plain PIN returns to custom
+x1     :: 17  :: core :: - :: - :: the power-menu cover and the number overlay work on the lock screen and go with the PIN pad
+rb     :: 52  :: core :: - :: - :: restart survival and "Restore everything" (never a factory reset)
+last   :: 7   :: core :: - :: - :: our card presses the REAL Restart button
+legacy :: 110 :: opt  :: RecentsPolicy|RouterActivity|BaseDraggingActivity|HiddenApps|CrashGuard|StockLauncher|launcher3/src/com/android/launcher3/Launcher\.java :: EXCLUDE_FROM_RECENTS|startup_open :: Recents flags, the HOME-type stack, the first reset, startup app, card latency
+y2     :: 13  :: opt  :: AnimationSpeedup|ReturnReset|TileProfile :: - :: the return reset with animations off; tiles back in custom
+b4     :: 10  :: opt  :: ReturnReset|RecentsDirty|AppOrigin :: - :: nothing to clear in Recents = that step is skipped
+b6     :: 5   :: opt  :: - :: pencil|Pencil :: the quick-settings pencil cover
+n6     :: 21  :: opt  :: ShellServer|ShellHelper|TaskOrigin|ReturnReset|AppOrigin|QuickstepUsage :: - :: the invisible clean-up helper
+t      :: 40  :: opt  :: TileProfile|KeyboardSwitch|Mode\.java :: - :: different quick-settings tiles per launcher
+x      :: 15  :: opt  :: ReportState|TabletReport|ShellServer|tablet-intake|adb-all|Features\.java :: - :: the tablet report and its intake (PG3 size cap, red flags)
+v      :: 57  :: opt  :: PatchRest|PatchCalibrator|PowerMenuRule|PowerMenuDump|LockNumber :: patchShow|addPatch|patchResting|lockShot|lockBmp|wallpaperBmp|restDim|openScrim|DIM_OPEN|DIM_KEYGUARD :: the lock-screen wallpaper patch (position, dim) and the unlock stopwatch
+ae     :: 90  :: opt  :: PatchRest :: patchResting|patchRestTop|lockPatchAlways :: AE3: the resting patch over the Screenshot slot
+ka     :: 69  :: opt  :: KeepAlive :: - :: the keep-alive foreground service and its crash fuse
+ad     :: 54  :: opt  :: ResumeTarget|PowerMenuRule :: startQuickstepFront|qsApp|resumedPkg|coverWorld :: AD5 (a gesture unlock resumes the open app), AD7a (the cover on every lock screen)
+se     :: 33  :: opt  :: SecretEntrances|EntranceWatcher|TjHooks|launcher3/src/com/android/launcher3/Launcher\.java :: dispatchTouchEvent|EntranceWatcher :: AD4: the hidden entrances to Quickstep
+rt     :: 45  :: opt  :: TaskOrigin|AppOrigin|QuickstepUsage|ReturnReset|ShellServer :: - :: the task-precise clean-up at the lock (helper running)
+pf     :: 84  :: opt  :: ReturnReset|AppOrigin|RecentsDirty|ProfileSession|QuickstepUsage|TaskOrigin :: trackDirty|markQuickstep|runReset|resetRecents :: the notification panel and the clean-up at lock with shared apps
+im     :: 34  :: opt  :: ImmersiveProfile :: policy_control|immersive :: the status-bar switch
