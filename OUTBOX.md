@@ -88,3 +88,7 @@
 ## 2026-11-06T22:38:32Z
 > Status: the reviewer's fixes are in the tree and compiled. I'm waiting on the local test and lint run, and on `pt` run #249 and the three gate runs.
 <!-- sha:a02bdf77dce7 -->
+
+## 2026-11-06T22:39:08Z
+> Status: the local tests and lint pass, and checkpoint 542 with the reviewer fixes is pushed. The `pt` run should finish within a couple of minutes; I'll read it when it lands.
+<!-- sha:89cefc8a459f -->
