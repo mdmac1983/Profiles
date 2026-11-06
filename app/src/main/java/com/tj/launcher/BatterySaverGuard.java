@@ -92,5 +92,19 @@ public final class BatterySaverGuard {
         LockLog.add(c, "BATSAVER", "guard switched it ON (Quickstep active; " + why + ")");   // AG2
     }
 
+    /** "ac" / "usb" / "wireless" / "no" (not plugged in) / "?": the plugged-in state for the log and the report, because Android switches the saver off by itself while charging. Never throws. */
+    static String powerSource(Context c) {
+        try {
+            android.content.Intent i = c.registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            if (i == null) return "?";
+            int p = i.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0);
+            if (p == 0) return "no";
+            if ((p & android.os.BatteryManager.BATTERY_PLUGGED_AC) != 0) return "ac";
+            if ((p & android.os.BatteryManager.BATTERY_PLUGGED_USB) != 0) return "usb";
+            if ((p & android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS) != 0) return "wireless";
+            return "other";
+        } catch (Throwable t) { return "?"; }
+    }
+
     private static String stamp(long ms) { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date(ms)); }
 }
