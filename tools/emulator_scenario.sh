@@ -1429,8 +1429,9 @@ check "AE3: the resting patch window exists and is NOT touchable (it can never b
 check "AE3: it hides while the PIN pad is up (log 'PATCH rest off (PIN pad up)')" grep -q "PATCH rest off (PIN pad up)" "$OUT/ae-a-log.txt"
 check "AE3: ... and comes back when the pad is gone (a second 'PATCH rest on')" bash -c "[ \"\$(grep -c 'PATCH rest on' $OUT/ae-a-log.txt)\" -ge 2 ]"
 CL="$(grep 'CARD area' "$OUT/ae-a-log.txt" | tail -1)"
-set -- $(aenums "$CL" full); FL=$1; FT=$2; FR=$3; FB=$4
-set -- $(aenums "$CL" area); CB=$4
+SLOT=""   # v0.7.6 (review of v0.7.5): under `set -u` a missing CARD line must report a FAIL, not abort the whole scenario
+set -- $(aenums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(aenums "$CL" area); CB=${4:-}
 aefeat false false 30; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; sleep 2
 shot 91-ae-bare-lock-screen
 if [ -n "$FL" ] && [ -n "$CB" ]; then
