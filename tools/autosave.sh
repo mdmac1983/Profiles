@@ -25,6 +25,16 @@ set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$D" || exit 0
 [ -e .git ] || exit 0
 
+# RUNG 0b (2026-11-06, Tj: "why are my prompts and Claude findings not being saved?"): on the Stop hook the JSON on stdin names the
+# transcript; record Claude's last reply of the turn in OUTBOX.md BEFORE the commit below, so one step saves and pushes it.
+# The stdin read is bounded: a caller with nothing on stdin must never hang this script.
+if [ ! -t 0 ]; then
+  HOOK_IN="$(timeout 2 cat 2>/dev/null || true)"
+  case "$HOOK_IN" in
+    *'"hook_event_name":"Stop"'*|*'"hook_event_name": "Stop"'*) printf '%s' "$HOOK_IN" | bash "$D/tools/capture_outbox.sh" >/dev/null 2>&1 || true ;;
+  esac
+fi
+
 # --text: emit warnings as plain text rather than as a JSON systemMessage, so
 # tools/hooks/save.sh can combine several repos into ONE JSON object. Two JSON
 # objects on hook stdout do not parse — see tools/hooks/emit.py.
