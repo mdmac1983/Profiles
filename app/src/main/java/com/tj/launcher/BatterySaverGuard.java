@@ -38,12 +38,13 @@ public final class BatterySaverGuard {
             observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
                 @Override public void onChange(boolean selfChange) {
                     // AG2 (Tj, 2026-11-06: the battery saver TILE in Quickstep does not work): every change of low_power is written to the lock log with the mode and the guard's switches, so a report says WHY
-                    try { LockLog.add(app, "BATSAVER", "low_power is now " + Settings.Global.getString(app.getContentResolver(), BatterySaverPolicy.SETTING) + ", mode=" + Mode.get(app) + ", off-in-custom=" + enabled(app) + ", on-in-Quickstep=" + qsEnabled(app) + ", power=" + powerSource(app) + (CrashGuard.automationOff(app) ? " PAUSED" : "")); } catch (Throwable ignored) { }
-                    check(app, "setting changed", true);
+                    try { LockLog.add(app, "BATSAVER", "low_power is now " + Settings.Global.getString(app.getContentResolver(), BatterySaverPolicy.SETTING) + ", mode=" + Mode.get(app) + ", off-in-custom=" + enabled(app) + ", on-in-Quickstep=" + qsEnabled(app) + ", strict=" + strict(app) + ", power=" + powerSource(app) + (CrashGuard.automationOff(app) ? " PAUSED" : "")); } catch (Throwable ignored) { }
+                    check(app, "setting changed", true);   // AN1: does nothing unless "strict" is on: a change made on the tile is left alone
                 }
             };
             app.getContentResolver().registerContentObserver(Settings.Global.getUriFor(BatterySaverPolicy.SETTING), false, observer);
-            check(app, "process start");
+            // AN1: the rule is re-applied at a process start only in the first minutes after a boot; a restart of our process later (a Go device kills background processes often) must never undo a tap on the tile
+            if (BatterySaverPolicy.startCheckWanted(strict(app), android.os.SystemClock.elapsedRealtime())) check(app, "process start");
         } catch (Throwable t) { Log.e(TAG, "could not watch battery saver", t); }
     }
 
