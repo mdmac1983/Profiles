@@ -78,7 +78,7 @@ def analyse(P, S, fps, thr=0.006):
     return out
 
 
-def series(P, S, fps, onset, r0, span_ms=(-120, 640), step=2):
+def series(P, S, fps, onset, r0, span_ms=(-100, 420), step=1):
     """Compact curves around the onset, for the log: t (ms from the onset), S/S0 and P/P0 in per-mille, dev in tenths of a percent."""
     n = min(len(P), len(S))
     s0 = statistics.median(S[: max(3, int(0.4 * fps))])

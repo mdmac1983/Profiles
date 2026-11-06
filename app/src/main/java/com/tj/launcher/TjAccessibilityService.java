@@ -48,8 +48,23 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     };
 
+    private int diagLines = 0; private long diagLastMs = 0;
+    /** Debug builds only (emulator section pt): the events around the lock-screen patch, with their age on arrival, to find the event that matches the moment the stock scrim becomes VISIBLE. */
+    private void diagEvent(AccessibilityEvent e) {
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0 || e == null || (!patchResting && !overlayShown)) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - diagLastMs > 2500) diagLines = 0;   // a new opening
+        int type = e.getEventType();
+        CharSequence pk = e.getPackageName();
+        if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && (pk == null || !"com.android.systemui".contentEquals(pk))) return;
+        if (diagLines >= 70) return;
+        diagLines++; diagLastMs = now;
+        Log.i(TAG, "PATCHEV t=" + now + " type=0x" + Integer.toHexString(type) + " pkg=" + pk + " cls=" + e.getClassName() + " age=" + Math.max(-1, now - e.getEventTime()) + " rest=" + (patchResting ? 1 : 0) + " open=" + (overlayShown ? 1 : 0));
+    }
+
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         evSeen++;
+        try { diagEvent(event); } catch (Throwable ignored) { }
         try { if (event != null && EventNoise.windowsJustChanged(event.getEventType())) { noteWindowEvent(event.getEventTime()); fastMenuOpen(event); } } catch (Throwable t) { Log.e(TAG, "fast menu check failed", t); }   // AZ1: FIRST, before any other work of this event
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
         try { picker().onEvent(event); } catch (Throwable t) { Log.e(TAG, "picker guard failed", t); }
@@ -2398,7 +2413,7 @@ public class TjAccessibilityService extends AccessibilityService {
         fadeStartMs = now - lag;
         fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
         fadeLagLast = lag;
-        Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms");
+        Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms t=" + now + " lead=" + fadeLeadMs);
     }
 
     /**
@@ -2421,6 +2436,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void patchShow(boolean on) {
+        if (!on && patchOpenFlag) Log.i(TAG, "PATCH menu closed t=" + android.os.SystemClock.uptimeMillis());
         boolean opening = on && !patchOpenFlag;   // AZ1: only the closed -> open transition starts a fade (repeated "still open" calls must not restart it); decided even while the patch window does not exist yet
         patchOpenFlag = on;
         if (opening) startFade(); else if (!on) fading = false;
