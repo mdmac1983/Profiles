@@ -53,4 +53,17 @@ public class PatchShotTest {
         assertFalse(PatchShot.calibrating(null, 5));
         assertFalse(PatchShot.calibrating("garbage", 5));
     }
+
+    // ---- review AU4: the stored crop must contain the whole patch window
+    @Test public void aCropThatContainsTheWindowCovers() {
+        assertTrue(PatchShot.covers(100, 200, 200, 220, 124, 224, 276, 396));   // the window sits 24 px inside the crop on every side
+        assertTrue(PatchShot.covers(100, 200, 200, 220, 100, 200, 300, 420));   // exactly the crop
+    }
+    @Test public void aWindowThatMovedOutOfTheCropIsNotCovered() {
+        assertFalse(PatchShot.covers(100, 200, 200, 220, 90, 224, 276, 396));    // 10 px too far left
+        assertFalse(PatchShot.covers(100, 200, 200, 220, 124, 224, 276, 430));   // too far down
+        assertFalse(PatchShot.covers(100, 200, 200, 220, 124, 224, 310, 396));   // too far right
+        assertFalse(PatchShot.covers(100, 200, 200, 220, 124, 190, 276, 396));   // too far up
+        assertFalse(PatchShot.covers(100, 200, 0, 0, 124, 224, 276, 396));       // an empty crop covers nothing
+    }
 }
