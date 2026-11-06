@@ -108,20 +108,33 @@ public class TjAccessibilityService extends AccessibilityService {
      * list does not show the dialog yet, the switch is off) leaves everything to the normal path below.
      */
     private void fastMenuOpen(AccessibilityEvent event) {
-        if (!patchFadeOn() || patchView == null || !patchLockMode || !patchResting || overlayShown) return;
+        // Run 243 (emulator, animations ON in the real device but not there): the first version asked getWindows() on every window event and found the dialog only ~140 ms after the stock scrim had appeared (a binder call
+        // that lists every window, repeated per event, on a thread that was busy with the events before it): the patch stayed LIGHT against the darkening surround for that time = the flicker. The dialog announces itself:
+        // a TYPE_WINDOW_STATE_CHANGED event whose class is GlobalActionsDialog$ActionsDialog. No binder call at all, the event's own time is the anchor of the fade.
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        CharSequence cn = event.getClassName();
+        if (cn == null || !cn.toString().contains("ActionsDialog")) return;
         long now = android.os.SystemClock.uptimeMillis();
-        if (now - fastTryMs < 20) return;   // a burst of window events: one look per 20 ms
-        fastTryMs = now;
-        String mode = Features.powerMode(this);
-        if (!Features.isCover(mode) || !coverWorld()) return;
+        dialogEventMs = event.getEventTime();
+        String why = fastDecline();
+        if (why != null) { Log.i(TAG, "PATCH fast skip: " + why + " (the normal path follows)"); return; }
         Rect cached = cachedCard();
-        if (cached == null) return;         // the menu's geometry is learned by the first scan: the normal path
-        if (!dialogWindowPresent(getWindows())) return;
         if (menuSeenMs == 0) menuSeenMs = now;
         menuUpAtMs = now;
-        Log.i(TAG, "PATCH fast open: window event " + Integer.toHexString(event.getEventType()) + " is " + Math.max(0, now - event.getEventTime()) + " ms old");
+        Log.i(TAG, "PATCH fast open: the dialog's window event is " + Math.max(0, now - event.getEventTime()) + " ms old, " + Math.max(0, event.getEventTime() - winBurstStartMs) + " ms after the first window event of the burst");
         showOverlay(cached);
         deferScan(now);
+    }
+
+    /** AZ1: null = the fast path may open the patch now; else why not (the normal scan path then does it, a little later). */
+    private String fastDecline() {
+        if (patchView == null) return "no patch window yet";
+        if (!patchLockMode) return "not the lock screen";
+        if (!patchResting) return "the patch is not resting (PIN pad up, or no valid crop)";
+        if (overlayShown) return "already open";
+        if (!Features.isCover(Features.powerMode(this)) || !coverWorld()) return "power menu mode " + Features.powerMode(this);
+        if (cachedCard() == null) return "the menu geometry is not learned yet";
+        return null;
     }
 
     /** AZ1: no node scan until the stock fade is over (and one more look then): it blocks this thread for tens of ms, and the patch has to be redrawn on every frame of the fade. */
