@@ -82,6 +82,17 @@ public class PatchRestTest {
         assertFalse(PatchRest.sameWindow(a, null, 2));
         assertFalse(PatchRest.sameWindow(a, new int[] { 1, 2, 3 }, 2));
     }
+    @Test public void theMaskOfTheRealTabletWindowIsAsymmetricAsDesigned() {
+        // v0.7.6 (review): the slot window on the 600 x 1024 tablet is 126 x 115: opaque core x 9..123, hard top at row 6 (open menu), fringes left 9 / right 2 (the panel is 4 px from the screen edge) / bottom 9
+        byte[] m = PatchRest.mask(126, 115, 9, 6, 124, 106, 9, 0, 2, 9);
+        assertEquals(126 * 115, m.length);
+        assertEquals(255, m[60 * 126 + 60] & 0xff);            // inside the core
+        assertEquals(0, m[5 * 126 + 60] & 0xff);               // above the hard top: nothing (the stock panel must never show through a fade)
+        assertEquals(189, m[60 * 126 + 124] & 0xff);           // first column of the short right fringe
+        assertEquals(66, m[60 * 126 + 125] & 0xff);            // last column = the screen edge
+        assertTrue((m[60 * 126 + 4] & 0xff) > 0 && (m[60 * 126 + 4] & 0xff) < 255);   // the long left fringe fades
+        assertTrue((m[112 * 126 + 60] & 0xff) > 0 && (m[112 * 126 + 60] & 0xff) < 255); // and so does the bottom fringe
+    }
     @Test public void theMaskHasOneByteForEveryPixelAndMatchesAlphaAt() {
         byte[] m = PatchRest.mask(100, 100, 10, 10, 90, 90, 8, 8, 8, 8);
         assertEquals(100 * 100, m.length);
