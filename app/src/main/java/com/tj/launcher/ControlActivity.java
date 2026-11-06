@@ -394,6 +394,9 @@ public class ControlActivity extends Activity {
         groupOn = 0; groupTotal = 0;
     }
 
+    /** AR1: is the group being built closed? (outside any group {@code box} is the page itself: never.) */
+    private boolean collapsed() { return box != page && box.getVisibility() == View.GONE; }
+
     private void countSwitch(boolean on) {
         groupTotal++;
         if (on) groupOn++;
@@ -445,6 +448,7 @@ public class ControlActivity extends Activity {
 
     private void toggle(String title, String desc, boolean on, final Chg c) {
         countSwitch(on);
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet); its switches are still counted for the header
         LinearLayout r = row();
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
@@ -463,6 +467,7 @@ public class ControlActivity extends Activity {
     }
 
     private void action(String title, String desc, final Runnable run) {
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet)
         LinearLayout r = row();
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
@@ -475,6 +480,7 @@ public class ControlActivity extends Activity {
     }
 
     private void note(String t) {
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet)
         TextView v = text(t, 13, MUTED, false);
         v.setPadding(px(4), px(8), px(4), px(8));
         box.addView(v);
@@ -488,6 +494,7 @@ public class ControlActivity extends Activity {
     }
 
     private void radio(String title, String[] labels, final String[] values, String current, final Str s) {
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet)
         box.addView(text(title, 14, MUTED, false));
         RadioGroup g = new RadioGroup(this);
         g.setOrientation(RadioGroup.VERTICAL);
@@ -506,6 +513,7 @@ public class ControlActivity extends Activity {
     }
 
     private void stepper(String label, final String key, final int step, final int min, final int max, final String unit) {
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet)
         LinearLayout r = row();
         r.addView(text(label + ":  " + Features.getInt(this, key, 0) + unit, 15, INK, false), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         r.addView(smallButton("-", new Runnable() { public void run() { Features.setInt(ControlActivity.this, key, Math.max(min, Features.getInt(ControlActivity.this, key, 0) - step)); rebuild(); } }));
@@ -515,6 +523,7 @@ public class ControlActivity extends Activity {
 
     /** A row of tick boxes for the quick-settings tiles of one launcher; stored as the comma list SystemUI wants. */
     private void tileChooser(String title, final String key, String def) {
+        if (collapsed()) return;   // AR1: a closed group builds no rows at all (the page opens and rebuilds faster on the slow tablet)
         box.addView(text(title, 14, MUTED, false));
         String cur = TileProfile.sanitize(Features.getString(this, key, def), def);
         final Set<String> on = new HashSet<>(Arrays.asList(cur.split(",")));
