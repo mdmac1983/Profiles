@@ -1116,7 +1116,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (lockView != null) return;
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
-        float em = dm.widthPixels * LockNumber.EM_PER_WIDTH;
+        float em = LockNumber.emFor(dm.widthPixels, Features.getInt(this, LockNumber.SIZE_KEY, 0));   // v0.7.6: the measured size, times Tj's size nudge
         float baselineY = dm.heightPixels * LockNumber.BASELINE_PER_HEIGHT;
         int h = (int) Math.ceil(em * 2f);
         float baselineInView = em * 1.3f;
