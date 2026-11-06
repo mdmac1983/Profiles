@@ -54,6 +54,7 @@ public final class BatterySaverGuard {
     /** {@code reactive}: called because the setting CHANGED (something else switched the saver off): only these switch-ons count toward the cap that protects against a tight loop. */
     static void check(Context c, String why, boolean reactive) {
         try {
+            if (!BatterySaverPolicy.mayAct(reactive, strict(c))) return;   // AN1: a change behind our back (the tile, Android) is left alone unless "strict" is on
             ContentResolver cr = c.getContentResolver();
             boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
             if (!on) { keepOnInQuickstep(c, cr, why, reactive); return; }   // custom: nothing to do (one settings read + one preference read); Quickstep: AG1 keeps it on
