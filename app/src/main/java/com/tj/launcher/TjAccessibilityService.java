@@ -2525,11 +2525,13 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     private void showStock(Rect full) {
         ensurePatch();
-        if (!overlayShown) {
+        final boolean first = !overlayShown;
+        overlayShown = true;
+        patchShow(true);   // AZ1: the patch is the time-critical part: it is drawn at the next frame, so nothing slower (a log line, a preferences write) may come before it in this message
+        if (first) {
             Log.i(TAG, "CARD area=" + cardAreaGeom(full).toShortString() + " full=" + full.toShortString() + " lockPatch=" + patchLockMode + " stock=true");
-            overlayShown = true; cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
+            cardShownMs = android.os.SystemClock.uptimeMillis(); recordLatency();
         }
-        patchShow(true);
         setPatchTouchable(true);
     }
 
