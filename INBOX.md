@@ -868,3 +868,11 @@ Stop wasting time on the phone guide, because i already did the adb commands
 ```
 If i make this repo private, would it break anything
 ```
+
+## 2026-11-06T04:43:42Z
+```
+Attached are photos of how i want the tablet to look. If the file name has "preferred" in it, this is how it should look.  If the file name has "custom" in it, this is how the custom launcher currently looks. 
+Ignore the blue drawing in the middle of the screen, that is to blur out personal information. One of the photos is what i want to happen when i long press the home screen in the custom launcher, it should show wallpapers only.  You may need to rotate photos
+
+If possible, delete these photos from github when you are finished. Or somehow make them so only Claude can see them.
+```
