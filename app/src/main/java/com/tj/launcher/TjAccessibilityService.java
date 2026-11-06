@@ -557,7 +557,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 return true;
             }
         });
-        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
+        if (patchLockMode) { patchResting = !overlayShown && PatchRest.visible(false, lockPatchAlways(), true, lastBouncer); v.setAlpha(overlayShown || patchResting ? 1f : 0f); if (patchResting) Log.i(TAG, "PATCH rest on (new window) top=" + patchRestTop); }   // V1: on the lock screen it is only visible while the power menu is open (it must never paint over the clock / PIN pad); AE3: or RESTING (switch on, PIN pad not up)
         patchView = v; patchAt.set(r); patchRot = rotation();
         try { Rect cc = cachedCard(); if (cc != null) { Rect ca = cardArea(cc); patchRestTop = PatchRest.restTop(r.top, ca.bottom, r.bottom); } } catch (Throwable ignored) { }   // AE3: the resting patch paints only the part BELOW the card = the Screenshot slot
         patchStatus("active over " + r.toShortString());
