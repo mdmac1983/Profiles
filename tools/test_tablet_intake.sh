@@ -205,5 +205,13 @@ check "the red flags come BEFORE the table"               '[ "$(grep -n "## Red 
 check "the phone guide names tablet-report.txt as the file to send" 'grep -q "tablet-report.txt" "$D/phoneguide/src/main/assets/steps.txt"'
 check "research/tablet/README.md explains the flow"      '[ -f "$D/research/tablet/README.md" ] && grep -q "tablet-intake.sh" "$D/research/tablet/README.md"'
 
+# ---------------------------------------------------------------- Recents card titles (v0.7.5 AI1 diagnostics) never reach the repo
+mkdir -p "$T/cards"
+printf '%s\n' '== lock log' '06:01:02 RESET recents: closed 1 card(s) of Portfolio; saw 2 card(s): Portfolio - Quarterly Secret Page Title | Solitaire' > "$T/cards/tablet-report.txt"
+$INTAKE "$T/cards" --out "$T/outcards" --date 2026-11-06 --label cards >/dev/null 2>&1; RCC=$?
+check "Recents card titles: the intake still succeeds"            '[ "$RCC" = 0 ]'
+check "Recents card titles: the title text is gone from every output file" '! grep -rq "Quarterly Secret Page Title" "$T/outcards"'
+check "Recents card titles: the marker and the harmless label list stay" 'grep -q "<card titles redacted>" "$T/outcards/2026-11-06/tablet-report.txt" && grep -q "closed 1 card(s) of Portfolio" "$T/outcards/2026-11-06/tablet-report.txt"'
+
 echo "tablet intake self-test: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

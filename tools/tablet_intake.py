@@ -33,6 +33,8 @@ REDACTIONS = [
     ("ipv6", re.compile(r"(?i)(?<![0-9a-z:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}|(?:[0-9a-f]{1,4}:){1,7}:)(?![0-9a-z:])"), "<ipv6>"),
     ("ip", re.compile(r"\b(?!127\.0\.0\.1\b)(?!0\.0\.0\.0\b)(?:\d{1,3}\.){3}\d{1,3}\b"), lambda m: "<ip>" if all(int(x) <= 255 for x in m.group(0).split(".")) else m.group(0)),
     ("ssid", re.compile(r"(?i)(\bSSID\b\s*[:=]\s*)\"?[^\"\n]+\"?"), r"\1<redacted>"),
+    # v0.7.5 AI1 diagnostics: the lock log lists Recents card descriptions ("; saw 2 card(s): <label + task title>"). A task title can be a page title or a conversation name, so it never reaches the public repo.
+    ("cards", re.compile(r"(?i)(\bsaw\s+\d+\s+card\(s\):\s*)[^\n]*"), r"\1<card titles redacted>"),
     ("serial", re.compile(r"(?im)(\b(?:ro\.serialno|ro\.boot\.serialno|serialno|serial number|serial|imei|meid|android_id|bluetooth_address|bdaddr|wifi_mac)\b[\]\[: =]*)[^\s\]]+"), r"\1<redacted>"),
     ("digits", re.compile(r"\b\d{14,19}\b"), "<digits>"),
 ]
