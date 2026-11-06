@@ -906,3 +906,8 @@ Also, the custom launcher just left a quickstep app in the recent app list
 ```
 I think it is simply the wrong piece of wallpaper copied for the patch 
 ```
+
+## 2026-11-06T05:22:17Z
+```
+I had an app called portfolio open. It is only in the quickstep launcher. I pressed the app icon to return to custom launcher, and portfolio was in the recent apps list with solitaire
+```
