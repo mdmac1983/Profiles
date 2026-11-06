@@ -119,7 +119,8 @@ public final class ReportState {
         } catch (Throwable t) { /* not available */ }
         try {
             b.append("battery saver guard: switch ").append(BatterySaverGuard.enabled(c) ? "on" : "off").append(", low_power = ").append(setting("global", c, BatterySaverPolicy.SETTING)).append(", low_power_sticky = ").append(setting("global", c, BatterySaverPolicy.STICKY_SETTING))
-                    .append(", on-in-Quickstep ").append(BatterySaverGuard.qsEnabled(c) ? "on" : "off").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
+                    .append(", low_power_manual_activation_count = ").append(setting("secure", c, BatterySaverPolicy.COUNT_SETTING)).append(", self-heals so far ").append(Features.getInt(c, BatterySaverPolicy.HEALS_KEY, 0))
+                    .append(", one-time unstick ").append(Features.get(c, BatterySaverPolicy.UNSTICK_DONE_KEY, false) ? "done" : "not run yet").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
                     .append(", plugged in now: ").append(BatterySaverGuard.powerSource(c)).append(" (Android 10 greys the battery tile while the tablet is charging)")
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
         } catch (Throwable t) { /* not available */ }
