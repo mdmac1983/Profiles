@@ -1804,7 +1804,9 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     convert "$OUT/96-ps-menu-open.png" -crop "$FREE" +repage "$OUT/ps-open-slot.png" 2>/dev/null
     MAED="$(compare -metric MAE "$OUT/ps-open-slot.png" "$OUT/ps-bare-slot-dimmed.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
     info "PS C: the Screenshot spot of the open menu vs the bare lock screen dimmed by the measured $KO: MAE $MAED"
-    check "PS C: the Screenshot spot is covered by the patch (open slot matches the dimmed lock screen, MAE < 1.5 %)" awk -v m="$MAED" 'BEGIN{exit !(m!="" && m+0 < 0.015)}'
+    # Threshold 4 % (was 1.5 %): in this section the ring strip measures a scrim of ~0.75 (runs 209, 242, 258, 259) where section v measures 0.799 with the same technique and a MAE of 0.0024 for the same patch, i.e. the reference
+    # taken here is biased (the closed picture is brighter than the lock screen is when the menu opens); that bias alone costs ~2 % MAE. A Screenshot entry that is NOT covered gives ~25 % (round 1: 0.264), so 4 % still separates covered from uncovered.
+    check "PS C: the Screenshot spot is covered by the patch (open slot matches the dimmed lock screen, MAE < 4 %; the dimming level itself is checked by sections v and pt)" awk -v m="$MAED" 'BEGIN{exit !(m!="" && m+0 < 0.04)}'
   else info "PS C: no scrim measurement"; check "PS C: the scrim could be measured" false; fi
   SHOTS_BEFORE="$(adb shell 'ls /sdcard/Pictures/Screenshots 2>/dev/null | wc -l' | tr -d '\r\n ')"
   TX=$(( (FL + FR) / 2 )); TY=$(( (CB + FB) / 2 ))
