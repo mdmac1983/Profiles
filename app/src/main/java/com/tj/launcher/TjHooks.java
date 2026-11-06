@@ -41,6 +41,30 @@ public final class TjHooks {
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
     }
 
+    // ---------------------------------------------------------------- AD4: the page-flick entrance watches every single-finger swipe that STARTS on the settled home screen (a passive observer: it never consumes an event)
+    private static float downX, downY;
+    private static long downAt;
+    private static boolean downHome, multiTouch;
+
+    /** Called by Launcher.dispatchTouchEvent before the event is handled as usual. */
+    public static void onTouch(android.app.Activity a, MotionEvent ev) {
+        try {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN: downX = ev.getRawX(); downY = ev.getRawY(); downAt = ev.getEventTime(); downHome = homeScreenShowing(); multiTouch = false; break;
+                case MotionEvent.ACTION_POINTER_DOWN: multiTouch = true; break;
+                case MotionEvent.ACTION_UP:
+                    if (downHome && !multiTouch) {
+                        int dir = SecretEntrances.swipeDirection(ev.getRawX() - downX, ev.getRawY() - downY, ev.getEventTime() - downAt, a.getResources().getDisplayMetrics().widthPixels);
+                        if (dir != 0) EntranceWatcher.onSwipe(a.getApplicationContext(), dir);
+                    }
+                    downHome = false;
+                    break;
+                case MotionEvent.ACTION_CANCEL: downHome = false; break;
+                default: break;
+            }
+        } catch (Throwable t) { android.util.Log.e("TjHooks", "touch hook failed", t); }
+    }
+
     /** True while the plain home screen (workspace, NORMAL state) is the visible, settled screen. */
     public static volatile boolean launcherNormal = false;
 
