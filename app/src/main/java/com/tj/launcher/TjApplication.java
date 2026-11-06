@@ -7,13 +7,25 @@ import android.app.Application;
  * process, each registered once: a content observer on battery saver (AC3), one on the rotation lock and one dynamic power-connected/disconnected receiver (AD4, the hidden entrances; idle unless Tj uses them).
  */
 public class TjApplication extends Application {
+    /**
+     * AD8: how long this process's {@code Application.onCreate} took, and how long after the process was forked it ended (ms). Shown in the tablet report (ReportState), so the start-up cost of the
+     * MT8168 / 2 GB tablet is MEASURED there instead of guessed. Plain statics: nothing is written to disk at start-up for them.
+     */
+    static volatile long startMs = -1, sinceForkMs = -1;
+
     @Override public void onCreate() {
+        long t0 = android.os.SystemClock.uptimeMillis();
         super.onCreate();
         try { CrashGuard.install(this); } catch (Throwable ignored) { }
         try { CrashGuard.clearIfNewer(this); } catch (Throwable ignored) { }   // CBR1: a tripped breaker is cleared by the first start of a NEWER version (a fair try)
         try { AnimationSpeedup.restoreIfPending(this); } catch (Throwable ignored) { }   // an interrupted reset must never leave the animations off
-        try { if (getPackageName().equals(Application.getProcessName())) SwitchMigration.run(this); } catch (Throwable ignored) { }   // v0.7.3: undo the old breaker reset's "false" values once (all three switches stored as off = its signature)
-        try { if (getPackageName().equals(Application.getProcessName())) EntranceWatcher.start(this); } catch (Throwable ignored) { }   // AD4: the rotation-tile and charger entrances (the page flick is fed by the Launcher touch hook)
-        try { if (getPackageName().equals(Application.getProcessName())) BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the MAIN process (one observer, no polling; the short-lived :wallpaper_chooser process has no business reading the mode)
+        final boolean main = getPackageName().equals(Application.getProcessName());   // the short-lived :wallpaper_chooser process has no business with the watchers below
+        try { if (main) SwitchMigration.run(this); } catch (Throwable ignored) { }   // v0.7.3: undo the old breaker reset's "false" values once (all three switches stored as off = its signature)
+        try { if (main) EntranceWatcher.start(this); } catch (Throwable ignored) { }   // AD4: the rotation-tile and charger entrances (the page flick is fed by the Launcher touch hook)
+        try { if (main) BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the MAIN process (one observer, no polling)
+        try {
+            startMs = android.os.SystemClock.uptimeMillis() - t0;
+            sinceForkMs = android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime();
+        } catch (Throwable ignored) { }
     }
 }
