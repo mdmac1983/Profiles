@@ -590,12 +590,12 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (mask != null && mask.getWidth() == getWidth() && mask.getHeight() == getHeight()) {   // AH3: paint into a layer and fade its edges with the mask (DST_IN), so a residual mismatch is a soft gradient, not a frame
                     int sc = c.saveLayer(0, 0, getWidth(), getHeight(), null);
                     try { paintPatch(c, rest); c.drawBitmap(mask, 0, 0, maskPaint); } finally { c.restoreToCount(sc); }
-                    if (fading) postInvalidateOnAnimation();   // AZ1: the stock menu is still fading in: draw the next frame
+                    fadeFrameDone(this);   // AZ1: the stock menu is still fading in: draw the next frame
                     return;
                 }
                 if (rest) { c.save(); c.clipRect(0, patchRestTop, getWidth(), getHeight()); }
                 try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
-                if (fading) postInvalidateOnAnimation();   // AZ1
+                fadeFrameDone(this);   // AZ1
             }
             private void paintPatch(android.graphics.Canvas c, boolean rest) {
                 android.graphics.Bitmap photo = !patchLockMode ? null : lockShot != null ? lockShot : patchShotBmp;   // AM1: the helper's fresh photo wins, else the stored REAL-pixel crop
@@ -2399,6 +2399,16 @@ public class TjAccessibilityService extends AccessibilityService {
         fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
         fadeLagLast = lag;
         Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms");
+    }
+
+    /**
+     * AZ1: a frame of the patch was drawn. While the fade runs ask for the next one; the end of the fade is decided by the CLOCK here too (never only by the painter), so a draw path that does not compute the
+     * progress (no bitmap to draw) can never leave a redraw loop running: the frame after the last one is drawn with the final brightness and asks for nothing more.
+     */
+    private void fadeFrameDone(View v) {
+        if (!fading) return;
+        v.postInvalidateOnAnimation();
+        if (!PatchFade.fading(android.os.SystemClock.uptimeMillis(), fadeStartMs, fadeLeadMs)) fading = false;
     }
 
     /** AZ1: how far the stock scrim will be when the frame drawn now is SEEN: 0..1 (1 = complete, also when no fade is running). Main thread (onDraw) only. */
