@@ -92,6 +92,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (patchView == null || !patchLockMode) return;
             if (patchShotBmp == null && PatchShot.has(TjAccessibilityService.this, rotation(), shotSig())) loadStoredShot();
             patchShow(overlayShown);
+            restInfo("restRecheck rest=" + patchResting + " menuOpen=" + overlayShown);   // the diagnostic is written here (twice per new window), not on every menu open / close
         } catch (Throwable t) { Log.e(TAG, "rest recheck failed", t); }
     } };
     private PickerGuard pickerGuard;   // AO1
