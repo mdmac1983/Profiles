@@ -1874,6 +1874,21 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   check "PA 2: the automatically calibrated patch is INVISIBLE at rest (slot MAE < 0.5 %)" awk -v m="$MAA" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
 else info "PA 2: no slot geometry"; check "PA 2: the menu rectangle was learned" false; fi
 
+# ---- phase 2b (review AU5, information only): the notification shade pulled down on the lock screen while the patch rests. An accessibility overlay sits ABOVE the shade; does it show as a lighter block there?
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  PX=$(( (FL + FR) / 2 )); PY=$(( (CB + FB) / 2 )); if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi
+  adb logcat -c
+  adb shell cmd statusbar expand-notifications >/dev/null 2>&1; sleep 3
+  shot 97-pa-shade
+  adb logcat -d -s TjA11y:I | grep PATCHEV | cut -c19-200 | head -14 > "$OUT/pa-shade-ev.txt"
+  adb shell cmd statusbar collapse >/dev/null 2>&1; sleep 2
+  meanrgb(){ convert "$OUT/$1.png" -crop "30x30+$(( $2 - 15 ))+$(( $3 - 15 ))" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() '; }
+  RP="$(meanrgb 98-pa-rest $PX $PY)"; RS="$(meanrgb 98-pa-rest $SX $PY)"; HP="$(meanrgb 97-pa-shade $PX $PY)"; HS="$(meanrgb 97-pa-shade $SX $PY)"
+  AU5="$(echo "$RP $RS $HP $HS" | awk -F'[ ,]' 'NF>=16 && $5>0 && $13>0 && $2>0 && $10>0 {r0=($1+$2+$3)/($5+$6+$7); r1=($9+$10+$11)/($13+$14+$15); printf "%.3f", r1/r0}')"
+  info "PA 2b (AU5): lock screen, resting patch: patch box $RP / surround box $RS; with the shade pulled down: $HP / $HS; (patch/surround) shade vs rest = ${AU5:-?} (1.000 = the patch is invisible over the shade; > 1.05 = a lighter block)"
+  n=0; while IFS= read -r ln; do n=$((n+1)); [ "$n" -le 10 ] && info "PA 2b shade ev: $(echo "$ln" | sed 's/PATCHEV //; s/com.android.//; s/android.view.//' | cut -c1-170)"; done < "$OUT/pa-shade-ev.txt"
+fi
+
 # ---- phase 3 (review AU2): a screenshot taken while the power menu is OPEN is refused
 adb shell am force-stop "$PKG"; sleep 1
 UNTIL=$(( $(adb shell date +%s | tr -d '\r\n') * 1000 + 120000 ))
