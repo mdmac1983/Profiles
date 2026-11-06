@@ -96,3 +96,15 @@
 ## 2026-11-06T22:47:31Z
 > Status: the tablet checklist and HANDOFF now describe the real cause and the fix. The timer for `pt` #253 and the gate runs is set. I'll read them when it fires.
 <!-- sha:4f75e052e022 -->
+
+## 2026-11-06T23:01:28Z
+> Status: the first gate round (run on the checkpoint 540 code) came back with only four sections failing. Those failures look like test setup and state problems rather than a launcher bug, but I haven't confirmed that yet. I've fixed what I could identify and re-dispatched `ps`, `ae`, `pa`, `lq` and `v`+`ps` alone, with a diagnostic that shows what the calibration screenshot actually contained. I'll read all five when they land.
+>
+> Gate round 1 on the checkpoint 540 code:
+> - **`pt` (patch flicker film):** 9 PASS. The fade cuts the worst mismatch while the menu opens from 26% to about 2–6%.
+> - **`ps`, `pa`, `ae`:** failed. The calibration screenshot was refused as "menu open". In the combined runs the screenshot slot looked bright and colourless, which fits a near-white lock screen. In `ae`, automatic calibration (on by default) interfered with a test written for the old behaviour.
+> - **`lq`:** failed one new check because it looked for the lock number while the PIN pad was up, and the pad hides the number.
+> - **Everything else in those three runs passed** (63, 65 and 93 checks).
+>
+> I also fixed everything the code reviewer found that was real, with unit tests and lint green.
+<!-- sha:1af4966c3e13 -->
