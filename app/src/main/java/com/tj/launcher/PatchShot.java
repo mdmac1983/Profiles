@@ -136,6 +136,14 @@ public final class PatchShot {
         } catch (Throwable t) { Log.e(TAG, "loading the patch shot failed", t); return null; }
     }
 
+    /** True when a crop is stored for this rotation AND is valid for {@code signature}: a cheap check (no decoding) so the lock-screen patch need not decode the whole lock wallpaper (the MODEL path) when real pixels exist. Never throws. */
+    public static boolean has(Context c, int rot, String signature) {
+        try {
+            String[] p = Features.getString(c, metaKey(rot), "").split("#");
+            return p.length == 3 && p[0].equals(signature) && file(c, rot).isFile();
+        } catch (Throwable t) { return false; }
+    }
+
     /** Forgets every stored crop. */
     public static void forget(Context c) {
         for (int rot = 0; rot < 4; rot++) {
