@@ -1668,7 +1668,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   info "PS B: positive control: resting patch with a RED crop vs the bare lock screen over the slot: MAE $MAEW"
   check "PS B: the patch really rests there (a deliberately wrong red crop shows plainly at rest, slot MAE > 5 %)" awk -v m="$MAEW" 'BEGIN{exit !(m!="" && m+0 > 0.05)}'
   adb shell "run-as $PKG sh -c 'cp files/ps-backup.png files/patchshot_r0.png'"
-  rebind; pslock; sleep 4
+  adb shell am force-stop "$PKG"; sleep 1; rebind; pslock; sleep 4                         # fresh process again: the real crop is read back from disk
   # ---- phase C: the menu opens as the STOCK menu; the Screenshot spot is covered; a tap on it closes the menu
   adb logcat -c
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
