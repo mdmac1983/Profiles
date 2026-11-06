@@ -1106,7 +1106,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private View buildLockView(final String text, final float em, final float baselineInView) {
         return new View(this) {
             private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.SUBPIXEL_TEXT_FLAG);
-            { p.setColor(Color.argb(LockNumber.ALPHA, 255, 255, 255)); p.setTextSize(em); p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, LockNumber.WEIGHT, false)); p.setTextAlign(android.graphics.Paint.Align.CENTER); }
+            { p.setColor(Color.argb(LockNumber.alphaFor(Features.getInt(TjAccessibilityService.this, LockNumber.ALPHA_KEY, 0)), 255, 255, 255)); p.setTextSize(em);
+              p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, LockNumber.weightFor(Features.getInt(TjAccessibilityService.this, LockNumber.WEIGHT_KEY, 0)), false)); p.setTextAlign(android.graphics.Paint.Align.CENTER); }   // v0.7.6: Tj's nudges on the measured look
             @Override protected void onDraw(android.graphics.Canvas c) { c.drawText(text, getWidth() / 2f + getWidth() * LockNumber.X_NUDGE_PER_WIDTH, baselineInView, p); }
         };
     }
