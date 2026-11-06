@@ -80,6 +80,8 @@ Tj: "make sure claude can save and use all necessary information from the tablet
 `bash tools/tablet-intake.sh <file|folder|zip>` (`-` reads standard input) → **read `research/tablet/LATEST.md` first** (red flags, then the answers) → `git add research/tablet && bash tools/ckpt.sh "tablet intake" "what to do about the red flags"` → write what the answers decide into `TASKS.md`.
 Never commit a raw report or a tablet screenshot by hand: the intake redacts serial/IMEI/MAC/IP/e-mail/Wi-Fi names and refuses credentials (`research/tablet/README.md`; pinned by `tools/test_tablet_intake.sh`). A session that is cut off right after Tj sends the file loses nothing as long as the intake and a `ckpt` ran.
 
+**Tj's PHOTOS stay OUT of the repo (Tj, 2026-11-06, permanent).** The repo is PUBLIC and autosave runs `git add -A` after every tool call, so anything copied into the repo folder is on GitHub within seconds, for good (history keeps it). Photos of the tablet show his name, an ID and the lock-screen number (he blurs some with a blue scribble, not all). Rules: view a photo where it was delivered (`/root/.claude/uploads/...`) or in the scratchpad, never `cp`/`mv` it into the repo; describe what it shows in TASKS.md in words with NO name, ID or number; the new photos he sends are "only Claude may see them". Four old lock-screen screenshots from 2026-11-03 are already tracked in `research/uploads/2026-11-03/` (see TASKS.md AF2: his decision).
+
 ## Branches
 
 Claude Code gives every session its own branch, so work can strand on a branch nobody opens. Rules:
