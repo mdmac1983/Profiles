@@ -1290,6 +1290,7 @@ adb logcat -c
 lockpad; pad d d 1 2 3 4 e; sleep 7                           # locked from Quickstep with an app open, the same gesture again
 resumed > "$OUT/ad-r1.txt"; shot 150-ad-resume
 adb logcat -d -s TjA11y:I > "$OUT/ad-r1-log.txt" 2>&1
+info "AD5 r1 evidence: in front: $(grep -m1 -E 'mResumedActivity' $OUT/ad-r1.txt | cut -c1-140) | log: $(grep -E 'ROUTER|PROFILE|resume|HANDSHAKE|remember' $OUT/ad-r1-log.txt | tail -10 | cut -c25-170 | tr '\n' '|' | cut -c1-1100)"
 check "AD5: after the gesture the app that was open (Contacts) is back in front, not the Quickstep home" grep -q 'com.android.contacts' "$OUT/ad-r1.txt"
 check "AD5: the helper says it brought that app back" grep -q 'ROUTER resume com.android.contacts' "$OUT/ad-r1-log.txt"
 # ---------------- AD7a: lock again from this Quickstep session: the cover must still work on the lock screen
