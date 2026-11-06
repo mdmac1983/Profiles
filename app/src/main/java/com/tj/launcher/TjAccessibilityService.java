@@ -606,7 +606,7 @@ public class TjAccessibilityService extends AccessibilityService {
         buzz();
         android.content.Context app = getApplicationContext();
         if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; }
-        if (ProfileSession.stockBehindLockOnHandshake()) startRouter("stock");   // AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
+        if (ProfileSession.stockBehindLockOnHandshake()) startQuickstepFront("handshake");   // AD5 (the app that was open, else the stock home) / AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
         preArmedThisLock = true;
         Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
         profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
@@ -664,6 +664,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
                     preCleanedThisLock = true;
+                    qsApp = null;     // AD5: the helper closed the apps: nothing is left to come back to
                     Mode.set(app, Mode.CUSTOM);
                     profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
                 }
@@ -722,8 +723,8 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (Mode.isCustom(app)) Mode.set(app, Mode.QUICKSTEP);
                 // The stock home was started behind the lock screen; only if the pre-start did not land (not in front now) press the router's Home.
                 ComponentName stock = StockLauncher.find(this);
-                boolean front = stock != null && isForeground(stock.getPackageName());
-                if (!front) startRouter("stock");
+                boolean front = (stock != null && isForeground(stock.getPackageName())) || (resumedPkg != null && isForeground(resumedPkg));   // AD5: the resumed app counts
+                if (!front) startQuickstepFront("after the unlock");
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
                 Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: this lock ended in a handshake, so the safety net below must not end this Quickstep session
@@ -731,6 +732,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
                 return;
             }
+            qsApp = null; resumedPkg = null;   // AD5: a plain unlock ends the session: no app to come back to
             boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
             if (ends) {
                 Mode.set(app, Mode.CUSTOM);
@@ -758,6 +760,7 @@ public class TjAccessibilityService extends AccessibilityService {
             android.content.Context app = getApplicationContext();
             if (!UsageGap.sessionEndedWhileAway(app)) return;
             LockLog.add(app, "RECONCILE", why + ": the keyguard was shown after the Quickstep session began and no handshake was confirmed: ending the session like a plain unlock");
+            qsApp = null; resumedPkg = null;
             Mode.set(app, Mode.CUSTOM);
             startRouter("custom");
             ReturnReset.run(app);
@@ -783,7 +786,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 boolean ours = isForeground(getPackageName()), tgt = target != null && isForeground(target);
                 if (ProfileSession.restartQuickstepAfterUnlock(ours, tgt, attempt)) {
                     LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": " + (ours ? "the custom launcher" : "Solitaire") + " is in front after a Quickstep choice: starting Quickstep's home again");
-                    startRouter("stock");
+                    startQuickstepFront("verify " + (attempt + 1));
                     verifyQuickstepFront(attempt + 1);
                 } else LockLog.add(app, "VERIFY", "attempt " + (attempt + 1) + ": Quickstep (or another app) is in front, nothing to do");
             } catch (Throwable t) { Log.e(TAG, "quickstep verify failed", t); }
@@ -976,7 +979,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 LockLog.add(getApplicationContext(), android.content.Intent.ACTION_SCREEN_OFF.equals(act) ? "SCREEN_OFF" : android.content.Intent.ACTION_SCREEN_ON.equals(act) ? "SCREEN_ON" : "USER_PRESENT", "locked=" + keyguardLocked() + " mode=" + Mode.get(getApplicationContext()));
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
-                unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
+                resumedPkg = null; unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
                 handler.removeCallbacks(lockPrepareLater);
                 handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
@@ -1177,7 +1180,52 @@ public class TjAccessibilityService extends AccessibilityService {
         noteUnlockSpeed(pk);
         if (pk.equals(fgPkg)) return;
         fgPkg = pk;
+        try { rememberQuickstepApp(pk); } catch (Throwable t) { Log.e(TAG, "remember app failed", t); }
         updateHotspot();
+    }
+
+    // ---------------------------------------------------------------- AD5: a gesture unlock comes back to the app that was open (see ResumeTarget)
+    private String qsApp = null;          // the last app window of the Quickstep session while unlocked ("" / null = none: the stock home was the last thing, or no session)
+    private long qsAppAt = 0;
+    private String resumedPkg = null;     // the app started for the current gesture (so "is Quickstep in front?" accepts it too)
+    private String stockPkgCache = null;
+
+    private String stockPkg() {
+        if (stockPkgCache == null) { ComponentName s = StockLauncher.find(this); stockPkgCache = s == null ? "" : s.getPackageName(); }
+        return stockPkgCache.isEmpty() ? null : stockPkgCache;
+    }
+
+    private void rememberQuickstepApp(String pk) {
+        android.content.Context app = getApplicationContext();
+        if (Mode.isCustom(app)) return;
+        if (keyguardLockedFast()) return;     // what appears under the lock screen is the pre-arm, not Tj's app
+        String stock = stockPkg();
+        if (ResumeTarget.isStockHome(pk, stock)) { qsApp = null; return; }    // he went home (or to Recents): there is no app to come back to
+        if (ResumeTarget.remember(pk, getPackageName(), stock, false, false)) { qsApp = pk; qsAppAt = System.currentTimeMillis(); }
+    }
+
+    /**
+     * AD5: Quickstep in front. The Quickstep app that was open when the tablet locked is started like a tap on its icon (its task comes forward as it was: no RESET_TASK_IF_NEEDED); nothing to come back to, the
+     * switch off, or any failure = the stock home, as before.
+     */
+    private void startQuickstepFront(String why) {
+        android.content.Context app = getApplicationContext();
+        String pkg = ResumeTarget.pick(Features.get(app, ResumeTarget.KEY, true), qsApp, qsAppAt, System.currentTimeMillis());
+        if (pkg != null) {
+            try {
+                android.content.Intent li = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (li != null) {
+                    li.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                    resumedPkg = pkg;
+                    startActivity(li);
+                    Log.i(TAG, "ROUTER resume " + pkg + " (" + why + ")");
+                    LockLog.add(app, "START", "resume " + pkg + " (" + why + ")");
+                    return;
+                }
+            } catch (Throwable t) { Log.e(TAG, "resume start failed, stock home instead", t); }
+        }
+        resumedPkg = null;
+        startRouter("stock");
     }
 
     // ---------------------------------------------------------------- N5: hidden hotspot in Solitaire: 5 quick taps then a hold = master failsafe into Quickstep
