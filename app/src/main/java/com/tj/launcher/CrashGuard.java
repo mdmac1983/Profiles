@@ -101,6 +101,7 @@ public final class CrashGuard {
     public static void clearTripped(Context c) {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("tripped", false).putBoolean(PAUSED_KEY, false)
                 .putLong("t1", 0).putLong("t2", 0).putLong("t3", 0).putInt(TRIP_VERSION_KEY, 0).remove(CLEARED_NOTE_KEY).commit();
+        try { LockQuiet.applyNotificationsAsync(c); } catch (Throwable ignored) { }   // v0.7.6 (review of AK1): the pause is over: the lock-screen notification setting follows the switch again
     }
 
     /** CBR1: called once per process start (TjApplication). Cheap: one preference read unless the breaker is tripped. Never throws. */

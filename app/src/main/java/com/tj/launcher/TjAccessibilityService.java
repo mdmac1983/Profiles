@@ -197,7 +197,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
-            if (LockQuiet.KEY.equals(key)) LockQuiet.applyNotificationsAsync(getApplicationContext());   // AK1: the switch changed: hide / put back the lock-screen notification setting now
+            if (LockQuiet.KEY.equals(key)) { try { LockQuiet.applyNotificationsAsync(getApplicationContext()); } catch (Throwable ignored) { } }   // AK1: the switch changed: hide / put back the lock-screen notification setting now
             if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
@@ -478,7 +478,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (patchLockMode) cal *= testSkew() * lockCalM;                                           // V4: the measured fit (1 until calibrated)
                 s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
-                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0) + (patchLockMode ? lockCalDx + PatchProfile.lockShiftPx(android.os.Build.DEVICE, dm.widthPixels) : 0),   // v0.7.6 AH3: + the per-device shift of the model (Tj's MediaTek tablet: -90 px)
+                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0) + (patchLockMode ? lockCalDx + (lockCalDx == 0 && lockCalDy == 0 && lockCalM == 1f ? PatchProfile.lockShiftPx(android.os.Build.DEVICE, dm.widthPixels) : 0) : 0),   // v0.7.6 AH3: + the per-device shift of the model (Tj's MediaTek tablet: -90 px)
                         -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0) + (patchLockMode ? lockCalDy : 0));
                 c.drawBitmap(b, m, p);
             }
@@ -1563,19 +1563,19 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
             try {
                 String act = i == null ? null : i.getAction();
-                boolean turnedOn;
+                boolean turnedOn, fullyOn;   // v0.7.6 (review of AK1): fullyOn = the settled state: the lock-screen rule must not spend a slot on ENABLING and another on ENABLED
                 if (android.net.wifi.WifiManager.WIFI_STATE_CHANGED_ACTION.equals(act)) {
                     int st = i.getIntExtra(android.net.wifi.WifiManager.EXTRA_WIFI_STATE, -1);
-                    turnedOn = st == android.net.wifi.WifiManager.WIFI_STATE_ENABLED || st == android.net.wifi.WifiManager.WIFI_STATE_ENABLING;
+                    turnedOn = st == android.net.wifi.WifiManager.WIFI_STATE_ENABLED || st == android.net.wifi.WifiManager.WIFI_STATE_ENABLING; fullyOn = st == android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
                 } else if (android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED.equals(act)) {
                     int st = i.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1);
-                    turnedOn = st == android.bluetooth.BluetoothAdapter.STATE_ON || st == android.bluetooth.BluetoothAdapter.STATE_TURNING_ON;
+                    turnedOn = st == android.bluetooth.BluetoothAdapter.STATE_ON || st == android.bluetooth.BluetoothAdapter.STATE_TURNING_ON; fullyOn = st == android.bluetooth.BluetoothAdapter.STATE_ON;
                 } else return;
                 if (!turnedOn) return;
                 long now = System.currentTimeMillis();
                 if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) {
                     // AK1: not the custom account's rule: is the tablet on the LOCK SCREEN? Then a radio that comes on is switched off again, whatever launcher is active
-                    if (!LockQuiet.enforceRadios(LockQuiet.enabled(TjAccessibilityService.this), keyguardLockedFast(), CrashGuard.automationOff(TjAccessibilityService.this), now, lqHist)) return;
+                    if (!fullyOn || !LockQuiet.enforceRadios(LockQuiet.enabled(TjAccessibilityService.this), keyguardLockedFast(), CrashGuard.automationOff(TjAccessibilityService.this), now, lqHist)) return;
                     lqHist[lqIdx++ % lqHist.length] = now;
                 } else radioHist[radioIdx++ % radioHist.length] = now;
                 final android.content.Context app = getApplicationContext();

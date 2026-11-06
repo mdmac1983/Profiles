@@ -18,7 +18,7 @@ public final class RestoreStore {
     private static SharedPreferences p(Context c) { return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 
     /** Records the current value of a Settings.Secure key once (never overwrites an existing snapshot). */
-    public static void snapshotSecure(Context c, String key) {
+    public static synchronized void snapshotSecure(Context c, String key) {   // v0.7.6 (review of AK1): synchronized: two threads start at every process start, a second read after the first write would store the CHANGED value as the original
         SharedPreferences sp = p(c);
         if (sp.contains("secure:" + key)) return;
         String cur = Settings.Secure.getString(c.getContentResolver(), key);
@@ -53,7 +53,7 @@ public final class RestoreStore {
     public static boolean hasSnapshot(Context c) { return !p(c).getAll().isEmpty(); }
 
     /** AK1: puts ONE snapshotted secure setting back and forgets that snapshot (a switch that turns a single feature off). True when something was restored. Never throws. */
-    public static boolean restoreSecure(Context c, String key) {
+    public static synchronized boolean restoreSecure(Context c, String key) {
         try {
             SharedPreferences sp = p(c);
             String v = sp.getString("secure:" + key, null);
