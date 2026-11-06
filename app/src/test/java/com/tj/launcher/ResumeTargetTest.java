@@ -35,6 +35,18 @@ public class ResumeTargetTest {
     @Test public void aClockThatWentBackwardsOrNoTimestampIsNotTrusted() { assertNull(ResumeTarget.pick(true, "a.b", 10_000, 5_000)); assertNull(ResumeTarget.pick(true, "a.b", 0, 5_000)); }
     @Test public void theSwitchKeyIsStable() { assertEquals("resume_qs_app", ResumeTarget.KEY); }
 
+    @Test public void whyNotNamesTheFirstReasonPickAnswersNull() {
+        long t = 1_000_000;
+        assertEquals("the switch is off", ResumeTarget.whyNot(false, "a.b", t, t + 1));
+        assertEquals("no Quickstep app is remembered", ResumeTarget.whyNot(true, null, t, t + 1));
+        assertEquals("no Quickstep app is remembered", ResumeTarget.whyNot(true, "", t, t + 1));
+        assertEquals("the remembered time is not valid", ResumeTarget.whyNot(true, "a.b", 0, t));
+        assertEquals("the remembered time is not valid", ResumeTarget.whyNot(true, "a.b", t, t - 1));
+        assertEquals("the remembered app is older than 6 hours", ResumeTarget.whyNot(true, "a.b", t, t + ResumeTarget.MAX_AGE_MS + 1));
+        assertEquals("an app is remembered", ResumeTarget.whyNot(true, "a.b", t, t + 5));
+        assertNull(ResumeTarget.pick(true, "a.b", t, t - 1));   // consistent with whyNot
+    }
+
     // review RV2 (2026-11-06): one app in front all day must not run out the 6 h clock
     @Test public void theAppStillInFrontAtScreenOffGetsAFreshClock() {
         long first = 1_000, off = first + ResumeTarget.MAX_AGE_MS + 5_000;       // in front for more than 6 h without a window change
