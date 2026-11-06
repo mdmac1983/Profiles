@@ -1023,6 +1023,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
                 qsAppAt = ResumeTarget.refreshedAt(qsApp, fgPkg, qsAppAt, t);   // review RV2: the app still in front when the screen goes off is the one Tj had open: its 6 h clock starts now
                 resumedPkg = null; unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
+                try { patchShow(overlayShown); } catch (Throwable ignored) { }   // v0.7.6 (review of v0.7.5): lastBouncer is reset here, so a resting patch that was hidden for the PIN pad must come back now; the next wake sees bouncer == lastBouncer and would never re-show it
                 handler.removeCallbacks(lockPrepareLater);
                 handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
