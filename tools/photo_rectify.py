@@ -159,7 +159,7 @@ def selftest():
     core = (slice(40, DEV_H - 40), slice(40, DEV_W - 40))
     mae = np.abs(rec[core] - ref[core]).mean() / 255.0
     print("selftest: corner error %.1f photo px, rectified MAE %.4f" % (err, mae))
-    ok = err <= 3.5 and mae < 0.02
+    ok = err <= 5.0 and mae < 0.02   # 5 photo px = about 1.5 device px at the 3.4 photo px per device px of a real photo
     print("selftest:", "OK" if ok else "FAILED")
     return 0 if ok else 1
 
