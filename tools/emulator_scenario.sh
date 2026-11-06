@@ -67,7 +67,7 @@ tapapp(){ local l="$1" fx="$2" fy="$3" b; adb shell uiautomator dump /sdcard/tju
   if [ "$#" -ge 4 ]; then adb shell input tap $(( ($1+$3)/2 )) $(( ($2+$4)/2 )); else adb shell input tap "$fx" "$fy"; fi; }
 setfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 # vfeat <lock_patch true|false> [skew]: feature file for the lock-patch emulator tests (sections v and x; defined up here so a section-only run has it)
-vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"${2:-0}\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"${2:-0}\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
 pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
   for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
 lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
@@ -190,7 +190,7 @@ adb install -r "$APK" >/dev/null 2>&1
 adb shell cmd package set-home-activity "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1
 prefhome(){ { echo "== $1"; adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep -E 'name=|packageName=' | head -2; adb shell dumpsys package preferred-xml 2>/dev/null | grep -iE 'tj|launcher' | head -4; } >> "$OUT/prefhome.txt" 2>&1; }
 # ---- power-menu helper (screenshots only: judged by eye + overlay window check)
-setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
+setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
 A11Y="$PKG/com.tj.launcher.TjAccessibilityService"
 rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep 1; adb shell settings put secure enabled_accessibility_services "$A11Y"; adb shell settings put secure accessibility_enabled 1; sleep 3; }
 a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
@@ -351,7 +351,7 @@ fi # section legacy
 if want x1; then # section x1
 ensurehome
 # ---- X1: the number on the lock screen shows on the lock screen and goes when the PIN pad is pulled up. The PIN is ALWAYS cleared again below.
-adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/setpin.txt" 2>&1
 adb shell input keyevent KEYCODE_POWER; sleep 2
@@ -1311,8 +1311,8 @@ adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>
 #      AD5's premise is "the apps are still open at the lock", so this section switches the clean-up OFF explicitly instead of depending on whether a helper happens to be alive.
 adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON); profile_preclean is always written OFF here
   case "$1" in
-    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
-    *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
+    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
+    *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
   esac; }
 adopen(){ adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; }   # an app opened IN Quickstep
 adb shell locksettings set-pin 1234 > "$OUT/ad-setpin.txt" 2>&1
@@ -1420,7 +1420,7 @@ ensurehome
 beat "before AE"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/ae-grant.txt" 2>&1
 aefeat(){ # aefeat <resting true|false> <lock_patch true|false> <skew %>
-  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$2\\\" /><boolean name=\\\"lock_patch_always\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"$3\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$2\\\" /><boolean name=\\\"lock_patch_always\\\" value=\\\"$1\\\" /><boolean name=\\\"patch_rest_model\\\" value=\\\"true\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"$3\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
 aelock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
 aemae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
 aenums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
@@ -1578,6 +1578,104 @@ else
 fi
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
 fi # section ao
+if want ps; then # section ps
+ensurehome
+# ---- AM1 (Tj, 2026-11-06): "the power menu can stay completely stock ... as long as the wallpaper patch is always on place, the screenshot button will be covered" and, with a photo of the old patch,
+#      "You can see the patch clearly. It doesn't blend in". CARDLESS (the default): no card of ours; the patch over the Screenshot spot draws the REAL pixels of the lock screen, calibrated ONCE from a real screenshot.
+#      Phase A: not calibrated + a deliberately wrong wallpaper model (skew 30 %): the resting patch must stay HIDDEN (a model patch is a visible block). Phase B: calibrate (the service asks the system for a screenshot,
+#      or a plain screencap + media scan): the resting patch must then be INVISIBLE (MAE < 0.5 % against the bare lock screen over the slot). Phase C: the menu opens as the STOCK menu with the Screenshot spot covered,
+#      and a tap on the hidden spot closes the menu without taking a screenshot. The PIN is ALWAYS cleared again at the end.
+beat "before PS"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/ps-grant.txt" 2>&1
+psfeat(){ # psfeat <calibration window end, epoch ms; 0 = none>: NO power_card key (default OFF = stock menu) and NO lock_patch_always key (default ON)
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/patchshot_r0.png files/patchshot_r1.png; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"true\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"30\\\" /><string name=\\\"patch_cal_until\\\">$1</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+pslock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
+psmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+psnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
+psstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_shot_status">[^<]*' | sed 's/.*>//'; }
+adb shell settings put secure lock_screen_show_notifications 0           # a "Screenshot saved" notification must not sit on the lock screen next to the slot
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: no helper photo, the stored real pixels are the only source
+psfeat 0; adb shell am force-stop "$PKG"; sleep 1
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/ps-setpin.txt" 2>&1
+pslock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3        # the first menu on the lock screen: the app learns where it sits
+adb shell input keyevent KEYCODE_BACK; sleep 6
+shot 93-ps-uncalibrated
+adb logcat -d -s TjA11y:I | grep -E "PATCH|CARD area" > "$OUT/ps-a-log.txt" 2>&1
+check "PS A: before the calibration the resting patch stays HIDDEN (no real pixels: a model patch would be a visible block)" bash -c "! grep -q 'PATCH rest on' $OUT/ps-a-log.txt"
+check "PS A: the stock menu opened without a card of ours (every CARD area line says stock=true)" bash -c "grep -q 'stock=true' $OUT/ps-a-log.txt && [ \"\$(grep 'CARD area' $OUT/ps-a-log.txt | grep -vc 'stock=true')\" = 0 ]"
+CL="$(grep 'CARD area' "$OUT/ps-a-log.txt" | tail -1)"
+set -- $(psnums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(psnums "$CL" area); CB=${4:-}
+# ---- phase B: open the calibration window (the app is stopped meanwhile, so it reads the edited file), lock, wake: the service takes the screenshot by itself
+UNTIL=$(( $(adb shell date +%s | tr -d '\r\n') * 1000 + 240000 ))
+adb shell am force-stop "$PKG"; sleep 1
+adb shell "run-as $PKG sed -i 's#name=\"patch_cal_until\">[0-9]*<#name=\"patch_cal_until\">$UNTIL<#' shared_prefs/tj_features.xml"
+info "PS B: calibration window written: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'patch_cal_until">[0-9]*')"
+setmode custom; rebind; home
+pslock; adb logcat -c
+sleep 3; shot 94-ps-bare                                            # the patch is hidden while calibrating: THIS is the bare lock screen
+for i in 1 2 3 4 5 6 7 8; do psstatus | grep -q "CALIBRATED" && break; sleep 2; done
+if ! psstatus | grep -q "CALIBRATED"; then
+  info "PS B: the service's own screenshot did not arrive (status: $(psstatus)); fallback: a plain screencap + media scan"
+  adb shell "mkdir -p /sdcard/Pictures/Screenshots; screencap -p /sdcard/Pictures/Screenshots/Screenshot_ps.png"
+  adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/Screenshots/Screenshot_ps.png >/dev/null 2>&1
+  for i in 1 2 3 4 5 6 7 8 9 10; do psstatus | grep -q "CALIBRATED" && break; sleep 2; done
+fi
+info "PS B: status: $(psstatus)"
+adb logcat -d -s TjA11y:I | grep -E "PATCHSHOT|PATCH rest" > "$OUT/ps-b-log.txt" 2>&1
+check "PS B: the patch was calibrated from a real screenshot (status says CALIBRATED)" bash -c "adb shell \"run-as $PKG cat shared_prefs/tj_features.xml\" | grep -q 'patch_shot_status\">[^<]*CALIBRATED'"
+check "PS B: the crop was stored in the app's private files" bash -c "adb shell \"run-as $PKG ls files/patchshot_r0.png\" | grep -q patchshot_r0"
+sleep 6; shot 95-ps-rest
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"
+  MAS="$(psmae 95-ps-rest 94-ps-bare "$SLOT")"
+  info "PS B: resting patch (real pixels) vs the bare lock screen over the slot $SLOT: MAE $MAS"
+  check "PS B: the resting patch is INVISIBLE (slot MAE < 0.5 % against the bare lock screen)" awk -v m="$MAS" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
+  check "PS B: the patch really rests there (log 'PATCH rest on')" grep -q 'PATCH rest on' "$OUT/ps-b-log.txt"
+  # ---- phase C: the menu opens as the STOCK menu; the Screenshot spot is covered; a tap on it closes the menu
+  adb logcat -c
+  adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
+  shot 96-ps-menu-open
+  adb logcat -d -s TjA11y:I | grep -E "CARD area" > "$OUT/ps-c-log.txt" 2>&1
+  check "PS C: the open menu is the stock menu (no card of ours)" bash -c "grep -q 'stock=true' $OUT/ps-c-log.txt && [ \"\$(grep -vc 'stock=true' $OUT/ps-c-log.txt)\" = 0 ]"
+  RING="30x$(( FB - FT ))+$(( FL - 32 ))+$FT"
+  MC="$(convert "$OUT/94-ps-bare.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
+  MO="$(convert "$OUT/96-ps-menu-open.png" -crop "$RING" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() ')"
+  KO="$(echo "$MC $MO" | awk -F'[ ,]' 'NF>=8 && $1>0 && $2>0 && $3>0 {printf "%.4f", ($5/$1+$6/$2+$7/$3)/3}')"
+  FREE="$(( FR - FL ))x$(( FB - CB - 2 ))+$FL+$(( CB + 2 ))"
+  if [ -n "$KO" ]; then
+    convert "$OUT/94-ps-bare.png" -crop "$FREE" +repage -channel RGB -evaluate Multiply "$KO" +channel "$OUT/ps-bare-slot-dimmed.png" 2>/dev/null
+    convert "$OUT/96-ps-menu-open.png" -crop "$FREE" +repage "$OUT/ps-open-slot.png" 2>/dev/null
+    MAED="$(compare -metric MAE "$OUT/ps-open-slot.png" "$OUT/ps-bare-slot-dimmed.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"
+    info "PS C: the Screenshot spot of the open menu vs the bare lock screen dimmed by the measured $KO: MAE $MAED"
+    check "PS C: the Screenshot spot is covered by the patch (open slot matches the dimmed lock screen, MAE < 1.5 %)" awk -v m="$MAED" 'BEGIN{exit !(m!="" && m+0 < 0.015)}'
+  else info "PS C: no scrim measurement"; check "PS C: the scrim could be measured" false; fi
+  SHOTS_BEFORE="$(adb shell 'ls /sdcard/Pictures/Screenshots 2>/dev/null | wc -l' | tr -d '\r\n ')"
+  TX=$(( (FL + FR) / 2 )); TY=$(( (CB + FB) / 2 ))
+  adb shell input tap $TX $TY; sleep 3
+  SHOTS_AFTER="$(adb shell 'ls /sdcard/Pictures/Screenshots 2>/dev/null | wc -l' | tr -d '\r\n ')"
+  info "PS C: tapped the hidden Screenshot spot at $TX,$TY: screenshots before=$SHOTS_BEFORE after=$SHOTS_AFTER; menu windows now: $(adb shell dumpsys window windows | grep -c ActionsDialog)"
+  check "PS C: a tap on the hidden Screenshot spot takes NO screenshot" [ "$SHOTS_BEFORE" = "$SHOTS_AFTER" ]
+  check "PS C: ... and closes the menu (like a tap outside)" bash -c "[ \"\$(adb shell dumpsys window windows | grep -c ActionsDialog)\" = 0 ]"
+else
+  info "PS: the menu rectangle was not learned (no CARD area line)"; check "PS: the menu rectangle was learned" false
+fi
+adb shell input keyevent KEYCODE_BACK; sleep 2
+# ---------------- clean up
+adb shell input swipe 300 900 300 300 300; sleep 2
+adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 4
+adb shell locksettings clear --old 1234 > "$OUT/ps-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "PS: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/ps-clearpin.txt"
+adb shell settings put secure lock_screen_show_notifications 1
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section ps
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
@@ -2080,7 +2178,7 @@ fi # section rb
 if want last; then # section last
 beat "before LAST STEP"
 # ---- LAST STEP: our replacement card must press the REAL "Restart" button (the emulator reboots after this)
-adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"guard_stock_home\\\" value=\\\"false\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1
+adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"guard_stock_home\\\" value=\\\"false\\\" /><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1
 setmode custom; rebind; home; sleep 3
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 14-card-before-restart
 info "LAST state: display $(adb shell wm size | tr -d '\r' | tr '\n' ' ')$(adb shell wm density | tr -d '\r' | tr '\n' ' '); a11y services bound: $(adb shell dumpsys accessibility | grep -c 'Service\[label='); stock menu windows: $(adb shell dumpsys window windows | grep -c 'ActionsDialog'); TjA11y log lines this boot: $(adb logcat -d -s TjA11y:I | wc -l); resumed: $(resumed | cut -c1-90)"

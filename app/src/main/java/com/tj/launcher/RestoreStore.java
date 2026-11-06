@@ -83,6 +83,7 @@ public final class RestoreStore {
         Features.allOff(c);
         Features.set(c, LockNumber.KEY, false);
         Features.set(c, PickerGuard.KEY, false);   // AO1: the hider of 'My photos' is a customisation too
+        Features.set(c, PatchRest.KEY, false);   // AM1: the resting patch is ON by default now: restore = off
         Features.set(c, LockQuiet.KEY, false);   // AK1: restore = the lock screen shows notifications again (the two settings were put back above) and nothing of ours switches Wi-Fi / Bluetooth off at the lock
         Features.set(c, LockQuiet.RESTORE_KEY, false);
         // AC1 (v0.7.3): the Two-profiles switches (pre-arm, radios, pre-clean) are NOT written false here any more. The old code did, so a breaker trip silently disabled the very things Tj depends on and he had to find and
