@@ -37,6 +37,68 @@ index 743facc..f81504a 100644
  - **Button Mapper / any accessibility service cannot see or stop the power key** (Android 10 `PhoneWindowManager` clears pass-to-user for it; the accessibility filter skips such events). The only shell lever is `DISABLE2_GLOBAL_ACTIONS` ("Power menu v2", not built, waits for Tj). **Open-but-hidden Quickstep apps and a second Android user: ruled out** (`research/OPEN_BUT_HIDDEN_2026-11-05.md`).
  - **Safety first (L10, re-stated 2026-11-05):** nothing may need a factory reset. Changes of Android settings are snapshotted, owned-only and undone by "Restore everything" or a guide card; see `research/SAFETY_2026-11-05.md` before adding any new system-touching feature.
  - Wallpaper work (home) was once dropped by Tj ("forget the wallpaper"), later he asked for the LOCK-screen patch (done in v0.6.0) — don't polish the home one.
+diff --git a/app/src/main/java/com/tj/launcher/AppOrigin.java b/app/src/main/java/com/tj/launcher/AppOrigin.java
+index ab7b6b6..ce2ef5d 100644
+--- a/app/src/main/java/com/tj/launcher/AppOrigin.java
++++ b/app/src/main/java/com/tj/launcher/AppOrigin.java
+@@ -37,7 +37,47 @@ public final class AppOrigin {
+         if (qs.add(pkg)) p(c).edit().putStringSet("quickstep", qs).apply();
+     }
+ 
+-    public static void clearQuickstep(Context c) { p(c).edit().putStringSet("quickstep", new HashSet<String>()).apply(); }
++    public static void clearQuickstep(Context c) { p(c).edit().putStringSet("quickstep", new HashSet<String>()).putLong("usageFrom", System.currentTimeMillis()).apply(); }   // AI1: usage events up to now are dealt with
++
++    private static long lastMergeAt = 0;
++
++    /**
++     * AI1 (Tj, 2026-11-06: Portfolio, opened only in Quickstep, was still in Recents after "back to custom"): the accessibility tracking above can miss an app (an event never arrived, the marks were cleared early).
++     * Android's own usage events say which apps were used during the Quickstep session ({@link QuickstepUsage}); every such app that is not ours, not the stock launcher / keyboard / target and not started from the
++     * custom launcher is marked as opened in Quickstep too. Bounded to the session ({@link Mode#qsStartAt} .. {@link Mode#qsEndAt}, or now while it is still on) and to what has not been cleared yet. Cheap, never throws.
++     */
++    public static void mergeUsage(Context c) {
++        try {
++            long now = System.currentTimeMillis();
++            long start = Mode.qsStartAt(c);
++            if (start <= 0) return;
++            long end = Mode.isCustom(c) ? Mode.qsEndAt(c) : now;
++            if (end <= start) return;
++            long from = Math.max(start, p(c).getLong("usageFrom", 0));
++            if (from >= end) return;
++            synchronized (AppOrigin.class) { if (now - lastMergeAt < 1000) return; lastMergeAt = now; }
++            java.util.Set<String> used = QuickstepUsage.resumedDuring(c, from, end);
++            if (used.isEmpty()) return;
++            android.content.ComponentName stock = StockLauncher.find(c);
++            String ime = null;
++            String cur = android.provider.Settings.Secure.getString(c.getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
++            if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
++            String target = ReturnReset.targetPackage(c);
++            java.util.Set<String> known = quickstep(c), custom = custom(c);
++            StringBuilder added = new StringBuilder();
++            for (String pkg : used) {
++                if (known.contains(pkg) || custom.contains(pkg)) continue;
++                if (!RecentsDirty.shouldMark(pkg, c.getPackageName(), stock == null ? null : stock.getPackageName(), ime, target, true)) continue;
++                markQuickstep(c, pkg);
++                if (added.length() > 0) added.append(", ");
++                added.append(pkg);
++            }
++            if (added.length() > 0) {
++                RecentsDirty.mark(c);
++                LockLog.add(c, "USAGE", "the usage log shows apps used in Quickstep that the window tracker missed: " + added + " (now counted as opened in Quickstep)");
++            }
++        } catch (Throwable t) { android.util.Log.e("TjOrigin", "usage merge failed", t); }
++    }
+     /** False until the first successful Recents clear after install: older Quickstep apps are unknown, so the first reset clears everything. */
+     public static boolean tracked(Context c) { return p(c).getBoolean("tracked", false); }
+     public static void setTracked(Context c) { p(c).edit().putBoolean("tracked", true).apply(); }
+@@ -49,7 +89,7 @@ public final class AppOrigin {
+         return r;
+     }
+ 
+-    public static Set<String> pending(Context c) { return pending(custom(c), quickstep(c)); }
++    public static Set<String> pending(Context c) { mergeUsage(c); return pending(custom(c), quickstep(c)); }   // AI1: every clean-up asks here, so every clean-up also sees what Android's usage log says
+ 
+     /** Pure rule: does a Recents card description (the app label, maybe followed by extra text) belong to one of these labels? */
+     public static boolean cardMatches(String description, Set<String> labels) {
 diff --git a/app/src/main/java/com/tj/launcher/BatterySaverGuard.java b/app/src/main/java/com/tj/launcher/BatterySaverGuard.java
 index f537784..2e60779 100644
 --- a/app/src/main/java/com/tj/launcher/BatterySaverGuard.java
@@ -152,10 +214,32 @@ index 7867978..355666c 100644
          note("Lock screen log (newest last):\n" + (LockLog.tail(this, 8).isEmpty() ? "(nothing yet: lock and unlock the tablet once)" : LockLog.tail(this, 8)));
          note("Safety: if the Accessibility helper is OFF no handshake can work, so three quick Home presses in the custom launcher let you out to Quickstep. With the helper ON that does nothing.");
 diff --git a/app/src/main/java/com/tj/launcher/Mode.java b/app/src/main/java/com/tj/launcher/Mode.java
-index 44576e1..e58a46b 100644
+index 44576e1..591695e 100644
 --- a/app/src/main/java/com/tj/launcher/Mode.java
 +++ b/app/src/main/java/com/tj/launcher/Mode.java
-@@ -64,7 +64,7 @@ public final class Mode {
+@@ -26,6 +26,10 @@ public final class Mode {
+     /** The Home press before the last one (the L10 failsafe needs three in a row). */
+     public static long homePressBeforeLastMs(Context c) { return prefs(c).getLong("lastHome2", 0); }
+ 
++    /** AI1: when the current / last Quickstep session began and ended (ms; 0 = unknown, e.g. a session that began before this version). */
++    public static long qsStartAt(Context c) { return prefs(c).getLong("qsStartAt", 0); }
++    public static long qsEndAt(Context c) { return prefs(c).getLong("qsEndAt", 0); }
++
+     /** When the mode last changed (ms): the stray-Quickstep guard waits a moment after a deliberate change (late window events from the screen we just left). */
+     public static long changedAt(Context c) { return prefs(c).getLong("changedAt", 0); }
+ 
+@@ -59,12 +63,17 @@ public final class Mode {
+     public static void set(Context c, String mode) {
+         String m = QUICKSTEP.equals(mode) ? QUICKSTEP : CUSTOM;
+         boolean quickstepBegins = QUICKSTEP.equals(m) && CUSTOM.equals(get(c));
+-        prefs(c).edit().putString(KEY, m).putLong("changedAt", System.currentTimeMillis()).commit();
++        boolean quickstepEnds = CUSTOM.equals(m) && QUICKSTEP.equals(get(c));
++        long nowMs = System.currentTimeMillis();
++        SharedPreferences.Editor ed = prefs(c).edit().putString(KEY, m).putLong("changedAt", nowMs);
++        if (quickstepBegins) ed.putLong("qsStartAt", nowMs);   // AI1: the Quickstep session's own start and end (changedAt moves at EVERY change): the clean-up asks Android's usage log what was used in between
++        if (quickstepEnds) ed.putLong("qsEndAt", nowMs);
++        ed.commit();
+         if (quickstepBegins) TaskOrigin.sessionStart(c);   // AA3: remember which tasks are the custom account's BEFORE Quickstep opens anything (needs the shell helper; otherwise a no-op)
          KeyboardSwitch.apply(c, m);
          TileProfile.apply(c, m);
          ImmersiveProfile.apply(c, m);  // AA1: status bar hidden while the custom launcher is active (opt-in, needs the adb grant)
@@ -216,8 +300,101 @@ index 0000000..c7afd69
 +        return Math.max(0.3f, Math.min(1f, k));
 +    }
 +}
+diff --git a/app/src/main/java/com/tj/launcher/QuickstepUsage.java b/app/src/main/java/com/tj/launcher/QuickstepUsage.java
+new file mode 100644
+index 0000000..d0a461a
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/QuickstepUsage.java
+@@ -0,0 +1,75 @@
++package com.tj.launcher;
++
++import android.app.usage.UsageEvents;
++import android.app.usage.UsageStatsManager;
++import android.content.Context;
++import java.util.ArrayList;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Set;
++
++/**
++ * AI1 (Tj, 2026-11-06: "I had an app called portfolio open. It is only in the quickstep launcher. I pressed the app icon to return to custom launcher, and portfolio was in the recent apps list with solitaire").
++ * Which apps were opened in Quickstep is normally tracked by the accessibility helper (a window of the app appeared while Quickstep was on). If that tracking misses an app (an event never arrived, or the marks were
++ * cleared early) the clean-up never closes it and nothing says why. Android keeps a second, independent record: the usage events (ACTIVITY_RESUMED), which the app can already read (the usage-access app-op the adb
++ * setup grants; the unlock safety net {@link UsageGap} uses the same source). This class turns that record into "the apps used during THIS Quickstep session": pure and JVM-tested, plus the thin Android reader.
++ *
++ * Events that happen while the lock screen is up, or in the moments right after it goes away, are NOT counted: then Android reveals the app that was in front behind the keyguard (the custom account's last app,
++ * AC2), which Tj did not open in Quickstep. The tracker has the same rule ({@link ProfileSession#windowIsLockLeftover}).
++ */
++public final class QuickstepUsage {
++    /** UsageEvents.Event.ACTIVITY_RESUMED (= the old MOVE_TO_FOREGROUND). */
++    public static final int RESUMED = 1;
++    public static final int KEYGUARD_SHOWN = 17, KEYGUARD_HIDDEN = 18;
++
++    private QuickstepUsage() {}
++
++    /** One usage event, reduced to what the rule needs. */
++    public static final class Ev {
++        public final long t; public final int type; public final String pkg;
++        public Ev(long t, int type, String pkg) { this.t = t; this.type = type; this.pkg = pkg; }
++    }
++
++    /**
++     * Pure: the packages that were resumed during the session, in order of first use, without the ones that only appeared under the lock screen. {@code events} must be in time order and limited to the session.
++     * If the first keyguard event of the session is "hidden" the lock screen was up when the session began (the gesture's handshake happens ON the lock screen), so everything before it is lock-screen time.
++     */
++    public static Set<String> packages(List<Ev> events) {
++        Set<String> out = new LinkedHashSet<>();
++        if (events == null) return out;
++        boolean shown = false;
++        for (Ev e : events) {
++            if (e.type == KEYGUARD_SHOWN) { shown = false; break; }
++            if (e.type == KEYGUARD_HIDDEN) { shown = true; break; }
++        }
++        long hiddenAt = 0;
++        for (Ev e : events) {
++            if (e.type == KEYGUARD_SHOWN) { shown = true; continue; }
++            if (e.type == KEYGUARD_HIDDEN) { shown = false; hiddenAt = e.t; continue; }
++            if (e.type != RESUMED || e.pkg == null || e.pkg.isEmpty()) continue;
++            if (shown) continue;                                                               // under the lock screen
++            if (hiddenAt > 0 && e.t - hiddenAt < ProfileSession.UNLOCK_QUIET_MS) continue;     // the moments right after the unlock
++            out.add(e.pkg);
++        }
++        return out;
++    }
++
++    /** Android side: the packages resumed between {@code fromMs} and {@code toMs}. Never throws; empty when usage access is not granted. */
++    public static Set<String> resumedDuring(Context c, long fromMs, long toMs) {
++        try {
++            if (toMs <= fromMs) return new LinkedHashSet<>();
++            UsageStatsManager um = (UsageStatsManager) c.getSystemService(Context.USAGE_STATS_SERVICE);
++            if (um == null) return new LinkedHashSet<>();
++            UsageEvents ev = um.queryEvents(Math.max(fromMs, toMs - UsageGap.MAX_LOOKBACK_MS), toMs);
++            if (ev == null) return new LinkedHashSet<>();
++            List<Ev> list = new ArrayList<>();
++            UsageEvents.Event e = new UsageEvents.Event();
++            while (ev.hasNextEvent()) {
++                ev.getNextEvent(e);
++                int ty = e.getEventType();
++                if (ty == RESUMED || ty == KEYGUARD_SHOWN || ty == KEYGUARD_HIDDEN) list.add(new Ev(e.getTimeStamp(), ty, e.getPackageName()));
++            }
++            return packages(list);
++        } catch (Throwable t) { return new LinkedHashSet<>(); }
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/ReturnReset.java b/app/src/main/java/com/tj/launcher/ReturnReset.java
+index 56cd9b1..f47d831 100644
+--- a/app/src/main/java/com/tj/launcher/ReturnReset.java
++++ b/app/src/main/java/com/tj/launcher/ReturnReset.java
+@@ -157,6 +157,7 @@ public final class ReturnReset {
+             final java.util.Set<String> pendPkgs = AppOrigin.pending(app);
+             final boolean doRecents = recents && (!tracked || !pendPkgs.isEmpty());
+             final java.util.Set<String> labels = (tracked && !AppOrigin.custom(app).isEmpty()) ? labelsOf(app, pendPkgs) : null;   // selective dismissal only when something must be preserved
++            LockLog.add(app, "RESET", "plan: tracked=" + tracked + ", opened in Quickstep=" + pendPkgs + ", kept (custom)=" + AppOrigin.custom(app) + ", Recents step=" + doRecents + ", shade step=" + doShade + ", cards to close=" + labels);   // AI1: why an app was (not) closed is now in the lock log
+             if (!doShade && !doRecents) {
+                 fastActive = false;
+                 svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no app was opened from Quickstep since the last clear" : "") + "): Solitaire at once");
 diff --git a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
-index 236a398..ae57004 100644
+index 236a398..50f2a2b 100644
 --- a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
 +++ b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
 @@ -145,7 +145,8 @@ public class TjAccessibilityService extends AccessibilityService {
@@ -348,7 +525,64 @@ index 236a398..ae57004 100644
              if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
          } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
      }
-@@ -1977,7 +2011,15 @@ public class TjAccessibilityService extends AccessibilityService {
+@@ -1731,10 +1765,11 @@ public class TjAccessibilityService extends AccessibilityService {
+         final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
+         final int[] closed = {0}, idle = {0};
+         final boolean[] sawCards = {false};
++        final String[] seen = {null};   // AI1: what the Recents cards looked like (for the lock log)
+         handler.post(new Runnable() { @Override public void run() {
+             try {
+                 List<AccessibilityNodeInfo> cards = findTaskCards();
+-                if (cards.size() > 0) sawCards[0] = true;
++                if (cards.size() > 0) { sawCards[0] = true; if (seen[0] == null) seen[0] = cards.size() + " card(s): " + describeCards(cards); }
+                 boolean did = false;
+                 for (AccessibilityNodeInfo card : cards) {
+                     if (!AppOrigin.cardMatches(card.getContentDescription() == null ? null : card.getContentDescription().toString(), closeLabels)) continue;
+@@ -1748,19 +1783,33 @@ public class TjAccessibilityService extends AccessibilityService {
+                     AppOrigin.clearQuickstep(TjAccessibilityService.this); AppOrigin.setTracked(TjAccessibilityService.this);
+                     resetReport.append("recents: closed ").append(closed[0]).append(" card(s) of apps opened from Quickstep, others kept (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
+                     Log.i(TAG, "RESET recents selective closed=" + closed[0]);
++                    LockLog.add(getApplicationContext(), "RESET", "recents: closed " + closed[0] + " card(s) of " + closeLabels + "; saw " + seen[0]);
+                     finishReset(t0, done);
+                     return;
+                 }
+             } catch (Throwable t) { Log.e(TAG, "selective recents failed", t); }
+             if (android.os.SystemClock.uptimeMillis() >= deadline) {
+-                if (!sawCards[0]) { Log.i(TAG, "RESET recents: cards not recognised, falling back to Clear all"); recentsClearAll(t0, done); }
+-                else { resetReport.append("recents: stopped after ").append(closed[0]).append(" card(s)\n"); finishReset(t0, done); }
++                if (!sawCards[0]) { Log.i(TAG, "RESET recents: cards not recognised, falling back to Clear all"); LockLog.add(getApplicationContext(), "RESET", "recents: no card with a 'Close' action found for " + closeLabels + " (this Recents screen is not recognised): falling back to Clear all"); recentsClearAll(t0, done); }
++                else { resetReport.append("recents: stopped after ").append(closed[0]).append(" card(s)\n"); LockLog.add(getApplicationContext(), "RESET", "recents: stopped after " + closed[0] + " card(s) of " + closeLabels + "; saw " + seen[0]); finishReset(t0, done); }
+                 return;
+             }
+             handler.postDelayed(this, 40);
+         } });
+     }
+ 
++    /** AI1: up to five card descriptions, shortened (the lock log shows what this tablet's Recents screen really looks like to accessibility). */
++    private static String describeCards(List<AccessibilityNodeInfo> cards) {
++        StringBuilder b = new StringBuilder();
++        for (int i = 0; i < cards.size() && i < 5; i++) {
++            CharSequence d = cards.get(i).getContentDescription();
++            String s = d == null ? "(no description)" : d.toString().replace('\n', ' ');
++            if (s.length() > 28) s = s.substring(0, 28);
++            if (i > 0) b.append(" | ");
++            b.append(s);
++        }
++        return b.toString();
++    }
++
+     /** Recents task cards: nodes (in the stock launcher / SystemUI windows) that offer a "Close" action. */
+     private List<AccessibilityNodeInfo> findTaskCards() {
+         List<AccessibilityNodeInfo> out = new java.util.ArrayList<>();
+@@ -1791,6 +1840,7 @@ public class TjAccessibilityService extends AccessibilityService {
+                 resetReport.append("recents: ").append(result == PRESSED ? "cleared (apps closed)" : result == EMPTY ? "already empty" : "no Clear all button found")
+                         .append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
+                 Log.i(TAG, "RESET recents result=" + result + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
++                LockLog.add(getApplicationContext(), "RESET", "recents: Clear all " + (result == PRESSED ? "pressed" : result == EMPTY ? "found the list empty" : "button NOT FOUND: nothing was cleared"));   // AI1: the lock log says what really happened
+                 finishReset(t0, done);
+             }
+         });
+@@ -1977,7 +2027,15 @@ public class TjAccessibilityService extends AccessibilityService {
  
      /** V1: on the lock screen the patch is invisible until the power menu opens (and again afterwards). */
      private void patchShow(boolean on) {
@@ -448,6 +682,63 @@ index 0000000..3f1c9de
 +        assertEquals(0, PatchRest.restTop(100, 40, 400));        // card bottom above the window: paint it all
 +        assertEquals(300, PatchRest.restTop(100, 900, 400));     // card bottom below the window: paint nothing
 +        assertEquals(0, PatchRest.restTop(400, 500, 300));       // an empty / inverted window never goes negative
++    }
++}
+diff --git a/app/src/test/java/com/tj/launcher/QuickstepUsageTest.java b/app/src/test/java/com/tj/launcher/QuickstepUsageTest.java
+new file mode 100644
+index 0000000..54ed792
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/QuickstepUsageTest.java
+@@ -0,0 +1,51 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import com.tj.launcher.QuickstepUsage.Ev;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Collections;
++import java.util.List;
++import org.junit.Test;
++
++/** AI1: which apps were used during a Quickstep session (Android's usage events), without what only appeared under the lock screen. */
++public class QuickstepUsageTest {
++    private static final int R = QuickstepUsage.RESUMED, S = QuickstepUsage.KEYGUARD_SHOWN, H = QuickstepUsage.KEYGUARD_HIDDEN;
++    private static List<Ev> evs(Ev... e) { return new ArrayList<>(Arrays.asList(e)); }
++
++    @Test public void anAppResumedWhileUnlockedIsQuickstepsApp() {
++        assertEquals(Arrays.asList("com.portfolio"), new ArrayList<>(QuickstepUsage.packages(evs(new Ev(1000, R, "com.portfolio")))));
++    }
++    @Test public void firstUseOrderIsKeptAndDuplicatesAreDropped() {
++        List<String> got = new ArrayList<>(QuickstepUsage.packages(evs(new Ev(1000, R, "a"), new Ev(2000, R, "b"), new Ev(3000, R, "a"))));
++        assertEquals(Arrays.asList("a", "b"), got);
++    }
++    @Test public void nothingUsedMeansNothing() {
++        assertTrue(QuickstepUsage.packages(evs()).isEmpty());
++        assertTrue(QuickstepUsage.packages(null).isEmpty());
++    }
++    @Test public void whatAppearsWhileTheLockScreenIsUpIsNotCounted() {
++        // the session began unlocked, the tablet locked, Android revealed the custom account's last app behind the keyguard
++        List<Ev> e = evs(new Ev(1000, R, "a"), new Ev(2000, S, null), new Ev(2100, R, "custom.last"), new Ev(5000, H, null), new Ev(9000, R, "b"));
++        assertEquals(Arrays.asList("a", "b"), new ArrayList<>(QuickstepUsage.packages(e)));
++    }
++    @Test public void aSessionThatBeganOnTheLockScreenIgnoresEverythingBeforeTheUnlock() {
++        // the handshake happens ON the lock screen: the first keyguard event is HIDDEN, so the early resume is lock-screen time
++        List<Ev> e = evs(new Ev(1000, R, "custom.last"), new Ev(1500, H, null), new Ev(9000, R, "portfolio"));
++        assertEquals(Arrays.asList("portfolio"), new ArrayList<>(QuickstepUsage.packages(e)));
++    }
++    @Test public void theMomentsRightAfterTheUnlockAreNotCountedEither() {
++        List<Ev> e = evs(new Ev(1000, S, null), new Ev(2000, H, null), new Ev(2000 + ProfileSession.UNLOCK_QUIET_MS - 1, R, "leftover"), new Ev(2000 + ProfileSession.UNLOCK_QUIET_MS, R, "real"));
++        assertEquals(Arrays.asList("real"), new ArrayList<>(QuickstepUsage.packages(e)));
++    }
++    @Test public void emptyOrMissingPackageNamesAreIgnored() {
++        List<Ev> e = evs(new Ev(1000, R, null), new Ev(1100, R, ""), new Ev(1200, R, "ok"));
++        assertEquals(Collections.singletonList("ok"), new ArrayList<>(QuickstepUsage.packages(e)));
++    }
++    @Test public void otherEventTypesDoNotCount() {
++        assertFalse(QuickstepUsage.packages(evs(new Ev(1000, 2, "paused"), new Ev(1100, 23, "stopped"))).contains("paused"));
 +    }
 +}
 diff --git a/launcher3/PATCHES.md b/launcher3/PATCHES.md

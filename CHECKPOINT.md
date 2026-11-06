@@ -1,22 +1,24 @@
-# CHECKPOINT 449 — read me first, then TASKS.md
+# CHECKPOINT 450 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T05:21:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `b20e300` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T05:26:29Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `cd206fb` (this checkpoint is the commit after it)
 
 ## Just done
-AH1: Tj thinks wrong wallpaper piece is copied; plan = geometry line + calibrate-from-my-own-screenshot (no helper) in v0.7.5
+AI1: usage-log merge (QuickstepUsage/AppOrigin.mergeUsage/Mode qsStartAt) + reset diagnostics in the lock log coded in the v0.7.5 worktree, unit 376/0
 
 ## Do this next
-read gate A run 180 now (45 min limit hit ~05:25); then ship v0.7.4 or localise the slow section
+read gate A run 180 now; ship or localise; v0.7.5 emulator check for AI1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
      M TASKS.md
+     M research/pending/v075-all.patch
 
 ## Last ten checkpoints
 ```
+  ad8e719 ckpt 449: AH1: Tj thinks wrong wallpaper piece is copied; plan = geometry line + calibra
   5dec87a ckpt 448: AI1 leftover Quickstep app in Recents recorded + analysed (needs app name/path
   fa53bd2 ckpt 447: TK3: ad,se,rt run 182 SUCCESS -> gate B' clean; only gate A run 180 open (40+ 
   59c4b57 ckpt 446: AH1: home patch dims like the stock scrim while the menu is open + Menu dimmin
@@ -26,8 +28,7 @@ read gate A run 180 now (45 min limit hit ~05:25); then ship v0.7.4 or localise 
   3bfc319 ckpt 442: v0.7.5 prep: emulator section ae (resting patch, phases A wrong-model / B phot
   41a919e ckpt 441: v0.7.5 prep: AE7 long-press + AE3/AD7b resting lock patch (PatchRest + service
   8ccaceb ckpt 440: v0.7.5 prep: AE7 long-press Wallpapers-only coded in scratch worktree, saved a
-  d47af7f ckpt 439: AF3: Tj parked the photo-label and privacy questions; launcher work only (AE7 
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
