@@ -1277,7 +1277,7 @@ beat "before AD"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON)
   case "$1" in
-    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'";;
+    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"profile_preclean\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'";;
     *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'";;
   esac; }
 adopen(){ adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; }   # an app opened IN Quickstep
