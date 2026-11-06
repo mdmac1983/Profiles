@@ -1007,3 +1007,8 @@ If it doesn't already do so:
 
 The lock screen from any launcher at all times should only have the rotation tile in the quick settings, no wifi or Bluetooth or notifications ever, always have the number on the buttom of the lock screen, and always have the power menu hiding screenshot. All of this should happen permanently any time the lock screen is on, from any launcher, at any time
 ```
+
+## 2026-11-06T19:25:36Z
+```
+In 0.8.0, the battery saver toggle in the quick settings for quickstep still doesn't work. It worked before this project
+```
