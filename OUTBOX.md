@@ -116,3 +116,7 @@
 ## 2026-11-06T23:12:14Z
 > Status: the final delta gate is running on the release code (version 0.8.1, code 26). It's four parallel emulator runs, including the `pt` flicker film. The release steps and run ids are saved in the checkpoint. I'll read the results when they finish.
 <!-- sha:1402a6148ce7 -->
+
+## 2026-11-06T23:19:30Z
+> Status: `pt` on the release code passed. The worst patch-versus-surround mismatch while the menu opens is about 2–4%, against 13–26% for the old one-step dim. The three gate groups should finish in about nine minutes, then I tick the tasks and ship.
+<!-- sha:f5d7c5ec141b -->
