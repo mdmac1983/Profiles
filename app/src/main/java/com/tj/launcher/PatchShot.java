@@ -67,6 +67,11 @@ public final class PatchShot {
         return lum > 190.0 && spread < 30.0;
     }
 
+    /** Review AU4, pure: does the stored crop (top-left {@code cl},{@code ct}, size {@code cw} x {@code ch}) contain the whole patch window? If the learned menu moved (font size, another entry) part of the window would be transparent. */
+    public static boolean covers(int cl, int ct, int cw, int ch, int wl, int wt, int wr, int wb) {
+        return cw > 0 && ch > 0 && wl >= cl && wt >= ct && wr <= cl + cw && wb <= ct + ch;
+    }
+
     /** Pure: what a stored crop is valid for: one wallpaper picture, one rotation, one display size. */
     public static String sig(long wallpaperId, int rotation, int dispW, int dispH) { return wallpaperId + "|r" + rotation + "|" + dispW + "x" + dispH; }
 
@@ -86,22 +91,48 @@ public final class PatchShot {
     private static File file(Context c, int rot) { return new File(c.getFilesDir(), "patchshot_r" + rot + ".png"); }
     private static String metaKey(int rot) { return "patch_shot_r" + rot; }
 
+    /** A screenshot found in the media store: where it is, when it was added (epoch SECONDS) and which app wrote it (null when the column is empty). */
+    public static final class Shot {
+        public final Uri uri; public final long addedSec; public final String owner;
+        Shot(Uri u, long a, String o) { uri = u; addedSec = a; owner = o; }
+    }
+
     /** The newest "Screenshot..." image added since the window started, or null. Needs READ_EXTERNAL_STORAGE (the wallpaper access). Never throws. */
     public static Uri newestScreenshot(Context c, long windowStartMs) {
+        Shot s = newestShot(c, windowStartMs);
+        return s == null ? null : s.uri;
+    }
+
+    /** Review AU2: like {@link #newestScreenshot} but also tells who wrote the file and when, so the caller can refuse another app's "Screenshot_x.png" and a screenshot taken during the menu / the PIN pad. */
+    public static Shot newestShot(Context c, long windowStartMs) {
         Cursor q = null;
         try {
             Uri base = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-            q = c.getContentResolver().query(base, new String[] { MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_ADDED },
-                    MediaStore.Images.Media.DATE_ADDED + ">=?", new String[] { String.valueOf(Math.max(0, windowStartMs / 1000L - 5)) }, MediaStore.Images.Media.DATE_ADDED + " DESC");
+            String[] sel = new String[] { String.valueOf(Math.max(0, windowStartMs / 1000L - 5)) };
+            try {
+                q = c.getContentResolver().query(base, new String[] { MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_ADDED, MediaStore.MediaColumns.OWNER_PACKAGE_NAME },
+                        MediaStore.Images.Media.DATE_ADDED + ">=?", sel, MediaStore.Images.Media.DATE_ADDED + " DESC");
+            } catch (Throwable noOwnerColumn) { q = null; }
+            boolean withOwner = q != null;
+            if (q == null) q = c.getContentResolver().query(base, new String[] { MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_ADDED },
+                    MediaStore.Images.Media.DATE_ADDED + ">=?", sel, MediaStore.Images.Media.DATE_ADDED + " DESC");
             if (q == null) return null;
-            long[] ids = new long[20], added = new long[20]; String[] names = new String[20]; int n = 0;
-            while (q.moveToNext() && n < 20) { ids[n] = q.getLong(0); names[n] = q.getString(1); added[n] = q.getLong(2); n++; }
+            long[] ids = new long[20], added = new long[20]; String[] names = new String[20], owners = new String[20]; int n = 0;
+            while (q.moveToNext() && n < 20) { ids[n] = q.getLong(0); names[n] = q.getString(1); added[n] = q.getLong(2); owners[n] = withOwner ? q.getString(3) : null; n++; }
             String[] nn = new String[n]; long[] aa = new long[n];
             System.arraycopy(names, 0, nn, 0, n); System.arraycopy(added, 0, aa, 0, n);
             int i = pickNewest(nn, aa, windowStartMs);
-            return i < 0 ? null : ContentUris.withAppendedId(base, ids[i]);
+            return i < 0 ? null : new Shot(ContentUris.withAppendedId(base, ids[i]), added[i], owners[i]);
         } catch (Throwable t) { Log.e(TAG, "screenshot query failed", t); return null; }
         finally { if (q != null) try { q.close(); } catch (Throwable ignored) { } }
+    }
+
+    /**
+     * Best effort (AW5): remove the calibration screenshot again so the gallery does not fill up. Android 10 only lets an app delete another app's media with the storage WRITE permission this app does not
+     * hold, so on most tablets this simply fails; it is never an error. True when the file was removed.
+     */
+    public static boolean deleteQuietly(Context c, Uri uri) {
+        try { return uri != null && c.getContentResolver().delete(uri, null, null) > 0; } catch (Throwable t) { return false; }
     }
 
     /** Decodes the image behind {@code uri}; null on any failure. */
@@ -152,11 +183,29 @@ public final class PatchShot {
         Features.setString(c, STATUS_KEY, "calibration forgotten");
     }
 
-    /** One line for Launcher control: which rotations hold a crop. */
+    /** The signature of the lock screen as it is NOW (wallpaper picture, rotation, display size): what a stored crop must have been taken for. Never throws. */
+    public static String currentSig(Context c) {
+        long id = 0;
+        try { android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(c);
+              id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_LOCK); if (id <= 0) id = wm.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
+        int rot = 0, w = 0, h = 0;
+        try {
+            android.view.WindowManager wmg = (android.view.WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            wmg.getDefaultDisplay().getRealMetrics(dm); rot = wmg.getDefaultDisplay().getRotation(); w = dm.widthPixels; h = dm.heightPixels;
+        } catch (Throwable ignored) { }
+        return sig(id, rot, w, h);
+    }
+
+    /** One line for Launcher control: which rotations hold a crop, and (review AU7) whether the one for the CURRENT lock screen is still valid for the current wallpaper and screen. */
     public static String summary(Context c) {
         StringBuilder b = new StringBuilder();
         String[] names = { "portrait", "landscape", "portrait (upside down)", "landscape (other way)" };
         for (int rot = 0; rot < 4; rot++) if (Features.getString(c, metaKey(rot), "").length() > 0 && file(c, rot).isFile()) { if (b.length() > 0) b.append(", "); b.append(names[rot]); }
-        return b.length() == 0 ? "not calibrated yet" : "calibrated for " + b;
+        if (b.length() == 0) return "not calibrated yet";
+        int rotNow = 0;
+        try { rotNow = ((android.view.WindowManager) c.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation(); } catch (Throwable ignored) { }
+        boolean valid = has(c, rotNow, currentSig(c));
+        return "calibrated for " + b + (valid ? " (valid for the lock screen as it is now)" : " - NOT valid for the current wallpaper / screen: the patch stays hidden until it is calibrated again (automatically on the next plain lock screen)");
     }
 }
