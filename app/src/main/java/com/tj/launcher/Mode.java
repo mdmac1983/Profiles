@@ -73,7 +73,7 @@ public final class Mode {
         KeyboardSwitch.apply(c, m);
         TileProfile.apply(c, m);
         ImmersiveProfile.apply(c, m);  // AA1: status bar hidden while the custom launcher is active (opt-in, needs the adb grant)
-        if (BatterySaverPolicy.modeSetChecks(quickstepBegins || quickstepEnds, BatterySaverGuard.strict(c))) BatterySaverGuard.check(c, CUSTOM.equals(m) ? "the custom launcher became active" : "Quickstep became active");   // AN1: only at a REAL change (an unlock that re-asserts the same mode no longer undoes a tap on the tile; "strict" keeps the old way)   // AG1: the saver follows the launcher (custom: off, Quickstep: on)   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins (the observer covers everything after)
+        if (BatterySaverPolicy.modeSetChecks(CUSTOM.equals(m), quickstepEnds, BatterySaverGuard.strict(c))) BatterySaverGuard.check(c, "the custom launcher became active");   // AC3: battery saver turned on in Quickstep is switched off the moment custom begins; AN1: only at a REAL change ("strict" keeps the old way); AZ2: Quickstep is never touched (the v0.7.5 switch-ON is gone: it left Android's state machine out of step)
         // (Q3's retail-demo flag was REMOVED by the AB1 safety audit: see DemoModeProfile)       // D6: one quick-settings tile in custom mode, Tj's three in Quickstep (needs the adb grant)   // V2: stock keyboard in custom mode, SwiftKey in Quickstep (only if switched on and adb-granted)
     }
 }
