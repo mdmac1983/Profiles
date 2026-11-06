@@ -982,3 +982,16 @@ The custom launcher occasionally had apps in the recent apps list which were fro
 
 Attached is what the wallpaper picker should look like. The reference is the screenshot without the my photos button. This is what i want it to look like. There should be no my photos option. This can probably be done by code, this is the android default wallpaper picker app. You may be able to find the source online and simply remove the my photos choice
 ```
+
+## 2026-11-06T08:49:11Z
+```
+After you have completed everything you are working on and all my prompts:
+
+Do a full test of the launcher app for maximum optimization and speed for my hardware. Make sure it can open each launcher as quickly as possible from the lock screen without flicker or showing quickstep items if i unlock to the custom launcher.  Make sure everything can survive a tablet restart.  The goal of the custom launcher is a smooth interface that looks completely stock without artifacts or blinking or flashing elements. 
+
+Figure out the best way to make the totally invisible wallpaper patch for the lock screen to hide the screenshot button, while keeping the power menu itself unchanged. 
+
+Audit the settings in the launcher app to make sure they all work, they don't include contradictory settings or anything that would break,  and improve the ui and organization for ease of use and intuitive design. 
+
+Build all of this into a release that is as polished as possible with all the features i asked for
+```
