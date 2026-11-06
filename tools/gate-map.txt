@@ -21,7 +21,6 @@ n6     :: 21  :: opt  :: ShellServer|ShellHelper|TaskOrigin|ReturnReset|AppOrigi
 t      :: 40  :: opt  :: TileProfile|KeyboardSwitch|Mode\.java :: - :: different quick-settings tiles per launcher
 x      :: 15  :: opt  :: ReportState|TabletReport|ShellServer|tablet-intake|adb-all|Features\.java :: - :: the tablet report and its intake (PG3 size cap, red flags)
 v      :: 57  :: opt  :: PatchRest|PatchCalibrator|PowerMenuRule|PowerMenuDump|LockNumber :: patchShow|addPatch|patchResting|lockShot|lockBmp|wallpaperBmp|restDim|openScrim|DIM_OPEN|DIM_KEYGUARD :: the lock-screen wallpaper patch (position, dim) and the unlock stopwatch
-ae     :: 90  :: opt  :: PatchRest :: patchResting|patchRestTop|lockPatchAlways :: AE3: the resting patch over the Screenshot slot
 ka     :: 69  :: opt  :: KeepAlive :: - :: the keep-alive foreground service and its crash fuse
 ad     :: 54  :: opt  :: ResumeTarget|PowerMenuRule :: startQuickstepFront|qsApp|resumedPkg|coverWorld :: AD5 (a gesture unlock resumes the open app), AD7a (the cover on every lock screen)
 se     :: 33  :: opt  :: SecretEntrances|EntranceWatcher|TjHooks|launcher3/src/com/android/launcher3/Launcher\.java :: dispatchTouchEvent|EntranceWatcher :: AD4: the hidden entrances to Quickstep
