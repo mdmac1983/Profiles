@@ -78,6 +78,34 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.recentTaskIds(DUMP, Arrays.<String>asList()).isEmpty());
     }
 
+    // 2026-11-06: the OLDEST task was removed at every lock clean-up because the last block of the dump swallows whatever follows the list (gate run 147, bisect runs 153-155)
+    private static final String DUMP_WITH_TRAILING_TEXT =
+            "ACTIVITY MANAGER RECENT TASKS (dumpsys activity recents)\n"
+          + "  Recent tasks:\n"
+          + "  * Recent #0: TaskRecord{aa1 #56 A=com.android.email U=0 StackId=10 sz=1}\n"
+          + "    realActivity=com.android.email/.activity.Welcome\n"
+          + "  * Recent #1: TaskRecord{aa2 #54 A=com.android.gallery3d U=0 StackId=9 sz=1}\n"
+          + "    realActivity=com.android.gallery3d/.app.GalleryActivity\n"
+          + "  * Recent #2: TaskRecord{aa3 #34 A=android.task.calendar U=0 StackId=6 sz=1}\n"
+          + "    affinity=android.task.calendar\n"
+          + "    intent={act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.android.calendar/.AllInOneActivity}\n"
+          + "    realActivity=com.android.calendar/.AllInOneActivity\n"
+          + "    affinityIntent={cmp=com.android.email/.activity.Welcome}\n"
+          + "  Visible recent tasks (most recent first):\n"
+          + "    * RecentTaskInfo{id=56 A=com.android.email realActivity=com.android.email/.activity.Welcome cmp=com.android.email/.activity.Welcome affinity=com.android.email}\n"
+          + "    * RecentTaskInfo{id=54 A=com.android.gallery3d realActivity=com.android.gallery3d/.app.GalleryActivity}\n";
+    @Test public void theOldestTaskIsNotSwallowedByTextAfterTheList() {
+        assertEquals(Arrays.asList(56, 54), ShellProtocol.recentTaskIds(DUMP_WITH_TRAILING_TEXT, Arrays.asList("com.android.email", "com.android.gallery3d")));
+        assertEquals(Arrays.asList(34), ShellProtocol.recentTaskIds(DUMP_WITH_TRAILING_TEXT, Arrays.asList("com.android.calendar")));
+    }
+    @Test public void aTaskWithoutARealActivityStillMatchesThroughItsIntentOrHeader() {
+        String d = "  Recent tasks:\n"
+                 + "  * Recent #0: TaskRecord{b1 #21 A=com.x.one U=0 StackId=1 sz=1}\n"
+                 + "    intent={act=android.intent.action.MAIN cmp=com.x.one/.Main}\n"
+                 + "  * Recent #1: TaskRecord{b2 #22 I=com.x.two/.Main U=0 StackId=1 sz=1}\n";
+        assertEquals(Arrays.asList(21, 22), ShellProtocol.recentTaskIds(d, Arrays.asList("com.x.one", "com.x.two")));
+    }
+
     // ---- S2: the allow-listed jobs
     @Test public void onlyListedJobsHaveALine() {
         assertEquals("pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS", ShellProtocol.runLine("GRANT_WSS"));

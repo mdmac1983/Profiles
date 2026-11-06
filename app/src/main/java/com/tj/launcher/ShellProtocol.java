@@ -85,27 +85,16 @@ public final class ShellProtocol {
     private static final Pattern COMPONENT_PKG = Pattern.compile("(?:realActivity=|cmp=|affinity=|A=)([A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)");
 
     /**
-     * The ids of the Recents tasks that belong to the given packages, read from the text of `dumpsys activity recents`
-     * (blocks start with "Recent #n: TaskRecord{hash #id ..."; the package shows in realActivity= / cmp= / affinity= / A=). Force-stop kills an app but Android 10 leaves its Recents card,
-     * so the helper removes these tasks too.
+     * The ids of the Recents tasks that belong to the given packages, read from the text of `dumpsys activity recents`. Force-stop kills an app but Android 10 can leave its Recents card, so the helper
+     * removes these tasks too.
+     * <p>2026-11-06 (gate run 147 and the bisect runs 153-155): a task belongs to a package ONLY if its ROOT activity does (the rule of {@link #parseTasks}: realActivity=, else cmp=, else I=, else A=).
+     * The first version matched any line of a task's text, and the LAST task of the list also collects everything printed after the list, so at every lock clean-up the OLDEST Recents task (the
+     * Calendar target in the emulator test, the system's FallbackHome in others) was removed - and its process killed ("remove task") - although the plan never named it.
      */
     public static List<Integer> recentTaskIds(String dump, Collection<String> pkgs) {
         List<Integer> out = new ArrayList<>();
         if (dump == null || pkgs == null || pkgs.isEmpty()) return out;
-        int id = -1;
-        boolean match = false;
-        for (String line : dump.split("\\n")) {
-            Matcher h = TASK_HEADER.matcher(line);
-            if (h.find()) {
-                if (id >= 0 && match && !out.contains(id)) out.add(id);
-                try { id = Integer.parseInt(h.group(1)); } catch (NumberFormatException e) { id = -1; }
-                match = false;
-            }
-            if (id < 0) continue;
-            Matcher c = COMPONENT_PKG.matcher(line);
-            while (c.find()) if (pkgs.contains(c.group(1))) match = true;
-        }
-        if (id >= 0 && match && !out.contains(id)) out.add(id);
+        for (java.util.Map.Entry<Integer, String> e : parseTasks(dump).entrySet()) if (pkgs.contains(e.getValue())) out.add(e.getKey());
         return out;
     }
 
