@@ -73,7 +73,7 @@ def analyse(P, S, fps, thr=0.006):
             cd = [(j, dev(j)) for j in range(max(0, c_on - 2), c_end)]
             jm, dm = max(cd, key=lambda t: abs(t[1]))
             ctail = [d for (j, d) in cd if j >= c_end - int(0.12 * fps)]
-            out.update({"close_max": abs(dm), "close_at": (jm - c_on) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0})
+            out.update({"close_max": abs(dm), "close_at": (jm - c_on) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0, "close_onset": c_on / fps})
     out["frames"] = n
     return out
 
