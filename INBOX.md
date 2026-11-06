@@ -896,3 +896,8 @@ Now battery saver doesn't work in quickstep. I want it to turn on and stay on, j
 ```
 It is not an animated wallpaper
 ```
+
+## 2026-11-06T05:18:59Z
+```
+Also, the custom launcher just left a quickstep app in the recent app list
+```
