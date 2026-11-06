@@ -931,3 +931,8 @@ Continue with v0.7.5
 ```
 The actual battery saver tile in the notification panel in quickstep doesn't work
 ```
+
+## 2026-11-06T05:57:46Z
+```
+Also, make it so wifi, Bluetooth, and all notifications are cleared and off whenever the tablet is on the lock screen, from any launcher. The lock screen should never, at any time, show wifi, Bluetooth, or notifications from apps
+```
