@@ -1877,7 +1877,7 @@ else info "PA 2: no slot geometry"; check "PA 2: the menu rectangle was learned"
 # ---- phase 3 (review AU2): a screenshot taken while the power menu is OPEN is refused
 adb shell am force-stop "$PKG"; sleep 1
 UNTIL=$(( $(adb shell date +%s | tr -d '\r\n') * 1000 + 120000 ))
-adb shell "run-as $PKG sed -i 's#name=\"patch_cal_until\">[0-9]*<#name=\"patch_cal_until\">$UNTIL<#' shared_prefs/tj_features.xml"
+adb shell "run-as $PKG sed -i 's#name=\"patch_cal_until\">[0-9]*<#name=\"patch_cal_until\">$UNTIL<#; s#</map>#<boolean name=\"patch_auto_shot_off\" value=\"true\" /></map>#' shared_prefs/tj_features.xml"     # debug-only knob: the helper must NOT take its own (plain lock screen) screenshot in this phase
 setmode custom; rebind; home; palock; adb logcat -c
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3                 # the menu is OPEN
 adb shell "mkdir -p /sdcard/Pictures/Screenshots; screencap -p /sdcard/Pictures/Screenshots/Screenshot_pa_menu.png"

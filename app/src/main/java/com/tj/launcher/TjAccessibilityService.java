@@ -2571,6 +2571,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final Runnable autoShot = new Runnable() { @Override public void run() {
         try {
             if (!calibrating() || autoShotDone) return;
+            if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && Features.get(TjAccessibilityService.this, "patch_auto_shot_off", false)) return;   // debug builds only: the emulator takes its own screenshot (section pa, AU2)
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
             boolean ready = pm != null && pm.isInteractive() && keyguardLockedFast() && !lastBouncer && !overlayShown && patchView != null;
             if (!ready) { if (++autoShotTries < 12) handler.postDelayed(this, 2000); return; }   // wait for the lock screen to be up, the menu closed, no PIN pad
