@@ -44,6 +44,35 @@ public final class ReportState {
 
     private static String yes(boolean v) { return v ? "yes" : "no"; }
 
+    /**
+     * AD8 (Tj, 2026-11-06: "optimized for my tablet": MT8168, 2 GB, Android 10 Go): what this launcher COSTS on the device, as numbers the next session can act on instead of guesses. Memory of this process
+     * (PSS from the activity manager), how long the last start took, how long the Control screen took to build, and how busy the accessibility helper is. Never throws.
+     */
+    static String costLines(Context c) {
+        StringBuilder b = new StringBuilder();
+        try {
+            Runtime rt = Runtime.getRuntime();
+            long pssMb = -1;
+            android.app.ActivityManager am = (android.app.ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                android.os.Debug.MemoryInfo[] mi = am.getProcessMemoryInfo(new int[] { android.os.Process.myPid() });
+                if (mi != null && mi.length > 0) pssMb = mi[0].getTotalPss() >> 10;   // kB -> MB
+            }
+            b.append("process memory (AD8): total PSS ").append(pssMb < 0 ? "?" : String.valueOf(pssMb)).append(" MB, java heap ")
+                    .append((rt.totalMemory() - rt.freeMemory()) >> 20).append(" of ").append(rt.maxMemory() >> 20).append(" MB\n");
+        } catch (Throwable t) { b.append("process memory (AD8): (unreadable)\n"); }
+        try {
+            long build = ControlActivity.lastBuildMs;
+            b.append("start-up (AD8): Application.onCreate ").append(TjApplication.startMs).append(" ms, process fork to the end of it ").append(TjApplication.sinceForkMs)
+                    .append(" ms; Control screen last build ").append(build < 0 ? "(not built in this process)" : build + " ms").append('\n');
+        } catch (Throwable t) { b.append("start-up (AD8): (unreadable)\n"); }
+        try {
+            TjAccessibilityService s = TjAccessibilityService.get();
+            b.append("accessibility helper load (AD8): ").append(s == null ? "(not bound)" : s.perfLine()).append('\n');
+        } catch (Throwable t) { b.append("accessibility helper load (AD8): (unreadable)\n"); }
+        return b.toString();
+    }
+
     private static String setting(String kind, Context c, String name) {
         try {
             String v = "global".equals(kind) ? Settings.Global.getString(c.getContentResolver(), name) : Settings.Secure.getString(c.getContentResolver(), name);
