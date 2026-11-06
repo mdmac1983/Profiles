@@ -71,6 +71,16 @@ public final class PatchRest {
         return t * t * (3f - 2f * t);
     }
 
+    /**
+     * Are two patch windows the same for all practical purposes? The slot window follows the card's bottom edge, which is measured on every menu scan and can wobble by a pixel; rebuilding the patch for that
+     * would itself flicker. Each side may differ by up to {@code tol} px.
+     */
+    public static boolean sameWindow(int[] a, int[] b, int tol) {
+        if (a == null || b == null || a.length != 4 || b.length != 4) return false;
+        for (int i = 0; i < 4; i++) if (Math.abs(a[i] - b[i]) > tol) return false;
+        return true;
+    }
+
     /** The mask (w * h bytes, row-major, 0..255 as unsigned) for {@link #alphaAt}. */
     public static byte[] mask(int w, int h, int cl, int ct, int cr, int cb, int fl, int ft, int fr, int fb) {
         byte[] m = new byte[Math.max(0, w) * Math.max(0, h)];
