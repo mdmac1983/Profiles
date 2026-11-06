@@ -916,3 +916,8 @@ I had an app called portfolio open. It is only in the quickstep launcher. I pres
 ```
 Are all these extremely long tests needed
 ```
+
+## 2026-11-06T05:40:39Z
+```
+Only keep reasonable tests from now on and make them as fast and efficient as possible
+```
