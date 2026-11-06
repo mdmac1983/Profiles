@@ -38,6 +38,30 @@ public class TabletReportTest {
         assertTrue(TabletReport.newestWithin(lines, 5).isEmpty());
     }
 
+    @Test public void aTextThatFitsIsReturnedUnchanged() {
+        String s = "line one\nline two\n";
+        assertEquals(s, TabletReport.cutAtLine(s, s.length()));
+        assertEquals(s, TabletReport.cutAtLine(s, 5000));
+        assertEquals("", TabletReport.cutAtLine(null, 100));
+    }
+
+    @Test public void aLongTextIsCutAtALineEndAndSaysSo() {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 100; i++) b.append("0123456789 line ").append(i).append('\n');
+        String s = b.toString();
+        String cut = TabletReport.cutAtLine(s, 500);
+        assertTrue(cut.length() <= 500);
+        assertTrue(cut, cut.endsWith("the full report file has the rest)\n"));
+        assertTrue("the kept part is whole lines of the original", s.startsWith(cut.substring(0, cut.indexOf("(cut:"))));
+        assertTrue(cut.substring(0, cut.indexOf("(cut:")).endsWith("\n"));
+    }
+
+    @Test public void aBudgetTooSmallForTheNoteGivesNothing() {
+        assertEquals("", TabletReport.cutAtLine("some text\nmore text\n", 10));
+        assertEquals("", TabletReport.cutAtLine("some text\nmore text\n", 0));
+        assertEquals("", TabletReport.cutAtLine("some text\nmore text\n", -100));
+    }
+
     @Test public void theBudgetIsBelowTheGateLimit() {
         assertTrue("the gate checks the summary is under 12000 bytes", TabletReport.SUMMARY_MAX < 12_000);
     }
