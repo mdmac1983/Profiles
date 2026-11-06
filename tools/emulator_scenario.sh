@@ -1614,14 +1614,15 @@ adb shell settings put secure sysui_qs_tiles "wifi,bt,rotation,flashlight"; slee
 info "LQ: before the lock: wifi_on=$(wifi) lock_screen_show_notifications=$(lqshow) tiles=$(tiles)"
 check "LQ: the lock screen shows no app notifications (lock_screen_show_notifications = 0 once the helper runs)" bash -c "[ \"$(lqshow)\" = 0 ]"
 adb logcat -c
-lockpad; sleep 9                                                    # the tablet is on the lock screen
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 4        # the PLAIN lock screen first (no PIN pad: the lock number is hidden while the pad is up)
+adb shell dumpsys window windows | grep -c TjLockNumber > "$OUT/lq-number.txt" 2>&1
+adb shell input swipe 300 900 300 300 300; sleep 5                                                        # then the PIN pad: the tablet is locked, as the rest of the section expects
 LQW1="$(wifi)"
 adb shell svc wifi enable; sleep 6                                  # something turns Wi-Fi on while locked
 LQW2="$(wifi)"
 LQT1="$(tiles)"
 info "LQ: on the lock screen wifi_on=$LQW1; after something turned it on again, 6 s later: $LQW2; tiles=$LQT1"
 check "LQ/AW2: on the lock screen (locked from Quickstep) the quick settings hold the rotation tile only" bash -c "[ \"$LQT1\" = rotation ]"
-adb shell dumpsys window windows | grep -c TjLockNumber > "$OUT/lq-number.txt" 2>&1
 info "LQ/AW4: windows of the lock number on the lock screen (locked from Quickstep): $(tr -d ' \r\n' < $OUT/lq-number.txt)"
 check "LQ/AW4: the lock number is drawn on the lock screen in Quickstep mode too" bash -c "[ \"\$(tr -d ' \\r\\n' < $OUT/lq-number.txt)\" -ge 1 ]"
 # AW3: a radio that keeps coming back is switched off every time, never given up on (v0.8.0 stopped after 3 switch-offs a minute)
