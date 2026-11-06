@@ -1,13 +1,13 @@
-# CHECKPOINT 545 — read me first, then TASKS.md
+# CHECKPOINT 546 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T23:00:43Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `cbcabc1` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T23:01:18Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `1d45987` (this checkpoint is the commit after it)
 
 ## Just done
-gate round 1 (ckpt 540 code) read: pt #249 9 PASS; ps B + pa PA2 + ae AE3 fail (lock screen near-white in the combined runs -> looksLikeMenu refuses the calibration screenshot; AE3: auto-calibration ON interferes), lq AW4 measured with the PIN pad up; fixes: v/ae feature files patch_auto_cal=false, lq measures the number on the plain lock screen, refused-screenshot status shows the slot mean + 4x4 grid, hold rule = time-based confirmation (dialogUp is always false here), pt hold metric INFO
+dispatched on ckpt 545 (23:01 UTC): ps #254 id 42308896343, ae #255 id 42308900628, pa #256 id 42308904580, lq #257 id 42308908592, v+ps #258 (id: list emulator.yml runs). The gate round 1 runs 250/251/252 (ckpt 540) are read: only ps B/pa PA2/ae AE3/lq AW4 failed
 
 ## Do this next
-dispatch ps, ae, pa, lq and v+ps alone on this ckpt; read; then a final pt + full gate rerun on the final code, ship
+read the five runs (list_workflow_jobs resource_id=run id -> get_job_logs tail 80): ps B status text now has 'slot mean .. 4x4 grid ..' to see what the screenshot showed; fix; then final pt + full gate on the final code; code review fixes are in; ship v0.8.1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ dispatch ps, ae, pa, lq and v+ps alone on this ckpt; read; then a final pt + ful
 
 ## Last ten checkpoints
 ```
+  1d45987 ckpt 545: gate round 1 (ckpt 540 code) read: pt #249 9 PASS; ps B + pa PA2 + ae AE3 fail
   3cb5281 ckpt 544: PatchFadeTest adjusted for LEAD_MS 10 (unit suite + lint green locally)
   b4391f8 ckpt 543: pt run 249: 9 PASS: fade open_max 3-6 % vs jump 26 %; found the mid-open glitc
   964beab ckpt 542: review of v0.8.1 (agent report) fixed: stored crop invalidated when it no long
@@ -25,8 +26,4 @@ dispatch ps, ae, pa, lq and v+ps alone on this ckpt; read; then a final pt + ful
   a52dfe7 ckpt 538: quietWork cancelled in cancelPatchWork; TASKS AZ1 FLICKER FINDINGS written (ru
   ce7e0db ckpt 537: pt run 245 analysed: main-thread stall (PIN-pad scan + power-menu scan at the 
   6232c7e ckpt 536: pt fixes: fast path now reacts to the dialog's own window-state event (no getW
-  c62f08c ckpt 535: pt shows the patch darkens BEFORE the scrim is visible (dev -26% at onset, bot
 ```
-
-(7 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
