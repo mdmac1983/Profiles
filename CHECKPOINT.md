@@ -1,13 +1,13 @@
-# CHECKPOINT 543 — read me first, then TASKS.md
+# CHECKPOINT 544 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T22:45:19Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `cecc569` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T22:46:32Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-019b8e69-16dn91` · **builds on:** `269b2ec` (this checkpoint is the commit after it)
 
 ## Just done
-pt run 249: 9 PASS: fade open_max 3-6 % vs jump 26 %; found the mid-open glitch (a scan ~0.5 s after the open finds no menu text while the dialog window is up -> patch back to bright rest for ~170 ms): hold rule (keep the patch while the dialog window is in the list, 3 misses max), PatchFade.LEAD_MS 25 -> 10 (sweep -25..80), scan/hold lines in the pt timeline, new pt check hold_max
+PatchFadeTest adjusted for LEAD_MS 10 (unit suite + lint green locally)
 
 ## Do this next
-dispatch pt again (emulator.yml sections=pt): check hold_max < 0.08, open_max, no 'menu closed' mid-open in the timeline; read gate runs 250/251/252; rerun lq,bs,pa,ps (reviewer fixes touch calibration/battery/tile); then ship
+dispatch pt (sections=pt) on this ckpt and read hold_max / open_max / timeline (scan and hold lines); gate runs 250/251/252 on ckpt 540 code still to read
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ dispatch pt again (emulator.yml sections=pt): check hold_max < 0.08, open_max, n
 
 ## Last ten checkpoints
 ```
+  b4391f8 ckpt 543: pt run 249: 9 PASS: fade open_max 3-6 % vs jump 26 %; found the mid-open glitc
   964beab ckpt 542: review of v0.8.1 (agent report) fixed: stored crop invalidated when it no long
   dc94174 ckpt 541: dispatched on ckpt 540 (sha 97e801d, 22:34 UTC): pt #249 (run id 42305657809),
   97e801d ckpt 540: emulator.yml: ffmpeg install step has retries + 4 min timeout (run 248 hung 6 
@@ -25,8 +26,7 @@ dispatch pt again (emulator.yml sections=pt): check hold_max < 0.08, open_max, n
   6232c7e ckpt 536: pt fixes: fast path now reacts to the dialog's own window-state event (no getW
   c62f08c ckpt 535: pt shows the patch darkens BEFORE the scrim is visible (dev -26% at onset, bot
   4b8eabb ckpt 534: TASKS: AZ STATUS block; AW2 and AW3 ticked (run #239); AW4 check in lq; runs p
-  58c4d76 ckpt 533: AW5 auto-calibration + AU2/AU4/AU6/AU7/AU8 coded; sections pa and pt added; fa
 ```
 
-(3 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
