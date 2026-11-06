@@ -2046,11 +2046,13 @@ public class TjAccessibilityService extends AccessibilityService {
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
-            // AZ1 (run 249): about 0.5 s after the stock dialog opens it rebuilds its list (a second window-state event for the same window); a scan that lands in that moment finds no "Power off" / "Screenshot" text although the
-            // dialog's window is still in the window list. The patch then fell back to its bright resting state for ~170 ms = a light block on the darkened menu screen. The window list says it is open: keep the patch, look again shortly.
-            if (custom && overlayShown && dialogUpNow && !menuOpen && Features.isCover(mode) && holdMisses < 3) {
+            // AZ1 (runs 249 / 253, emulator): ~0.5 s after the stock dialog opens, a scan sometimes finds no "Power off" / "Screenshot" text (the emulator's injected long press shows the dialog twice; a busy SystemUI also answers a
+            // node search with NOTHING when it is too slow). The patch then fell back to its bright resting state for 20-170 ms = a light block on the darkened menu screen. (The window list cannot confirm the dialog:
+            // its title is not "ActionsDialog" there, dialogUp stays false even while the menu is open.) So within 2 s of the opening one "not open" answer is not believed: look again 250 ms later, hide only if that agrees.
+            long sinceOpen = android.os.SystemClock.uptimeMillis() - cardShownMs;
+            if (custom && overlayShown && !menuOpen && Features.isCover(mode) && sinceOpen < 2000 && holdMisses < 1) {
                 holdMisses++;
-                Log.i(TAG, "PATCH hold: the dialog window is still up but its texts were not found (miss " + holdMisses + " of 3)");
+                Log.i(TAG, "PATCH hold: no menu text found " + sinceOpen + " ms after the menu opened: looking again before the patch goes");
                 handler.removeCallbacks(recheck); handler.postDelayed(recheck, 250);
                 return;
             }
