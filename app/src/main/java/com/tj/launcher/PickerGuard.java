@@ -35,7 +35,7 @@ final class PickerGuard {
     static final String DUMP_KEY = "picker_dump";            // the picker's visible nodes, one line (tablet report)
     static final String STATUS_KEY = "picker_status";        // what the guard did last (Launcher control and report)
     private static final String LABEL = "my photos";
-    private static final long MIN_GAP_MS = 120, TRAILING_MS = 160, FAILSAFE_MS = 4000, DUMP_GAP_MS = 30_000, PKG_TTL_MS = 10 * 60_000;
+    private static final long MIN_GAP_MS = 120, TRAILING_MS = 160, FAILSAFE_MS = 4000, DUMP_GAP_MS = 120_000, PKG_TTL_MS = 10 * 60_000;
 
     private final AccessibilityService svc;
     private final android.os.Handler handler;
