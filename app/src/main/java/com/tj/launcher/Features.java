@@ -28,6 +28,8 @@ public final class Features {
     public static void set(Context c, String key, boolean on) { p(c).edit().putBoolean(key, on).commit(); }
     public static String getString(Context c, String key, String def) { return p(c).getString(key, def); }
     public static void setString(Context c, String key, String v) { p(c).edit().putString(key, v).commit(); }
+    /** For diagnostics only: the in-memory value is updated at once, the disk write happens later on SharedPreferences' own thread (never fsync on the UI thread inside a time-critical path). */
+    public static void setStringAsync(Context c, String key, String v) { p(c).edit().putString(key, v).apply(); }
     public static int getInt(Context c, String key, int def) { return p(c).getInt(key, def); }
     public static void setInt(Context c, String key, int v) { p(c).edit().putInt(key, v).commit(); }
     public static void allOff(Context c) { p(c).edit().clear().commit(); }
