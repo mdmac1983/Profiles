@@ -50,7 +50,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         evSeen++;
-        try { if (event != null && EventNoise.windowsJustChanged(event.getEventType())) { lastWinEventMs = event.getEventTime(); fastMenuOpen(event); } } catch (Throwable t) { Log.e(TAG, "fast menu check failed", t); }   // AZ1: FIRST, before any other work of this event
+        try { if (event != null && EventNoise.windowsJustChanged(event.getEventType())) { noteWindowEvent(event.getEventTime()); fastMenuOpen(event); } } catch (Throwable t) { Log.e(TAG, "fast menu check failed", t); }   // AZ1: FIRST, before any other work of this event
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
         try { picker().onEvent(event); } catch (Throwable t) { Log.e(TAG, "picker guard failed", t); }
         try { recents().onEvent(event); } catch (Throwable t) { Log.e(TAG, "recents guard failed", t); }   // AP1: whenever Recents opens in the custom launcher, the cards of apps that are not in the drawer are closed   // AO1: no "My photos" tile in the system wallpaper picker (one string compare for every other app's event)
@@ -239,7 +239,12 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String PATCH_FADE_KEY = "patch_fade";
     /** AZ1: Tj's nudge of the fade timing in ms (+ = the patch darkens earlier, - = later): the tablet's timing may differ from the emulator's. */
     public static final String PATCH_FADE_SHIFT_KEY = "patch_fade_shift";
-    private volatile long lastWinEventMs = 0;          // AZ1: event time (uptime ms) of the newest window-state / windows-changed event: the stock fade began about then
+    private volatile long lastWinEventMs = 0, winBurstStartMs = 0;   // AZ1: event time (uptime ms) of the newest window event and of the FIRST event of the current burst: the stock fade began about when the burst did
+    /** AZ1: events of one burst (a dialog being added raises several window events within a few ms) are anchored on the first one. */
+    private void noteWindowEvent(long eventTime) {
+        if (lastWinEventMs == 0 || eventTime - lastWinEventMs > 250 || eventTime < lastWinEventMs) winBurstStartMs = eventTime;
+        lastWinEventMs = eventTime;
+    }
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
     private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
@@ -2386,7 +2391,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void startFade() {
         long now = android.os.SystemClock.uptimeMillis();
         boolean on = patchFadeOn();
-        long lag = on ? PatchFade.lagMs(now, lastWinEventMs) : PatchFade.OPEN_MS;
+        long lag = on ? PatchFade.lagMs(now, winBurstStartMs) : PatchFade.OPEN_MS;
         fadeLeadMs = PatchFade.LEAD_MS;
         if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", -1); if (v >= 0) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt)
         fadeLeadMs += Features.getInt(this, PATCH_FADE_SHIFT_KEY, 0);
