@@ -201,6 +201,8 @@ def main(argv):
         return 1
     on_idx = int(round(m["onset"] * fps))
     print("PTSERIES label=%s (t_ms:S/P/dev in per-mille from the onset) %s" % (label, series(P, S, fps, on_idx, m["r0"])))
+    if "close_onset" in m:   # the same curves around the moment the surround starts to brighten again (the stock dismissal, or the window going away)
+        print("PTCLOSE label=%s (t_ms:S/P/dev in per-mille from the first brightening) %s" % (label, series(P, S, fps, int(round(m["close_onset"] * fps)), m["r0"], span_ms=(-120, 480), step=1)))
     print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f" % (
         label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0)))
     return 0
