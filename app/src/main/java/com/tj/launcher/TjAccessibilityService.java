@@ -270,13 +270,19 @@ public class TjAccessibilityService extends AccessibilityService {
         return patchRect(r);
     }
 
-    /** V3: the patch covers the ENTIRE 3-button menu: the learned rectangle plus the panel's margin / shadow. */
+    /**
+     * V3 (before v0.7.6): the patch covered the ENTIRE 3-button menu: the learned rectangle plus a 12 px ring with hard edges. AH3 (v0.7.6, Tj's side-by-side photos: our card is the right size and flush, but a flat
+     * bluish block around it shows where the patch does not match the live lock screen): the patch now covers ONLY the Screenshot slot (below our card) plus a soft fringe, see {@link PatchRest#slotWindow}.
+     * If the learned geometry is nonsense (the card would be the whole panel) the window is a thin strip at the panel's bottom and the card covers the whole panel, so no Screenshot entry can show.
+     */
     private Rect patchRect(Rect r) {
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
-        int m = (int) (12 * dm.density);
-        return new Rect(Math.max(0, r.left - m), Math.max(0, r.top - m), Math.min(dm.widthPixels, r.right + m), Math.min(dm.heightPixels, r.bottom + m));
+        int[] w = PatchRest.slotWindow(r.left, cardAreaGeom(r).bottom, r.right, r.bottom, Math.round(PatchRest.EDGE_DP * dm.density), Math.round(PatchRest.FEATHER_DP * dm.density), dm.widthPixels, dm.heightPixels);
+        return new Rect(w[0], w[1], w[2], w[3]);
     }
+
+    private static int[] rectArr(Rect r) { return new int[] { r.left, r.top, r.right, r.bottom }; }
 
     // ---------------------------------------------------------------- V4: make the lock-screen patch show the RIGHT part of the wallpaper
     private String lockCalSigFor(Rect r) {
