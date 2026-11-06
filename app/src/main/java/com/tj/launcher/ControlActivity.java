@@ -72,7 +72,16 @@ public class ControlActivity extends Activity {
     }
 
     // ---------------------------------------------------------------- the page
+    /** AD8: the whole page is rebuilt from the stored state on every change; how long that takes on THIS tablet goes into the report, so the cost is known before anyone optimises it. */
+    static volatile long lastBuildMs = -1;
+
     private void build() {
+        long t0 = android.os.SystemClock.uptimeMillis();
+        buildPage();
+        lastBuildMs = android.os.SystemClock.uptimeMillis() - t0;
+    }
+
+    private void buildPage() {
         page.removeAllViews();
         title("Launcher control");
 
