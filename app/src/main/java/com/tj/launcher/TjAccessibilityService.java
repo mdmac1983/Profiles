@@ -167,7 +167,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean lockPatchAlways() { return Features.get(this, PatchRest.KEY, false) && lockPatchWanted(); }
     /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
     private float restDim(boolean photo) {
-        float k = (photo ? 1f : DIM_KEYGUARD) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        if (photo) return 1f;   // v0.7.6 (review of v0.7.5): the photo already has the real keyguard brightness and no dialog scrim is open: exactly 1, whatever the brightness nudge says (it corrects the MODEL's keyguard dim only)
+        float k = DIM_KEYGUARD * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
         return Math.max(0.3f, Math.min(1f, k));
     }
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
