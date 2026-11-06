@@ -267,7 +267,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String PATCH_FADE_KEY = "patch_fade";
     /** AZ1: Tj's nudge of the fade timing in ms (+ = the patch darkens earlier, - = later): the tablet's timing may differ from the emulator's. */
     public static final String PATCH_FADE_SHIFT_KEY = "patch_fade_shift";
-    private volatile long lastWinEventMs = 0, winBurstStartMs = 0;   // AZ1: event time (uptime ms) of the newest window event and of the FIRST event of the current burst: the stock fade began about when the burst did
+    private volatile long lastWinEventMs = 0, winBurstStartMs = 0, dialogEventMs = 0;   // AZ1: event time (uptime ms) of the newest window event, of the FIRST event of the current burst, and of the stock dialog's own window-state event: the stock fade began about then
     /** AZ1: events of one burst (a dialog being added raises several window events within a few ms) are anchored on the first one. */
     private void noteWindowEvent(long eventTime) {
         if (lastWinEventMs == 0 || eventTime - lastWinEventMs > 250 || eventTime < lastWinEventMs) winBurstStartMs = eventTime;
