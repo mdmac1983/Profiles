@@ -863,3 +863,8 @@ MBX1 vs BATCH1. I don't know what this means
 ```
 Stop wasting time on the phone guide, because i already did the adb commands
 ```
+
+## 2026-11-06T04:29:09Z
+```
+If i make this repo private, would it break anything
+```
