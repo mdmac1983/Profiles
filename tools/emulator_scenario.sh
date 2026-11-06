@@ -1896,6 +1896,78 @@ adb shell settings put secure lock_screen_show_notifications 1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section pa
+if want pt; then # section pt
+ensurehome
+# ---- AZ1 (Tj, 2026-11-06 20:40: "a slight flicker when I press the side key to open the power menu ... can the darkening ... be faster or fade"). This section FILMS the stock power menu opening and closing on the lock screen
+#      (screenrecord) and measures, frame by frame, how the patch's brightness compares with the brightness of the lock screen beside the menu (tools/pt_analyze.py: dev = (patch / surround) / (the same ratio before the menu) - 1;
+#      0 = the patch is invisible, -0.10 = a block 10 % darker than its surround). The same opening is filmed with the old one-step dim (patch_fade off) and with the fade at several lead times, so the lead can be tuned
+#      on the real Android 10 SystemUI and the claim "the fade is better than the jump" is a number, not a hope. The PIN is ALWAYS cleared again at the end.
+beat "before PT"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/pt-grant.txt" 2>&1
+adb shell settings put secure lock_screen_show_notifications 0
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
+ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's preferences (the helper is restarted afterwards)
+  printf 's#<boolean name="patch_fade" value="[a-z]*" />##\ns#<int name="patch_fade_lead" value="[-0-9]*" />##\ns#</map>#<boolean name="patch_fade" value="%s" /><int name="patch_fade_lead" value="%s" /></map>#\n' "$1" "$2" > "$OUT/ptset.sed"
+  local B64; B64="$(base64 -w0 "$OUT/ptset.sed")"
+  adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/ptset.sed; sed -i -f files/ptset.sed shared_prefs/tj_features.xml'"; }
+# ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
+ptrun(){ local L="$1"
+  adb shell rm -f /sdcard/pt.mp4 >/dev/null 2>&1
+  ( adb shell screenrecord --time-limit 6 /sdcard/pt.mp4 >/dev/null 2>&1 & )
+  sleep 1.6
+  adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
+  adb shell input keyevent KEYCODE_BACK; sleep 3.4
+  adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
+  python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"; }
+ptget(){ grep "label=$1 " "$OUT/pt-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
+
+# ---- setup: automatic calibration (proved by section pa), so the patch rests invisibly and opens dimmed
+pafeat true 0; adb shell am force-stop "$PKG"; sleep 1
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/pt-setpin.txt" 2>&1
+palock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
+adb shell input keyevent KEYCODE_BACK; sleep 3
+for i in $(seq 1 30); do pastatus | grep -q CALIBRATED && break; sleep 2; done
+info "PT setup: patch status: $(pastatus)"
+sleep 4
+adb logcat -d -s TjA11y:I | grep "CARD area" > "$OUT/pt-card.txt" 2>&1
+CL="$(tail -1 "$OUT/pt-card.txt")"
+set -- $(panums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(panums "$CL" area); CB=${4:-}
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  PX=$(( (FL + FR) / 2 )); PY=$(( (CB + FB) / 2 ))
+  if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi; SY=$PY
+  info "PT: menu panel $FL,$FT-$FR,$FB card bottom $CB; probes: patch at $PX,$PY, surround at $SX,$SY"
+  : > "$OUT/pt-metrics.txt"
+  # ---- A: the old one-step dim
+  ptset false 25; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun jump
+  # ---- B: the fade at several lead times (ms added to the elapsed time of every frame)
+  for LEAD in 25 0 50 80; do
+    ptset true $LEAD; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun fade$LEAD
+  done
+  info "PT metrics: $(tr '\n' '|' < "$OUT/pt-metrics.txt" | sed 's/PTMETRIC //g' | cut -c1-1500)"
+  FRAMES="$(ptget jump frames)"
+  check "PT: the film worked (the old-behaviour run has more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
+  JMAX="$(ptget jump open_max)"; F25="$(ptget fade25 open_max)"
+  check "PT: the menu opening was seen in the film (an onset of the dimming was found, both runs)" bash -c "grep -q 'label=jump .*onset=' $OUT/pt-metrics.txt && grep -q 'label=fade25 .*onset=' $OUT/pt-metrics.txt"
+  info "PT: worst mismatch while the menu opens: old one-step dim ${JMAX:-?}; fade (lead 25 ms) ${F25:-?}"
+  check "PT: the fade is closer to the stock scrim than the one-step dim (worst mismatch while the menu opens)" awk -v j="${JMAX:-9}" -v f="${F25:-9}" 'BEGIN{exit !(f+0 < j+0)}'
+  check "PT: the fade keeps the patch within 8 % of its surround while the menu opens" awk -v f="${F25:-9}" 'BEGIN{exit !(f+0 < 0.08)}'
+else info "PT: no menu geometry (no CARD area line)"; check "PT: the menu rectangle was learned" false; fi
+
+# ---------------- clean up
+adb shell input swipe 300 900 300 300 300; sleep 2
+adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 4
+adb shell locksettings clear --old 1234 > "$OUT/pt-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "PT: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/pt-clearpin.txt"
+adb shell settings put secure lock_screen_show_notifications 1
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section pt
 if want rg; then # section rg
 ensurehome
 # ---- AP1 (Tj, 2026-11-06: "No hidden apps should ever show up in the recent apps list for the custom launcher"): when Recents opens in the custom launcher the cards of apps that are NOT in the drawer are closed.
