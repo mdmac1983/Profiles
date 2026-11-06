@@ -119,8 +119,8 @@ BRIEF="$(
     echo
   fi
   if [ -f TASKS.md ]; then
-    echo "######## TASKS.md — open items (line numbers; read the file for detail) ########"
-    grep -n '^\s*- \[ \]' TASKS.md | cut -c1-150 | head -30
+    echo "######## TASKS.md — the 20 NEWEST open items (line numbers; older ones: grep -n '\- \[ \]' TASKS.md | head -40) ########"
+    grep -n '^\s*- \[ \]' TASKS.md | cut -c1-130 | tail -20     # newest last: new requests are appended, the old head-30 hid every request of the last days (2026-11-06) and overflowed the 10,000-char hook cap
     echo "  ($(grep -c '^\s*- \[x\]' TASKS.md) done — not shown)"
     echo
   fi
