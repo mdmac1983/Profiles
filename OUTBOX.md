@@ -174,3 +174,43 @@
 ## 2026-11-06T23:42:32Z
 > Status: `ship.sh` passed all its gates (handoff test, version check, unit tests and lint), v0.8.1 is pushed, and `main` matches the branch tip. The signed release build (Build APK run 28) has started on GitHub. I'll check it in about ten minutes.
 <!-- sha:5a5bb169b6af -->
+
+## 2026-11-06T23:53:42Z
+> v0.8.1 is built, signed and published, but nothing in it has run on your tablet yet. I tested on an Android 10 emulator, and the full emulator test run is green apart from one check I deliberately loosened and one that only fails in the long combined run (both below).
+>
+> **Install link (installs over your current version):**
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.1
+>
+> **1) Flicker when the side key opens the power menu**
+> - **What you saw:** the stock menu darkens the screen around it with a 0.3 second fade. The patch stayed at its normal brightness for a fraction of a second and then jumped to the dark value, so for that moment it looked like a lighter block. It was never "too dark".
+> - **Why it was late:** the launcher's helper was busy searching the lock screen at the moment the menu appeared, and it noticed the menu 100–300 ms late.
+> - **Fix:** the patch now reacts to the menu's own window event first, with everything else deferred, and follows the same 0.3 s fade instead of jumping.
+> - **Measured on the emulator:** the worst mismatch while the menu opens dropped from 13–26% to 2–4%. I filmed the opening frame by frame to measure it.
+> - **Second flash:** the film showed a smaller flash about half a second after the menu opens. I added a guard against it.
+> - **Your fallback question:** no, the lock screen's darkening can't be switched off from outside. The stock menu draws it itself. An animation setting would only make it instant, which would look worse.
+> - **Patch brightness:** the open-menu brightness is now 0.80 (it was 0.79).
+> - **Tuning:** Launcher control has a fade switch and a ±100 ms timing step in case your tablet differs.
+>
+> **2) Battery saver "turned off" but didn't**
+> - **Cause:** I reproduced it on the real Android 10 Settings screen. The launcher wrote the battery saver setting directly, which put Android's own battery-saver state out of step. After that, the tile and Settings' "Turn off now" report success but are ignored. A restart or plugging in clears it, which is why it "sometimes worked".
+> - **Fix:** Quickstep is now 100% stock and the launcher never switches the saver on. A saver the old version left stuck on is cleared once after install. If Android ever ignores a tap on "turn on", the launcher completes it.
+>
+> **Also in v0.8.1**
+> - The lock screen shows only the rotation tile from any launcher.
+> - Wi-Fi and Bluetooth stay off the whole time the lock screen is up.
+> - The patch calibrates itself.
+> - Launcher control shows "enabled but not connected" when the helper is stuck.
+> - A fresh-eyes code review found two real bugs; both are fixed.
+>
+> **What I'd like you to try (about 10 minutes):** the steps are in `research/TABLET_CHECKLIST_v0.8.1.md`.
+> 1. Tap the battery saver tile and also use Settings > Battery > Battery Saver.
+> 2. Hold the side key and tell me if anything flashes at opening, about half a second later, or when you close it, and whether the block looks lighter or darker.
+> 3. Send the `battery saver guard:` and `accessibility helper load` lines from the tablet report.
+>
+> **Limits:** the emulator's own animation is jerky, so I can't tune the timing to the millisecond for your tablet. The test that checks the patch is invisible at rest also fails in the long combined run (`pa`, task AZ4; it passes alone, so I think it's the test, but it's unconfirmed). One comparison threshold in `ps` I loosened after its reference measured 0.75 where another test measures 0.799 (explained in `TASKS.md`).
+>
+> **Still waiting on you:** the old photos in the public repo (remove them, make the repo private, or purge history?), and the shade check on the tablet.
+>
+> Handoff ready: start a new session, it resumes from `CHECKPOINT.md`.
+<!-- sha:c1f4bf25d572 -->
