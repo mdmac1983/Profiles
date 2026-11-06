@@ -120,3 +120,7 @@
 ## 2026-11-06T23:19:30Z
 > Status: `pt` on the release code passed. The worst patch-versus-surround mismatch while the menu opens is about 2–4%, against 13–26% for the old one-step dim. The three gate groups should finish in about nine minutes, then I tick the tasks and ship.
 <!-- sha:f5d7c5ec141b -->
+
+## 2026-11-06T23:29:58Z
+> Status: waiting about three minutes on the last gate group and the `ps` re-run.
+<!-- sha:680461f33bcf -->
