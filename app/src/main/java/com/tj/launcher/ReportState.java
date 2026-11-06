@@ -26,7 +26,7 @@ public final class ReportState {
             "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why", "battery_saver_last", "migrate_note",
             // v0.7.6 (review of v0.7.5): the wallpaper kind was documented as "in the report" but never listed; the patch nudges are plain numbers (never the lock-screen number TEXT)
             "wallpaper_kind", "wallpaper_geometry", "patch_dx", "patch_dy", "patch_scale_pct", "patch_dim_pct", "patch_scrim_pct",
-            "lock_text_size_pct", "lock_text_weight_nudge", "lock_text_alpha_pct"));
+            "lock_text_size_pct", "lock_text_weight_nudge", "lock_text_alpha_pct", "hide_my_photos", "picker_status", "picker_dump"));
 
     /** Pure: the "key: value" lines for the preferences in {@code all}: every Boolean, plus the allow-listed text and number values; sorted, values flattened to one line and cut to 600 characters. */
     public static String format(Map<String, ?> all) {
@@ -122,6 +122,7 @@ public final class ReportState {
                     .append(", on-in-Quickstep ").append(BatterySaverGuard.qsEnabled(c) ? "on" : "off").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
         } catch (Throwable t) { /* not available */ }
+        try { b.append("wallpaper picker (AO1): ").append(WallpaperPickerChoice.summary(c)).append('\n'); } catch (Throwable t) { /* not available */ }
         b.append("\n----- the launcher's switches and last results (an allow-list: nothing secret is read)\n");
         b.append(format(Features.all(c)));
         try {
