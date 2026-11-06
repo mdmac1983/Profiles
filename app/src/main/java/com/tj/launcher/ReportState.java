@@ -119,6 +119,7 @@ public final class ReportState {
         } catch (Throwable t) { /* not available */ }
         try {
             b.append("battery saver guard: switch ").append(BatterySaverGuard.enabled(c) ? "on" : "off").append(", low_power = ").append(setting("global", c, BatterySaverPolicy.SETTING)).append(", low_power_sticky = ").append(setting("global", c, BatterySaverPolicy.STICKY_SETTING))
+                    .append(", on-in-Quickstep ").append(BatterySaverGuard.qsEnabled(c) ? "on" : "off").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
         } catch (Throwable t) { /* not available */ }
         b.append("\n----- the launcher's switches and last results (an allow-list: nothing secret is read)\n");
