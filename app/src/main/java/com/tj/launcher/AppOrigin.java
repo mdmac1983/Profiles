@@ -49,12 +49,9 @@ public final class AppOrigin {
     public static void mergeUsage(Context c) {
         try {
             long now = System.currentTimeMillis();
-            long start = Mode.qsStartAt(c);
-            if (start <= 0) return;
-            long end = Mode.isCustom(c) ? Mode.qsEndAt(c) : now;
-            if (end <= start) return;
-            long from = Math.max(start, p(c).getLong("usageFrom", 0));
-            if (from >= end) return;
+            long[] w = usageWindow(Mode.qsStartAt(c), Mode.isCustom(c), Mode.qsEndAt(c), now, p(c).getLong("usageFrom", 0));
+            if (w == null) return;
+            long from = w[0], end = w[1];
             synchronized (AppOrigin.class) { if (now - lastMergeAt < 1000) return; lastMergeAt = now; }
             java.util.Set<String> used = QuickstepUsage.resumedDuring(c, from, end);
             if (used.isEmpty()) return;
