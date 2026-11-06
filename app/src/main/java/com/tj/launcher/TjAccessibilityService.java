@@ -165,6 +165,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private long quietUntilMs = 0;
+    private int holdMisses = 0;   // AZ1: scans in a row that found no menu text while the dialog window was still up
     /** AZ1: how long a window burst on the lock screen waits for the stock dialog's own event before the normal scans run (fail-open for a ROM whose dialog does not announce itself). The dialog's event follows the first window event of its burst by 15-45 ms. */
     static final long FAST_WAIT_MS = 120;
     private final Runnable quietWork = new Runnable() { @Override public void run() {
@@ -1976,10 +1977,11 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean locked = km != null && km.isKeyguardLocked();
         boolean custom = PowerMenuRule.coverWorld(Mode.isCustom(this), locked);   // AD7a: "custom" here = the cover world (custom launcher or ANY lock screen)
         Rect shot = new Rect();
-        boolean menuOpen = false, found = false;
+        boolean menuOpen = false, found = false, dialogUpNow = false;
         if (custom && !Features.POWER_OFF.equals(mode) && !(locked && Features.POWER_BLOCK.equals(mode))) {   // Y1: the cover also works on the lock screen; BLOCK still stays off it
             List<AccessibilityWindowInfo> windows = getWindows();
             final boolean dialogUp = dialogWindowPresent(windows);
+            dialogUpNow = dialogUp;
             final boolean everyWindow = android.os.SystemClock.uptimeMillis() < fullScanUntilMs;
             if (menuSeenMs == 0 && dialogUp) menuSeenMs = android.os.SystemClock.uptimeMillis();
             if (dialogUp) menuUpAtMs = android.os.SystemClock.uptimeMillis();   // AN1: a menu is up: its content changes are followed
@@ -2033,8 +2035,10 @@ public class TjAccessibilityService extends AccessibilityService {
             }
         }
         int action = PowerMenuRule.decide(mode, custom, locked, menuOpen, found);
+        if ((overlayShown || menuOpen) && (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) Log.i(TAG, "PATCH scan dialogUp=" + dialogUpNow + " menuOpen=" + menuOpen + " found=" + found + " overlayShown=" + overlayShown + " fading=" + fading + " action=" + action);   // debug builds only (section pt prints it in the timeline)
         if (menuOpen || action != PowerMenuRule.NOTHING) Log.i(TAG, "menuOpen=" + menuOpen + " found=" + found + " bounds=" + shot + " action=" + action);
         if (action == PowerMenuRule.COVER_SCREENSHOT) {
+            holdMisses = 0;
             Features.setString(this, cardKey(), shot.left + "," + shot.top + "," + shot.right + "," + shot.bottom);   // AC6: stored BEFORE the card is built, so the very first open already uses the measured panel and pitch
             Features.setString(this, itemKey(), lastPitch > 0 || lastCut > 0 ? lastPitch + "/" + lastCut : "");   // a failed measurement CLEARS the stored value: a stale one from another layout must never be reused
             showOverlay(shot);
@@ -2042,6 +2046,15 @@ public class TjAccessibilityService extends AccessibilityService {
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
+            // AZ1 (run 249): about 0.5 s after the stock dialog opens it rebuilds its list (a second window-state event for the same window); a scan that lands in that moment finds no "Power off" / "Screenshot" text although the
+            // dialog's window is still in the window list. The patch then fell back to its bright resting state for ~170 ms = a light block on the darkened menu screen. The window list says it is open: keep the patch, look again shortly.
+            if (custom && overlayShown && dialogUpNow && !menuOpen && Features.isCover(mode) && holdMisses < 3) {
+                holdMisses++;
+                Log.i(TAG, "PATCH hold: the dialog window is still up but its texts were not found (miss " + holdMisses + " of 3)");
+                handler.removeCallbacks(recheck); handler.postDelayed(recheck, 250);
+                return;
+            }
+            holdMisses = 0;
             // Menu not (or no longer) open: keep the invisible, pre-built card ready (W3/W4) when the cover mode is on, else drop it.
             if (custom && Features.isCover(mode)) hideOverlay(); else removeOverlay();
             if (action == PowerMenuRule.CLOSE_MENU) performGlobalAction(GLOBAL_ACTION_BACK);
