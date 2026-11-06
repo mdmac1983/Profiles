@@ -946,3 +946,8 @@ The modified power menu isn't right. On the lock screen, when i hold the side ke
 ```
 Compare the number on the buttom of the lock screen. The accessibility one you built is slightly smaller than the correct size and font shown in the photo i sent which has the blue blur in the middle to cover the name. Make the font and size match that reference
 ```
+
+## 2026-11-06T06:30:34Z
+```
+The blue scribble pictures are reference for correct look. The other pictures are what Claude has done so far
+```
