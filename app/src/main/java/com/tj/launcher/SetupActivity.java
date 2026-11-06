@@ -156,6 +156,7 @@ public class SetupActivity extends Activity {
         page.addView(text("Every adb to-do item on one screen. Green = done. The only adb line you ever need first starts the shell helper (below); everything else is a button here. Press 1, then 2 (then 3 and 4 only if asked).", 14, MUTED, false));
         boolean helper = ShellHelper.reachable();
         page.addView(text(helper ? "Shell helper: RUNNING" : "Shell helper: NOT running - start it with the adb line (tap Copy), then come back", 15, helper ? ACCENT : BAD, true));
+        if (!helper) page.addView(text("Why some buttons below are grey (UX1): 1 (do everything), 3 (side-key test), 4 (collect everything) and \"Disable the old Browser\" need the shell helper. 2 and 2b (the tablet report) work without it; the report then marks the lines that needed the helper.", 13, MUTED, false));
         List<Item> missing = new ArrayList<>();
         for (Item it : items) {
             boolean ok = done(it);
