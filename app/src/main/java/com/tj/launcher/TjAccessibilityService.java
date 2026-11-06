@@ -118,7 +118,7 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
-        connectedAtMs = android.os.SystemClock.elapsedRealtime(); evSeen = 0; evNoise = 0; scanCount = 0; scanTotalMs = 0; scanMaxMs = 0;   // AD8: the report's load numbers count from this connect
+        connectedAtMs = android.os.SystemClock.elapsedRealtime(); evSeen = 0; evNoise = 0; scanCount = 0; scanTotalMs = 0; scanMaxMs = 0; evSkipped = 0; penFull = 0; penFullMs = 0; penFullMax = 0; penFast = 0;   // AD8: the report's load numbers count from this connect
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { updateKeyFilter(); } catch (Throwable t) { Log.e(TAG, "key filter failed", t); }
@@ -1631,12 +1631,15 @@ public class TjAccessibilityService extends AccessibilityService {
 
     // ---------------------------------------------------------------- AD8: what the helper costs on THIS tablet (plain counters on the main thread; read by the report)
     private long connectedAtMs = 0, evSeen = 0, evNoise = 0, scanCount = 0, scanTotalMs = 0, scanMaxMs = 0;
+    /** AN1: shade events that started NO scan; the pencil: full tree searches (count / total ms / slowest) and one-node refreshes; when a power menu was last seen up (uptime ms). */
+    private long evSkipped = 0, penFull = 0, penFullMs = 0, penFullMax = 0, penFast = 0, menuUpAtMs = -100_000, lastPenFullMs = -100_000;
 
     /** One line for the tablet report: how long the helper has been connected, how many events it got, how many were dropped at the door, and how long a power-menu scan takes here. A torn read is only a slightly stale number. */
     String perfLine() {
         long up = connectedAtMs == 0 ? 0 : (android.os.SystemClock.elapsedRealtime() - connectedAtMs) / 60_000;
         long n = scanCount;
-        return "connected " + up + " min, " + evSeen + " events (" + evNoise + " dropped as noise), " + n + " power-menu scans" + (n == 0 ? "" : ", avg " + (scanTotalMs / n) + " ms, max " + scanMaxMs + " ms");
+        String pen = "; pencil cover: " + penFull + " tree searches" + (penFull == 0 ? "" : " (avg " + (penFullMs / penFull) + " ms, max " + penFullMax + " ms)") + ", " + penFast + " one-node refreshes";   // AN1
+        return "connected " + up + " min, " + evSeen + " events (" + evNoise + " dropped as noise, " + evSkipped + " shade redraws without a scan), " + n + " power-menu scans" + (n == 0 ? "" : ", avg " + (scanTotalMs / n) + " ms, max " + scanMaxMs + " ms");
     }
 
     private void evaluate() {
