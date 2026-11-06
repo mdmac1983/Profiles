@@ -29,3 +29,16 @@
 > - **Old photos in the public repo:** remove them from the tree, make the repo private, or purge history?
 > - **v0.8.0 on the tablet:** the checklist.
 <!-- sha:e87e8459be6b -->
+
+## 2026-11-06T22:06:02Z
+> Status: the `pt` run (animations on, fast path on the dialog's own event) and the `pa` run are still going on GitHub. A reviewer agent is reading the v0.8.1 diff at the same time. Local unit tests and lint pass (BUILD SUCCESSFUL). I'll read the `pt` curves as soon as the run ends, then tune the fade timing.
+>
+> **Why the first `pt` run failed:**
+> - **Emulator setup:** the CI emulator has animations off, so the stock scrim appeared in one frame instead of fading over 300 ms.
+> - **The flicker, in numbers:** the patch dimmed about 150 ms after the scrim appeared. For that time it was about 25% lighter than the area around it, which is the flash you saw.
+> - **Cause:** the fast path asked Android for the window list on every event and only found the menu about 140 ms late.
+>
+> **Fixes now pushed (checkpoint 536):**
+> - **Service:** the patch now reacts to the menu's own window event, with no window-list call, and starts the fade from that event's time.
+> - **`pt` test:** it runs with animations on and sweeps the fade timing from −25 ms to +80 ms. It also prints the open and close curves.
+<!-- sha:d5e0fe3bd952 -->
