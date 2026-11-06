@@ -1179,13 +1179,13 @@ ensurehome
 #      the handshake puts Quickstep behind the lock at once whatever the pre-arm switch says, battery saver is switched off in the custom launcher the moment it is on, the decision log exists and holds no digit.
 beat "before AC"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
-# acfeat <prearm true|false> <startup_open true|false> <battery_saver_off true|false>: the usual test features (Calendar stands in for Solitaire) + the OLD end-on-lock switch stored as FALSE (the breaker's wipe): it must have no effect any more
-acfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"$2\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"${4:-false}\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_end_on_lock\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"$3\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+# acfeat <prearm true|false> <startup_open true|false> <battery_saver_off true|false> [quickstep_on true|false] [strict true|false] (AN1: strict = the old fight-the-tile behaviour, default false): the usual test features (Calendar stands in for Solitaire) + the OLD end-on-lock switch stored as FALSE (the breaker's wipe): it must have no effect any more
+acfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"$2\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"${4:-false}\\\" /><boolean name=\\\"profile_battery_saver_strict\\\" value=\\\"${5:-false}\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_end_on_lock\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"$3\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
 lowpower(){ adb shell settings get global low_power | tr -d '\r\n'; }
 
 # ---- AC3: battery saver. Make the test deterministic: not charging, 60 %
 adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
-acfeat true false true; setmode quickstep; rebind; home; sleep 2
+acfeat true false true false true; setmode quickstep; rebind; home; sleep 2     # AN1: these AC3 / AG1 checks are the STRICT mode (the old behaviour, now opt-in)
 adb shell settings put global low_power 1; sleep 3
 info "AC3: Quickstep, battery saver switched on from outside: low_power=$(lowpower)"
 check "AC3: in Quickstep battery saver is left alone (still on 3 s later)" bash -c "[ \"$(lowpower)\" = 1 ]"
@@ -1196,21 +1196,36 @@ info "AC3: back in the custom launcher (it was switched on in Quickstep): low_po
 check "AC3: returning to the custom launcher switched battery saver off (turned on in Quickstep, still on when custom began)" bash -c "[ \"$AC3B\" = 0 ]"
 adb shell settings put global low_power 1; sleep 2
 AC3L="$(lowpower)"
-check "AC3: turned on again while the custom launcher is active, it is switched off again within 2 s (the observer, no polling)" bash -c "[ \"$AC3L\" = 0 ]"
+check "AC3 (strict): turned on again while the custom launcher is active, it is switched off again within 2 s (the observer, no polling)" bash -c "[ \"$AC3L\" = 0 ]"
 setmode custom; adb shell settings put global low_power 1; rebind; sleep 4
 AC3P="$(lowpower)"
-check "AC3: a launcher process that STARTS while battery saver is on switches it off (prepared at process start)" bash -c "[ \"$AC3P\" = 0 ]"
-acfeat true false false; setmode custom; rebind; sleep 2
+check "AC3 (strict): a launcher process that STARTS while battery saver is on switches it off (prepared at process start)" bash -c "[ \"$AC3P\" = 0 ]"
+acfeat true false false false true; setmode custom; rebind; sleep 2
 adb shell settings put global low_power 1; sleep 3
 AC3S="$(lowpower)"
 check "AC3: with its switch OFF the guard leaves battery saver alone (control)" bash -c "[ \"$AC3S\" = 1 ]"
 # ---- AG1 (Tj, 2026-11-06: "Now battery saver doesn't work in quickstep. I want it to turn on and stay on, just turn off in custom launcher"): the saver FOLLOWS the launcher: Quickstep turns it ON and keeps it on
-acfeat true false true true; setmode quickstep; rebind; home; sleep 2
+acfeat true false true true true; setmode quickstep; rebind; home; sleep 2
 adb shell settings put global low_power 0; sleep 3
-check "AG1: in Quickstep with the switch on, a battery saver that is OFF is switched back ON (it stays on)" bash -c "[ \"$(lowpower)\" = 1 ]"
-acfeat true false true false; setmode quickstep; rebind; sleep 2
+check "AG1 (strict): in Quickstep with the switch on, a battery saver that is OFF is switched back ON (it stays on)" bash -c "[ \"$(lowpower)\" = 1 ]"
+acfeat true false true false true; setmode quickstep; rebind; sleep 2
 adb shell settings put global low_power 0; sleep 3
 check "AG1: with the Quickstep switch OFF the saver is left alone in Quickstep (control)" bash -c "[ \"$(lowpower)\" = 0 ]"
+# ---- AN1 (Tj, 2026-11-06: "the battery saver tile sometimes works. But it is mostly unresponsive. When it does work it turns on very slow ... It wasn't happening before"): WITHOUT strict the tile is the boss between launcher changes
+acfeat true false true true; setmode quickstep; rebind; home; sleep 2     # strict OFF (the default), both rules on
+adb shell settings put global low_power 1; sleep 2
+adb logcat -c
+adb shell settings put global low_power 0; sleep 3
+check "AN1: in Quickstep a battery saver that is turned OFF (as the tile does) stays off: nothing switches it back on" bash -c "[ \"$(lowpower)\" = 0 ]"
+adb shell settings put global low_power 1; sleep 3
+check "AN1: turned on again it stays on" bash -c "[ \"$(lowpower)\" = 1 ]"
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 5     # a REAL change to the custom launcher (double Home)
+check "AN1: a real change to the custom launcher still switches battery saver off at once" bash -c "[ \"$(lowpower)\" = 0 ]"
+adb logcat -c
+adb shell settings put global low_power 1; sleep 3
+check "AN1: in the custom launcher a battery saver turned on by the user (the tile, the Settings screen) stays on until the launcher changes again" bash -c "[ \"$(lowpower)\" = 1 ]"
+adb logcat -d -s TjBatSaver:I | grep -c "BATSAVER off" > "$OUT/an1-offs.txt" 2>&1
+check "AN1: the guard wrote nothing to battery saver in between (no 'BATSAVER off' line)" bash -c "[ \"\$(tr -d ' \\r\\n' < $OUT/an1-offs.txt)\" = 0 ]"
 adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
 
 # ---- the lock screen tests need a PIN (the same one as section n)
