@@ -85,6 +85,38 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!pending) { pending = true; handler.postDelayed(debounced, 80); }
     }
 
+    /**
+     * AZ1: the earliest possible reaction to the stock power menu opening on the lock screen. Everything else {@link #onAccessibilityEvent} does for an event (the lock-number update with its PIN-pad
+     * search, the layer refresh, the pencil, the handshake bookkeeping) used to run BEFORE the menu was looked for, and the node scan that followed blocked the main thread until it was over; the patch's
+     * new brightness was only drawn after that. Now: the lock-screen patch is resting, a window event arrives, the window list holds the stock dialog and its geometry is known (it is, after the first use):
+     * switch the patch to its open state at once and let the fade start. The node scan then waits for the end of the stock fade ({@link PatchFade#SETTLE_MS}). Fail-open: anything else (no geometry yet, the
+     * list does not show the dialog yet, the switch is off) leaves everything to the normal path below.
+     */
+    private void fastMenuOpen(AccessibilityEvent event) {
+        if (!patchFadeOn() || patchView == null || !patchLockMode || !patchResting || overlayShown) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - fastTryMs < 20) return;   // a burst of window events: one look per 20 ms
+        fastTryMs = now;
+        String mode = Features.powerMode(this);
+        if (!Features.isCover(mode) || !coverWorld()) return;
+        Rect cached = cachedCard();
+        if (cached == null) return;         // the menu's geometry is learned by the first scan: the normal path
+        if (!dialogWindowPresent(getWindows())) return;
+        if (menuSeenMs == 0) menuSeenMs = now;
+        menuUpAtMs = now;
+        Log.i(TAG, "PATCH fast open: window event " + Integer.toHexString(event.getEventType()) + " is " + Math.max(0, now - event.getEventTime()) + " ms old");
+        showOverlay(cached);
+        deferScan(now);
+    }
+
+    /** AZ1: no node scan until the stock fade is over (and one more look then): it blocks this thread for tens of ms, and the patch has to be redrawn on every frame of the fade. */
+    private void deferScan(long now) {
+        if (!fading) return;   // nothing to follow (switch off, or the scrim was complete already): scan as before
+        scanNotBeforeMs = now + PatchFade.SETTLE_MS;
+        handler.removeCallbacks(recheck);
+        handler.postDelayed(recheck, PatchFade.SETTLE_MS + 20);
+    }
+
     private long lastEvalMs = 0;
     private long fullScanUntilMs = 0;
     /** AM1: a patch window that was just created re-decides whether it RESTS after 400 ms and 1.6 s (the stored crop, the keyguard and the PIN pad may only be settled by then). */
