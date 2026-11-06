@@ -926,3 +926,8 @@ Only keep reasonable tests from now on and make them as fast and efficient as po
 ```
 Continue with v0.7.5
 ```
+
+## 2026-11-06T05:55:51Z
+```
+The actual battery saver tile in the notification panel in quickstep doesn't work
+```
