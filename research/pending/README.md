@@ -1,0 +1,1 @@
+# research/pending/ = v0.7.6 work developed in a scratch worktree while v0.7.5 was gating. Apply AFTER v0.7.5 is recorded: git apply --3way research/pending/v076-ak1.patch, then delete the file. Product dirs on the branch stay equal to the gated commit until then.

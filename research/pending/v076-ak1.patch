@@ -1,0 +1,408 @@
+diff --git a/app/src/main/java/com/tj/launcher/ControlActivity.java b/app/src/main/java/com/tj/launcher/ControlActivity.java
+index 355666c..ecf9c8a 100644
+--- a/app/src/main/java/com/tj/launcher/ControlActivity.java
++++ b/app/src/main/java/com/tj/launcher/ControlActivity.java
+@@ -207,6 +207,10 @@ public class ControlActivity extends Activity {
+         toggle("A gesture unlock comes back to the app I had open", "ON: after the lock-screen gesture, Quickstep opens the app that was in front when you locked the tablet, exactly as you left it (like tapping its icon). OFF: it opens the Quickstep home screen instead, with the apps minimised. With no app open it is always the home screen.", Features.get(this, ResumeTarget.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ResumeTarget.KEY, v); } });
+         toggle("Close Quickstep's apps and notifications the moment the tablet locks", "Needs the adb helper (Invisible clean-up below): apps, their notifications and their Recents cards are closed at lock, and the custom account is already active when you unlock, so the unlock has nothing left to do. Without the helper the clean-up happens at unlock under a black cover.", ProfileSession.preClean(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PRECLEAN_KEY, v); } });
+         toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
++        toggle("Lock screen: no Wi-Fi, no Bluetooth, no app notifications (every launcher)", LockQuiet.permitted(this) ? "The moment the tablet is on the lock screen, from ANY launcher: Wi-Fi and Bluetooth are switched off and kept off (a radio that comes on again is switched off again, at most 3 times a minute), and the lock screen shows no app notifications and no notification icons (Android's own lock-screen setting, put back by this switch, \"Restore everything\" and the crash breaker). The notifications themselves stay in the shade until they are cleared." : "Needs the adb permission (not granted yet): without it only Wi-Fi and Bluetooth are switched off.",
++                LockQuiet.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.KEY, v); rebuild(); } });
++        toggle("A gesture unlock into Quickstep puts Wi-Fi and Bluetooth back", "Whatever was on before the lock comes back after the lock-screen gesture opens Quickstep. A plain PIN into the custom launcher leaves them off (the custom launcher's own rule).", LockQuiet.restoreEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockQuiet.RESTORE_KEY, v); } });
++        note("Lock screen quiet: " + Features.getString(this, LockQuiet.LAST_KEY, "(has not had to act yet)") + "   (lock_screen_show_notifications = " + android.provider.Settings.Secure.getString(getContentResolver(), LockQuiet.SHOW) + ")");
+         toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
+         toggle("Turn battery saver off in the custom launcher", BatterySaverGuard.permitted(this) ? "If battery saver is on when the custom launcher becomes active, or something turns it on while it is active, it is switched off at once (Android's own setting, no delay). Quickstep keeps whatever you set." : "Needs the adb permission (not granted yet).", BatterySaverGuard.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
+         toggle("Battery saver ON in Quickstep (stays on)", BatterySaverGuard.permitted(this) ? "The battery saver follows the launcher: when Quickstep is active it is switched ON and kept on (at most 3 times per 10 minutes if Android turns it off by itself); the custom launcher switches it off (the switch above). Turn this off to keep whatever you set in Quickstep." : "Needs the adb permission (not granted yet).", BatterySaverGuard.qsEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.QS_KEY, v); if (v) BatterySaverGuard.check(ControlActivity.this, "switched on in Launcher control"); } });
+diff --git a/app/src/main/java/com/tj/launcher/LockQuiet.java b/app/src/main/java/com/tj/launcher/LockQuiet.java
+new file mode 100644
+index 0000000..947ae11
+--- /dev/null
++++ b/app/src/main/java/com/tj/launcher/LockQuiet.java
+@@ -0,0 +1,132 @@
++package com.tj.launcher;
++
++import android.bluetooth.BluetoothAdapter;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.net.wifi.WifiManager;
++import android.provider.Settings;
++import android.util.Log;
++
++/**
++ * AK1 (Tj, 2026-11-06: "make it so wifi, Bluetooth, and all notifications are cleared and off whenever the tablet is on the lock screen, from any launcher. The lock screen should never, at any time, show wifi,
++ * Bluetooth, or notifications from apps"). Two halves, both independent of which launcher is active:
++ *  - NOTIFICATIONS: without the shell helper this app cannot delete other apps' notifications, but Android has its own lock-screen setting: {@code Settings.Secure lock_screen_show_notifications = 0} (and
++ *    {@code lock_screen_allow_private_notifications = 0}) makes the lock screen show NO app notifications and no notification icons, at every moment, with no flicker. The original values are recorded first
++ *    ({@link RestoreStore#snapshotSecure}) so "Restore everything", the crash breaker and the switch itself put them back. The notifications stay in the shade until cleared.
++ *  - RADIOS: when the tablet is on the lock screen Wi-Fi and Bluetooth are switched off and kept off (a radio that comes on again is switched off again, at most 3 times per minute). What was on before the
++ *    lock is remembered; a GESTURE unlock into Quickstep puts it back (second switch), a plain unlock into the custom launcher leaves it off (the custom launcher's own rule).
++ * Never touches the lock method, never blocks an unlock, every step is exception-safe and does nothing when automation is paused (breaker / "Restore everything").
++ */
++public final class LockQuiet {
++    private static final String TAG = "TjLockQuiet";
++    public static final String KEY = "lock_quiet";                      // switch in Launcher control, default ON (Tj asked)
++    public static final String RESTORE_KEY = "lock_quiet_restore";      // switch: a gesture unlock into Quickstep puts the radios back, default ON
++    public static final String PREV_KEY = "lq_prev";                    // what was on before this lock, e.g. "w1b0"
++    public static final String LAST_KEY = "lq_last";                    // what it did last (Launcher control, report)
++    public static final String SHOW = "lock_screen_show_notifications";
++    public static final String PRIVATE = "lock_screen_allow_private_notifications";
++    /** At most this many switch-offs per window while locked: a radio that refuses to stay off is never fought in a loop. */
++    public static final int MAX_WRITES = 3;
++    public static final long WINDOW_MS = 60_000;
++
++    private LockQuiet() {}
++
++    public static boolean enabled(Context c) { return Features.get(c, KEY, true); }
++    public static boolean restoreEnabled(Context c) { return Features.get(c, RESTORE_KEY, true); }
++    public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED; }
++
++    // ---------------------------------------------------------------- pure rules (JVM-tested)
++
++    /** Pure: switch a radio that just came on OFF again? Only while the keyguard is up, only with the switch on, never while automation is paused, at most {@link #MAX_WRITES} per {@link #WINDOW_MS}. */
++    public static boolean enforceRadios(boolean switchOn, boolean keyguardLocked, boolean automationOff, long now, long[] recent) {
++        if (!switchOn || !keyguardLocked || automationOff) return false;
++        int n = 0;
++        if (recent != null) for (long t : recent) if (t > 0 && now - t <= WINDOW_MS) n++;
++        return n < MAX_WRITES;
++    }
++
++    /** Pure: the memory of which radios were on before the lock. */
++    public static String encodePrev(boolean wifi, boolean bluetooth) { return "w" + (wifi ? 1 : 0) + "b" + (bluetooth ? 1 : 0); }
++    public static boolean prevWifi(String prev) { return prev != null && prev.contains("w1"); }
++    public static boolean prevBluetooth(String prev) { return prev != null && prev.contains("b1"); }
++
++    /** Pure: put the radios back now? Only for a GESTURE unlock into Quickstep, with both switches on, automation not paused, and something was on before the lock. */
++    public static boolean shouldRestore(boolean switchOn, boolean restoreOn, boolean quickstepUnlock, boolean automationOff, String prev) {
++        return switchOn && restoreOn && quickstepUnlock && !automationOff && (prevWifi(prev) || prevBluetooth(prev));
++    }
++
++    /** Pure: remember the radios at the lock moment? The first lock moment of a lock, or whenever a radio is on right now (that is the freshest truth). */
++    public static boolean shouldRecordPrev(String stored, boolean wifiOnNow, boolean btOnNow) { return stored == null || stored.isEmpty() || wifiOnNow || btOnNow; }
++
++    // ---------------------------------------------------------------- Android side
++
++    private static String stamp() { return new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()); }
++
++    /** The notification half: hide (switch on) or put the original values back (switch off). Cheap when nothing changes. Never throws. */
++    public static void applyNotifications(Context c) {
++        try {
++            ContentResolver cr = c.getContentResolver();
++            if (enabled(c) && !CrashGuard.automationOff(c)) {
++                if (!permitted(c)) { Features.setString(c, LAST_KEY, stamp() + "  the lock screen still shows notifications: the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
++                boolean changed = false;
++                for (String k : new String[] { SHOW, PRIVATE }) {
++                    RestoreStore.snapshotSecure(c, k);                       // the original, once
++                    if (!"0".equals(Settings.Secure.getString(cr, k))) { Settings.Secure.putInt(cr, k, 0); changed = true; }
++                }
++                if (changed) { Features.setString(c, LAST_KEY, stamp() + "  lock screen: app notifications hidden"); Log.i(TAG, "lock-screen notifications hidden"); }
++            } else {
++                boolean any = RestoreStore.restoreSecure(c, SHOW) | RestoreStore.restoreSecure(c, PRIVATE);
++                if (any) { Features.setString(c, LAST_KEY, stamp() + "  lock-screen notification setting put back"); Log.i(TAG, "lock-screen notification setting restored"); }
++            }
++        } catch (Throwable t) { Log.e(TAG, "notification setting failed", t); }
++    }
++
++    public static void applyNotificationsAsync(final Context c) {
++        final Context app = c.getApplicationContext();
++        new Thread(new Runnable() { @Override public void run() { applyNotifications(app); } }, "tj-lockquiet-notif").start();
++    }
++
++    private static boolean wifiOn(Context c) {
++        try { WifiManager wm = (WifiManager) c.getApplicationContext().getSystemService(Context.WIFI_SERVICE); return wm != null && wm.isWifiEnabled(); } catch (Throwable t) { return false; }
++    }
++    private static boolean btOn() {
++        try { BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter(); return a != null && a.isEnabled(); } catch (Throwable t) { return false; }
++    }
++
++    /** The lock moment: remember what is on, switch Wi-Fi and Bluetooth off. Blocking binder calls: call from a worker thread (see {@link #onLockAsync}). */
++    public static void onLock(Context c) {
++        try {
++            if (!enabled(c) || CrashGuard.automationOff(c)) return;
++            boolean w = wifiOn(c), b = btOn();
++            if (shouldRecordPrev(Features.getString(c, PREV_KEY, ""), w, b)) Features.setString(c, PREV_KEY, encodePrev(w, b));
++            if (w || b) {
++                ReturnReset.radiosOff(c);
++                Features.setString(c, LAST_KEY, stamp() + "  lock screen: " + (w ? "Wi-Fi " : "") + (b ? "Bluetooth " : "") + "switched off");
++                Log.i(TAG, "lock screen: radios off (wifi=" + w + " bt=" + b + ")");
++            }
++        } catch (Throwable t) { Log.e(TAG, "lock radios failed", t); }
++    }
++
++    public static void onLockAsync(final Context c) {
++        final Context app = c.getApplicationContext();
++        new Thread(new Runnable() { @Override public void run() { onLock(app); } }, "tj-lockquiet-lock").start();
++    }
++
++    /** An unlock was handled: forget the memory of this lock; after a gesture unlock into Quickstep put the radios back. Blocking: call from a worker thread (see {@link #onUnlockAsync}). */
++    public static void onUnlock(Context c, boolean quickstep) {
++        try {
++            String prev = Features.getString(c, PREV_KEY, "");
++            if (!prev.isEmpty()) Features.setString(c, PREV_KEY, "");
++            if (!shouldRestore(enabled(c), restoreEnabled(c), quickstep, CrashGuard.automationOff(c), prev)) return;
++            if (prevWifi(prev)) { WifiManager wm = (WifiManager) c.getApplicationContext().getSystemService(Context.WIFI_SERVICE); if (wm != null && !wm.isWifiEnabled()) wm.setWifiEnabled(true); }
++            if (prevBluetooth(prev)) { BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter(); if (a != null && !a.isEnabled()) a.enable(); }
++            Features.setString(c, LAST_KEY, stamp() + "  gesture unlock into Quickstep: " + (prevWifi(prev) ? "Wi-Fi " : "") + (prevBluetooth(prev) ? "Bluetooth " : "") + "put back");
++            Log.i(TAG, "radios put back after a gesture unlock (" + prev + ")");
++        } catch (Throwable t) { Log.e(TAG, "unlock restore failed", t); }
++    }
++
++    public static void onUnlockAsync(final Context c, final boolean quickstep) {
++        final Context app = c.getApplicationContext();
++        new Thread(new Runnable() { @Override public void run() { onUnlock(app, quickstep); } }, "tj-lockquiet-unlock").start();
++    }
++}
+diff --git a/app/src/main/java/com/tj/launcher/ReportState.java b/app/src/main/java/com/tj/launcher/ReportState.java
+index 1e68fdc..065909f 100644
+--- a/app/src/main/java/com/tj/launcher/ReportState.java
++++ b/app/src/main/java/com/tj/launcher/ReportState.java
+@@ -109,6 +109,11 @@ public final class ReportState {
+         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
+         try { b.append("crash breaker tripped: ").append(yes(CrashGuard.wasTripped(c))).append('\n'); } catch (Throwable t) { /* not available */ }
+         try { b.append("automation paused (Restore everything, or the breaker cleared by an update; the lock-screen rules do nothing while paused): ").append(yes(CrashGuard.isPaused(c))).append('\n'); } catch (Throwable t) { /* not available */ }
++        try {   // AK1: the lock screen quiet rule (radios off + no app notifications on the lock screen)
++            b.append("lock screen quiet: switch ").append(LockQuiet.enabled(c) ? "on" : "off").append(", restore after a gesture unlock ").append(LockQuiet.restoreEnabled(c) ? "on" : "off")
++                    .append(", lock_screen_show_notifications = ").append(setting("secure", c, LockQuiet.SHOW)).append(", lock_screen_allow_private_notifications = ").append(setting("secure", c, LockQuiet.PRIVATE))
++                    .append(", last: ").append(Features.getString(c, LockQuiet.LAST_KEY, "(nothing yet)")).append('\n');
++        } catch (Throwable t) { /* not available */ }
+         try {
+             b.append("battery saver guard: switch ").append(BatterySaverGuard.enabled(c) ? "on" : "off").append(", low_power = ").append(setting("global", c, BatterySaverPolicy.SETTING)).append(", low_power_sticky = ").append(setting("global", c, BatterySaverPolicy.STICKY_SETTING))
+                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
+diff --git a/app/src/main/java/com/tj/launcher/RestoreStore.java b/app/src/main/java/com/tj/launcher/RestoreStore.java
+index e00902a..fe265be 100644
+--- a/app/src/main/java/com/tj/launcher/RestoreStore.java
++++ b/app/src/main/java/com/tj/launcher/RestoreStore.java
+@@ -52,6 +52,18 @@ public final class RestoreStore {
+ 
+     public static boolean hasSnapshot(Context c) { return !p(c).getAll().isEmpty(); }
+ 
++    /** AK1: puts ONE snapshotted secure setting back and forgets that snapshot (a switch that turns a single feature off). True when something was restored. Never throws. */
++    public static boolean restoreSecure(Context c, String key) {
++        try {
++            SharedPreferences sp = p(c);
++            String v = sp.getString("secure:" + key, null);
++            if (v == null) return false;
++            Settings.Secure.putString(c.getContentResolver(), key, "\u0000null".equals(v) ? null : v);
++            sp.edit().remove("secure:" + key).commit();
++            return true;
++        } catch (Throwable t) { android.util.Log.e("TjRestore", "could not restore " + key, t); return false; }
++    }
++
+     /** Restores every snapshotted secure setting that we can write, forgets the snapshot, and turns every launcher feature switch off. */
+     public static void restoreAll(Context c) {
+         SharedPreferences sp = p(c);
+@@ -70,6 +82,8 @@ public final class RestoreStore {
+         sp.edit().clear().commit();
+         Features.allOff(c);
+         Features.set(c, LockNumber.KEY, false);
++        Features.set(c, LockQuiet.KEY, false);   // AK1: restore = the lock screen shows notifications again (the two settings were put back above) and nothing of ours switches Wi-Fi / Bluetooth off at the lock
++        Features.set(c, LockQuiet.RESTORE_KEY, false);
+         // AC1 (v0.7.3): the Two-profiles switches (pre-arm, radios, pre-clean) are NOT written false here any more. The old code did, so a breaker trip silently disabled the very things Tj depends on and he had to find and
+         // re-enable them by hand. "Nothing of ours switches launchers for you" is now the PAUSE ({@link CrashGuard#automationOff}), which every one of those rules reads; Restore and the breaker set it, and the next deliberate
+         // way back to the custom launcher clears it.
+diff --git a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+index 50f2a2b..539cf1c 100644
+--- a/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
++++ b/app/src/main/java/com/tj/launcher/TjAccessibilityService.java
+@@ -132,6 +132,7 @@ public class TjAccessibilityService extends AccessibilityService {
+         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
+         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
+         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
++        try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
+     }
+ 
+     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
+@@ -194,6 +195,7 @@ public class TjAccessibilityService extends AccessibilityService {
+     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
+             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
++            if (LockQuiet.KEY.equals(key)) LockQuiet.applyNotificationsAsync(getApplicationContext());   // AK1: the switch changed: hide / put back the lock-screen notification setting now
+             if (PatchRest.KEY.equals(key) || LOCK_PATCH_KEY.equals(key) || PATCH_DIM_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { layerRefresh.run(); patchShow(overlayShown); } });   // AE3: the always-on switch / dim nudge changed: apply it now
+             if ("mode".equals(key)) handler.post(new Runnable() { @Override public void run() { updateHotspot(); } });
+             if (key != null && (key.startsWith("unlock_m_") || key.startsWith("return_m_") || "mode".equals(key))) handler.post(new Runnable() { @Override public void run() { updateMotion(); } });
+@@ -698,6 +700,7 @@ public class TjAccessibilityService extends AccessibilityService {
+             boolean armed = unlock.armedMethod() != null;
+             boolean paused = CrashGuard.automationOff(app);
+             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
++            if (locked && !paused) LockQuiet.onLockAsync(app);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock)
+             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
+                 if (ReturnReset.cleanAtLock(app)) {
+                     preCleanedThisLock = true;
+@@ -766,10 +769,12 @@ public class TjAccessibilityService extends AccessibilityService {
+                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
+                 Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: this lock ended in a handshake, so the safety net below must not end this Quickstep session
+                 LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
++                LockQuiet.onUnlockAsync(app, true);   // AK1: a gesture unlock into Quickstep puts Wi-Fi / Bluetooth back as they were before the lock
+                 verifyQuickstepFront(0);         // AC9: a late start of the custom home / Solitaire stand-in must not stay on top of the gesture's choice
+                 return;
+             }
+             qsApp = null; resumedPkg = null;   // AD5: a plain unlock ends the session: no app to come back to
++            LockQuiet.onUnlockAsync(app, false);   // AK1: a plain unlock (custom launcher): the radios stay off; forget the memory of this lock
+             boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
+             if (ends) {
+                 Mode.set(app, Mode.CUSTOM);
+@@ -1489,6 +1494,8 @@ public class TjAccessibilityService extends AccessibilityService {
+     }
+ 
+     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
++    private final long[] lqHist = new long[LockQuiet.MAX_WRITES];   // AK1: when the lock-screen rule last switched a radio off
++    private int lqIdx = 0;
+     private final long[] radioHist = new long[3];
+     private int radioIdx = 0;
+     private boolean radioGuardOn = false;
+@@ -1506,8 +1513,11 @@ public class TjAccessibilityService extends AccessibilityService {
+                 } else return;
+                 if (!turnedOn) return;
+                 long now = System.currentTimeMillis();
+-                if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) return;
+-                radioHist[radioIdx++ % radioHist.length] = now;
++                if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) {
++                    // AK1: not the custom account's rule: is the tablet on the LOCK SCREEN? Then a radio that comes on is switched off again, whatever launcher is active
++                    if (!LockQuiet.enforceRadios(LockQuiet.enabled(TjAccessibilityService.this), keyguardLockedFast(), CrashGuard.automationOff(TjAccessibilityService.this), now, lqHist)) return;
++                    lqHist[lqIdx++ % lqHist.length] = now;
++                } else radioHist[radioIdx++ % radioHist.length] = now;
+                 final android.content.Context app = getApplicationContext();
+                 new Thread(new Runnable() { @Override public void run() { try { ReturnReset.radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); } } }, "tj-radio-guard").start();
+                 Log.i(TAG, "RADIOS switched on in the custom account -> switching off");
+diff --git a/app/src/main/java/com/tj/launcher/TjApplication.java b/app/src/main/java/com/tj/launcher/TjApplication.java
+index 16bf769..a95033f 100644
+--- a/app/src/main/java/com/tj/launcher/TjApplication.java
++++ b/app/src/main/java/com/tj/launcher/TjApplication.java
+@@ -22,6 +22,7 @@ public class TjApplication extends Application {
+         final boolean main = getPackageName().equals(Application.getProcessName());   // the short-lived :wallpaper_chooser process has no business with the watchers below
+         try { if (main) SwitchMigration.run(this); } catch (Throwable ignored) { }   // v0.7.3: undo the old breaker reset's "false" values once (all three switches stored as off = its signature)
+         try { if (main) EntranceWatcher.start(this); } catch (Throwable ignored) { }   // AD4: the rotation-tile and charger entrances (the page flick is fed by the Launcher touch hook)
++        try { if (main) LockQuiet.applyNotificationsAsync(this); } catch (Throwable ignored) { }   // AK1: the lock screen shows no app notifications (setting written / put back by the switch)
+         try { if (main) BatterySaverGuard.start(this); } catch (Throwable ignored) { }   // AC3: watch battery saver for the life of the MAIN process (one observer, no polling)
+         try {
+             startMs = android.os.SystemClock.uptimeMillis() - t0;
+diff --git a/app/src/test/java/com/tj/launcher/LockQuietTest.java b/app/src/test/java/com/tj/launcher/LockQuietTest.java
+new file mode 100644
+index 0000000..4f76578
+--- /dev/null
++++ b/app/src/test/java/com/tj/launcher/LockQuietTest.java
+@@ -0,0 +1,60 @@
++package com.tj.launcher;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
++import org.junit.Test;
++
++/** AK1: the lock screen shows no Wi-Fi, no Bluetooth and no app notifications, from any launcher. The Android side is proven by emulator section lq; these are the pure rules. */
++public class LockQuietTest {
++    private static final long NOW = 1_000_000;
++    private static final long[] NONE = {0, 0, 0};
++
++    @Test public void aRadioThatComesOnWhileLockedIsSwitchedOff() { assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, NONE)); }
++    @Test public void neverWhileTheTabletIsUnlocked() { assertFalse(LockQuiet.enforceRadios(true, false, false, NOW, NONE)); }
++    @Test public void neverWithTheSwitchOff() { assertFalse(LockQuiet.enforceRadios(false, true, false, NOW, NONE)); }
++    @Test public void neverWhileAutomationIsPaused() { assertFalse(LockQuiet.enforceRadios(true, true, true, NOW, NONE)); }
++    @Test public void aRadioThatRefusesToStayOffIsNotFoughtInALoop() {
++        long[] three = {NOW - 1000, NOW - 20_000, NOW - 59_000};
++        assertFalse(LockQuiet.enforceRadios(true, true, false, NOW, three));
++        long[] two = {NOW - 1000, NOW - 20_000, 0};
++        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, two));
++    }
++    @Test public void oldSwitchOffsDoNotCountAndNullIsEmpty() {
++        long[] old = {NOW - 61_000, NOW - 120_000, NOW - 300_000};
++        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, old));
++        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, null));
++    }
++
++    @Test public void theMemoryOfWhatWasOnRoundTrips() {
++        assertEquals("w1b0", LockQuiet.encodePrev(true, false));
++        assertEquals("w0b1", LockQuiet.encodePrev(false, true));
++        assertTrue(LockQuiet.prevWifi("w1b0")); assertFalse(LockQuiet.prevBluetooth("w1b0"));
++        assertTrue(LockQuiet.prevBluetooth("w0b1")); assertFalse(LockQuiet.prevWifi("w0b1"));
++        assertFalse(LockQuiet.prevWifi(null)); assertFalse(LockQuiet.prevBluetooth(""));
++    }
++
++    @Test public void aGestureUnlockIntoQuickstepPutsWhatWasOnBack() { assertTrue(LockQuiet.shouldRestore(true, true, true, false, "w1b0")); }
++    @Test public void aPlainUnlockIntoCustomLeavesThemOff() { assertFalse(LockQuiet.shouldRestore(true, true, false, false, "w1b1")); }
++    @Test public void nothingToRestoreWhenNothingWasOn() { assertFalse(LockQuiet.shouldRestore(true, true, true, false, "w0b0")); assertFalse(LockQuiet.shouldRestore(true, true, true, false, "")); }
++    @Test public void restoreNeedsBothSwitchesAndNoPause() {
++        assertFalse(LockQuiet.shouldRestore(false, true, true, false, "w1b0"));
++        assertFalse(LockQuiet.shouldRestore(true, false, true, false, "w1b0"));
++        assertFalse(LockQuiet.shouldRestore(true, true, true, true, "w1b0"));
++    }
++
++    @Test public void theFirstLockMomentRecordsAndARadioThatIsOnNowRefreshesIt() {
++        assertTrue(LockQuiet.shouldRecordPrev("", false, false));
++        assertTrue(LockQuiet.shouldRecordPrev(null, false, false));
++        assertFalse("the second lock moment of the same lock keeps the first memory", LockQuiet.shouldRecordPrev("w1b0", false, false));
++        assertTrue("a radio that is on right now is the freshest truth", LockQuiet.shouldRecordPrev("w0b0", true, false));
++    }
++
++    @Test public void theNamesAreAndroidsOwnAndTheSwitchKeysAreStable() {
++        assertEquals("lock_screen_show_notifications", LockQuiet.SHOW);
++        assertEquals("lock_screen_allow_private_notifications", LockQuiet.PRIVATE);
++        assertEquals("lock_quiet", LockQuiet.KEY);
++        assertEquals("lock_quiet_restore", LockQuiet.RESTORE_KEY);
++    }
++}
+diff --git a/tools/emulator_scenario.sh b/tools/emulator_scenario.sh
+index efff4e8..31e07ee 100755
+--- a/tools/emulator_scenario.sh
++++ b/tools/emulator_scenario.sh
+@@ -1467,6 +1467,48 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+ adb logcat -c
+ setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+ fi # section ae
++if want lq; then # section lq
++ensurehome
++# ---- AK1 (Tj, 2026-11-06): "make it so wifi, Bluetooth, and all notifications are cleared and off whenever the tablet is on the lock screen, from any launcher".
++#      Notifications: the lock screen shows NONE (Settings.Secure lock_screen_show_notifications = 0, the original is put back by the switch). Radios: off the moment the tablet is on the lock screen and kept off;
++#      a GESTURE unlock into Quickstep puts them back, a plain unlock into custom leaves them off. The PIN is ALWAYS cleared again at the end.
++beat "before LQ"
++adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
++lqfeat(){ # lqfeat <lock_quiet true|false> <restore true|false>
++  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"$1\\\" /><boolean name=\\\"lock_quiet_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
++wifi(){ adb shell settings get global wifi_on | tr -d '\r\n'; }
++lqshow(){ adb shell settings get secure lock_screen_show_notifications | tr -d '\r\n'; }
++adb shell settings put secure lock_screen_show_notifications 1; adb shell settings put secure lock_screen_allow_private_notifications 1       # a KNOWN original, so the restore can be checked
++adb shell locksettings set-pin 1234 > "$OUT/lq-setpin.txt" 2>&1
++lqfeat true true; adb shell am force-stop "$PKG"; sleep 1
++setmode quickstep; rebind; home; sleep 4
++adb shell svc wifi enable; sleep 5
++info "LQ: before the lock: wifi_on=$(wifi) lock_screen_show_notifications=$(lqshow)"
++check "LQ: the lock screen shows no app notifications (lock_screen_show_notifications = 0 once the helper runs)" bash -c "[ \"$(lqshow)\" = 0 ]"
++adb logcat -c
++lockpad; sleep 9                                                    # the tablet is on the lock screen
++LQW1="$(wifi)"
++adb shell svc wifi enable; sleep 6                                  # something turns Wi-Fi on while locked
++LQW2="$(wifi)"
++info "LQ: on the lock screen wifi_on=$LQW1; after something turned it on again, 6 s later: $LQW2"
++check "LQ: on the lock screen Wi-Fi is off (from Quickstep, no custom launcher involved)" bash -c "[ \"$LQW1\" = 0 ]"
++check "LQ: a radio that comes on while the tablet is locked is switched off again" bash -c "[ \"$LQW2\" = 0 ]"
++pad d d 1 2 3 4 e; sleep 8                                          # the gesture: Quickstep again
++LQW3="$(wifi)"
++info "LQ: after the gesture unlock into Quickstep: wifi_on=$LQW3"
++check "LQ: a gesture unlock into Quickstep puts Wi-Fi back as it was before the lock" bash -c "[ \"$LQW3\" = 1 ]"
++lockpad; sleep 9; pad 1 2 3 4 e; sleep 8                            # a plain PIN: the custom launcher
++LQW4="$(wifi)"
++info "LQ: after a plain PIN (custom launcher): wifi_on=$LQW4"
++check "LQ: a plain unlock into the custom launcher leaves Wi-Fi off" bash -c "[ \"$LQW4\" = 0 ]"
++lqfeat false false; adb shell am force-stop "$PKG"; sleep 1; rebind; sleep 6
++check "LQ: with the switch off the original lock-screen notification setting is put back (1)" bash -c "[ \"$(lqshow)\" = 1 ]"
++adb shell locksettings clear --old 1234 > "$OUT/lq-clearpin.txt" 2>&1
++adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
++check "LQ: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/lq-clearpin.txt"
++adb shell svc wifi enable; adb shell settings put secure lock_screen_show_notifications 1; adb logcat -c
++setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
++fi # section lq
+ if want rs2; then # section rs2
+ ensurehome
+ # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
+diff --git a/tools/gate-map.txt b/tools/gate-map.txt
+index 0e538fb..2ea23c0 100644
+--- a/tools/gate-map.txt
++++ b/tools/gate-map.txt
+@@ -25,6 +25,7 @@ ka     :: 69  :: opt  :: KeepAlive :: - :: the keep-alive foreground service and
+ ad     :: 54  :: opt  :: ResumeTarget|PowerMenuRule :: startQuickstepFront|qsApp|resumedPkg|coverWorld :: AD5 (a gesture unlock resumes the open app), AD7a (the cover on every lock screen)
+ se     :: 33  :: opt  :: SecretEntrances|EntranceWatcher|TjHooks|launcher3/src/com/android/launcher3/Launcher\.java :: dispatchTouchEvent|EntranceWatcher :: AD4: the hidden entrances to Quickstep
+ ae     :: 90  :: opt  :: PatchRest :: patchResting|patchRestTop|lockPatchAlways :: AE3: the resting patch over the Screenshot slot (hides while the PIN pad is up; not touchable)
++lq     :: 75  :: opt  :: LockQuiet|RestoreStore|ProfileSession :: lock_quiet|LockQuiet|radioReceiver|onLockAsync|onUnlockAsync :: AK1: the lock screen shows no Wi-Fi / Bluetooth / app notifications from any launcher; restored after a gesture unlock
+ rt     :: 45  :: opt  :: TaskOrigin|AppOrigin|QuickstepUsage|ReturnReset|ShellServer :: - :: the task-precise clean-up at the lock (helper running)
+ pf     :: 84  :: opt  :: ReturnReset|AppOrigin|RecentsDirty|ProfileSession|QuickstepUsage|TaskOrigin :: trackDirty|markQuickstep|runReset|resetRecents :: the notification panel and the clean-up at lock with shared apps
+ im     :: 34  :: opt  :: ImmersiveProfile :: policy_control|immersive :: the status-bar switch
