@@ -175,6 +175,11 @@ public final class PatchShot {
         } catch (Throwable t) { return false; }
     }
 
+    /** Review of v0.8.1 (AU4 follow-up): the stored crop of THIS rotation no longer fits the patch window (the menu moved: font size, another entry). Forget just that one, so every check ({@link #has}, {@link #summary}, the rest decision, the automatic calibration) agrees that this lock screen has to be calibrated again; otherwise the rest recheck loaded the same crop 400 ms later. */
+    public static void invalidate(Context c, int rot) {
+        try { file(c, rot).delete(); Features.setString(c, metaKey(rot), ""); } catch (Throwable ignored) { }
+    }
+
     /** Forgets every stored crop. */
     public static void forget(Context c) {
         for (int rot = 0; rot < 4; rot++) {
