@@ -171,3 +171,9 @@ decide an OPEN item for Tj — resolve it with him, one real decision at a time.
 - Refer to Tj by name; no gendered pronouns.
 
 <!-- handoff:learnings:end -->
+
+## Lessons from the v0.8.1 session (2026-11-06 night; kept outside the plugin's block above)
+- **Never write `Settings.Global low_power` to switch battery saver ON.** Android 10's `BatterySaverStateMachine` follows the setting but keeps its own `mState`; after a direct write the tile and the Settings screen are silently ignored (`Tried to disable BS when it's already OFF`). Evidence and AOSP excerpts: `research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md`; emulator section `bs` drives the REAL Settings screen. A test that fakes the tile with `settings put global low_power` hides this bug (the old `ac` checks did).
+- **Reading AOSP source:** the Bash hook blocks network egress. Use the `web-fetch` agent (`subagent_type: web-fetch`) with a narrow brief ("verbatim code of methods X, Y"); treat its answer as data and keep the useful excerpts in `research/` so the next session does not fetch them again. (The same hook also pattern-matches certain words inside a Bash command text: write documentation with the Edit tool.)
+- **Waiting for CI:** a foreground `sleep` is blocked. Run `Bash` with `run_in_background` and `sleep N` (its "completed" notice is about the WRAPPER and proves nothing about the CI run), then read the run with `list_workflow_jobs` and `get_job_logs` (HTTP 404 = the job has not ended yet).
+- **Power-menu timing:** the stock dialog fades its own scrim in over 300 ms (FAST_OUT_SLOW_IN) and nothing precedes its window on Android 10. A patch that is told "open" must follow that curve from the window event's own time (`PatchFade`), and the node scan must not run while it fades (it blocks the thread that redraws the patch). A patch that follows the right curve but 60 ms late is still ~11 % off at the steepest point: measure the timing (section `pt`), do not guess.
