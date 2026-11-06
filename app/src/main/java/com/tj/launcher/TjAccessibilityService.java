@@ -199,6 +199,7 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
+        handler.postDelayed(new Runnable() { @Override public void run() { try { if (keyguardLocked()) lockPrepare("the helper connected on the lock screen"); } catch (Throwable t) { Log.e(TAG, "connect lock rules failed", t); } } }, 2000);   // AW2 / AW3: the first lock screen after a restart (or after the helper was away) gets the same rules
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
         try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
         try { if (calibrating()) calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration resume failed", t); }   // AM1
@@ -892,7 +893,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean armed = unlock.armedMethod() != null;
             boolean paused = CrashGuard.automationOff(app);
             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
-            if (locked && !paused) LockQuiet.onLockAsync(app);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock)
+            if (locked && !paused) { lqLastWrite = 0; lqWrites = 0; LockQuiet.onLockAsync(app); applyLockTiles(why); }   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock); AW2: and the quick settings show the rotation tile only
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
                     preCleanedThisLock = true;
@@ -907,6 +908,33 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** SCREEN_ON: the lock screen is what the screen shows (if it was not locked at screen-off, this is the first chance). */
     private void handleLockedWake() { lockPrepare("woke locked"); }
+
+    /**
+     * AW2 (Tj, 2026-11-06 evening): "The lock screen from any launcher at all times should only have the rotation tile in the quick settings". While the keyguard is up the custom tile list is written whatever
+     * the mode says ({@link TileProfile#effectiveMode}); {@link #restoreUnlockTiles} puts the mode's own list back once the lock screen is gone. Idempotent, exception-safe, does nothing while automation is paused.
+     */
+    private void applyLockTiles(String why) {
+        try {
+            android.content.Context app = getApplicationContext();
+            if (CrashGuard.automationOff(app) || !TileProfile.enabled(app)) return;
+            TileProfile.apply(app, Mode.get(app));
+            LockLog.add(app, "TILES", "lock screen (" + why + "): rotation list in place, mode " + Mode.get(app));
+        } catch (Throwable t) { Log.e(TAG, "lock tiles failed", t); }
+    }
+
+    /** AW2: the lock screen is gone: the list of the active mode comes back (a gesture unlock into Quickstep: Tj's Quickstep tiles). Looked at twice: the keyguard may still report "locked" for a moment after USER_PRESENT. */
+    private void restoreUnlockTiles() {
+        try {
+            android.content.Context app = getApplicationContext();
+            if (CrashGuard.automationOff(app) || !TileProfile.enabled(app)) return;
+            TileProfile.apply(app, Mode.get(app));
+            handler.removeCallbacks(restoreTilesLater);
+            handler.postDelayed(restoreTilesLater, 1500);
+        } catch (Throwable t) { Log.e(TAG, "unlock tiles failed", t); }
+    }
+    private final Runnable restoreTilesLater = new Runnable() { @Override public void run() {
+        try { android.content.Context app = getApplicationContext(); if (!CrashGuard.automationOff(app) && TileProfile.enabled(app) && !keyguardLocked()) TileProfile.apply(app, Mode.get(app)); } catch (Throwable t) { Log.e(TAG, "unlock tiles (later) failed", t); }
+    } };
 
     private final ReturnMethods.Flurry returnFlurry = new ReturnMethods.Flurry();
 
@@ -936,6 +964,10 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** The unlock succeeded (USER_PRESENT). Handshake given = Quickstep (already in front); plain = the custom account (a Quickstep session ends here). */
     private void applyUnlockChoice() {
+        try { applyUnlockChoiceBody(); } finally { lqLastWrite = 0; lqWrites = 0; restoreUnlockTiles(); }   // AW2 / AW3: whichever way the unlock went, the mode's own tile list is back and the lock-screen radio count starts afresh
+    }
+
+    private void applyUnlockChoiceBody() {
         try {
             android.content.Context app = getApplicationContext();
             handler.removeCallbacks(coverCheck);
@@ -1702,13 +1734,13 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onChange(boolean selfChange) {
             try {
                 android.content.Context app = getApplicationContext();
-                if (!Mode.isCustom(app) || !TileProfile.enabled(app) || !TileProfile.permitted(app)) return;
+                if (!(Mode.isCustom(app) || keyguardLockedFast()) || !TileProfile.enabled(app) || !TileProfile.permitted(app)) return;   // AW2: the custom list is also the lock screen's, whatever the mode says
                 String cur = android.provider.Settings.Secure.getString(getContentResolver(), TileProfile.SETTING);
                 if (TileProfile.tilesFor(app, Mode.CUSTOM).equals(cur)) return;
                 long now = System.currentTimeMillis();
                 if (!ProfileSession.enforceRadios(true, true, now, tileHist)) return;     // same "3 tries a minute, never a loop" rule
                 tileHist[tileIdx++ % tileHist.length] = now;
-                Log.i(TAG, "TILES changed while the custom account is active (" + cur + ") -> putting its list back");
+                Log.i(TAG, "TILES changed while the custom account / the lock screen is active (" + cur + ") -> putting its list back");
                 TileProfile.apply(app, Mode.CUSTOM);
             } catch (Throwable t) { Log.e(TAG, "tile guard failed", t); }
         }
@@ -1727,11 +1759,11 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     // ---------------------------------------------------------------- N3: the custom account has no Wi-Fi / Bluetooth (Tj: "no wifi or bluetooth enabled")
-    private final long[] lqHist = new long[LockQuiet.MAX_WRITES];   // AK1: when the lock-screen rule last switched a radio off
-    private int lqIdx = 0;
+    private long lqLastWrite = 0; private int lqWrites = 0;   // AW3: the lock-screen rule: when it last switched a radio off, and how many switch-offs this lock has spent (restarted at every lock and unlock)
     private final long[] radioHist = new long[3];
     private int radioIdx = 0;
     private boolean radioGuardOn = false;
+    private final Runnable radioRecheck = new Runnable() { @Override public void run() { lockRadiosCheck("recheck"); } };
     private final android.content.BroadcastReceiver radioReceiver = new android.content.BroadcastReceiver() {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
             try {
@@ -1747,9 +1779,9 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (!turnedOn) return;
                 long now = System.currentTimeMillis();
                 if (!ProfileSession.enforceRadios(ProfileSession.radiosOff(TjAccessibilityService.this), Mode.isCustom(TjAccessibilityService.this), now, radioHist)) {
-                    // AK1: not the custom account's rule: is the tablet on the LOCK SCREEN? Then a radio that comes on is switched off again, whatever launcher is active
-                    if (!fullyOn || !LockQuiet.enforceRadios(LockQuiet.enabled(TjAccessibilityService.this), keyguardLockedFast(), CrashGuard.automationOff(TjAccessibilityService.this), now, lqHist)) return;
-                    lqHist[lqIdx++ % lqHist.length] = now;
+                    // AK1: not the custom account's rule: is the tablet on the LOCK SCREEN? Then a radio that comes on is switched off again, whatever launcher is active (AW3: and kept off, see lockRadiosCheck)
+                    if (fullyOn) lockRadiosCheck("a radio came on");
+                    return;
                 } else radioHist[radioIdx++ % radioHist.length] = now;
                 final android.content.Context app = getApplicationContext();
                 new Thread(new Runnable() { @Override public void run() { try { ReturnReset.radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radio guard failed", t); } } }, "tj-radio-guard").start();
@@ -1757,6 +1789,34 @@ public class TjAccessibilityService extends AccessibilityService {
             } catch (Throwable t) { Log.e(TAG, "radio receiver failed", t); }
         }
     };
+
+    /**
+     * AW3 (Tj, 2026-11-06 evening): on the lock screen Wi-Fi and Bluetooth stay off for the WHOLE time the keyguard is up, from any launcher. A radio that is on is switched off at once, or as soon as
+     * {@link LockQuiet#MIN_GAP_MS} have passed since the last switch-off, and looked at again after that until it stays off (v0.8.0 gave up after 3 switch-offs a minute). The chain only runs while a radio is found on.
+     */
+    private void lockRadiosCheck(String why) {
+        try {
+            final android.content.Context app = getApplicationContext();
+            if (!keyguardLockedFast() || !LockQuiet.enabled(app) || CrashGuard.automationOff(app)) return;
+            new Thread(new Runnable() { @Override public void run() {   // the radio state reads are binder calls
+                try {
+                    if (!LockQuiet.anyRadioOn(app)) return;
+                    final long now = System.currentTimeMillis();
+                    final long delay = LockQuiet.retryDelayMs(true, true, false, now, lqLastWrite, lqWrites);
+                    handler.post(new Runnable() { @Override public void run() {
+                        try {
+                            if (delay < 0) { Log.i(TAG, "LOCKRADIOS gave up for this lock: " + lqWrites + " switch-offs spent"); return; }
+                            if (delay > 0) { handler.removeCallbacks(radioRecheck); handler.postDelayed(radioRecheck, delay + 100); return; }
+                            lqLastWrite = now; lqWrites++;
+                            Log.i(TAG, "LOCKRADIOS a radio is on while locked -> switching off (" + why + ", #" + lqWrites + ")");
+                            new Thread(new Runnable() { @Override public void run() { try { ReturnReset.radiosOff(app); } catch (Throwable t) { Log.e(TAG, "lock radios failed", t); } } }, "tj-lock-radios").start();
+                            handler.removeCallbacks(radioRecheck); handler.postDelayed(radioRecheck, LockQuiet.MIN_GAP_MS + 300);   // did it stay off?
+                        } catch (Throwable t) { Log.e(TAG, "lock radios step failed", t); }
+                    } });
+                } catch (Throwable t) { Log.e(TAG, "lock radios check failed", t); }
+            } }, "tj-lock-radios-check").start();
+        } catch (Throwable t) { Log.e(TAG, "lock radios check failed", t); }
+    }
 
     private void startRadioGuard() {
         if (radioGuardOn) return;
