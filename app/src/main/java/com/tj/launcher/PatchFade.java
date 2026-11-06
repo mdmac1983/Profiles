@@ -58,10 +58,12 @@ public final class PatchFade {
     }
 
     /** True while a frame drawn {@code nowMs} still has something to follow: the elapsed time (plus the lead) has not reached the end of the stock fade. */
-    public static boolean fading(long nowMs, long startMs) { return nowMs + LEAD_MS - startMs < OPEN_MS; }
+    public static boolean fading(long nowMs, long startMs) { return fading(nowMs, startMs, LEAD_MS); }
+    public static boolean fading(long nowMs, long startMs, long leadMs) { return nowMs + leadMs - startMs < OPEN_MS; }
 
     /** The progress to draw at {@code nowMs} for a fade that started at {@code startMs} (uptime ms; may lie in the past): the lead is added so the frame is right when it is SEEN. */
-    public static float progressAt(long nowMs, long startMs) { return openProgress(nowMs + LEAD_MS - startMs); }
+    public static float progressAt(long nowMs, long startMs) { return progressAt(nowMs, startMs, LEAD_MS); }
+    public static float progressAt(long nowMs, long startMs, long leadMs) { return openProgress(nowMs + leadMs - startMs); }
 
     /** The brightness between the resting value and the open value: {@code progress} 0 = resting, 1 = open (the stock scrim complete). */
     public static float mix(float kRest, float kOpen, float progress) { return kRest + (kOpen - kRest) * progress; }

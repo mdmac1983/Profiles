@@ -239,7 +239,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String PATCH_FADE_KEY = "patch_fade";
     private volatile long lastWinEventMs = 0;          // AZ1: event time (uptime ms) of the newest window-state / windows-changed event: the stock fade began about then
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
-    private long fadeStartMs = 0, fadeLagLast = -1;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
+    private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
     private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
     private long scanNotBeforeMs = 0, fastTryMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade; one fast look per 20 ms
     private boolean patchFadeOn() { return Features.get(this, PATCH_FADE_KEY, true); }
@@ -2385,8 +2385,10 @@ public class TjAccessibilityService extends AccessibilityService {
         long now = android.os.SystemClock.uptimeMillis();
         boolean on = patchFadeOn();
         long lag = on ? PatchFade.lagMs(now, lastWinEventMs) : PatchFade.OPEN_MS;
+        fadeLeadMs = PatchFade.LEAD_MS;
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", -1); if (v >= 0) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt)
         fadeStartMs = now - lag;
-        fading = on && PatchFade.fading(now, fadeStartMs);
+        fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
         fadeLagLast = lag;
         Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms");
     }
@@ -2395,8 +2397,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private float fadeProgress() {
         if (!fading) return 1f;
         long now = android.os.SystemClock.uptimeMillis();
-        float p = PatchFade.progressAt(now, fadeStartMs);
-        if (!PatchFade.fading(now, fadeStartMs)) fading = false;   // this frame is the last one: the final brightness
+        float p = PatchFade.progressAt(now, fadeStartMs, fadeLeadMs);
+        if (!PatchFade.fading(now, fadeStartMs, fadeLeadMs)) fading = false;   // this frame is the last one: the final brightness
         return p;
     }
 
