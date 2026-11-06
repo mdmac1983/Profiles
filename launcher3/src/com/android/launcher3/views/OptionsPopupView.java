@@ -205,10 +205,15 @@ public class OptionsPopupView extends ArrowPopup
         } else {
             intent.putExtra(EXTRA_WALLPAPER_FLAVOR, "focus_wallpaper");
         }
-        String pickerPackage = launcher.getString(R.string.wallpaper_picker_package);
-        if (!TextUtils.isEmpty(pickerPackage)) {
-            intent.setPackage(pickerPackage);
+        // TJ (2026-11-06, AO1): "make sure it always uses the default android wallpaper picker and doesn't offer another app". ONE explicit system component, never a chooser:
+        // the one the stock launcher is configured to use, else the system's wallpaper app; nothing fits = a message and nothing opens (com.tj.launcher.WallpaperPickerChoice).
+        com.tj.launcher.WallpaperPickerChoice.Result tjPicker = com.tj.launcher.WallpaperPickerChoice.resolve(launcher);
+        if (tjPicker.component == null) {
+            Toast.makeText(launcher, "No wallpaper picker found on this tablet", Toast.LENGTH_LONG).show();
+            return false;
         }
+        intent.setComponent(tjPicker.component);
+        com.tj.launcher.WallpaperPickerChoice.noteLaunched(tjPicker.component);
         return launcher.startActivitySafely(v, intent, null, null);
     }
 
