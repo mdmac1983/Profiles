@@ -21,6 +21,20 @@ public final class EventNoise {
         return packageName == null || !(SYSTEM_UI.contentEquals(packageName) || ANDROID.contentEquals(packageName));
     }
 
+    /**
+     * AN1 (Tj, 2026-11-06: "the battery saver tile is mostly unresponsive ... turns on very slow ... I'm almost certain this has something to do with the launcher or adb or accessibility"). Every node search the helper starts
+     * is executed by SystemUI's own UI thread, the very thread that handles the tap on a quick-settings tile. While the shade is open SystemUI sends BURSTS of content changes (tiles redrawing, a ripple, the clock) and each
+     * one started the power-menu scan (two whole-tree text searches in every system window) plus the pencil search: dozens of tree walks a second on a 2 GB MT8168. A content change cannot OPEN the power menu (that is a
+     * new window: the window events start the scan and the next 300 ms are scanned in every window); it matters only while a menu is already up. Pure, so the rule is JVM-tested.
+     */
+    public static boolean needsPowerMenuScan(int eventType, boolean menuKnownUp, boolean inFullScanWindow) {
+        if (eventType != TYPE_WINDOW_CONTENT_CHANGED) return true;   // window changes and clicks always start the scan, exactly as before
+        return menuKnownUp || inFullScanWindow;
+    }
+
+    /** AN1: the shortest gap between two FULL pencil searches (a whole-tree walk in SystemUI's shade window): 40 ms after a window change or a click, 200 ms inside a burst of content changes. Following a pencil that is already known is one node, not a tree, and is not limited by this. */
+    public static long minPencilSearchGapMs(int eventType) { return eventType == TYPE_WINDOW_CONTENT_CHANGED ? 200L : 40L; }
+
     /** android.view.accessibility.AccessibilityWindowInfo types */
     public static final int WINDOW_TYPE_APPLICATION = 1, WINDOW_TYPE_INPUT_METHOD = 2;
 

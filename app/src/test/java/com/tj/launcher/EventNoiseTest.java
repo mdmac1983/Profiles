@@ -77,4 +77,22 @@ public class EventNoiseTest {
         assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_SYSTEM, false));
         assertTrue(EventNoise.mayHoldPowerMenu(false, false, AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY, false));
     }
+
+    // ---- AN1: the shade must not be searched on every redraw
+    @Test public void aContentChangeOfTheShadeDoesNotStartAScanUnlessAMenuIsUp() {
+        assertFalse(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, false, false));   // a tile redraws, the clock ticks: nothing to look for
+        assertTrue(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, true, false));     // the menu is up: follow its changes
+        assertTrue(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED, false, true));     // the 300 ms right after a window change: late content of a new window
+    }
+    @Test public void windowChangesAndClicksAlwaysStartTheScan() {
+        assertTrue(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false, false));
+        assertTrue(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_WINDOWS_CHANGED, false, false));
+        assertTrue(EventNoise.needsPowerMenuScan(AccessibilityEvent.TYPE_VIEW_CLICKED, false, false));
+        assertTrue(EventNoise.needsPowerMenuScan(0, false, false));   // an event of no known type (null event): scan as before
+    }
+    @Test public void pencilSearchesInABurstOfContentChangesAreSpaced() {
+        assertEquals(200L, EventNoise.minPencilSearchGapMs(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED));
+        assertEquals(40L, EventNoise.minPencilSearchGapMs(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED));
+        assertEquals(40L, EventNoise.minPencilSearchGapMs(AccessibilityEvent.TYPE_VIEW_CLICKED));
+    }
 }
