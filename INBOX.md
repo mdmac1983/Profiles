@@ -1012,3 +1012,9 @@ The lock screen from any launcher at all times should only have the rotation til
 ```
 In 0.8.0, the battery saver toggle in the quick settings for quickstep still doesn't work. It worked before this project
 ```
+
+## 2026-11-06T19:29:35Z
+```
+I choose A) auto calibrate the screenshot. Finish this session and get it ready for a new session 
+This project needs to be fixed. Why are my prompts and Claude findings not being saved? This is important to fix
+```
