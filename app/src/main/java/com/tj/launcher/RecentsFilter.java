@@ -30,7 +30,8 @@ final class RecentsFilter {
     private Set<String> blocked = new HashSet<>();
     private long blockedAt = -LABELS_TTL_MS;
     private boolean pending = false;
-    private int rounds = 0;
+    private int rounds = 0, looks = 0;
+    private static final long[] LOOK_DELAYS_MS = { 450, 700, 1200, 1500 };   // after the first look at 150 ms: looks at about 0.6 s, 1.3 s, 2.5 s and 4 s
     private long closedTotal = 0;
 
     RecentsFilter(TjAccessibilityService svc, android.os.Handler handler) { this.svc = svc; this.handler = handler; }
@@ -95,7 +96,7 @@ final class RecentsFilter {
             if (pkg == null || !mayOpenRecents(e.getEventType(), pkg.toString(), svc.stockPackageOrNull(), e.getClassName())) return;
             if (!wanted(Mode.isCustom(svc), Features.get(svc, KEY, true), svc.keyguardLockedNow(), CrashGuard.automationOff(svc), svc.resetDrivesRecents())) return;
             schedule(150);
-            rounds = 0;
+            rounds = 0; looks = 0;
         } catch (Throwable t) { Log.e(TAG, "recents guard event failed", t); }
     }
 
@@ -118,8 +119,8 @@ final class RecentsFilter {
                 Features.setString(svc, STATUS_KEY, line);
                 LockLog.add(svc.getApplicationContext(), "RECENTS", "closed a card of '" + closed + "': not an app of the custom drawer");
                 if (++rounds < 12) schedule(70);          // the card animates away; look again for the next one
-            } else if (rounds == 0) {
-                rounds = 1; schedule(450);                // the cards of a freshly opened Recents screen can arrive a moment later: one more look
+            } else if (looks < LOOK_DELAYS_MS.length) {
+                schedule(LOOK_DELAYS_MS[looks++]);        // the cards of a freshly opened Recents screen can arrive late (a busy tablet / emulator): a few more looks over about 4 s, then stop
             }
         } catch (Throwable t) { Log.e(TAG, "recents guard run failed", t); }
     } };

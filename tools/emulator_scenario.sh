@@ -1656,8 +1656,9 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   info "PS B: helper log (all TjA11y PATCH lines since boot, tail): $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH' | tail -8 | cut -c19-190 | tr '\n' '|')"
   # POSITIVE CONTROL (a resting patch that is invisible could also be a patch that is not there): swap the stored crop for a solid RED one and restart the helper: the patch must now be plainly visible at rest. The real crop is put back afterwards.
   adb shell "run-as $PKG sh -c 'cp files/patchshot_r0.png files/ps-backup.png'"
-  convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; adb push "$OUT/ps-red.png" /data/local/tmp/ps-red.png >/dev/null 2>&1
-  adb shell "run-as $PKG sh -c 'cp /data/local/tmp/ps-red.png files/patchshot_r0.png'"
+  convert -size 150x163 xc:red "$OUT/ps-red.png" 2>/dev/null; REDB64="$(base64 -w0 "$OUT/ps-red.png")"
+  adb shell "run-as $PKG sh -c 'echo $REDB64 | base64 -d > files/patchshot_r0.png'"      # not via /data/local/tmp: run-as cannot read it (SELinux)
+  info "PS B: red crop installed: $(adb shell "run-as $PKG ls -l files/patchshot_r0.png" | tr -s ' ' | cut -d' ' -f5) bytes (the real crop: $(adb shell "run-as $PKG ls -l files/ps-backup.png" | tr -s ' ' | cut -d' ' -f5) bytes)"
   rebind; pslock; sleep 5; shot 97-ps-wrong
   info "PS B: wallpaper patch status after the restart + lock: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'wallpaper_patch_status">[^<]*' | sed 's/.*>//'); resting decision: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'patch_rest_info">[^<]*' | sed 's/.*>//'); card rect: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'power_card_rect_r0">[^<]*' | sed 's/.*>//'); patch windows: $(adb shell dumpsys window windows 2>/dev/null | grep -c TjWallpaperPatch)"
   info "PS B: helper log after the restart (tail): $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH|PAD|CAL' | tail -8 | cut -c19-190 | tr '\n' '|')"
@@ -1719,6 +1720,7 @@ rgcount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|a
 rgshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-150 | head -${1:-8} | tr '\n' '|'; }
 rgopen(){ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 > "$OUT/rg-monkey-cal.txt" 2>&1; sleep 3; resumed > "$OUT/rg-resumed-cal.txt"; adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; info "AP1: opened Calendar then Contacts: calendar was in front: $(cut -c1-110 "$OUT/rg-resumed-cal.txt"); monkey said: $(head -c 80 "$OUT/rg-monkey-cal.txt" | tr '\n' ' ')"; }
 adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_crash.xml'" >/dev/null 2>&1      # a tripped / paused crash breaker of an earlier section would switch the guard off (run 220)
 rgfeat false; setmode custom; rebind; home; sleep 2
 rgopen
 RG_CAL0="$(rgcount com.android.calendar)"; RG_CON0="$(rgcount com.android.contacts)"
@@ -1733,10 +1735,10 @@ rgopen
 RG_CAL2="$(rgcount com.android.calendar)"; RG_CON2="$(rgcount com.android.contacts)"
 info "AP1 (guard ON): recents entries before opening Recents: calendar=$RG_CAL2 contacts=$RG_CON2; raw: $(rgshow 8)"
 adb logcat -c
-adb shell input keyevent KEYCODE_APP_SWITCH; sleep 5; shot rg-recents-on
+adb shell input keyevent KEYCODE_APP_SWITCH; sleep 8; shot rg-recents-on
 RG_CAL3="$(rgcount com.android.calendar)"; RG_CON3="$(rgcount com.android.contacts)"
 adb logcat -d -s TjRecentsFilter:I TjA11y:I | grep -iE "recents|RECENTS" | tail -4 > "$OUT/rg-log.txt" 2>&1
-info "AP1 (guard ON): after opening Recents: calendar=$RG_CAL3 contacts=$RG_CON3; log: $(tr '\n' '|' < "$OUT/rg-log.txt" | cut -c1-240); status: $(adb shell "run-as $PKG sh -c 'grep -o recents_guard_status[^<]*<' shared_prefs/tj_features.xml'" 2>/dev/null | head -c 200)"
+info "AP1 (guard ON): after opening Recents: calendar=$RG_CAL3 contacts=$RG_CON3; log: $(tr '\n' '|' < "$OUT/rg-log.txt" | cut -c1-240); crash prefs: $(adb shell "run-as $PKG cat shared_prefs/tj_crash.xml" 2>/dev/null | tr -d '\n' | head -c 160); resumed: $(resumed | cut -c1-110)"
 check "AP1: with the guard ON opening Recents closes the card of the hidden app (Calendar is gone from Recents)" bash -c "[ \"${RG_CAL3:-9}\" = 0 ]"
 check "AP1: ... and the card of the drawer app stays (Contacts is still in Recents)" bash -c "[ \"${RG_CON3:-0}\" -ge 1 ]"
 adb shell input keyevent KEYCODE_HOME; sleep 2
@@ -1771,7 +1773,8 @@ pad 1 2 3 4 e; sleep 8
 ufev > "$OUT/uf-after-qs.txt"
 info "UF2 plain PIN after a Quickstep session (Contacts was open): resumed in order: $(ufnames "$OUT/uf-after-qs.txt"); span $(ufspan "$OUT/uf-after-qs.txt") ms; mode now: $(getmode)"
 check "UF2: after a Quickstep session a plain PIN ends in the custom world (mode custom)" bash -c "[ \"$(getmode)\" = custom ]"
-check "UF2: ... and neither the stock launcher nor the Quickstep app (Contacts) is resumed after the Enter" bash -c "! grep -qE ' (com.android.launcher3/|com.android.contacts/)' $OUT/uf-after-qs.txt"
+check "UF2: ... neither the stock HOME screen nor the Quickstep app (Contacts) is resumed after the Enter (the stock Recents screen may be, behind the reset's black cover)" bash -c "! grep -qE ' (com.android.launcher3/[.]Launcher|com.android.contacts/)' $OUT/uf-after-qs.txt"
+check "UF2: ... and the last thing resumed is ours" bash -c "tail -1 $OUT/uf-after-qs.txt | grep -q ' com.tj.launcher/'"
 # ---- 3) the Quickstep handshake: the stock launcher is the last thing, our launcher does not flash in after it
 uffeat; setmode custom; rebind; home; sleep 2
 lockpad; adb logcat -b events -c
