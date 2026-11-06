@@ -76,10 +76,9 @@ public class TjAccessibilityService extends AccessibilityService {
             if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }   // only the (rare, 10-minute) Solitaire probe wants those
             return;
         }
+        final boolean quiet = quietBurst(android.os.SystemClock.uptimeMillis(), event);   // AZ1: the heavy work of a window burst on the lock screen waits for the stock dialog's own event
         if (event != null && EventNoise.windowsJustChanged(event.getEventType())) fullScanUntilMs = android.os.SystemClock.uptimeMillis() + 300;   // AB2: look in every window for the next 300 ms (a power menu is a new window)
-        scheduleLockUpdate();
-        scheduleLayerRefresh();
-        schedulePencil(event);
+        if (!quiet) { scheduleLockUpdate(); scheduleLayerRefresh(); schedulePencil(event); }
         trackDirty(event);
         trackUnlockKey(event);
         if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
