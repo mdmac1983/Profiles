@@ -1,3 +1,42 @@
+diff --git a/.github/workflows/emulator.yml b/.github/workflows/emulator.yml
+index 8299e0a..0e3135c 100644
+--- a/.github/workflows/emulator.yml
++++ b/.github/workflows/emulator.yml
+@@ -8,7 +8,7 @@ on:
+   workflow_dispatch:
+     inputs:
+       sections:
+-        description: 'Which scenario sections to run, comma list, in the order they run: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,rs,ka,ac,ad,se,rs2,rt,im,rs3,gc,rs4,pf,rb,last. EMPTY = everything (about 42 min since 2026-11-05, close to the 2700 s step limit: do not use it as the gate). RELEASE GATE = two side-by-side runs, about 20 min each: A = base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x and B = v,g,ka,ac,rt,im,gc,pf,rb,last (the one-off research sections rs to rs4 are not part of it). A new feature usually needs only its own, e.g. "n6" (~5 min).'
++        description: 'Which scenario sections to run, comma list, in the order they run: base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x,v,g,rs,ka,ac,ad,se,ae,rs2,rt,im,rs3,gc,rs4,pf,rb,last. EMPTY = everything (about 42 min since 2026-11-05, close to the 2700 s step limit: do not use it as the gate). RELEASE GATE = two side-by-side runs, about 20 min each: A = base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x and B = v,g,ka,ac,rt,im,gc,pf,rb,last (the one-off research sections rs to rs4 are not part of it). A new feature usually needs only its own, e.g. "n6" (~5 min).'
+         required: false
+         default: ''
+ 
+diff --git a/CLAUDE.md b/CLAUDE.md
+index c9f2cc6..a9acf23 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -121,7 +121,7 @@ updates monthly. **Minutes are the scarce resource** — never add a `push:` bra
+   pure waste. Dispatch, then start a background timer (Bash `run_in_background`, `until [ "$(date -u +%H%M)" -ge 0743 ]; do sleep 20; done; echo ready`) and read the log when it fires
+   (one notification, no tokens meanwhile). Measured: a one-section run (`x`, `g,gc`) is done about **4.5 min** after dispatch, the FULL gate about **26 min**.
+   Never `curl` api.github.com for the status (a hook blocks it; do not work around it).
+-- **The Emulator check is fast when you ask for a section** (N9, 2026-11-04): `emulator.yml` has a `sections` input (comma list, all names in the workflow's own description). **Empty = everything no longer fits one run (about 42 min): the RELEASE GATE is TWO side-by-side runs, A = `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x` and B = `v,g,ka,ac,ad,se,rt,im,gc,pf,rb,last` (about 20 min each; the research sections `rs`..`rs4` are not part of it; HANDOFF.md section 9).**
++- **The Emulator check is fast when you ask for a section** (N9, 2026-11-04): `emulator.yml` has a `sections` input (comma list, all names in the workflow's own description). **Empty = everything no longer fits one run (about 42 min): the RELEASE GATE is TWO side-by-side runs, A = `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x` and B = `v,g,ka,ac,ad,se,ae,rt,im,gc,pf,rb,last` (about 20 min each; the research sections `rs`..`rs4` are not part of it; HANDOFF.md section 9).**
+   A new feature runs only its own section (e.g. `{"sections":"n6"}`, measured 3.5-3.6 min end to end; an AVD cache + snapshot was tried and DROPPED: no measurable gain, and a snapshot boot changed the drawer order). Two section runs may go side by side (the sections are part of the concurrency group).
+   Only the release run (empty) is the full gate.
+ - **Reading emulator results cheaply (2026-11-05; replaces "curl the signed artifact URL", which a hook now blocks in Bash: do not work around it):** the last step of `emulator.yml` prints a compact block (`===== RESULTS: n PASS, m FAIL, k INFO =====`, every FAIL, every INFO, `===== END RESULTS =====`) and the Gradle post-steps are silent, so `get_job_logs` with `return_content=true` and `tail_lines` about 80 shows everything (about 150 for a full run). Find the job id with `actions_list` method `list_workflow_jobs` (`resource_id` = the run id, `workflow_jobs_filter {"filter":"latest"}`, `per_page` 1; its step list says which step failed). **The only safe `list_workflow_runs` call is `workflow_runs_filter {"status":"in_progress"}` (or `"queued"`) right after dispatching** (about 1.6 KB per run; the id is in each entry): any other filter, `completed` and `head_sha` included, is ignored in practice and returns about 35 KB of old runs, and `per_page` is ignored too. **Update (2026-11-05, tested): `resource_id: emulator.yml` with `workflow_runs_filter {"branch":"main","event":"workflow_dispatch"}` and `perPage` N DOES filter and limit (N runs, newest first, with ids, run numbers and conclusions): use it to find a finished run.** The ids in those answers are **RUN ids**; `get_job_logs` needs a **JOB id** (from `list_workflow_jobs`, `resource_id` = the run id) unless you pass `run_id` with `failed_only=true` (a 404 means you passed the wrong kind of id). A *cancelled* run still prints its RESULTS block, so cancel a hung scenario (`cancel_workflow_run`) instead of waiting out the 35-minute step timeout. Every run listing echoes the head commit's message: keep `ckpt` messages short (detail belongs in the docs). `run_workflow` does not return the run id. A finished run's id is already known from that call; keep it in the checkpoint "next" text.
+diff --git a/HANDOFF.md b/HANDOFF.md
+index 743facc..f81504a 100644
+--- a/HANDOFF.md
++++ b/HANDOFF.md
+@@ -129,7 +129,7 @@ The repo is the ONLY memory. Whatever a session pushed is safe; what it knew onl
+ - Power-menu: no earlier signal than the menu window exists; the side key never reaches an accessibility service; RRO overlay can't change the list; `MONITOR_INPUT` refused to shell
+   (`research/NOTES_2026-11-04.md`, `IDEAS`). Native fix possible only if the ROM has `power_menu_actions` (probe prints it).
+ - Pencil: hidden by the accessibility COVER. (The `device_demo_mode=1` native route was REMOVED on 2026-11-05: AOSP's retail-mode docs say the flag makes Android create a demo user and switch to it at boot; never turn it on.)
+-- AVD cache/snapshot for faster emulator runs: tried and dropped. Full runs are long; use sections. **The release gate is two parallel runs** (A = `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x`, B = `v,g,ka,ac,ad,se,rt,im,gc,pf,rb,last`; the one-off research sections `rs`..`rs4` are not part of it) because one run of everything would pass the 35-minute scenario timeout.
++- AVD cache/snapshot for faster emulator runs: tried and dropped. Full runs are long; use sections. **The release gate is two parallel runs** (A = `base,legacy,x1,e1,y2,b6,b4,n,n6,o,t,u,s,p,x`, B = `v,g,ka,ac,ad,se,ae,rt,im,gc,pf,rb,last`; the one-off research sections `rs`..`rs4` are not part of it) because one run of everything would pass the 35-minute scenario timeout.
+ - **Button Mapper / any accessibility service cannot see or stop the power key** (Android 10 `PhoneWindowManager` clears pass-to-user for it; the accessibility filter skips such events). The only shell lever is `DISABLE2_GLOBAL_ACTIONS` ("Power menu v2", not built, waits for Tj). **Open-but-hidden Quickstep apps and a second Android user: ruled out** (`research/OPEN_BUT_HIDDEN_2026-11-05.md`).
+ - **Safety first (L10, re-stated 2026-11-05):** nothing may need a factory reset. Changes of Android settings are snapshotted, owned-only and undone by "Restore everything" or a guide card; see `research/SAFETY_2026-11-05.md` before adding any new system-touching feature.
+ - Wallpaper work (home) was once dropped by Tj ("forget the wallpaper"), later he asked for the LOCK-screen patch (done in v0.6.0) — don't polish the home one.
 diff --git a/app/src/main/java/com/tj/launcher/ControlActivity.java b/app/src/main/java/com/tj/launcher/ControlActivity.java
 index 7867978..03a27b1 100644
 --- a/app/src/main/java/com/tj/launcher/ControlActivity.java
@@ -262,7 +301,7 @@ index 63f7427..d525d63 100644
          show(launcher, target, options);
      }
 diff --git a/tools/emulator_scenario.sh b/tools/emulator_scenario.sh
-index d292daf..9702484 100755
+index d292daf..8cd0cc1 100755
 --- a/tools/emulator_scenario.sh
 +++ b/tools/emulator_scenario.sh
 @@ -83,7 +83,13 @@ check "HOME resolves to our router" grep -q 'com.tj.launcher.RouterActivity' "$O
@@ -280,3 +319,82 @@ index d292daf..9702484 100755
  adb shell input swipe 300 900 300 200 400; sleep 3; shot 03-drawer
  adb shell input keyevent KEYCODE_HOME; sleep 3
  
+@@ -1379,6 +1385,78 @@ check "SE-L: each success is in the lock log / entrance log (flick, rotate_tile,
+ adb shell settings put system accelerometer_rotation $SE_ROT0
+ setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+ fi # section se
++if want ae; then # section ae
++ensurehome
++# ---- AE3 / AD7b (Tj, 2026-11-06): "an accessibility overlay of the wallpaper patch exactly where the screenshot button shows up ... any time I'm on the lock screen ... hidden without delay".
++#      The lock-screen patch RESTS visible over the Screenshot slot (switch lock_patch_always, default OFF).
++#      Phase A: NO helper and a deliberately WRONG wallpaper model (skew 30 %): the resting patch is then visibly different from the lock screen, which proves that it paints, that it paints only BELOW the card
++#      and that it is not touchable; it must hide while the PIN pad is up and come back. Phase B: the helper runs, the patch is a PHOTO of the real lock screen: with the menu closed it must be invisible.
++#      The PIN is ALWAYS cleared again at the end.
++beat "before AE"
++adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/ae-grant.txt" 2>&1
++aefeat(){ # aefeat <resting true|false> <lock_patch true|false> <skew %>
++  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"lock_patch\\\" value=\\\"$2\\\" /><boolean name=\\\"lock_patch_always\\\" value=\\\"$1\\\" /><int name=\\\"patch_test_skew\\\" value=\\\"$3\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
++aelock(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; }     # the lock screen, screen on
++aemae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
++aenums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
++adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1                       # phase A: no helper
++aefeat true true 30; adb shell am force-stop "$PKG"; sleep 1
++setmode quickstep; rebind; home
++adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
++setmode custom; rebind; home
++adb shell locksettings set-pin 1234 > "$OUT/ae-setpin.txt" 2>&1
++aelock; adb logcat -c
++adb shell input keyevent --longpress KEYCODE_POWER; sleep 3        # the first menu on the lock screen: the app learns where it sits
++adb shell input keyevent KEYCODE_BACK; sleep 6
++shot 90-ae-rest-on-wrong-model
++adb shell dumpsys window windows | grep -A10 TjWallpaperPatch > "$OUT/ae-a-window.txt" 2>&1
++adb shell input swipe 300 900 300 300 300; sleep 4                  # the PIN pad comes up: the resting patch must hide
++adb shell input keyevent KEYCODE_BACK; sleep 4                      # ... and goes away again: the patch must come back
++adb logcat -d -s TjA11y:I | grep -E "PATCH|CARD area" > "$OUT/ae-a-log.txt" 2>&1
++info "AE3 A log: $(grep -E 'PATCH rest' $OUT/ae-a-log.txt | cut -c25-120 | tr '\n' '|' | cut -c1-400)"
++check "AE3: with the switch on and the menu closed the patch RESTS visible on the lock screen (log 'PATCH rest on')" grep -q "PATCH rest on" "$OUT/ae-a-log.txt"
++check "AE3: the resting patch window exists and is NOT touchable (it can never block a tap)" bash -c "grep -q TjWallpaperPatch $OUT/ae-a-window.txt && grep -q NOT_TOUCHABLE $OUT/ae-a-window.txt"
++check "AE3: it hides while the PIN pad is up (log 'PATCH rest off (PIN pad up)')" grep -q "PATCH rest off (PIN pad up)" "$OUT/ae-a-log.txt"
++check "AE3: ... and comes back when the pad is gone (a second 'PATCH rest on')" bash -c "[ \"\$(grep -c 'PATCH rest on' $OUT/ae-a-log.txt)\" -ge 2 ]"
++CL="$(grep 'CARD area' "$OUT/ae-a-log.txt" | tail -1)"
++set -- $(aenums "$CL" full); FL=$1; FT=$2; FR=$3; FB=$4
++set -- $(aenums "$CL" area); CB=$4
++aefeat false false 30; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; sleep 2
++shot 91-ae-bare-lock-screen
++if [ -n "$FL" ] && [ -n "$CB" ]; then
++  SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"; ABOVE="$(( FR - FL + 24 ))x$(( CB - FT ))+$(( FL - 12 ))+$FT"
++  MAS="$(aemae 90-ae-rest-on-wrong-model 91-ae-bare-lock-screen "$SLOT")"; MAA="$(aemae 90-ae-rest-on-wrong-model 91-ae-bare-lock-screen "$ABOVE")"
++  info "AE3 A: resting patch (wrong model) vs the bare lock screen: slot $SLOT MAE $MAS; the part above the card $ABOVE MAE $MAA"
++  check "AE3: the resting patch really paints over the Screenshot slot (a wrong model differs from the bare lock screen: MAE > 0.01)" awk -v m="$MAS" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
++  check "AE3: ... and ONLY there: the part above our card is left alone (MAE < 0.005)" awk -v m="$MAA" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
++else info "AE3 A: no CARD line in the log"; check "AE3: the menu rectangle was learned (CARD line)" false; fi
++# ---------------- phase B: the helper runs, the patch is a PHOTO of the real lock screen
++adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/ae-helper-start.txt" 2>&1; sleep 5
++aefeat true true 0; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; adb logcat -c
++adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
++adb shell input keyevent KEYCODE_BACK; sleep 14                     # the helper photographs the lock screen (the resting patch hides for the shot), then the patch rests again
++adb logcat -d -s TjA11y:I | grep -E "CAL lock patch|PATCH rest" > "$OUT/ae-b-log.txt" 2>&1
++shot 92-ae-rest-on-photo
++info "AE3 B: $(tail -3 $OUT/ae-b-log.txt | cut -c25-200 | tr '\n' '|' | cut -c1-500)"
++check "AE3: with the helper the resting patch is a PHOTO of the lock screen taken while the patch was hidden" grep -q "CAL lock patch PHOTO" "$OUT/ae-b-log.txt"
++check "AE3: the patch is resting again after the photo (last 'PATCH rest' line says on)" bash -c "grep 'PATCH rest' $OUT/ae-b-log.txt | tail -1 | grep -q 'rest on'"
++aefeat false false 0; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; sleep 2
++shot 93-ae-bare-lock-screen-b
++if [ -n "$SLOT" ]; then
++  MAB="$(aemae 92-ae-rest-on-photo 93-ae-bare-lock-screen-b "$SLOT")"
++  info "AE3 B: resting patch (photo) vs the bare lock screen, slot $SLOT: MAE $MAB"
++  check "AE3: with a photo the resting patch is invisible (the slot looks like the bare lock screen: MAE < 0.01)" awk -v m="$MAB" 'BEGIN{exit !(m!="" && m+0 < 0.01)}'
++fi
++# ---------------- clean up
++adb shell input swipe 300 900 300 300 300; sleep 2
++adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; sleep 4
++adb shell locksettings clear --old 1234 > "$OUT/ae-clearpin.txt" 2>&1
++adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
++check "AE: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/ae-clearpin.txt"
++adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
++adb logcat -c
++setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
++fi # section ae
+ if want rs2; then # section rs2
+ ensurehome
+ # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
