@@ -50,7 +50,8 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends imagemagick >/dev/null
       - name: ffmpeg (only for section pt, which films the power menu opening and measures the patch frame by frame)
         if: contains(format(',{0},', inputs.sections), ',pt,')
-        run: sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
+        timeout-minutes: 4   # run 248: the package mirror stalled for 6 minutes; retry quickly instead of waiting
+        run: sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 install -y --no-install-recommends ffmpeg >/dev/null
       - name: Build the debug APK
         run: ./gradlew :app:assembleDebug :phoneguide:assembleDebug :testnotifier:assembleDebug --console=plain
       - name: Boot Android 10, run the scenario
