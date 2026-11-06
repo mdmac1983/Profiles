@@ -1941,7 +1941,7 @@ ptrun(){ local L="$1"
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   adb shell input keyevent KEYCODE_BACK; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
-  python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
+  python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
   adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|menu closed|rest)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-$L.txt" 2>&1)"
   if [ "$L" = fade25 ] || [ "$L" = jump ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
@@ -1972,7 +1972,8 @@ set -- $(panums "$CL" area); CB=${4:-}
 if [ -n "$FL" ] && [ -n "$CB" ]; then
   PX=$(( (FL + FR) / 2 )); PY=$(( (CB + FB) / 2 ))
   if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi; SY=$PY
-  info "PT: menu panel $FL,$FT-$FR,$FB card bottom $CB; probes: patch at $PX,$PY, surround at $SX,$SY"
+  if [ "$FL" -ge 200 ]; then SX2=$(( FL - 160 )); else SX2=$(( FR + 120 )); fi   # a second surround box farther from the panel (its shadow / a sliding panel darkens the near one for a moment)
+  info "PT: menu panel $FL,$FT-$FR,$FB card bottom $CB; probes: patch at $PX,$PY, surround at $SX,$SY and $SX2,$SY"
   : > "$OUT/pt-metrics.txt"
   ptanim 1.0   # ANIMATIONS ON for the films (put back to 0 at the end): only then does the stock scrim fade in and out over 300 ms like on the tablet
   # ---- A: the old one-step dim (the patch jumps to the open brightness as soon as it notices the menu)
