@@ -973,3 +973,12 @@ Update: the battery saver tile sometimes works. But it is mostly unresponsive. W
 For the custom launcher, when i hold down on the home screen and select wallpapers, make sure it always uses the default android wallpaper picker and doesn't offer another app. When the wallpaper selector shows up, permanently remove "my photos" as an option. It is at the very left of the wallpapers. This should never appear
 This context window is almost full, get ready for me to continue this is a new code session with no context
 ```
+
+## 2026-11-06T08:33:17Z
+```
+The wifi toggle in the quick settings works fine and fast. There is something wrong with the battery saver one, and I'm confident it has something to do with this  project. 
+
+The custom launcher occasionally had apps in the recent apps list which were from quickstep. If it makes it any more effective, make it so the only apps that can ever show up in the recent apps list for the custom launcher are those apps in the custom launcher app drawer. No hidden apps should ever show up in the recent apps list for the custom launcher. 
+
+Attached is what the wallpaper picker should look like. The reference is the screenshot without the my photos button. This is what i want it to look like. There should be no my photos option. This can probably be done by code, this is the android default wallpaper picker app. You may be able to find the source online and simply remove the my photos choice
+```
