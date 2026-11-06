@@ -2010,6 +2010,7 @@ adb shell input text 1234; sleep 1; adb shell input keyevent KEYCODE_ENTER; slee
 adb shell locksettings clear --old 1234 > "$OUT/pt-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "PT: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/pt-clearpin.txt"
+ptanim 0
 adb shell settings put secure lock_screen_show_notifications 1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
