@@ -184,8 +184,9 @@ adb shell input swipe 300 900 300 200 300; sleep 1
 adb shell uiautomator dump /sdcard/ctl2.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl2.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
 adb shell input swipe 300 900 300 200 300; sleep 1
 adb shell uiautomator dump /sdcard/ctl3.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl3.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
-info "AR1: Launcher control texts seen: $(grep -o 'text="[^"]\{3,36\}"' $OUT/control-dump.txt | sort -u | head -24 | tr '\n' ' ')"
-check "AR1: Launcher control is grouped: every group header is on the page" bash -c "for g in 'Everyday' 'Lock screen' 'Unlock into Quickstep' 'Power menu' 'Recents' 'Return to the custom launcher' 'Battery' 'Quick settings' 'Safety' 'Advanced'; do grep -q \"text=\\\"\$g\" $OUT/control-dump.txt || { echo missing \$g; exit 1; }; done"
+AR1MISS=""; for g in 'Everyday' 'Lock screen' 'Unlock into Quickstep' 'Power menu' 'Recents' 'Return to the custom launcher' 'Battery' 'Quick settings' 'Safety' 'Advanced'; do grep -q "text=\"$g" "$OUT/control-dump.txt" || AR1MISS="$AR1MISS [$g]"; done
+info "AR1: group headers missing from the page: ${AR1MISS:-none}; texts seen: $(grep -o 'text="[^"]\{3,40\}"' $OUT/control-dump.txt | sed 's/text=//' | sort -u | tr '\n' ' ' | cut -c1-1200)"
+check "AR1: Launcher control is grouped: every group header is on the page" bash -c "[ -z \"$AR1MISS\" ]"
 check "AR1: 'Restore everything' stays reachable (a fixed footer, not inside a closed group)" grep -q 'text="Restore everything"' "$OUT/control-dump.txt"
 
 # ---- uninstall must leave a working stock home
