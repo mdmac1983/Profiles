@@ -88,8 +88,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private long fullScanUntilMs = 0;
     private PickerGuard pickerGuard;   // AO1
     private PickerGuard picker() { if (pickerGuard == null) pickerGuard = new PickerGuard(this, handler); return pickerGuard; }
-    private RecentsGuard recentsGuard;   // AP1
-    private RecentsGuard recents() { if (recentsGuard == null) recentsGuard = new RecentsGuard(this, handler); return recentsGuard; }
+    private RecentsFilter recentsGuard;   // AP1
+    private RecentsFilter recents() { if (recentsGuard == null) recentsGuard = new RecentsFilter(this, handler); return recentsGuard; }
     String stockPackageOrNull() { return stockPkg(); }
     boolean keyguardLockedNow() { return keyguardLockedFast(); }
     /** AP1: the return reset (or another automation) is driving Recents itself right now: the guard stays out of its way. */
@@ -99,7 +99,7 @@ public class TjAccessibilityService extends AccessibilityService {
     String closeOneRecentsCard(java.util.Set<String> blockedLower) {
         for (AccessibilityNodeInfo card : findTaskCards()) {
             CharSequence d = card.getContentDescription();
-            String hit = RecentsGuard.matchingLabel(d == null ? null : d.toString(), blockedLower);
+            String hit = RecentsFilter.matchingLabel(d == null ? null : d.toString(), blockedLower);
             if (hit == null) continue;
             for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
                 if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) return hit;

@@ -1612,7 +1612,7 @@ info "AP1 (guard ON): recents entries before opening Recents: calendar=$RG_CAL2 
 adb logcat -c
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 5; shot rg-recents-on
 RG_CAL3="$(rgcount com.android.calendar)"; RG_CON3="$(rgcount com.android.contacts)"
-adb logcat -d -s TjRecentsGuard:I TjA11y:I | grep -iE "recents|RECENTS" | tail -4 > "$OUT/rg-log.txt" 2>&1
+adb logcat -d -s TjRecentsFilter:I TjA11y:I | grep -iE "recents|RECENTS" | tail -4 > "$OUT/rg-log.txt" 2>&1
 info "AP1 (guard ON): after opening Recents: calendar=$RG_CAL3 contacts=$RG_CON3; log: $(tr '\n' '|' < "$OUT/rg-log.txt" | cut -c1-240); status: $(adb shell "run-as $PKG sh -c 'grep -o recents_guard_status[^<]*<' shared_prefs/tj_features.xml'" 2>/dev/null | head -c 200)"
 check "AP1: with the guard ON opening Recents closes the card of the hidden app (Calendar is gone from Recents)" bash -c "[ \"${RG_CAL3:-9}\" = 0 ]"
 check "AP1: ... and the card of the drawer app stays (Contacts is still in Recents)" bash -c "[ \"${RG_CON3:-0}\" -ge 1 ]"
