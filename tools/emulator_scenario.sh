@@ -1435,7 +1435,7 @@ set -- $(aenums "$CL" area); CB=${4:-}
 aefeat false false 30; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; sleep 2
 shot 91-ae-bare-lock-screen
 if [ -n "$FL" ] && [ -n "$CB" ]; then
-  SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"; ABOVE="$(( FR - FL + 24 ))x$(( CB - FT ))+$(( FL - 12 ))+$FT"
+  SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"; ABOVE="$(( FR - FL + 24 ))x$(( CB - FT - 14 ))+$(( FL - 12 ))+$FT"   # v0.7.6 (AH3): the resting patch now fades softly over the 9 px above the card's bottom edge: that strip (14 px with a margin) is not "above the card"
   MAS="$(aemae 90-ae-rest-on-wrong-model 91-ae-bare-lock-screen "$SLOT")"; MAA="$(aemae 90-ae-rest-on-wrong-model 91-ae-bare-lock-screen "$ABOVE")"
   info "AE3 A: resting patch (wrong model) vs the bare lock screen: slot $SLOT MAE $MAS; the part above the card $ABOVE MAE $MAA"
   check "AE3: the resting patch really paints over the Screenshot slot (a wrong model differs from the bare lock screen: MAE > 0.01)" awk -v m="$MAS" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
