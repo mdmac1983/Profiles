@@ -1204,8 +1204,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void rememberQuickstepApp(String pk) {
         android.content.Context app = getApplicationContext();
-        if (Mode.isCustom(app)) return;
-        if (keyguardLockedFast()) return;     // what appears under the lock screen is the pre-arm, not Tj's app
+        if (Mode.isCustom(app)) { qsApp = null; return; }   // review RV1: a custom session means there is no Quickstep session to come back to; a stale app must never be started by a later gesture
+        // what appears under the lock screen (or right after the unlock) is the pre-arm / the custom account's last app, not Tj's app (review RV3: the same unit-tested rule trackDirty uses)
+        if (ProfileSession.windowIsLockLeftover(keyguardLockedFast(), unlock.armedMethod() != null, System.currentTimeMillis(), lastUnlockAt)) return;
         String stock = stockPkg();
         if (ResumeTarget.isStockHome(pk, stock)) { qsApp = null; return; }    // he went home (or to Recents): there is no app to come back to
         if (!ResumeTarget.remember(pk, getPackageName(), stock, false, false)) return;
