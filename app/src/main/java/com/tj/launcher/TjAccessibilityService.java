@@ -1807,15 +1807,22 @@ public class TjAccessibilityService extends AccessibilityService {
         } });
     }
 
-    /** AI1: up to five card descriptions, shortened (the lock log shows what this tablet's Recents screen really looks like to accessibility). */
-    private static String describeCards(List<AccessibilityNodeInfo> cards) {
+    /**
+     * AI1: what this tablet's Recents cards look like to accessibility, for the lock log. v0.7.6 (review of v0.7.5, privacy): WITHOUT any text we did not already know. A card description is the app label plus
+     * possibly a page title or a conversation name, and the lock log goes into the tablet report. So up to five cards are described only by the matching label from {@code known} (the apps we mean to close),
+     * a "+" when the description had more text than that label, or "(other, N chars)" when it matches none.
+     */
+    private static String describeCards(List<AccessibilityNodeInfo> cards, java.util.Set<String> known) {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < cards.size() && i < 5; i++) {
             CharSequence d = cards.get(i).getContentDescription();
-            String s = d == null ? "(no description)" : d.toString().replace('\n', ' ');
-            if (s.length() > 28) s = s.substring(0, 28);
+            String s = d == null ? "" : d.toString().replace('\n', ' ').trim();
+            String hit = null;
+            if (known != null) for (String k : known) {
+                if (k != null && !k.isEmpty() && s.toLowerCase(java.util.Locale.ROOT).contains(k.toLowerCase(java.util.Locale.ROOT))) { hit = k; break; }
+            }
             if (i > 0) b.append(" | ");
-            b.append(s);
+            b.append(d == null ? "(no description)" : hit == null ? "(other, " + s.length() + " chars)" : hit + (s.length() > hit.length() ? "+" : ""));
         }
         return b.toString();
     }
