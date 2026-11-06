@@ -25,7 +25,6 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.android.wallpaperpicker.R;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

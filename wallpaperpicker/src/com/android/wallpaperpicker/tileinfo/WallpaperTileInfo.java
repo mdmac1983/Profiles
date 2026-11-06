@@ -13,7 +13,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.android.gallery3d.common.Utils;
-import com.android.wallpaperpicker.R;
 import com.android.wallpaperpicker.WallpaperPickerActivity;
 import com.android.wallpaperpicker.common.InputStreamProvider;
 

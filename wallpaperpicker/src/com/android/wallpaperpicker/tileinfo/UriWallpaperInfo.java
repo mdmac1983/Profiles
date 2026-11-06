@@ -14,7 +14,6 @@ import android.widget.Toast;
 import com.android.wallpaperpicker.common.CropAndSetWallpaperTask;
 import com.android.photos.BitmapRegionTileSource;
 import com.android.photos.BitmapRegionTileSource.BitmapSource;
-import com.android.wallpaperpicker.R;
 import com.android.wallpaperpicker.WallpaperPickerActivity;
 import com.android.wallpaperpicker.common.InputStreamProvider;
 

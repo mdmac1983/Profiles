@@ -18,7 +18,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.android.wallpaperpicker.R;
 import com.android.wallpaperpicker.WallpaperPickerActivity;
 
 import org.xmlpull.v1.XmlPullParserException;

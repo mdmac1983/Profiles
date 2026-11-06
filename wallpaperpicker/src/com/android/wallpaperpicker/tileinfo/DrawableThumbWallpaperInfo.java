@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
-import com.android.wallpaperpicker.R;
 
 /**
  * WallpaperTileInfo which uses drawable as the thumbnail.
