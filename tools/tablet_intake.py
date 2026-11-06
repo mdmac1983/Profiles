@@ -284,6 +284,8 @@ def facts_markdown(rep, source, when):
     row("Recents format check", ("the launcher's reader parsed %d task(s)" % sc_tasks) if sc_tasks is not None else None, "PARSER SELF-CHECK")
     row("Notification format check", mn.group(1).strip() if mn else None, "PARSER SELF-CHECK")
     row("Keep-alive", "running=%s; services: %s" % (kv.get("keep-alive service running", "?"), "; ".join(" ".join(x.split()) for x in (rep.get("dumpsys activity services com.tj.launcher") or "").splitlines()[:3])), "state + dumpsys")
+    cost = " | ".join(kv[k] for k in ("process memory (AD8)", "start-up (AD8)", "accessibility helper load (AD8)") if kv.get(k))
+    row("Launcher cost on this tablet (AD8: memory, start-up, helper load)", cost or None, "state section")
     adj = rep.get("dumpsys activity processes")
     row("Launcher process priority", "; ".join(x.strip() for x in (adj or "").splitlines()[:3]) if adj else None, "dumpsys activity processes")
     row("Compiled ahead of time?", "; ".join(x.strip() for x in (rep.get("dexopt") or "").splitlines()[:3]), "dumpsys package ... dexopt")
