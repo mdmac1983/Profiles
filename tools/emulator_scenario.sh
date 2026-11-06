@@ -180,10 +180,10 @@ check "after the breaker, Home shows the stock launcher" bash -c "grep -q 'com.a
 adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3; shot 06-control
 # ---- AR1 (Tj, 2026-11-06: "improve the ui and organization for ease of use and intuitive design"): Launcher control is a list of collapsible GROUPS; the page is read from top to bottom through three screens
 adb shell uiautomator dump /sdcard/ctl1.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl1.xml 2>/dev/null | tr '>' '\n' > "$OUT/control-dump.txt"
-adb shell input swipe 300 900 300 200 300; sleep 1
-adb shell uiautomator dump /sdcard/ctl2.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl2.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
-adb shell input swipe 300 900 300 200 300; sleep 1
-adb shell uiautomator dump /sdcard/ctl3.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl3.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
+for AR1I in 2 3 4 5 6; do   # slow, short swipes (a fast fling skipped whole groups in run 211): every part of the page is dumped
+  adb shell input swipe 300 800 300 400 800; sleep 1
+  adb shell uiautomator dump /sdcard/ctl$AR1I.xml >/dev/null 2>&1; adb shell cat /sdcard/ctl$AR1I.xml 2>/dev/null | tr '>' '\n' >> "$OUT/control-dump.txt"
+done
 AR1MISS=""; for g in 'Everyday' 'Lock screen' 'Unlock into Quickstep' 'Power menu' 'Recents' 'Return to the custom launcher' 'Battery' 'Quick settings' 'Safety' 'Advanced'; do grep -q "text=\"$g" "$OUT/control-dump.txt" || AR1MISS="$AR1MISS [$g]"; done
 info "AR1: group headers missing from the page: ${AR1MISS:-none}; texts seen: $(grep -o 'text="[^"]\{3,40\}"' $OUT/control-dump.txt | sed 's/text=//' | sort -u | tr '\n' ' ' | cut -c1-1200)"
 check "AR1: Launcher control is grouped: every group header is on the page" bash -c "[ -z \"$AR1MISS\" ]"
