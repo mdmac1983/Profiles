@@ -36,6 +36,9 @@ home(){ heal; adb shell input keyevent KEYCODE_HOME; sleep 4; }
 ( command adb logcat -v time '*:W' TjA11y:I TjReset:I TjRouter:I TjHooks:I TjRecentsGuard:I > "$OUT/logcat-stream.txt" 2>&1 & ) 2>/dev/null   # `command adb`: the real binary, NOT our 60 s timeout wrapper
 beat(){ echo "$(date +%T) $1 :: $(adb get-state 2>&1 | tr -d '\r') | mem: $(free -m | awk 'NR==2{print "used="$3" free="$4" avail="$7}') | qemu procs: $(pgrep -fc qemu-system 2>/dev/null) | oom: $(sudo dmesg 2>/dev/null | grep -ciE 'out of memory|killed process')" >> "$OUT/heartbeat.txt"; }
 beat start
+# 2026-11-06 watchdog: three emulators went "device offline" for good (runs 146 and 150/157 of 2026-11-06, infrastructure, not the product) and every later adb call then waited out its 60 s limit, so a dead run took 45 minutes.
+# If the real adb does not say "device" for 4 minutes in a row (a restart takes about 20 s), the scenario stops here and says so in the results (a FAIL line), instead of burning the step timeout.
+( bad=0; while sleep 30; do if [ "$(command adb get-state 2>/dev/null | tr -d '\r')" = device ]; then bad=0; else bad=$((bad+1)); fi; if [ "$bad" -ge 8 ]; then echo "FAIL  the emulator went offline (adb did not report a device for 4 minutes): the run was stopped here, nothing after this point ran" >> "$OUT/results.txt"; echo "FAIL  the emulator went offline (adb did not report a device for 4 minutes): the run was stopped here"; kill -TERM $$ 2>/dev/null; exit 0; fi; done ) &
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton 2>/dev/null; adb shell wm size 600x1024; adb shell wm overscan 0,0,0,48; adb shell wm density 170; adb shell settings put system font_scale 1.2; sleep 2
 adb install -r "$APK" 2>&1 | tee "$OUT/install.txt"
 adb shell dumpsys package "$PKG" > "$OUT/package-dump.txt" 2>&1
