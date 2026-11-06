@@ -1535,7 +1535,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (cardShownMs == 0) return;
         String line = "card shown " + (signalMs > 0 ? (cardShownMs - signalMs) + " ms after the system broadcast" : "(no broadcast seen)")
                 + (menuSeenMs > 0 ? ", " + (cardShownMs - menuSeenMs) + " ms after the real menu appeared (negative = card first)" : ", real menu not seen before the card");
-        Features.setString(this, LATENCY_KEY, line);
+        Features.setStringAsync(this, LATENCY_KEY, line);   // AZ1: a synchronous preferences commit here (run 245: ~75 ms between "fast open" and the first dimmed frame) delayed the patch on the very path that must be fastest
         Log.i(TAG, "POWERLAT " + line);
     }
 
