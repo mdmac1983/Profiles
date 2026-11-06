@@ -154,7 +154,24 @@ public final class TabletReport {
     }
 
     /** The launcher's own log lines, as far as the app itself may read them (an app sees only its own lines; the shell helper's probe adds the rest when it runs). */
-    private static String ownLog(int maxLines) {
+    private static String ownLog(int maxLines) { return ownLog(maxLines, Integer.MAX_VALUE); }
+
+    /** PG3 (gate A of v0.7.3: the short summary was over 12 KB once in two runs): the short summary promises to stay under 12 KB, so the log gets whatever is left of the budget, newest lines first. */
+    static final int SUMMARY_MAX = 11_000;
+    private static final String LOG_CUT_NOTE = "(older log lines left out: the short summary is capped; the full report file has them)\n";
+
+    /** Pure: the newest lines of {@code lines} (oldest first) whose lengths, one newline each, add up to at most {@code room}; none when even the last line does not fit. */
+    static List<String> newestWithin(List<String> lines, int room) {
+        int total = 0, from = lines.size();
+        while (from > 0) {
+            int add = lines.get(from - 1).length() + 1;
+            if (total + add > room) break;
+            total += add; from--;
+        }
+        return new java.util.ArrayList<>(lines.subList(from, lines.size()));
+    }
+
+    private static String ownLog(int maxLines, int roomChars) {
         StringBuilder b = new StringBuilder("\n\n===== THE LAUNCHER'S OWN LOG (what the app itself may read)\n");
         Process p = null;
         try {
