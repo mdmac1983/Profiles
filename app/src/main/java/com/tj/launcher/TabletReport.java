@@ -180,7 +180,9 @@ public final class TabletReport {
             java.util.ArrayDeque<String> last = new java.util.ArrayDeque<>();
             String l;
             while ((l = r.readLine()) != null) { last.add(l); if (last.size() > maxLines) last.removeFirst(); }
-            for (String s : last) b.append(s).append('\n');
+            List<String> fit = newestWithin(new java.util.ArrayList<>(last), roomChars - b.length() - LOG_CUT_NOTE.length());
+            if (fit.size() < last.size()) b.append(LOG_CUT_NOTE);
+            for (String s : fit) b.append(s).append('\n');
         } catch (Throwable t) { b.append("(not readable: ").append(t).append(")\n"); }
         finally { if (p != null) p.destroy(); }   // a read that failed half way must not leave the logcat child running
         return b.toString();
