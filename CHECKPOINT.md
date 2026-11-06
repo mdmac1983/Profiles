@@ -1,21 +1,23 @@
-# CHECKPOINT 445 — read me first, then TASKS.md
+# CHECKPOINT 446 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T05:06:38Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `7defd73` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T05:17:48Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-22ba09da-s9vh1t` · **builds on:** `fe80b0f` (this checkpoint is the commit after it)
 
 ## Just done
-TK3: rerun ad,se,rt = run 182 (id 42166392626) on 7defd73 (product == 364e8c0); gate A = run 180 (job 127714999595) still running
+AH1: home patch dims like the stock scrim while the menu is open + Menu dimming nudge (v0.7.5 patch, unit 368/0); Tj says wallpaper is still (not animated)
 
 ## Do this next
-~05:21 read 182 (needs rt AA3 green) and gate A 180; both clean => ship v0.7.4 (git push origin 364e8c0-or-descendant-with-same-product:refs/heads/main, android.yml full_build, get_release_by_tag, record via main worktree, ls-remote check)
+~05:21 read run 182 (ad,se,rt) + gate A run 180; then ship v0.7.4
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  49ac6de ckpt 445: TK3: rerun ad,se,rt = run 182 (id 42166392626) on 7defd73 (product == 364e8c0)
   7defd73 ckpt 444: TK3 gate B': AD5 passes; rt AA3 x2 = leftover origin marks from ad (test order
   b541689 ckpt 443: AG1 battery saver follows the launcher (Quickstep ON, custom OFF) coded in the
   3bfc319 ckpt 442: v0.7.5 prep: emulator section ae (resting patch, phases A wrong-model / B phot
@@ -25,5 +27,7 @@ TK3: rerun ad,se,rt = run 182 (id 42166392626) on 7defd73 (product == 364e8c0); 
   14d9155 ckpt 438: TK3: v,ad run 179 SUCCESS on 364e8c0 (AD5 fixed by test change); waiting final
   3250146 ckpt 437: Tj's 7 photos: AE7 long-press Wallpapers-only, AE8 compare, AF2 privacy (4 old
   40a804e ckpt 436: FINAL gates on 364e8c0 dispatched 04:37Z: v,ad=run 179 (id 42163620016), gate 
-  364e8c0 ckpt 435: AD5 root cause = profile_preclean closes apps at lock when section v leaves th
 ```
+
+(3 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
