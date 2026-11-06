@@ -32,6 +32,8 @@ if [ ! -t 0 ]; then
   HOOK_IN="$(timeout 2 cat 2>/dev/null || true)"
   case "$HOOK_IN" in
     *'"hook_event_name":"Stop"'*|*'"hook_event_name": "Stop"'*) printf '%s' "$HOOK_IN" | bash "$D/tools/capture_outbox.sh" >/dev/null 2>&1 || true ;;
+    # after every tool call too: a chat that dies MID-turn never reaches its Stop hook, so substantial reply text is kept as it appears (at least 200 characters, never twice)
+    *'"hook_event_name":"PostToolUse"'*|*'"hook_event_name": "PostToolUse"'*) printf '%s' "$HOOK_IN" | OUTBOX_MIN=200 bash "$D/tools/capture_outbox.sh" >/dev/null 2>&1 || true ;;
   esac
 fi
 
