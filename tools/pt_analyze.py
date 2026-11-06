@@ -166,6 +166,9 @@ def selftest():
 def main(argv):
     if "--selftest" in argv:
         return selftest()
+    if len(argv) == 2 and argv[0] == "--events":
+        print(events(open(argv[1], errors="replace").read()))
+        return 0
     if len(argv) < 2:
         print(__doc__)
         return 2
