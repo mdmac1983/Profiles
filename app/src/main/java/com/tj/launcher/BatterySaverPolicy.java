@@ -27,7 +27,26 @@ public final class BatterySaverPolicy {
     public static final int MAX_ON_WRITES = 3;
     public static final long ON_WINDOW_MS = 10 * 60_000;
 
+    /**
+     * AN1 (Tj, 2026-11-06: "the battery saver tile sometimes works. But it is mostly unresponsive. When it does work it turns on very slow ... It wasn't happening before"). Since v0.7.3 / v0.7.5 the guard did not only
+     * switch the saver at a launcher CHANGE, it also undid every change made behind its back (the observer) and re-applied the rule at EVERY process start: a tap on the tile in Quickstep (off) was switched back on
+     * within milliseconds, a tap in the custom launcher (on) was switched off again, and a Go-device process restart minutes later undid a tap too. That is the tile "not answering". Now the saver FOLLOWS the launcher
+     * only at a real change (Quickstep begins / ends, the first start after a boot, a Control switch turned on); between those the TILE is the boss. The old behaviour is the opt-in "strict" switch.
+     */
+    public static final String STRICT_KEY = "profile_battery_saver_strict";   // switch in Launcher control, default OFF
+    /** Only the first minutes after a boot re-apply the rule at process start (the setting survives a reboot); a later restart of our process must never undo a tap on the tile. */
+    public static final long BOOT_GRACE_MS = 3 * 60_000;
+
     private BatterySaverPolicy() {}
+
+    /** Pure (AN1): may a check act now? A DELIBERATE check (a real launcher change, the first start after a boot, a Control switch) always may; a REACTIVE one (the setting changed behind our back) only in strict mode. */
+    public static boolean mayAct(boolean reactive, boolean strict) { return !reactive || strict; }
+
+    /** Pure (AN1): does the process-start check run? Always in strict mode; otherwise only within {@link #BOOT_GRACE_MS} of the boot ({@code sinceBootMs} = SystemClock.elapsedRealtime()). */
+    public static boolean startCheckWanted(boolean strict, long sinceBootMs) { return strict || (sinceBootMs >= 0 && sinceBootMs < BOOT_GRACE_MS); }
+
+    /** Pure (AN1): does a mode "set" call run the check? A real change always; a repeated set of the same mode (an unlock that re-asserts it) only in strict mode. */
+    public static boolean modeSetChecks(boolean modeChanged, boolean strict) { return modeChanged || strict; }
 
     /** Pure: is this stored setting value "battery saver on"? */
     public static boolean isOn(String value) { return value != null && "1".equals(value.trim()); }
