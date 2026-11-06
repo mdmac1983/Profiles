@@ -80,3 +80,7 @@
 ## 2026-11-06T22:27:49Z
 > Status: the `pt` run on checkpoint 539 is in flight (about 5 minutes) and the reviewer agent is still reading the diff. I'll read the open and close curves when they finish, choose the fade timing, then run the delta gate.
 <!-- sha:04c8fb0b3350 -->
+
+## 2026-11-06T22:34:52Z
+> Status: waiting on the `pt` run (#249) and the three gate runs; the reviewer agent is still working too. Checkpoint 541 holds all run ids. I'll read `pt` first, then decide the fade timing.
+<!-- sha:7e8cc51f1d55 -->
