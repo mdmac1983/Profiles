@@ -1317,6 +1317,56 @@ check "AD: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fa
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ad
+if want se; then # section se
+ensurehome
+# ---- AD4 (Tj, 2026-11-06): hidden, switchable entrances to Quickstep from the custom launcher (no hardware key, no motion sensor): (1) PAGE FLICK = six alternating swipes on the home screen, (2) ROTATION TILE = five changes of the
+#      rotation lock in 10 s, (3) CHARGER FLICK = in, out, in. Each is proven (it takes Tj to Quickstep) AND given a negative control (one swipe short / three toggles / switched off) so the check cannot pass by accident.
+beat "before SE"
+sefeat(){ # sefeat <flick> <rotate> <charger> (true|false)
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><boolean name=\\\"entrance_flick\\\" value=\\\"$1\\\" /><boolean name=\\\"entrance_rotate_tile\\\" value=\\\"$2\\\" /><boolean name=\\\"entrance_charger\\\" value=\\\"$3\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+sefresh(){ adb shell am force-stop "$PKG"; setmode custom; ensurehome; rebind; home; sleep 3; }   # a fresh custom home screen with the new switches
+swr(){ adb shell "input swipe 100 600 500 600 120"; }    # finger moves right (400 px of 600 = 67 %)
+swl(){ adb shell "input swipe 500 600 100 600 120"; }    # finger moves left
+SE_ROT0="$(adb shell settings get system accelerometer_rotation | tr -d '\r\n')"; [ "$SE_ROT0" = "1" ] || SE_ROT0=0
+rotflip(){ local v; v=$(adb shell settings get system accelerometer_rotation | tr -d '\r\n'); [ "$v" = "1" ] && v=0 || v=1; adb shell settings put system accelerometer_rotation $v; }
+# -------- page flick
+sefeat true true false; sefresh; adb logcat -c
+swr; swl; swr; swl; swr; sleep 2; getmode > "$OUT/se-flick5.txt"                       # five alternating swipes
+check "SE-F1: five alternating swipes are NOT enough (still the custom launcher)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick5.txt)\" = custom ]"
+swl; sleep 3; getmode > "$OUT/se-flick6.txt"; resumed > "$OUT/se-flick6-front.txt"      # the sixth completes the code (within 2.5 s of the fifth)
+check "SE-F2: six alternating swipes take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick6.txt)\" = quickstep ]"
+check "SE-F3: and the Quickstep home is in front" grep -q 'com.android.launcher3/' "$OUT/se-flick6-front.txt"
+sefresh
+swr; swr; swr; swr; swr; swr; sleep 3; getmode > "$OUT/se-flick-same.txt"                # six swipes the SAME way: not a code
+check "SE-F4: six swipes in the same direction are NOT a code" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-same.txt)\" = custom ]"
+sefeat false true false; sefresh
+swr; swl; swr; swl; swr; swl; sleep 3; getmode > "$OUT/se-flick-off.txt"
+check "SE-F5: with the page-flick switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-off.txt)\" = custom ]"
+# -------- rotation tile
+sefeat true true false; sefresh
+rotflip; rotflip; rotflip; sleep 2; getmode > "$OUT/se-rot3.txt"
+check "SE-R1: three changes of the rotation lock are NOT enough" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot3.txt)\" = custom ]"
+rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot5.txt"
+check "SE-R2: five changes in 10 s take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot5.txt)\" = quickstep ]"
+sefeat true false false; sefresh
+for i in 1 2 3 4 5; do rotflip; done; sleep 3; getmode > "$OUT/se-rot-off.txt"
+check "SE-R3: with the rotation-tile switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot-off.txt)\" = custom ]"
+adb shell settings put system accelerometer_rotation $SE_ROT0
+# -------- charger flick (default OFF)
+sefeat true true false; sefresh
+adb shell dumpsys battery set ac 1 >/dev/null 2>&1; adb shell dumpsys battery set ac 0 >/dev/null 2>&1; adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-off.txt"
+check "SE-C1: the charger flick is OFF by default: in, out, in does nothing" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-off.txt)\" = custom ]"
+adb shell dumpsys battery reset >/dev/null 2>&1; sleep 1
+sefeat true true true; sefresh
+adb shell dumpsys battery set ac 1 >/dev/null 2>&1; adb shell dumpsys battery set ac 0 >/dev/null 2>&1; adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 3; getmode > "$OUT/se-chg-on.txt"
+check "SE-C2: with the charger flick ON, in / out / in takes Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-chg-on.txt)\" = quickstep ]"
+adb shell dumpsys battery reset >/dev/null 2>&1
+adb logcat -d -s TjEntrance:I > "$OUT/se-log.txt" 2>&1
+info "SE entrance log: $(grep -c 'ENTRANCE' $OUT/se-log.txt) entrance(s): $(grep 'ENTRANCE' $OUT/se-log.txt | sed 's/.*ENTRANCE //' | tr '\n' ',' | cut -c1-120)"
+check "SE-L: each success is in the lock log / entrance log (flick, rotate_tile, charger)" bash -c "grep -q 'ENTRANCE flick' $OUT/se-log.txt && grep -q 'ENTRANCE rotate_tile' $OUT/se-log.txt && grep -q 'ENTRANCE charger' $OUT/se-log.txt"
+adb shell settings put system accelerometer_rotation $SE_ROT0
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section se
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
