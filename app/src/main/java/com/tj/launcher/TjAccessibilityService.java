@@ -197,6 +197,17 @@ public class TjAccessibilityService extends AccessibilityService {
     private volatile boolean patchOpenHome = false;   // AH1: the HOME-screen patch is dimmed like the dialog's scrim only while the menu is open (closed = invisible seam)
     private float openScrim() { return PatchRest.openScrim(DIM_OPEN, Features.getInt(this, PATCH_SCRIM_KEY, 0)); }
     private volatile boolean patchResting = false;
+    /**
+     * AZ1 (Tj, 2026-11-06 20:40: "a slight flicker when I press the side key ... can the darkening to match the background be faster or fade"): the patch FADES to its open-menu brightness along the stock dialog's
+     * own fade-in instead of jumping (see {@link PatchFade}); Control switch, default ON (OFF = the v0.8.0 jump).
+     */
+    public static final String PATCH_FADE_KEY = "patch_fade";
+    private volatile long lastWinEventMs = 0;          // AZ1: event time (uptime ms) of the newest window-state / windows-changed event: the stock fade began about then
+    private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
+    private long fadeStartMs = 0, fadeLagLast = -1;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
+    private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
+    private long scanNotBeforeMs = 0, fastTryMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade; one fast look per 20 ms
+    private boolean patchFadeOn() { return Features.get(this, PATCH_FADE_KEY, true); }
     private int patchRestTop = 0;   // where the RESTING patch starts to paint, in the patch window's coordinates (the bottom of our card = the top of the Screenshot slot)
     /** AM1 (Tj, 2026-11-06): switch, default OFF: draw my own Power off / Restart card over the stock entries (the old cover). OFF = the stock menu stays completely stock; the patch alone hides the Screenshot spot. */
     public static final String POWER_CARD_KEY = "power_card";
