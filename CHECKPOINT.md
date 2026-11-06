@@ -1,21 +1,23 @@
-# CHECKPOINT 494 — read me first, then TASKS.md
+# CHECKPOINT 495 — read me first, then TASKS.md
 
-**Written:** 2026-11-06T08:47:37Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-7a9vpi` · **builds on:** `f967601` (this checkpoint is the commit after it)
+**Written:** 2026-11-06T08:49:46Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-7a9vpi` · **builds on:** `9e4e691` (this checkpoint is the commit after it)
 
 ## Just done
-AP1 CODED (446 unit tests green): RecentsFilter (new class; I first overwrote the old RecentsGuard by mistake and restored it from git d72774f: HiddenAppsActivity/TjHooks/ControlActivity still use its excludeOurTasks/describeAsTarget) closes the Recents cards of apps that are not in the custom drawer whenever Recents opens in custom mode (hidden apps + Quickstep-opened non-drawer apps, matched by app label only, drawer labels never), Control switch recents_drawer_only default ON, scenario section rg + gate-map row; not yet run on the emulator
+Tj's final polish ask (speed / no flicker / restart survival test, the invisible lock-screen patch, a settings audit + UI re-organisation, one polished release) written into TASKS.md as AQ1 / AM1 / AR1 / AS1 to start AFTER v0.7.7 (AN1 AO1b AP1) and AM1; emulator runs 201 202 and ao,rg still running
 
 ## Do this next
-1) read runs 201/202 (timer b6y04kcym, jobs 127796566239 and 127796578926): they test ea06d51 = AN1+AO1 stopgap WITHOUT the port; 2) then ONE delta gate on the new HEAD: sections ao (own picker), rg (recents), base (manifest/resources), x (report line) + whatever bash tools/gate.sh ea06d51 lists; 3) ship v0.7.7 = AN1 + AO1b (own picker) + AP1 + PickerGuard stopgap; 4) AM1 after
+finish v0.7.7 first: read runs 201 (job 127796566239) and 202 (job 127796578926) and the ao,rg run (newest emulator.yml dispatch), then the full delta gate (bash tools/gate.sh 8fc7662: 3 runs), ship v0.7.7; THEN AM1 (git merge tmp-merge-test or git apply --3way research/pending/am1.patch, keep both sides of the 3 conflicts; run section ps), THEN AQ1 / AR1 / AS1
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  e69d979 ckpt 494: AP1 CODED (446 unit tests green): RecentsFilter (new class; I first overwrote 
   a90b089 ckpt 493: AO1b CODED (builds, unit tests green): the AOSP legacy WallpaperPicker (androi
   ceb26c4 ckpt 492: gate reruns: e1 alone (run 198), base,x1,e1 on TAG v0.7.6 (run 199) and rb alo
   ea06d51 ckpt 491: Tj's newest message (battery tile only, Recents whitelist = drawer apps, wallp
@@ -25,8 +27,7 @@ AP1 CODED (446 unit tests green): RecentsFilter (new class; I first overwrote th
   8fc7662 ckpt 487: AN1 + AO1 coded (436 unit tests green): wallpaper picker = one explicit system
   75f75a4 ckpt 486: AN1 coded (420 unit tests green): battery-saver guard acts only at real launch
   13c7616 ckpt 485: v0.7.6 SHIPPED (Release v0.7.6, BUILDLOG recorded); AN1 findings written into 
-  92a3016 ckpt 484: v0.7.6 RELEASE BUILD RUNNING: android.yml run 42183756211 (Build APK #25) disp
 ```
 
-(5 automatic checkpoint(s) since the last deliberate one — the
+(3 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
