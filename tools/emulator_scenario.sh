@@ -1921,7 +1921,9 @@ ptrun(){ local L="$1"
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   adb shell input keyevent KEYCODE_BACK; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
-  python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"; }
+  python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
+  info "PT $L helper log: $(adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH (fast open|fade|rest|menu closed)' | cut -c19-130 | tr '\n' '|' | cut -c1-330)"
+  adb logcat -c; }
 ptget(){ grep "label=$1 " "$OUT/pt-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
 
 # ---- setup: automatic calibration (proved by section pa), so the patch rests invisibly and opens dimmed
@@ -1951,7 +1953,10 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   for LEAD in 25 0 50 80; do
     ptset true $LEAD; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun fade$LEAD
   done
-  info "PT metrics: $(tr '\n' '|' < "$OUT/pt-metrics.txt" | sed 's/PTMETRIC //g' | cut -c1-1500)"
+  for LB in jump fade25 fade0 fade50 fade80; do
+    info "PT $LB metric: $(grep "PTMETRIC label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/PTMETRIC //' | cut -c1-360)"
+    info "PT $LB curve: $(grep "PTSERIES label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/.*onset) //' | cut -c1-360)"
+  done
   FRAMES="$(ptget jump frames)"
   check "PT: the film worked (the old-behaviour run has more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
   JMAX="$(ptget jump open_max)"; F25="$(ptget fade25 open_max)"

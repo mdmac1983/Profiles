@@ -35,7 +35,7 @@ def video_size(video):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
-def analyse(P, S, fps, thr=0.004):
+def analyse(P, S, fps, thr=0.006):
     """P, S: per-frame mean brightness of the patch box and the surround box. Returns a dict of metrics (None when the menu never showed)."""
     n = min(len(P), len(S))
     if n < fps:
@@ -76,6 +76,19 @@ def analyse(P, S, fps, thr=0.004):
             out.update({"close_max": abs(dm), "close_at": (jm - c_on) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0})
     out["frames"] = n
     return out
+
+
+def series(P, S, fps, onset, r0, span_ms=(-120, 640), step=2):
+    """Compact curves around the onset, for the log: t (ms from the onset), S/S0 and P/P0 in per-mille, dev in tenths of a percent."""
+    n = min(len(P), len(S))
+    s0 = statistics.median(S[: max(3, int(0.4 * fps))])
+    p0 = statistics.median(P[: max(3, int(0.4 * fps))])
+    out = []
+    for j in range(max(0, onset + int(span_ms[0] * fps / 1000)), min(n, onset + int(span_ms[1] * fps / 1000)), step):
+        t = int((j - onset) * 1000 / fps)
+        dev = ((P[j] / S[j]) / r0 - 1) if S[j] > 1 else 0.0
+        out.append("%d:%d/%d/%+d" % (t, round(1000 * S[j] / s0), round(1000 * P[j] / p0), round(1000 * dev)))
+    return " ".join(out)
 
 
 def selftest():
@@ -125,7 +138,7 @@ def main(argv):
         print(__doc__)
         return 2
     video, label = argv[0], argv[1]
-    opt = {"--disp": "600x1024", "--p": None, "--s": None, "--box": "20", "--fps": "60"}
+    opt = {"--disp": "600x1024", "--p": None, "--s": None, "--box": "40", "--fps": "60"}
     i = 2
     while i + 1 < len(argv):
         if argv[i] in opt:
@@ -151,6 +164,8 @@ def main(argv):
     if "error" in m:
         print("PTMETRIC label=%s frames=%d error=%s" % (label, min(len(P), len(S)), m["error"]))
         return 1
+    on_idx = int(round(m["onset"] * fps))
+    print("PTSERIES label=%s (t_ms:S/P/dev in per-mille from the onset) %s" % (label, series(P, S, fps, on_idx, m["r0"])))
     print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f" % (
         label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0)))
     return 0
