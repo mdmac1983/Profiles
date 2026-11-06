@@ -1,1 +1,0 @@
-# research/pending/ = v0.7.5 work developed in a scratch worktree while v0.7.4 was gating. Apply AFTER v0.7.4 is recorded: git apply research/pending/<name>.patch, then delete the file. Product dirs (app, launcher3, phoneguide) are untouched here, so the v0.7.4 gate stays valid.
