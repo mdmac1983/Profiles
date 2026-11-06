@@ -170,3 +170,7 @@
 > 🔴 I'd move to a fresh chat now after the release. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
 <!-- sha:bd64ec15e963 -->
+
+## 2026-11-06T23:42:32Z
+> Status: `ship.sh` passed all its gates (handoff test, version check, unit tests and lint), v0.8.1 is pushed, and `main` matches the branch tip. The signed release build (Build APK run 28) has started on GitHub. I'll check it in about ten minutes.
+<!-- sha:5a5bb169b6af -->
