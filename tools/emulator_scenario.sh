@@ -1943,12 +1943,12 @@ ptrun(){ local L="$1"
   adb shell input keyevent KEYCODE_BACK; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|menu closed|rest)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-$L.txt" 2>&1)"
   if [ "$L" = fade25 ] || [ "$L" = jump ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
     info "PT $L events 1: $(echo "$EVS" | cut -c1-330)"; info "PT $L events 2: $(echo "$EVS" | cut -c331-660)"; info "PT $L events 3: $(echo "$EVS" | cut -c661-990)"
   else
-    info "PT $L decisions: $(grep -E 'PATCH (fast|fade|menu closed)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
+    info "PT $L decisions: $(grep -E 'PATCH (fast|fade|menu closed|scan|hold)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
   fi
   adb logcat -c; }
 ptanim(){ for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }   # the CI emulator runs with animations OFF: the stock scrim then appears in ONE frame; the tablet fades it in over 300 ms
@@ -2004,6 +2004,9 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   info "PT: worst mismatch while the menu opens: old one-step dim ${JMAX:-?}; fade (lead 25 ms) ${F25:-?}"
   check "PT: the fade is closer to the stock scrim than the one-step dim (worst mismatch while the menu opens)" awk -v j="${JMAX:-9}" -v f="${F25:-9}" 'BEGIN{exit !(f+0 < j+0)}'
   check "PT: the fade keeps the patch within 8 % of its surround while the menu opens" awk -v f="${F25:-9}" 'BEGIN{exit !(f+0 < 0.08)}'
+  HOLD="$(ptget fade25 hold_max)"; HOLDS="$(ptget fade25 hold_s)"
+  info "PT: while the menu STAYS open (the part of the film after the opening ramp, ${HOLDS:-?} s): worst mismatch ${HOLD:-?} (a scan that wrongly decided 'menu closed' shows as about 0.25: a bright block)"
+  check "PT: the patch stays matched the whole time the menu is open (no bright flash after the opening)" awk -v h="${HOLD:-9}" -v s="${HOLDS:-0}" 'BEGIN{exit !(s+0 > 0.5 && h+0 >= 0 && h+0 < 0.08)}'
 else info "PT: no menu geometry (no CARD area line)"; check "PT: the menu rectangle was learned" false; fi
 
 # ---------------- clean up

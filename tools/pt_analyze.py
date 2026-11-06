@@ -75,6 +75,13 @@ def analyse(P, S, fps, thr=0.006):
         jm, dm = max(cd, key=lambda t: abs(t[1]))
         ctail = [d for (j, d) in cd if j >= c1 - int(0.10 * fps)]
         out.update({"close_max": abs(dm), "close_at": (jm - c_half) / fps, "close_final": statistics.mean(ctail) if ctail else 0.0, "close_onset": c_half / fps})
+    # holding: from the end of the opening ramp to the start of the closing window. The patch must stay matched the whole time the menu is open (a scan that wrongly decides "menu closed" shows as a bright flash).
+    if c_half is not None:
+        h0, h1 = onset + int(0.45 * fps), c_half - int(0.35 * fps)
+        if h1 > h0 + 3:
+            hd = [(j, dev(j)) for j in range(h0, h1)]
+            jh, dh = max(hd, key=lambda t: abs(t[1]))
+            out.update({"hold_max": abs(dh), "hold_at": (jh - onset) / fps, "hold_s": (h1 - h0) / fps})
     out["frames"] = n
     return out
 
@@ -107,7 +114,7 @@ def events(text):
             rows.append([t, "%s%s a%s r%so%s" % (kind, short, m.group(5), m.group(6), m.group(7))])
             last_t = t
             continue
-        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off)(.*)", ln)
+        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off|scan|hold)(.*)", ln)
         if m:
             tm = re.search(r" t=(\d+)", m.group(2))
             t = int(tm.group(1)) if tm else last_t
@@ -209,8 +216,8 @@ def main(argv):
     print("PTSERIES label=%s (t_ms:S/P/dev in per-mille from the onset) %s" % (label, series(P, S, fps, on_idx, m["r0"])))
     if "close_onset" in m:   # the same curves around the moment the surround starts to brighten again (the stock dismissal, or the window going away)
         print("PTCLOSE label=%s (t_ms:S/P/dev in per-mille from the half-recovery of the surround) %s" % (label, series(P, S, fps, int(round(m["close_onset"] * fps)), m["r0"], span_ms=(-300, 250), step=1)))
-    print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f" % (
-        label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0)))
+    print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f hold_max=%.4f hold_at=%.2fs hold_s=%.1f" % (
+        label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0), m.get("hold_max", -1), m.get("hold_at", -1), m.get("hold_s", 0)))
     return 0
 
 
