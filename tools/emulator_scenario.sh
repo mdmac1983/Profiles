@@ -1606,15 +1606,19 @@ adb shell settings put secure sysui_qs_tiles "wifi,bt,rotation,flashlight,airpla
 adb shell monkey -p $QN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1
 info "PF A in Quickstep: notifications [$(pf_notifs)]"
 check "PF-A1: the Quickstep app posted its notification (so the test means something)" pf_has $QN
-adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "string|tracked" | tr '\n' ' ' > "$OUT/pf-origin-pre.txt"
+adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "set name|string|tracked" | tr '\n' ' ' > "$OUT/pf-origin-pre.txt"
 info "PF A tj_origin.xml BEFORE the lock (pending = marked Quickstep-opened): $(cut -c1-400 $OUT/pf-origin-pre.txt)"
 adb logcat -c
 adb shell input keyevent KEYCODE_POWER; sleep 10                      # LOCK: the session ends; the clean-up runs behind the lock screen
 adb logcat -d -s TjReset:I TjA11y:I TjTasks:I > "$OUT/pf-log-a.txt" 2>&1
 info "PF A after the lock: notifications [$(pf_notifs)]; the clean-up said: $(grep 'AT LOCK' $OUT/pf-log-a.txt | tail -1 | cut -c1-420)"
-adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -45 > "$OUT/pf-lock-events.txt"; adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "string|tracked" | tr '\n' ' ' > "$OUT/pf-origin.txt"
-info "PF A lock log (what the helper saw, newest last): $(cut -c1-110 $OUT/pf-lock-events.txt | tail -22 | tr '\n' '|' | cut -c1-1500)"
-info "PF A tj_origin.xml: $(cut -c1-300 $OUT/pf-origin.txt)"
+adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -45 > "$OUT/pf-lock-events.txt"; adb shell "run-as $PKG cat shared_prefs/tj_origin.xml" 2>/dev/null | tr '>' '\n' | grep -E "set name|string|tracked" | tr '\n' ' ' > "$OUT/pf-origin.txt"
+info "PF A lock log DIRTY lines: $(grep DIRTY $OUT/pf-lock-events.txt | cut -c1-135 | head -3 | tr '\n' '|')"
+sed -n '/HANDSHAKE/,$p' "$OUT/pf-lock-events.txt" > "$OUT/pf-lock-after.txt"
+info "PF A lock log after the handshake (1-5): $(sed -n 1,5p $OUT/pf-lock-after.txt | cut -c1-84 | tr '\n' '|')"
+info "PF A lock log after the handshake (6-10): $(sed -n 6,10p $OUT/pf-lock-after.txt | cut -c1-84 | tr '\n' '|')"
+info "PF A lock log after the handshake (11-15): $(sed -n 11,15p $OUT/pf-lock-after.txt | cut -c1-84 | tr '\n' '|')"
+info "PF A tj_origin.xml (after the lock): $(cut -c1-200 $OUT/pf-origin.txt)"
 check "PF-A2: the notification of the app opened in Quickstep is GONE" pf_hasnt $QN
 check "PF-A3: the notification of the app opened only in the custom launcher STAYS" pf_has $CN
 adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
