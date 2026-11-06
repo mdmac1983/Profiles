@@ -118,6 +118,26 @@ public final class LockQuiet {
         } catch (Throwable t) { Log.e(TAG, "lock radios failed", t); }
     }
 
+    /**
+     * AW2 / AW3: the app process starts early after a boot (it is the HOME app), long before the accessibility helper binds. If the lock screen is already up then, the radios are switched off and the
+     * rotation-only tile list is written at once, and looked at again after a few seconds (the keyguard may not have settled when the process was forked). Worker thread, exception-safe, silent when the tablet
+     * is not locked, the switches are off, the adb permission is missing or automation is paused.
+     */
+    public static void applyLockRulesEarly(final Context c) {
+        final Context app = c.getApplicationContext();
+        new Thread(new Runnable() { @Override public void run() {
+            for (int i = 0; i < 3; i++) {
+                try {
+                    if (i > 0) Thread.sleep(i == 1 ? 3000 : 9000);
+                    if (CrashGuard.automationOff(app) || !TileProfile.keyguardLocked(app)) continue;
+                    if (enabled(app)) onLock(app);
+                    if (TileProfile.enabled(app) && TileProfile.permitted(app)) TileProfile.apply(app, Mode.get(app));
+                    Log.i(TAG, "early lock rules applied (look " + (i + 1) + ")");
+                } catch (Throwable t) { Log.e(TAG, "early lock rules failed", t); }
+            }
+        } }, "tj-lockquiet-early").start();
+    }
+
     public static void onLockAsync(final Context c) {
         final Context app = c.getApplicationContext();
         new Thread(new Runnable() { @Override public void run() { onLock(app); } }, "tj-lockquiet-lock").start();

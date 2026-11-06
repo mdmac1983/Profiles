@@ -199,7 +199,7 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
-        handler.postDelayed(new Runnable() { @Override public void run() { try { if (keyguardLocked()) lockPrepare("the helper connected on the lock screen"); } catch (Throwable t) { Log.e(TAG, "connect lock rules failed", t); } } }, 2000);   // AW2 / AW3: the first lock screen after a restart (or after the helper was away) gets the same rules
+        handler.postDelayed(new Runnable() { @Override public void run() { try { if (keyguardLocked() && !CrashGuard.automationOff(getApplicationContext())) lockQuietNow("the helper connected on the lock screen"); } catch (Throwable t) { Log.e(TAG, "connect lock rules failed", t); } } }, 2000);   // AW2 / AW3: the first lock screen after a restart (or after the helper was away) gets the same rules
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
         try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
         try { if (calibrating()) calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration resume failed", t); }   // AM1
@@ -893,7 +893,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean armed = unlock.armedMethod() != null;
             boolean paused = CrashGuard.automationOff(app);
             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
-            if (locked && !paused) { lqLastWrite = 0; lqWrites = 0; LockQuiet.onLockAsync(app); applyLockTiles(why); }   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock); AW2: and the quick settings show the rotation tile only
+            if (locked && !paused) lockQuietNow(why);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock); AW2: and the quick settings show the rotation tile only
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
                     preCleanedThisLock = true;
@@ -908,6 +908,13 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** SCREEN_ON: the lock screen is what the screen shows (if it was not locked at screen-off, this is the first chance). */
     private void handleLockedWake() { lockPrepare("woke locked"); }
+
+    /** AK1 + AW2 + AW3: the quiet lock screen rules, nothing else (no clean-up, no pre-arm): Wi-Fi / Bluetooth off, the rotation tile only. Safe to repeat. */
+    private void lockQuietNow(String why) {
+        lqLastWrite = 0; lqWrites = 0;
+        LockQuiet.onLockAsync(getApplicationContext());
+        applyLockTiles(why);
+    }
 
     /**
      * AW2 (Tj, 2026-11-06 evening): "The lock screen from any launcher at all times should only have the rotation tile in the quick settings". While the keyguard is up the custom tile list is written whatever
