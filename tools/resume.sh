@@ -119,19 +119,19 @@ BRIEF="$(
     echo
   fi
   if [ -f TASKS.md ]; then
-    echo "######## TASKS.md — the 20 NEWEST open items (line numbers; older ones: grep -n '\- \[ \]' TASKS.md | head -40) ########"
-    grep -n '^\s*- \[ \]' TASKS.md | cut -c1-130 | tail -20     # newest last: new requests are appended, the old head-30 hid every request of the last days (2026-11-06) and overflowed the 10,000-char hook cap
+    echo "######## TASKS.md — the 18 NEWEST open items (line numbers; older ones: grep -n '\- \[ \]' TASKS.md | head -40) ########"
+    grep -n '^\s*- \[ \]' TASKS.md | cut -c1-130 | tail -18     # newest last: new requests are appended, the old head-30 hid every request of the last days (2026-11-06) and overflowed the 10,000-char hook cap
     echo "  ($(grep -c '^\s*- \[x\]' TASKS.md) done — not shown)"
     echo
   fi
   if [ -f INBOX.md ]; then
     echo "######## INBOX.md tail — Tj's latest raw messages; anything TASKS.md lacks is an unwritten request ########"
-    tail -c 1100 INBOX.md
+    tail -c 900 INBOX.md
     echo
   fi
   if [ -f OUTBOX.md ]; then   # 2026-11-06 (Tj: "why are my prompts and Claude findings not being saved?"): what Claude LAST told Tj, saved by tools/capture_outbox.sh on every Stop
     echo "######## OUTBOX.md tail — what Claude last told Tj (answers, findings, decisions); the whole text is in the file ########"
-    tail -c 1100 OUTBOX.md | grep -v '^<!-- sha:'
+    tail -c 700 OUTBOX.md | grep -v '^<!-- sha:'
     echo
   fi
   echo "######## STOCK LOOK REFERENCE (Tj: remember at all times): research/reference/stock/INDEX.md — stock-home.png, stock-drawer.png; 5 cols, 8 rows, NO dock, scrim 50% white ########"
