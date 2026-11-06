@@ -703,6 +703,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             android.content.Context app = getApplicationContext();
             handler.removeCallbacks(coverCheck);
+            lastUnlockAt = System.currentTimeMillis();
             ensureUnlockListener();
             if (unlock.hasPendingPad()) {   // the tablet unlocked but the Enter click never classified (emulator runs 63-66): the unlock is the Enter
                 UnlockMethods.Method pm = unlock.finishPendingPad(System.currentTimeMillis());
@@ -762,6 +763,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private long lastEnterAt = 0;   // when the last PIN-pad Enter was tapped (for the lock log's "Enter to unlock" time)
+    private long lastUnlockAt = 0;  // when the last unlock was handled (applyUnlockChoice): windows that appear in the next moments are what was under the lock screen (ProfileSession.windowIsLockLeftover)
 
     /**
      * AC9 (Tj: "even though the custom launcher is prepared to open on the lock screen, if I do the gesture for quickstep, always open quickstep"): after an unlock that chose Quickstep, look again at
@@ -794,7 +796,15 @@ public class TjAccessibilityService extends AccessibilityService {
             String cur = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
             if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
             ComponentName stock = StockLauncher.find(this);
-            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) { RecentsDirty.mark(this); AppOrigin.markQuickstep(this, e.getPackageName().toString()); LockLog.add(getApplicationContext(), "DIRTY", e.getPackageName() + " was marked as opened in Quickstep (window " + e.getClassName() + ")"); }
+            if (RecentsDirty.shouldMark(e.getPackageName().toString(), getPackageName(), stock == null ? null : stock.getPackageName(), ime, ReturnReset.targetPackage(this), true)) {
+                // AC2 follow-up: the app that was in front BEHIND the lock screen shows for a moment while the gesture's unlock goes away. Tj did not open it in Quickstep: it stays the custom account's.
+                if (ProfileSession.windowIsLockLeftover(keyguardLockedFast(), unlock.armedMethod() != null, System.currentTimeMillis(), lastUnlockAt)) {
+                    LockLog.add(getApplicationContext(), "WINDOW", e.getPackageName() + " appeared under the lock screen / during the unlock: NOT counted as opened in Quickstep (window " + e.getClassName() + ")");
+                    return;
+                }
+                RecentsDirty.mark(this); AppOrigin.markQuickstep(this, e.getPackageName().toString());
+                LockLog.add(getApplicationContext(), "DIRTY", e.getPackageName() + " was marked as opened in Quickstep (window " + e.getClassName() + ")");
+            }
         } catch (Throwable t) { Log.e(TAG, "dirty tracking failed", t); }
     }
 

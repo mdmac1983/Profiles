@@ -73,6 +73,21 @@ public final class ProfileSession {
     /** AC9: when (ms after the unlock) the helper looks again whether Quickstep really is in front, at most this many times. */
     public static final long[] VERIFY_DELAYS_MS = { 600, 900 };
 
+    /** AC2 follow-up: how long (ms) after an unlock a window that appears is still the lock screen's leftover (the unlock animation reveals what was underneath), not an app Tj opened. */
+    public static final long UNLOCK_QUIET_MS = 800;
+
+    /**
+     * Pure (AC2 follow-up, 2026-11-06, emulator run 143): is a window that appears NOW what was UNDERNEATH the lock screen, rather than an app Tj opened in Quickstep? While the lock screen is up, while a
+     * handshake is armed (the unlock is about to happen) and for a moment after the unlock, Android shows the app that was last in front behind the keyguard (the custom account's own app). It used to be the
+     * Solitaire stand-in, which is the target and is never counted; since the lock-screen preparation no longer starts Solitaire when its switch is off, it is the custom account's last app, and counting it as
+     * "opened in Quickstep" got that app (and its notification) closed at the next lock.
+     */
+    public static boolean windowIsLockLeftover(boolean keyguardLocked, boolean handshakeArmed, long now, long lastUnlockAt) {
+        if (keyguardLocked || handshakeArmed) return true;
+        long since = now - lastUnlockAt;
+        return lastUnlockAt > 0 && since >= 0 && since < UNLOCK_QUIET_MS;
+    }
+
     /** Pure: switch Wi-Fi / Bluetooth off again? Custom account only, at most 3 attempts per 60 s (a radio that refuses to go off is never fought in a loop). */
     public static boolean enforceRadios(boolean enabled, boolean customMode, long now, long[] recent) {
         if (!enabled || !customMode) return false;

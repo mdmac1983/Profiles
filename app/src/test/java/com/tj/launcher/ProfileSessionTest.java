@@ -86,4 +86,22 @@ public class ProfileSessionTest {
         org.junit.Assert.assertNull(DemoModeProfile.undoValue(null, true, null));
         org.junit.Assert.assertNull(DemoModeProfile.undoValue("1", true, "1"));     // it was on before we ever touched it: leave it
     }
+
+    // ---- AC2 follow-up (2026-11-06, run 143): what appears under the lock screen is not "opened in Quickstep"
+    @Test public void aWindowUnderTheLockScreenIsNotAnAppTjOpened() {
+        assertTrue(ProfileSession.windowIsLockLeftover(true, false, 10_000, 0));      // the lock screen is up
+        assertTrue(ProfileSession.windowIsLockLeftover(false, true, 10_000, 0));      // a handshake is armed: the unlock is about to happen
+    }
+
+    @Test public void theUnlockAnimationStillRevealsItForAMoment() {
+        assertTrue(ProfileSession.windowIsLockLeftover(false, false, 10_300, 10_000));                                   // 300 ms after the unlock
+        assertTrue(ProfileSession.windowIsLockLeftover(false, false, 10_000 + ProfileSession.UNLOCK_QUIET_MS - 1, 10_000));
+        assertFalse(ProfileSession.windowIsLockLeftover(false, false, 10_000 + ProfileSession.UNLOCK_QUIET_MS, 10_000));   // after that an app is an app Tj opened
+        assertFalse(ProfileSession.windowIsLockLeftover(false, false, 17_000, 10_000));                                  // 7 s later (the emulator test's Quickstep app)
+    }
+
+    @Test public void anAppOpenedInQuickstepWithNoLockInvolvedIsCounted() {
+        assertFalse(ProfileSession.windowIsLockLeftover(false, false, 10_000, 0));    // no unlock ever happened, nothing armed
+        assertFalse(ProfileSession.windowIsLockLeftover(false, false, 5_000, 9_000)); // the clock went backwards: never block forever
+    }
 }
