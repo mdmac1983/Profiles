@@ -1509,7 +1509,23 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
 
+    // ---------------------------------------------------------------- AD8: what the helper costs on THIS tablet (plain counters on the main thread; read by the report)
+    private long connectedAtMs = 0, evSeen = 0, evNoise = 0, scanCount = 0, scanTotalMs = 0, scanMaxMs = 0;
+
+    /** One line for the tablet report: how long the helper has been connected, how many events it got, how many were dropped at the door, and how long a power-menu scan takes here. A torn read is only a slightly stale number. */
+    String perfLine() {
+        long up = connectedAtMs == 0 ? 0 : (android.os.SystemClock.elapsedRealtime() - connectedAtMs) / 60_000;
+        long n = scanCount;
+        return "connected " + up + " min, " + evSeen + " events (" + evNoise + " dropped as noise), " + n + " power-menu scans" + (n == 0 ? "" : ", avg " + (scanTotalMs / n) + " ms, max " + scanMaxMs + " ms");
+    }
+
     private void evaluate() {
+        long t0 = android.os.SystemClock.uptimeMillis();
+        try { evaluateScan(); }
+        finally { long d = android.os.SystemClock.uptimeMillis() - t0; scanCount++; scanTotalMs += d; if (d > scanMaxMs) scanMaxMs = d; }
+    }
+
+    private void evaluateScan() {
         String mode = Features.powerMode(this);
         KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
         boolean locked = km != null && km.isKeyguardLocked();
