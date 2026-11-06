@@ -72,6 +72,9 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         // Leading edge: evaluate on the FIRST event at once (the cover must appear as fast as possible), then once more shortly after to catch late content.
         long now = android.os.SystemClock.uptimeMillis();
+        // AN1 (Tj: the battery saver tile in the shade is slow / unresponsive): a content change of the shade or the status bar (a tile redrawing, the clock) cannot OPEN the power menu, so it starts no scan unless a menu is
+        // already up or a window just changed. Every scan is a pair of whole-tree searches run by SystemUI's own UI thread, the thread that handles the tap on the tile (EventNoise.needsPowerMenuScan).
+        if (!EventNoise.needsPowerMenuScan(event == null ? 0 : event.getEventType(), overlayShown || now - menuUpAtMs < 2500, now < fullScanUntilMs)) { evSkipped++; return; }
         if (now - lastEvalMs >= 40) {
             lastEvalMs = now;
             try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
@@ -963,7 +966,15 @@ public class TjAccessibilityService extends AccessibilityService {
     private final Rect penAt = new Rect();
     private long lastPenMs = 0;
     private boolean penPending = false;
-    private final Runnable penEval = new Runnable() { @Override public void run() { penPending = false; updatePencil(); } };
+    /** AN1: the pencil found last time (kept un-recycled): following it is ONE node refresh, a whole-tree search in SystemUI's shade window is the expensive part and is spaced out. */
+    private AccessibilityNodeInfo penNode;
+    private boolean penSearched = false;
+    private final Runnable penEval = new Runnable() { @Override public void run() {
+        penPending = false;
+        long wait = EventNoise.minPencilSearchGapMs(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) - (android.os.SystemClock.uptimeMillis() - lastPenFullMs);
+        if (penNode == null && wait > 0) { penPending = true; handler.postDelayed(this, wait); return; }   // no known pencil to follow and a full search is not due yet: look again when it is
+        updatePencil(true);
+    } };
 
     /** Look at SystemUI events only (and keep checking while a cover is up, so it follows the panel and goes with it). Throttled. */
     private void schedulePencil(AccessibilityEvent e) {
@@ -972,20 +983,50 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!sysui && penView == null) return;
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
-        if (now - lastPenMs >= 40) { lastPenMs = now; updatePencil(); }
+        int type = e == null ? 0 : e.getEventType();
+        if (now - lastPenMs >= 40) { lastPenMs = now; updatePencil(now - lastPenFullMs >= EventNoise.minPencilSearchGapMs(type)); }   // AN1: following a known pencil every 40 ms is cheap; a full tree search is spaced out in a burst of redraws
         if (!penPending) { penPending = true; handler.postDelayed(penEval, 90); }
     }
 
-    private void updatePencil() {
+    /** {@code allowFull}: a whole-tree search may run now if the known pencil cannot be followed. Without it a failed refresh just leaves the cover as it is until the next allowed search. */
+    private void updatePencil(boolean allowFull) {
         try {
-            Rect r = findPencil();
-            if (r == null) { hidePencil(); return; }
+            penSearched = false;
+            Rect r = findPencil(allowFull);
+            if (r == null) { if (penSearched) hidePencil(); return; }
             showPencil(r);
         } catch (Throwable t) { Log.e(TAG, "pencil update failed", t); removePencil(); }
     }
 
-    /** Bounds of the visible Edit pencil (framework id android:id/edit, description "Edit order of settings."), or null. */
-    private Rect findPencil() {
+    private void dropPenNode() {
+        AccessibilityNodeInfo n = penNode;
+        penNode = null;
+        if (n != null) { try { n.recycle(); } catch (Throwable ignored) { } }
+    }
+
+    private static boolean pencilBoundsOk(Rect b) { return b.width() > 0 && b.height() > 0 && b.width() < 400 && b.height() < 400; }
+
+    /** Bounds of the visible Edit pencil, or null. AN1: first the pencil found last time is refreshed (one node); only when that fails (and a search is allowed) the shade window is searched. */
+    private Rect findPencil(boolean allowFull) {
+        AccessibilityNodeInfo known = penNode;
+        if (known != null) {
+            try {
+                if (known.refresh() && known.isVisibleToUser()) {
+                    Rect b = new Rect(); known.getBoundsInScreen(b);
+                    if (pencilBoundsOk(b)) { penFast++; penSearched = true; return b; }
+                }
+            } catch (Throwable ignored) { }
+            dropPenNode();   // gone, hidden or moved to a bad place: search again (below) when allowed
+        }
+        if (!allowFull) return null;
+        penSearched = true;
+        long t0 = android.os.SystemClock.uptimeMillis(); lastPenFullMs = t0;
+        try { return findPencilFull(); }
+        finally { long d = android.os.SystemClock.uptimeMillis() - t0; penFull++; penFullMs += d; if (d > penFullMax) penFullMax = d; }
+    }
+
+    /** The whole-tree search: bounds of the visible Edit pencil (framework id android:id/edit, description "Edit order of settings."), or null. Remembers the node it found (see {@link #penNode}). */
+    private Rect findPencilFull() {
         List<AccessibilityWindowInfo> windows = getWindows();
         if (windows == null) return null;
         for (AccessibilityWindowInfo w : windows) {
@@ -1001,7 +1042,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     CharSequence cd = n.getContentDescription();
                     if (!n.isVisibleToUser() || cd == null || !cd.toString().toLowerCase(java.util.Locale.ROOT).contains("edit")) continue;
                     Rect b = new Rect(); n.getBoundsInScreen(b);
-                    if (b.width() > 0 && b.height() > 0 && b.width() < 400 && b.height() < 400) return b;
+                    if (pencilBoundsOk(b)) { dropPenNode(); try { penNode = AccessibilityNodeInfo.obtain(n); } catch (Throwable ignored) { penNode = null; } return b; }
                 }
             } finally { root.recycle(); }
         }
@@ -1059,6 +1100,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void removePencil() {
+        dropPenNode();
         if (penView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(penView); } catch (Throwable ignored) { }
         penView = null; penAt.setEmpty(); penShown = false;
@@ -1660,6 +1702,7 @@ public class TjAccessibilityService extends AccessibilityService {
             final boolean dialogUp = dialogWindowPresent(windows);
             final boolean everyWindow = android.os.SystemClock.uptimeMillis() < fullScanUntilMs;
             if (menuSeenMs == 0 && dialogUp) menuSeenMs = android.os.SystemClock.uptimeMillis();
+            if (dialogUp) menuUpAtMs = android.os.SystemClock.uptimeMillis();   // AN1: a menu is up: its content changes are followed
             if (!overlayShown && Features.isCover(mode)) {
                 Rect cached = cachedCard();
                 if (cached != null && dialogUp) showOverlay(cached);   // instant: no node scan yet
@@ -1675,7 +1718,7 @@ public class TjAccessibilityService extends AccessibilityService {
                         List<AccessibilityNodeInfo> off = root.findAccessibilityNodeInfosByText("Power off");
                         List<AccessibilityNodeInfo> sc = root.findAccessibilityNodeInfosByText("Screenshot");
                         if (off != null && !off.isEmpty() && sc != null && !sc.isEmpty()) {
-                            menuOpen = true;
+                            menuOpen = true; menuUpAtMs = android.os.SystemClock.uptimeMillis();
                             // the card = the smallest ancestor of "Power off" that also contains the Screenshot entry
                             AccessibilityNodeInfo offItem = clickableAncestor(off.get(0));
                             Rect scr = new Rect(), c = new Rect(), ob = new Rect();
