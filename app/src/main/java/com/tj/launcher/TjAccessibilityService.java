@@ -141,8 +141,37 @@ public class TjAccessibilityService extends AccessibilityService {
     private void deferScan(long now) {
         if (!fading) return;   // nothing to follow (switch off, or the scrim was complete already): scan as before
         scanNotBeforeMs = now + PatchFade.SETTLE_MS;
-        handler.removeCallbacks(recheck);
-        handler.postDelayed(recheck, PatchFade.SETTLE_MS + 20);
+        deferWork(now, PatchFade.SETTLE_MS);
+    }
+
+    /**
+     * AZ1 (run 245, emulator with animations on): the first window event of a power-menu opening used to start the PIN-pad scan of the lock number ({@link #bouncerShown}: a dozen node searches in SystemUI's
+     * windows) and the power-menu scan on this very thread, one after the other. SystemUI is busy inflating and animating the dialog at that moment, so they took 100-300 ms and the dialog's OWN event,
+     * queued behind them, was handled 80-280 ms late (event age at handling), and the patch then dimmed 400 ms after the scrim = a light block against the dark surround for that long. Now the heavy
+     * per-event work (lock-number/PIN-pad scan, layer refresh, pencil, the power-menu scan) of a window burst on the lock screen waits until {@code now + waitMs} and runs ONCE ({@link #quietWork}): the dialog's event is
+     * handled first (fast path) and the patch is drawn before anything else.
+     */
+    private void deferWork(long now, long waitMs) {
+        quietUntilMs = now + waitMs;
+        handler.removeCallbacks(recheck); handler.removeCallbacks(quietWork);
+        handler.postDelayed(quietWork, waitMs + 20);
+    }
+
+    private long quietUntilMs = 0;
+    /** AZ1: how long a window burst on the lock screen waits for the stock dialog's own event before the normal scans run (fail-open for a ROM whose dialog does not announce itself). The dialog's event follows the first window event of its burst by 15-45 ms. */
+    static final long FAST_WAIT_MS = 120;
+    private final Runnable quietWork = new Runnable() { @Override public void run() {
+        quietUntilMs = 0;
+        try { scheduleLockUpdate(); scheduleLayerRefresh(); schedulePencil(null); } catch (Throwable t) { Log.e(TAG, "deferred event work failed", t); }
+        try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+    } };
+
+    /** AZ1: true while the heavy per-event work of the current window burst waits ({@link #deferWork}); the first window event of a burst on a resting lock-screen patch starts the wait ({@link #FAST_WAIT_MS}). */
+    private boolean quietBurst(long now, AccessibilityEvent event) {
+        if (now < quietUntilMs) return true;
+        if (event == null || !EventNoise.windowsJustChanged(event.getEventType()) || fastDecline() != null) return false;
+        deferWork(now, FAST_WAIT_MS);
+        return true;
     }
 
     private long lastEvalMs = 0;
