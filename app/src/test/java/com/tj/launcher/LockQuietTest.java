@@ -9,23 +9,23 @@ import org.junit.Test;
 /** AK1: the lock screen shows no Wi-Fi, no Bluetooth and no app notifications, from any launcher. The Android side is proven by emulator section lq; these are the pure rules. */
 public class LockQuietTest {
     private static final long NOW = 1_000_000;
-    private static final long[] NONE = {0, 0, 0};
 
-    @Test public void aRadioThatComesOnWhileLockedIsSwitchedOff() { assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, NONE)); }
-    @Test public void neverWhileTheTabletIsUnlocked() { assertFalse(LockQuiet.enforceRadios(true, false, false, NOW, NONE)); }
-    @Test public void neverWithTheSwitchOff() { assertFalse(LockQuiet.enforceRadios(false, true, false, NOW, NONE)); }
-    @Test public void neverWhileAutomationIsPaused() { assertFalse(LockQuiet.enforceRadios(true, true, true, NOW, NONE)); }
-    @Test public void aRadioThatRefusesToStayOffIsNotFoughtInALoop() {
-        long[] three = {NOW - 1000, NOW - 20_000, NOW - 59_000};
-        assertFalse(LockQuiet.enforceRadios(true, true, false, NOW, three));
-        long[] two = {NOW - 1000, NOW - 20_000, 0};
-        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, two));
+    // ---- AW3: while the keyguard is up a radio is switched off again, spaced MIN_GAP_MS apart, and never given up on (v0.8.0 stopped after 3 a minute)
+    @Test public void aRadioThatComesOnWhileLockedIsSwitchedOffAtOnce() { assertEquals(0, LockQuiet.retryDelayMs(true, true, false, NOW, 0, 0)); }
+    @Test public void neverWhileTheTabletIsUnlocked() { assertEquals(-1, LockQuiet.retryDelayMs(true, false, false, NOW, 0, 0)); }
+    @Test public void neverWithTheSwitchOff() { assertEquals(-1, LockQuiet.retryDelayMs(false, true, false, NOW, 0, 0)); }
+    @Test public void neverWhileAutomationIsPaused() { assertEquals(-1, LockQuiet.retryDelayMs(true, true, true, NOW, 0, 0)); }
+    @Test public void aRadioThatKeepsComingBackIsSwitchedOffAgainAfterTheGapNeverGivenUpOn() {
+        assertEquals("1 s after the last switch-off: wait for the rest of the gap", LockQuiet.MIN_GAP_MS - 1000, LockQuiet.retryDelayMs(true, true, false, NOW, NOW - 1000, 1));
+        assertEquals("the gap has passed: now", 0, LockQuiet.retryDelayMs(true, true, false, NOW, NOW - LockQuiet.MIN_GAP_MS, 1));
+        assertEquals(0, LockQuiet.retryDelayMs(true, true, false, NOW, NOW - 59_000, 12));   // v0.8.0 would have given up here (3 per minute)
+        assertEquals(0, LockQuiet.retryDelayMs(true, true, false, NOW, NOW - 5_000, LockQuiet.MAX_PER_LOCK - 1));
     }
-    @Test public void oldSwitchOffsDoNotCountAndNullIsEmpty() {
-        long[] old = {NOW - 61_000, NOW - 120_000, NOW - 300_000};
-        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, old));
-        assertTrue(LockQuiet.enforceRadios(true, true, false, NOW, null));
+    @Test public void aRomThatReallyInsistsEndsAtTheCapOfOneLock() {
+        assertEquals(-1, LockQuiet.retryDelayMs(true, true, false, NOW, NOW - 60_000, LockQuiet.MAX_PER_LOCK));
+        assertTrue("a whole minute of switch-offs is allowed", LockQuiet.MAX_PER_LOCK * LockQuiet.MIN_GAP_MS >= 60_000);
     }
+    @Test public void aClockThatWentBackNeverWaitsForLong() { assertEquals(0, LockQuiet.retryDelayMs(true, true, false, NOW, NOW + 50_000, 3)); }
 
     @Test public void theMemoryOfWhatWasOnRoundTrips() {
         assertEquals("w1b0", LockQuiet.encodePrev(true, false));
