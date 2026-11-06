@@ -26,6 +26,8 @@ public final class BatterySaverGuard {
 
     public static boolean enabled(Context c) { return Features.get(c, BatterySaverPolicy.KEY, true); }
     public static boolean qsEnabled(Context c) { return Features.get(c, BatterySaverPolicy.QS_KEY, true); }
+    /** AN1: strict = also undo changes made behind our back (the old v0.7.3 - v0.7.6 behaviour); default OFF so the tile in the shade always answers. */
+    public static boolean strict(Context c) { return Features.get(c, BatterySaverPolicy.STRICT_KEY, false); }
     public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED; }
 
     /** Registers the observer once per process (idempotent) and checks once. Called from {@link TjApplication#onCreate}. */
