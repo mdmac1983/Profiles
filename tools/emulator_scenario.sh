@@ -1266,6 +1266,57 @@ adb shell locksettings clear --old 1234 > "$OUT/ac-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ac
+if want ad; then # section ad
+ensurehome
+# ---- AD5 + AD7a (Tj, 2026-11-06). AD5: "when I unlock to quickstep, it minimizes my open apps and goes to the home screen. Is this necessary?" -> a gesture unlock brings back the Quickstep app that was open at the lock (switch
+#      "A gesture unlock comes back to the app I had open", default ON; OFF = the Quickstep home as before). AD7a: "when I lock the screen from quickstep, the power menu overlay doesn't work" -> the cover works on EVERY lock screen.
+#      The PIN is ALWAYS cleared again at the end.
+beat "before AD"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adfeat(){ # adfeat none|true|false: the resume switch (none = nothing stored = the default, ON)
+  case "$1" in
+    none) adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'";;
+    *)    adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"return_app_label\\\">Calendar</string><string name=\\\"power_mode\\\">hide_screenshot</string><boolean name=\\\"resume_qs_app\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'";;
+  esac; }
+adopen(){ adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; }   # an app opened IN Quickstep
+adb shell locksettings set-pin 1234 > "$OUT/ad-setpin.txt" 2>&1
+# ---------------- round 1: the switch has no stored value (default ON)
+adfeat none; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7                           # custom -> handshake -> a Quickstep session begins (the Quickstep home)
+adopen; sleep 2
+adb logcat -c
+lockpad; pad d d 1 2 3 4 e; sleep 7                           # locked from Quickstep with an app open, the same gesture again
+resumed > "$OUT/ad-r1.txt"; shot 150-ad-resume
+adb logcat -d -s TjA11y:I > "$OUT/ad-r1-log.txt" 2>&1
+check "AD5: after the gesture the app that was open (Contacts) is back in front, not the Quickstep home" grep -q 'com.android.contacts' "$OUT/ad-r1.txt"
+check "AD5: the helper says it brought that app back" grep -q 'ROUTER resume com.android.contacts' "$OUT/ad-r1-log.txt"
+# ---------------- AD7a: lock again from this Quickstep session: the cover must still work on the lock screen
+getmode > "$OUT/ad-mode-at-lock.txt"
+lockpad; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 151-ad-lock-menu-from-quickstep
+adb logcat -d -s TjA11y:I > "$OUT/ad-lockmenu-log.txt" 2>&1
+adb shell input keyevent KEYCODE_BACK; sleep 2
+info "AD7a: the mode flag at this lock: $(cat $OUT/ad-mode-at-lock.txt); menu log: $(grep -E 'menuOpen' $OUT/ad-lockmenu-log.txt | tail -1 | cut -c1-160)"
+check "AD7a: the lock began in Quickstep (the mode flag still says quickstep)" grep -q 'quickstep' "$OUT/ad-mode-at-lock.txt"
+check "AD7a: the power-menu cover works on that lock screen (action=1)" grep -q 'action=1' "$OUT/ad-lockmenu-log.txt"
+# the same lock screen, plain PIN, no gesture: the custom launcher (AD1)
+adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 7
+resumed > "$OUT/ad-plain.txt"
+check "AD1: a plain PIN after that Quickstep session opens the custom launcher" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/ad-plain.txt && ! grep -q 'com.android.contacts' $OUT/ad-plain.txt"
+# ---------------- round 2: the switch OFF = the Quickstep home as before
+adfeat false; adb shell am force-stop "$PKG"; ensurehome; rebind; home; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7
+adopen; sleep 2
+lockpad; pad d d 1 2 3 4 e; sleep 7
+resumed > "$OUT/ad-r2.txt"; shot 152-ad-switch-off
+check "AD5: with the switch OFF the gesture opens the Quickstep home (the open app stays minimised)" grep -q 'com.android.launcher3/' "$OUT/ad-r2.txt"
+adb shell locksettings clear --old 1234 > "$OUT/ad-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "AD: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/ad-clearpin.txt"
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section ad
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
