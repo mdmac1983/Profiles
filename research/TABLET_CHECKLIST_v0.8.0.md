@@ -20,6 +20,8 @@ Install: open the Release page, download `Launcher-v0.8.0.apk`, install it over 
 - Closed lock screen: no visible seam, block or colour change near the bottom of where the power menu sits.
 - Hold the side key: the menu shows Power off + Restart only, nothing flashes when it opens or closes.
 - Tap where the Screenshot button used to be: the menu closes and no screenshot is taken.
+- **Pull the notification panel down on the lock screen** (and put it back): nothing should show in the lower middle-right (about 126 x 115 px) over the panel. If a lighter rectangle appears there, tell me when and how long it stays: that is the one thing an independent code review could not rule out without the tablet.
+- Enter the PIN pad (swipe up) and back: the patch must not sit over the pad's keys.
 
 **C. Launcher control**: open it, open and close a few groups, check that Restore everything stays at the bottom.
 
