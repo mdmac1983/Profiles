@@ -25,6 +25,15 @@ public final class ResumeTarget {
         return !"android".equals(pkg) && !"com.android.systemui".equals(pkg);
     }
 
+    /**
+     * Review RV2 (2026-11-06): the remembered time is stamped only when the foreground package CHANGES, so with one app in front all day the 6 h limit would run from when it first came forward and the resume
+     * would silently stop. At the moment the screen goes off the app that is still in front is, by definition, the one Tj had open: refresh its time. Anything else keeps the old time.
+     */
+    public static long refreshedAt(String remembered, String foreground, long rememberedAtMs, long nowMs) {
+        if (remembered == null || remembered.isEmpty() || !remembered.equals(foreground)) return rememberedAtMs;
+        return nowMs;
+    }
+
     /** What the gesture starts: the remembered app (switch on, remembered recently), or null = the stock home. */
     public static String pick(boolean enabled, String remembered, long rememberedAtMs, long nowMs) {
         if (!enabled || remembered == null || remembered.isEmpty()) return null;
