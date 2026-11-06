@@ -1472,6 +1472,20 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
+    /**
+     * AD8 (Go discipline, Tj: "optimized for my tablet": 2 GB RAM, memory class 128 MB): when Android reports memory pressure, drop the cached wallpaper / lock-screen bitmaps that nothing is drawing right now
+     * (a few MB each at 600 x 973); they are rebuilt on demand. Never touches them while the patch window exists (its view draws from them).
+     */
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        try {
+            if (level < android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) return;
+            handler.post(new Runnable() { @Override public void run() {
+                if (patchView == null) { wallpaperBmp = null; lockBmp = null; lockShot = null; lockShotFresh = false; Log.i(TAG, "TRIM released the cached wallpaper bitmaps"); }
+            } });
+        } catch (Throwable ignored) { }
+    }
+
     @Override public void onDestroy() { instance = null; removeOverlay(); removePatch(); removePencil(); hideResetCover(); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); super.onDestroy(); }
 
     private void evaluate() {
