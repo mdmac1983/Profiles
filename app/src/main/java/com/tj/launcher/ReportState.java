@@ -25,7 +25,7 @@ public final class ReportState {
             "guard_count", "guard_last", "keyboard_status", "wallpaper_patch_status", "lock_cal_status",
             "compile_done_code", "boot_count_seen", "keytest_summary", "keytest_output", "keytest_menu", "keytest_at", "keep_alive_blocked_why", "battery_saver_last", "migrate_note",
             // v0.7.6 (review of v0.7.5): the wallpaper kind was documented as "in the report" but never listed; the patch nudges are plain numbers (never the lock-screen number TEXT)
-            "wallpaper_kind", "patch_dx", "patch_dy", "patch_scale_pct", "patch_dim_pct", "patch_scrim_pct",
+            "wallpaper_kind", "wallpaper_geometry", "patch_dx", "patch_dy", "patch_scale_pct", "patch_dim_pct", "patch_scrim_pct",
             "lock_text_size_pct", "lock_text_weight_nudge", "lock_text_alpha_pct"));
 
     /** Pure: the "key: value" lines for the preferences in {@code all}: every Boolean, plus the allow-listed text and number values; sorted, values flattened to one line and cut to 600 characters. */

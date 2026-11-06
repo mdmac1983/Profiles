@@ -147,7 +147,7 @@ public class TjAccessibilityService extends AccessibilityService {
     /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Launcher control) scales it. */
     private float lockPatchDim(boolean photo) {
         float open = openScrim();
-        float k = (photo ? open : DIM_KEYGUARD * open) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        float k = (photo ? open : DIM_KEYGUARD * open) * (1f + (Features.getInt(this, PATCH_DIM_KEY, 0) + (photo ? 0 : PatchProfile.lockDimPct(android.os.Build.DEVICE))) / 100f);   // v0.7.6 AH3: + the per-device lift of the MODEL (not of a photo)
         return Math.max(0.3f, Math.min(1f, k));
     }
     private View patchView;
@@ -169,7 +169,7 @@ public class TjAccessibilityService extends AccessibilityService {
     /** AE3: brightness of the RESTING patch: no dialog scrim (the menu is closed), so the photo path keeps its own keyguard dim (k = 1) and the wallpaper MODEL gets only the keyguard's dim; Tj's brightness nudge still applies. */
     private float restDim(boolean photo) {
         if (photo) return 1f;   // v0.7.6 (review of v0.7.5): the photo already has the real keyguard brightness and no dialog scrim is open: exactly 1, whatever the brightness nudge says (it corrects the MODEL's keyguard dim only)
-        float k = DIM_KEYGUARD * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        float k = DIM_KEYGUARD * (1f + (Features.getInt(this, PATCH_DIM_KEY, 0) + PatchProfile.lockDimPct(android.os.Build.DEVICE)) / 100f);   // v0.7.6 AH3: + the per-device lift of the MODEL
         return Math.max(0.3f, Math.min(1f, k));
     }
     public static final String LOCK_PATCH_KEY = "lock_patch";   // Tj V1: wallpaper patch + short card on the lock screen (default ON; needs the wallpaper permission)
@@ -389,6 +389,16 @@ public class TjAccessibilityService extends AccessibilityService {
                 } finally { try { pfd.close(); } catch (Throwable ignored) { } }
             }
             if (lockBmp == null) lockBmp = loadWallpaper();   // no separate lock picture: the lock screen shows the home wallpaper
+            try {   // v0.7.6 AH3: the numbers the patch model works with, for the tablet report (so the real engine's placement can be worked out from facts, not photos)
+                android.util.DisplayMetrics gdm = new android.util.DisplayMetrics();
+                ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(gdm);
+                if (lockBmp != null) {
+                    float gs = Math.max((float) gdm.heightPixels / lockBmp.getHeight(), (float) gdm.widthPixels / lockBmp.getWidth());
+                    String geo = "bitmap " + lockBmp.getWidth() + "x" + lockBmp.getHeight() + ", desired " + wm.getDesiredMinimumWidth() + "x" + wm.getDesiredMinimumHeight() + ", display " + gdm.widthPixels + "x" + gdm.heightPixels
+                            + ", cover scale " + Math.round(gs * 1000) / 1000f + " -> shown " + Math.round(lockBmp.getWidth() * gs) + "x" + Math.round(lockBmp.getHeight() * gs) + ", x offset 0.5, profile shift " + PatchProfile.lockShiftPx(android.os.Build.DEVICE, gdm.widthPixels) + " px";
+                    if (!geo.equals(Features.getString(this, "wallpaper_geometry", ""))) Features.setString(this, "wallpaper_geometry", geo);
+                }
+            } catch (Throwable ignored) { }
         } catch (Throwable t) { Log.e(TAG, "lock wallpaper read failed", t); }
         if (lockBmp == null) patchStatus("off: the lock wallpaper could not be read");
         return lockBmp;
@@ -468,7 +478,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (patchLockMode) cal *= testSkew() * lockCalM;                                           // V4: the measured fit (1 until calibrated)
                 s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
-                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0) + (patchLockMode ? lockCalDx : 0),
+                m.postTranslate(-(dw - dm.widthPixels) * (patchLockMode ? 0.5f : TjHooks.wallpaperX) - rect.left + Features.getInt(TjAccessibilityService.this, PATCH_DX_KEY, 0) + (patchLockMode ? lockCalDx + PatchProfile.lockShiftPx(android.os.Build.DEVICE, dm.widthPixels) : 0),   // v0.7.6 AH3: + the per-device shift of the model (Tj's MediaTek tablet: -90 px)
                         -(dh - dm.heightPixels) * 0.5f - rect.top + Features.getInt(TjAccessibilityService.this, PATCH_DY_KEY, 0) + (patchLockMode ? lockCalDy : 0));
                 c.drawBitmap(b, m, p);
             }
