@@ -51,7 +51,7 @@ public class SecretEntrancesTest {
         t.onChange(1000); t.onChange(1050); t.onChange(1090);
         assertEquals(1, t.count());
     }
-    @Test public void afterSuccessItStartsOver() { SecretEntrances.Toggles t = new SecretEntrances.Toggles(); for (int i = 0; i < 5; i++) t.onChange(1000 + i * 1000L); assertEquals(0, t.count()); }
+    @Test public void afterSuccessTheTogglesStartOver() { SecretEntrances.Toggles t = new SecretEntrances.Toggles(); for (int i = 0; i < 5; i++) t.onChange(1000 + i * 1000L); assertEquals(0, t.count()); }
 
     // ---- charger
     @Test public void inOutInInsideTheWindowCompletes() {
