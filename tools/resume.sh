@@ -126,7 +126,12 @@ BRIEF="$(
   fi
   if [ -f INBOX.md ]; then
     echo "######## INBOX.md tail — Tj's latest raw messages; anything TASKS.md lacks is an unwritten request ########"
-    tail -c 1500 INBOX.md
+    tail -c 1100 INBOX.md
+    echo
+  fi
+  if [ -f OUTBOX.md ]; then   # 2026-11-06 (Tj: "why are my prompts and Claude findings not being saved?"): what Claude LAST told Tj, saved by tools/capture_outbox.sh on every Stop
+    echo "######## OUTBOX.md tail — what Claude last told Tj (answers, findings, decisions); the whole text is in the file ########"
+    tail -c 1100 OUTBOX.md | grep -v '^<!-- sha:'
     echo
   fi
   echo "######## STOCK LOOK REFERENCE (Tj: remember at all times): research/reference/stock/INDEX.md — stock-home.png, stock-drawer.png; 5 cols, 8 rows, NO dock, scrim 50% white ########"
