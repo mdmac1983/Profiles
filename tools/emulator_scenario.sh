@@ -1331,9 +1331,10 @@ SE_ROT0="$(adb shell settings get system accelerometer_rotation | tr -d '\r\n')"
 rotflip(){ local v; v=$(adb shell settings get system accelerometer_rotation | tr -d '\r\n'); [ "$v" = "1" ] && v=0 || v=1; adb shell settings put system accelerometer_rotation $v; }
 # -------- page flick
 sefeat true true false; sefresh; adb logcat -c
-swr; swl; swr; swl; swr; sleep 2; getmode > "$OUT/se-flick5.txt"                       # five alternating swipes
+swr; swl; swr; swl; swr; sleep 3; getmode > "$OUT/se-flick5.txt"                       # five alternating swipes
 check "SE-F1: five alternating swipes are NOT enough (still the custom launcher)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick5.txt)\" = custom ]"
-swl; sleep 3; getmode > "$OUT/se-flick6.txt"; resumed > "$OUT/se-flick6-front.txt"      # the sixth completes the code (within 2.5 s of the fifth)
+sefresh
+swr; swl; swr; swl; swr; swl; sleep 3; getmode > "$OUT/se-flick6.txt"; resumed > "$OUT/se-flick6-front.txt"      # six alternating swipes (no pause in the middle: each gap must stay under 2.5 s)
 check "SE-F2: six alternating swipes take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick6.txt)\" = quickstep ]"
 check "SE-F3: and the Quickstep home is in front" grep -q 'com.android.launcher3/' "$OUT/se-flick6-front.txt"
 sefresh
@@ -1344,9 +1345,10 @@ swr; swl; swr; swl; swr; swl; sleep 3; getmode > "$OUT/se-flick-off.txt"
 check "SE-F5: with the page-flick switch OFF nothing happens" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-flick-off.txt)\" = custom ]"
 # -------- rotation tile
 sefeat true true false; sefresh
-rotflip; rotflip; rotflip; sleep 2; getmode > "$OUT/se-rot3.txt"
+rotflip; rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot3.txt"
 check "SE-R1: three changes of the rotation lock are NOT enough" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot3.txt)\" = custom ]"
-rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot5.txt"
+sefresh
+rotflip; rotflip; rotflip; rotflip; rotflip; sleep 3; getmode > "$OUT/se-rot5.txt"
 check "SE-R2: five changes in 10 s take Tj to Quickstep" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/se-rot5.txt)\" = quickstep ]"
 sefeat true false false; sefresh
 for i in 1 2 3 4 5; do rotflip; done; sleep 3; getmode > "$OUT/se-rot-off.txt"
