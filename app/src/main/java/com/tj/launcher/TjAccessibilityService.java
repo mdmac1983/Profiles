@@ -118,6 +118,7 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        connectedAtMs = android.os.SystemClock.elapsedRealtime(); evSeen = 0; evNoise = 0; scanCount = 0; scanTotalMs = 0; scanMaxMs = 0;   // AD8: the report's load numbers count from this connect
         try { warmUp(); } catch (Throwable t) { Log.e(TAG, "warm failed", t); }
         try { startLockNumber(); } catch (Throwable t) { Log.e(TAG, "lock number failed", t); }
         try { updateKeyFilter(); } catch (Throwable t) { Log.e(TAG, "key filter failed", t); }
