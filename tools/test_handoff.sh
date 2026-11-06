@@ -147,6 +147,16 @@ if UN_OUT="$(bash "$D/tools/test_uinode.sh" 2>&1)"; then ok; else bad "uinode se
 printf '{"prompt":"please build X, my key is ghp_%s ok"}' "$(printf 'c%.0s' $(seq 1 36))" | bash tools/capture_inbox.sh
 check "inbox captures the message, redacts the key, and commits it" 'grep -q "please build X" INBOX.md && grep -q "REDACTED-KEY" INBOX.md && ! grep -q "ghp_c" INBOX.md && [ "$(bash tools/unpushed.sh)" = 0 ]'
 
+# ---------------------------------------------------------------- outbox capture (Tj, 2026-11-06: "why are my prompts and Claude findings not being saved?")
+OB_T="$T/ob.jsonl"
+printf '%s\n' '{"type":"user","message":{"role":"user","content":"hi"}}' "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Finding: the answer is 42, my key is ghp_$(printf 'c%.0s' $(seq 1 36))\"}]}}" > "$OB_T"
+printf '{"hook_event_name":"Stop","transcript_path":"%s"}' "$OB_T" | bash tools/autosave.sh >/dev/null 2>&1
+check "outbox captures Claude's last reply on Stop, quoted, key redacted, and commits it" 'grep -q "^> Finding: the answer is 42" OUTBOX.md && grep -q "REDACTED-KEY" OUTBOX.md && ! grep -q "ghp_c" OUTBOX.md && [ -z "$(git status --porcelain OUTBOX.md)" ]'
+printf '{"hook_event_name":"Stop","transcript_path":"%s"}' "$OB_T" | bash tools/capture_outbox.sh
+check "outbox does not repeat an identical reply" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
+printf '{"hook_event_name":"PostToolUse","transcript_path":"%s"}' "$OB_T" | bash tools/autosave.sh >/dev/null 2>&1
+check "outbox is written on Stop only (a tool-call hook adds nothing)" '[ "$(grep -c "^## 20" OUTBOX.md)" = 1 ]'
+
 # ---------------------------------------------------------------- ship gate: version must increase
 echo '| v0.1.0 | code 1 | 2026-01-01T00:00Z | first' >> BUILDLOG.md
 SHIPOUT="$(bash ship.sh "x" 2>&1)"
