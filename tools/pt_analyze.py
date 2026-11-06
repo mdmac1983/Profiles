@@ -91,8 +91,40 @@ def series(P, S, fps, onset, r0, span_ms=(-100, 420), step=1):
     return " ".join(out)
 
 
+def events(text):
+    """A compact timeline of the helper's PATCHEV / PATCH log lines for the log: 'S/ActionsDialog+0 a36 r1o0 | W+3 ...' with times in ms relative to the stock dialog's own window event.
+    Kinds: S = window state changed, C = content changed, W = windows changed; a = age of the event when the helper saw it; r1o0 = patch resting / menu open flags at that moment."""
+    rows, last_t, t0 = [], None, None
+    for ln in text.splitlines():
+        m = re.search(r"PATCHEV t=(\d+) type=0x([0-9a-f]+) pkg=(\S+) cls=(\S+) age=(-?\d+) rest=(\d) open=(\d)", ln)
+        if m:
+            t, ty, cls = int(m.group(1)), int(m.group(2), 16), m.group(4)
+            if t0 is None and "ActionsDialog" in cls:
+                t0 = t
+            kind = {0x20: "S", 0x800: "C", 0x400000: "W"}.get(ty, hex(ty))
+            short = "" if cls == "null" else "/" + cls.replace("android.widget.", "").replace("com.android.systemui.", "").replace("globalactions.GlobalActionsDialog$", "").split(".")[-1]
+            rows.append([t, "%s%s a%s r%so%s" % (kind, short, m.group(5), m.group(6), m.group(7))])
+            last_t = t
+            continue
+        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off)(.*)", ln)
+        if m:
+            tm = re.search(r" t=(\d+)", m.group(2))
+            t = int(tm.group(1)) if tm else last_t
+            body = re.sub(r" t=\d+", "", m.group(1) + m.group(2)).strip()
+            rows.append([t, "<" + re.sub(r"\s+", " ", body)[:70] + ">"])
+            if t is not None:
+                last_t = t
+    if not rows:
+        return "(no PATCH lines)"
+    if t0 is None:
+        t0 = next((r[0] for r in rows if r[0] is not None), 0)
+    return " | ".join("%+d %s" % ((r[0] - t0) if r[0] is not None else 0, r[1]) for r in rows)
+
+
 def selftest():
     fps = 60
+    ev = events("I TjA11y : PATCHEV t=1000 type=0x400000 pkg=null cls=null age=1 rest=1 open=0\nI TjA11y : PATCHEV t=1030 type=0x20 pkg=com.android.systemui cls=com.android.systemui.globalactions.GlobalActionsDialog$ActionsDialog age=36 rest=1 open=0\nI TjA11y : PATCH fast open: the dialog's window event is 40 ms old\nI TjA11y : PATCH fade start lag=40 ms t=1070 lead=25\n")
+    assert ev.startswith("-30 W a1 r1o0 | +0 S/ActionsDialog a36 r1o0 | ") and "<fade start lag=40 ms lead=25>" in ev, ev
     # surround: 1.0 resting, then the stock scrim (FAST_OUT_SLOW_IN 300 ms, 20 %) from t=0.8 s, dismissed from t=2.0 s (slow-start log curve, 300 ms)
     def fosi(x):
         x = min(1.0, max(0.0, x)); lo, hi = 0.0, 1.0
