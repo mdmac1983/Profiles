@@ -1974,17 +1974,26 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi; SY=$PY
   info "PT: menu panel $FL,$FT-$FR,$FB card bottom $CB; probes: patch at $PX,$PY, surround at $SX,$SY"
   : > "$OUT/pt-metrics.txt"
-  # ---- A: the old one-step dim
+  ptanim 1.0   # ANIMATIONS ON for the films (put back to 0 at the end): only then does the stock scrim fade in and out over 300 ms like on the tablet
+  # ---- A: the old one-step dim (the patch jumps to the open brightness as soon as it notices the menu)
   ptset false 25; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun jump
-  # ---- B: the fade at several lead times (ms added to the elapsed time of every frame)
-  for LEAD in 25 0 50 80; do
-    ptset true $LEAD; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun fade$LEAD
+  # ---- B: the fade at several lead times (ms added to the elapsed time of every frame; the anchor is the stock dialog's own window event). "m25" = minus 25.
+  for LEAD in 25 0 50 -25 80; do
+    N="$LEAD"; [ "$LEAD" -lt 0 ] && N="m${LEAD#-}"
+    ptset true $LEAD; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun fade$N
   done
-  for LB in jump fade25 fade0 fade50 fade80; do
+  ptanim 0
+  for LB in jump fade25 fade0 fade50 fadem25 fade80; do
     info "PT $LB metric: $(grep "PTMETRIC label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/PTMETRIC //' | cut -c1-360)"
     CV="$(grep "PTSERIES label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/.*onset) //')"
-    info "PT $LB curve a: $(echo "$CV" | cut -c1-340)"
-    info "PT $LB curve b: $(echo "$CV" | cut -c341-680)"
+    info "PT $LB open curve a: $(echo "$CV" | cut -c1-340)"
+    info "PT $LB open curve b: $(echo "$CV" | cut -c341-680)"
+    if [ "$LB" = jump ] || [ "$LB" = fade25 ]; then
+      CC="$(grep "PTCLOSE label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/.*brightening) //')"
+      info "PT $LB close curve a: $(echo "$CC" | cut -c1-340)"
+      info "PT $LB close curve b: $(echo "$CC" | cut -c341-680)"
+      info "PT $LB close curve c: $(echo "$CC" | cut -c681-1020)"
+    fi
   done
   FRAMES="$(ptget jump frames)"
   check "PT: the film worked (the old-behaviour run has more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
