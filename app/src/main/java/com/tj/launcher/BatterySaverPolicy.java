@@ -48,9 +48,18 @@ public final class BatterySaverPolicy {
      * only when it really is off, and not more than {@link #MAX_ON_WRITES} times per {@link #ON_WINDOW_MS}.
      */
     public static boolean shouldTurnOn(boolean switchOn, boolean customMode, boolean automationOff, boolean saverOn, long now, long[] recentOnWrites) {
-        if (!switchOn || customMode || automationOff || saverOn) return false;
+        if (!deliberateOn(switchOn, customMode, automationOff, saverOn)) return false;
         int n = 0;
         if (recentOnWrites != null) for (long t : recentOnWrites) if (t > 0 && now - t <= ON_WINDOW_MS) n++;
         return n < MAX_ON_WRITES;
+    }
+
+    /**
+     * v0.7.6 (review of v0.7.5): the switch-ON that follows a DELIBERATE entry into Quickstep (a mode change, the process start) is never capped: the cap exists only so that a ROM that turns the saver off
+     * again behind our back (charging, battery recovered) is not fought in a tight loop, and that loop is made of REACTIVE switch-ons (the setting changed to 0), which still use {@link #shouldTurnOn}.
+     * Counting deliberate entries as well left the saver off for good after the 4th Quickstep entry within 10 minutes.
+     */
+    public static boolean deliberateOn(boolean switchOn, boolean customMode, boolean automationOff, boolean saverOn) {
+        return switchOn && !customMode && !automationOff && !saverOn;
     }
 }
