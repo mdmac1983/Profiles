@@ -777,6 +777,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void removePatch() {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
+        closing = false; handler.removeCallbacks(closeFinishRun);   // BC2
         patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false; handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
         Log.i(TAG, "PATCH removed");
     }
@@ -2517,6 +2518,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean on = patchFadeOn();
         long anchor = dialogEventMs > 0 && now - dialogEventMs <= PatchFade.FRESH_MS && dialogEventMs >= winBurstStartMs ? dialogEventMs : winBurstStartMs;   // the dialog's own event when it is the newest, else the burst's first one
         long lag = on ? PatchFade.lagMs(now, anchor) : PatchFade.OPEN_MS;
+        closing = false; handler.removeCallbacks(closeFinishRun);   // BC2: a new opening ends any fade-out that was still being followed
         fadeLeadMs = PatchFade.LEAD_MS;
         if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) { int v = Features.getInt(this, "patch_fade_lead", Integer.MIN_VALUE); if (v != Integer.MIN_VALUE) fadeLeadMs = v; }   // debug builds only (the emulator sweeps it in section pt; may be negative)
         fadeLeadMs += Features.getInt(this, PATCH_FADE_SHIFT_KEY, 0);
