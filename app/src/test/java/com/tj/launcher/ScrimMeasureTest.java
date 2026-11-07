@@ -102,8 +102,10 @@ public class ScrimMeasureTest {
         assertEquals(0x33, ScrimMeasure.channel(px, w, pts, 0)[0]);
     }
     @Test public void aFlatPixelHasSmallNeighbourDifferences() {
-        assertTrue(ScrimMeasure.flat(100, 104, 98, 101));
-        assertFalse(ScrimMeasure.flat(20, 200, 100, 100));      // a text edge
+        assertTrue(ScrimMeasure.flat(101, 100, 104, 98, 101));
+        assertFalse(ScrimMeasure.flat(100, 20, 200, 100, 100));    // an edge through the pixel
+        assertFalse(ScrimMeasure.flat(255, 0, 0, 0, 0));           // a bright dot / a one-pixel stroke: both sides equal, the pixel itself is not
+        assertFalse(ScrimMeasure.flat(0, 255, 255, 255, 255));     // and a dark one
         assertEquals(255, ScrimMeasure.lum(0xFFFFFF)); assertEquals(0, ScrimMeasure.lum(0x000000));
         assertTrue(ScrimMeasure.lum(0x00FF00) > ScrimMeasure.lum(0xFF0000));   // green counts more than red
     }
