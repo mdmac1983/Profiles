@@ -2192,6 +2192,18 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   HOLD="$(ptget fade25 hold_max)"; HOLDS="$(ptget fade25 hold_s)"
   info "PT: while the menu STAYS open (the part of the film after the opening ramp, ${HOLDS:-?} s): worst mismatch ${HOLD:-?}. INFO only: the emulator's injected long press shows the dialog TWICE ~0.5 s apart and the two scrims stack for a moment (the surround dips to ~0.70), which no patch can follow; see the 'hold' lines of the timeline for the service's own decisions"
 
+  # ---- F (BC2, Tj, 2026-11-07, v0.8.3: "the fading is perfect when I press the side key, but when the power menu is open, and I press in the middle of the screen to close the power menu, or pull up from the bottom to type
+  #      the pin, the wallpaper patch flickers for a split second, because the screen fades for a short time during these events"): the stock dialog's dismissal fades its card and scrim OUT over 300 ms (LogAccelerate: slow
+  #      start, fast end) and the patch has to follow. The same film as the opening, the menu CLOSED three ways: the BACK key (no sign of it for the helper: only the removal of the dialog's window), a tap in the middle of
+  #      the screen (a click in the stock dialog), a swipe up from the bottom edge (the PIN pad). INFO: each film's close_max (the largest patch-versus-surround mismatch around the close), the helper's own lines and the
+  #      timeline between the input and the removal of the dialog's window (the helper logs wid / dlg / wc: which window an event is about, '*' = the stock dialog's, c2 = removed).
+  ptset true 10; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2
+  ptrun closeback back; ptrun closetap tap; ptrun closeswipe swipe
+  for L in closeback closetap closeswipe; do
+    info "PT/BC2 $L: close_max $(ptget $L close_max) at $(ptget $L close_at) s from the half-recovery of the surround, close_final $(ptget $L close_final), hold_max $(ptget $L hold_max)"
+    info "PT/BC2 $L: the helper: $(grep -E 'PATCH (close|menu closed)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
+  done
+  grep -E "PTCLOSE label=(closeback|closetap|closeswipe) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
   # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom
   #      edge; the patch's opaque core used to stop 2 px past it and then faded out. tools/pb_probe.py compares screenshots of the SAME lock screen: the menu closed (bare), the menu open with the lock patch OFF (the stock panel's
   #      shadow) and with it ON in several geometries (patch_extra_dp = how far the opaque core reaches further down, patch_bfeather_dp = the bottom fringe). The measured scrim look is on (phase C), so the slot itself matches.
@@ -2231,6 +2243,10 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     info "PB: how far below the panel the patch keeps matching (rows): v0.8.2 geometry ${PBR_OLD:-?}, default ${PBR_NEW:-?}; slot interior mean deviation of the default ${PBC_NEW:-?} levels"
     check "PB: the default geometry keeps matching the lock screen at least 24 px below the stock panel, the v0.8.2 geometry does not (within 8 px)" awk -v n="${PBR_NEW:-0}" -v o="${PBR_OLD:-99}" 'BEGIN{exit !(n+0>=24 && o+0<=8)}'
     check "PB: the slot interior of the default geometry still matches (mean deviation within 1.5 levels)" awk -v c="${PBC_NEW:-9}" 'BEGIN{exit !((c<0?-c:c) < 1.5)}'
+    PBE_S="$(pbval stock edge_max)"; PBE_N="$(pbval x24b4 edge_max)"
+    info "PB/BC1: the gap between the card's right edge and the display edge, in the hidden slot's rows (largest deviation, levels; positive = lighter than the dimmed wallpaper): the stock menu ${PBE_S:-?}, the patch ${PBE_N:-?}"
+    grep PBEDGE "$OUT/pb-metrics.txt" | grep -E "label=(stock|x24b4) " | while IFS= read -r L; do info "PB $(echo "$L" | cut -c1-330)"; done
+    check "PB/BC1: the patch covers the display's last columns in the hidden slot's rows (the largest deviation there is within 3 levels)" awk -v n="${PBE_N:-99}" 'BEGIN{exit !((n<0?-n:n) <= 3.0)}'
     PBP0="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra0/fringe9=[0-9.]*' | head -1 | cut -d= -f2)"; PBP1="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra26/fringe4=[0-9.]*' | head -1 | cut -d= -f2)"
     info "PB: the line a geometry would leave on a menu WITHOUT the second card, predicted from the stock shadow measured under it (levels): v0.8.2 geometry ${PBP0:-?}, default ${PBP1:-?}"
     PBED="$(grep PBSHADOW "$OUT/pb-metrics.txt" | grep -o 'edge_d=[-0-9]*' | head -1 | cut -d= -f2)"
