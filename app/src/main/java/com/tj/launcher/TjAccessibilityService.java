@@ -407,11 +407,26 @@ public class TjAccessibilityService extends AccessibilityService {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; lockShot = null; lockShotFresh = false; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
     };
 
+    /**
+     * BC2: the stock power dialog dismisses itself on ACTION_CLOSE_SYSTEM_DIALOGS (the Home key, the assistant, a swipe that ends in the Home gesture ...) unless the reason is "recentapps" (its own receiver, Android 10
+     * GlobalActionsDialog); "globalactions" is the power menu's own opening. The same broadcast reaches us within milliseconds: it is the start of the stock fade-out when nothing else (a click, our own BACK) told us.
+     */
+    private final android.content.BroadcastReceiver closeDialogsReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            try {
+                String reason = i == null ? null : i.getStringExtra("reason");
+                if ("recentapps".equals(reason) || "globalactions".equals(reason)) return;
+                startClose(android.os.SystemClock.uptimeMillis(), "close system dialogs (" + reason + ")");
+            } catch (Throwable t) { Log.e(TAG, "close dialogs receiver failed", t); }
+        }
+    };
+
     private void startPatchWatch() {
         if (patchWatching) return;
         getSharedPreferences("tj_mode", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefWatch);
         getSharedPreferences("tj_features", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefWatch);
         registerReceiver(wallpaperReceiver, new android.content.IntentFilter(android.content.Intent.ACTION_WALLPAPER_CHANGED));
+        try { registerReceiver(closeDialogsReceiver, new android.content.IntentFilter(android.content.Intent.ACTION_CLOSE_SYSTEM_DIALOGS)); } catch (Throwable t) { Log.e(TAG, "close dialogs receiver not registered", t); }   // BC2
         patchWatching = true;
         refreshLayers();
     }
@@ -421,6 +436,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { getSharedPreferences("tj_mode", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefWatch); } catch (Throwable ignored) { }
         try { getSharedPreferences("tj_features", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefWatch); } catch (Throwable ignored) { }
         try { unregisterReceiver(wallpaperReceiver); } catch (Throwable ignored) { }
+        try { unregisterReceiver(closeDialogsReceiver); } catch (Throwable ignored) { }   // BC2
         patchWatching = false;
     }
 

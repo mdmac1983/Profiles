@@ -2073,7 +2073,7 @@ ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's pr
 ptinput(){ # ptinput <name> <device command>: the command, preceded in the SAME shell call by a log line with the device uptime in ms (the same clock as the helper's PATCH lines), so the timeline shows when the input happened
   adb shell "log -t TjA11y \"PATCH input $1 t=\$(( \$(cut -d' ' -f1 /proc/uptime | tr -d .) * 10 ))\"; $2"; }
 # ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
-ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), swipe (a swipe up from the bottom edge for the PIN pad) (BC2)
+ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), home (the Home key) (BC2)
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.2; adb shell input keyevent KEYCODE_BACK; sleep 2.2; adb logcat -c   # one unfilmed opening first: the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured; the real use is the second one on
   adb shell rm -f /sdcard/pt.mp4 >/dev/null 2>&1
   ( adb shell screenrecord --time-limit 6 /sdcard/pt.mp4 >/dev/null 2>&1 & )
@@ -2081,7 +2081,7 @@ ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   case "$M" in
     tap) ptinput tap "input tap 150 700";;
-    swipe) ptinput swipe "input swipe 300 1010 300 300 220";;
+    home) ptinput home "input keyevent KEYCODE_HOME";;   # the Home key: ACTION_CLOSE_SYSTEM_DIALOGS ("homekey"), which the stock dialog obeys with its fade-out (the swipe up from the bottom did NOTHING on the emulator's modal dialog: run #295)
     *) ptinput back "input keyevent KEYCODE_BACK";;
   esac; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
@@ -2096,7 +2096,6 @@ ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back
   else
     info "PT $L decisions: $(grep -E 'PATCH (fast|fade|close|menu closed|scan|hold)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
   fi
-  [ "$M" = swipe ] && { adb shell input keyevent KEYCODE_BACK; sleep 1; palock; sleep 2; }
   adb logcat -c; }
 ptanim(){ for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }   # the CI emulator runs with animations OFF: the stock scrim then appears in ONE frame; the tablet fades it in over 300 ms
 ptget(){ grep "label=$1 " "$OUT/pt-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
@@ -2197,13 +2196,15 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   #      start, fast end) and the patch has to follow. The same film as the opening, the menu CLOSED three ways: the BACK key (no sign of it for the helper: only the removal of the dialog's window), a tap in the middle of
   #      the screen (a click in the stock dialog), a swipe up from the bottom edge (the PIN pad). INFO: each film's close_max (the largest patch-versus-surround mismatch around the close), the helper's own lines and the
   #      timeline between the input and the removal of the dialog's window (the helper logs wid / dlg / wc: which window an event is about, '*' = the stock dialog's, c2 = removed).
+  ptanim 1.0   # run #295: after phase C the films showed an INSTANT dismissal (the dialog's window was removed 13 ms after the click): the animation scales are asserted again here and printed
+  info "PT/BC2: animation scales (window / transition / animator): $(for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings get global $n | tr -d '\r\n'; echo -n ' '; done)"
   ptset true 10; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2
-  ptrun closeback back; ptrun closetap tap; ptrun closeswipe swipe
-  for L in closeback closetap closeswipe; do
+  ptrun closeback back; ptrun closetap tap; ptrun closehome home
+  for L in closeback closetap closehome; do
     info "PT/BC2 $L: close_max $(ptget $L close_max) at $(ptget $L close_at) s from the half-recovery of the surround, close_final $(ptget $L close_final), hold_max $(ptget $L hold_max)"
     info "PT/BC2 $L: the helper: $(grep -E 'PATCH (close|menu closed)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
   done
-  grep -E "PTCLOSE label=(closeback|closetap|closeswipe) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
+  grep -E "PTCLOSE label=(closeback|closetap|closehome) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
   # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom
   #      edge; the patch's opaque core used to stop 2 px past it and then faded out. tools/pb_probe.py compares screenshots of the SAME lock screen: the menu closed (bare), the menu open with the lock patch OFF (the stock panel's
   #      shadow) and with it ON in several geometries (patch_extra_dp = how far the opaque core reaches further down, patch_bfeather_dp = the bottom fringe). The measured scrim look is on (phase C), so the slot itself matches.
