@@ -477,9 +477,9 @@ public class TjAccessibilityService extends AccessibilityService {
         return new Rect(w[0], w[1], w[2], w[3]);
     }
 
-    /** BB1: the width of the patch's bottom fringe in px (hidden preference {@code patch_bfeather_dp}, default = the other fringes). */
+    /** BB1: the width of the patch's bottom fringe in px (hidden preference {@code patch_bfeather_dp}, default {@link PatchRest#BOTTOM_FEATHER_DP}). */
     private int patchBottomFeatherPx(android.util.DisplayMetrics dm) {
-        return Math.max(0, Math.min(PatchShot.MARGIN_PX, Math.round(Features.getInt(this, PatchRest.BOTTOM_FEATHER_KEY, Math.round(PatchRest.FEATHER_DP)) * dm.density)));
+        return Math.max(0, Math.min(PatchShot.MARGIN_PX, Math.round(Features.getInt(this, PatchRest.BOTTOM_FEATHER_KEY, Math.round(PatchRest.BOTTOM_FEATHER_DP)) * dm.density)));
     }
 
     /**

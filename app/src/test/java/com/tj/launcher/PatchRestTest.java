@@ -78,9 +78,21 @@ public class PatchRestTest {
         }
     }
     @Test public void theDefaultExtensionFitsTheDefaultFringeAtTheTabletsDensity() {
-        int px = Math.round(PatchRest.EXTRA_BOTTOM_DP * 1.0625f), f = Math.round(PatchRest.FEATHER_DP * 1.0625f);
-        assertEquals(px, PatchRest.clampExtra(px, f, f, 24));   // 21 px: not clamped at 170 dpi
-        assertEquals(0, PatchRest.clampExtra(px, f, f, 2));     // a tiny crop margin: no extension
+        int px = Math.round(PatchRest.EXTRA_BOTTOM_DP * 1.0625f), bf = Math.round(PatchRest.BOTTOM_FEATHER_DP * 1.0625f), f = Math.round(PatchRest.FEATHER_DP * 1.0625f);
+        assertEquals(26, px); assertEquals(4, bf); assertEquals(9, f);
+        assertEquals(px, PatchRest.clampExtra(px, bf, f, 24));  // 26 px: not clamped at 170 dpi (the shorter bottom fringe pays for it)
+        assertEquals(0, PatchRest.clampExtra(px, bf, f, 2));    // a tiny crop margin: no extension
+        int[] w = PatchRest.slotWindow(480, 700, 585, 830, 2, f, px, bf, 600, 1024);
+        assertEquals(830 + 2 + 26 + 4, w[3]);                    // the window bottom: 32 px under the panel, inside the crop (35 allowed, 3 slack)
+        assertTrue(w[3] <= 830 + 2 + f + 24 - PatchRest.CROP_SLACK_PX);
+    }
+    @Test public void aDenserOrSparserScreenStillStaysInsideTheCrop() {
+        for (float d : new float[] { 0.75f, 1.0f, 1.0625f, 1.25f, 1.5f, 2.0f }) {
+            int e = Math.round(PatchRest.EDGE_DP * d), f = Math.round(PatchRest.FEATHER_DP * d), bf = Math.round(PatchRest.BOTTOM_FEATHER_DP * d);
+            int x = PatchRest.clampExtra(Math.round(PatchRest.EXTRA_BOTTOM_DP * d), bf, f, 24);
+            int[] w = PatchRest.slotWindow(480, 700, 585, 830, e, f, x, bf, 600, 1024);
+            assertTrue("density " + d, w[3] <= 830 + e + f + 24 - PatchRest.CROP_SLACK_PX || x == 0);
+        }
     }
     @Test public void insideTheCoreThePatchIsFullyOpaque() { assertEquals(255, PatchRest.alphaAt(50, 50, 10, 10, 90, 90, 8, 8, 8, 8)); assertEquals(255, PatchRest.alphaAt(10, 10, 10, 10, 90, 90, 8, 8, 8, 8)); assertEquals(255, PatchRest.alphaAt(89, 89, 10, 10, 90, 90, 8, 8, 8, 8)); }
     @Test public void aHardEdgeShowsNothingOutsideTheCore() {

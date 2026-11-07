@@ -59,9 +59,13 @@ public final class PatchRest {
     // shorter. The stored real-pixel crop is the window + PatchShot.MARGIN_PX on every side, so the extension is clamped to stay inside it (no new calibration screenshot for existing installs).
     // ------------------------------------------------------------------------------------------------------------------------------------------------
 
-    /** dp: how much further down than the old window the opaque core reaches (default; the hidden preference {@code patch_extra_dp} overrides it, 0 = the v0.8.2 geometry). */
-    public static final float EXTRA_BOTTOM_DP = 20f;
-    /** The hidden preferences (dp): the extension and the width of the bottom fringe (default = FEATHER_DP). Not in Launcher control: the emulator section {@code pb} sets them to compare geometries. */
+    /**
+     * dp: how much further down than the old window the opaque core reaches (default; the hidden preference {@code patch_extra_dp} overrides it, 0 = the v0.8.2 geometry), and the width of the BOTTOM fringe (the
+     * hidden preference {@code patch_bfeather_dp}; the sides keep FEATHER_DP). The slot interior now matches to about half a level (BA1), so a short bottom fringe is enough, and the deeper core covers more of the
+     * stock shadow inside the same stored crop: at 170 dpi the core reaches 2 + 26 = 28 px below the panel, the window 32 px (the crop allows 35, minus the slack).
+     */
+    public static final float EXTRA_BOTTOM_DP = 24f, BOTTOM_FEATHER_DP = 4f;
+    /** The hidden preferences (dp): the extension and the width of the bottom fringe. Not in Launcher control: the emulator section {@code pt} (phase D) sets them to compare geometries. */
     public static final String EXTRA_KEY = "patch_extra_dp", BOTTOM_FEATHER_KEY = "patch_bfeather_dp";
     /** px of slack kept inside the stored crop: the learned panel's bottom can wobble by a pixel between scans, and the crop must still cover the window. */
     public static final int CROP_SLACK_PX = 3;
