@@ -1112,3 +1112,8 @@ Also, the fading is perfect when i press the side key, but when the power menu i
 
 Attached is a video of the sliver
 ```
+
+## 2026-11-07T16:13:06Z
+```
+On my armv7 android 10 go mt8168 tablet, when I use brave browser, sometimes it freezes on the website or if I'm typing in text and when I go to switch apps and come back to brave it fixes it. Is there a fix for this, or a better browser 
+```
