@@ -2773,7 +2773,7 @@ public class TjAccessibilityService extends AccessibilityService {
         scrimLastStartMs = st.now; scrimThisLock++;
         Features.setString(app, ScrimMeasure.TRIES_KEY, AutoCalibration.addTry(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now));
         scrimBeganAt = android.os.SystemClock.uptimeMillis(); scrimStageAt = scrimBeganAt;
-        scrimStage = 1; scrimOpenedMenu = false; scrimPoints = null; scrimRef = null; scrimCloseTries = 0; scrimMenuAt = 0; scrimPollAt = 0; scrimOutcome = "";
+        scrimStage = 1; scrimOpenedMenu = false; scrimPoints = null; scrimRef = null; scrimCloseTries = 0; scrimMenuAt = 0; scrimPollAt = 0; scrimGoneTicks = 0; scrimOutcome = "";
         scrimNote("started (" + why + "): a bare frame of the lock screen first");
         Log.i(TAG, "SCRIM measurement started (" + why + ")");
         scrimAskShot();
