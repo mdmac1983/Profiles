@@ -1,13 +1,13 @@
-# CHECKPOINT 561 — read me first, then TASKS.md
+# CHECKPOINT 562 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T01:03:34Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `b925d62` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T01:05:29Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `747eebd` (this checkpoint is the commit after it)
 
 ## Just done
-pt phase C fixed (no extra lock); gate jobs: 128247261992 {n,o,t,x,ac,bs,lq}, 128247271172 {x1,e1,bl,ps,rb}
+waiting: pt #272 job 128248073003, gates 128247261992 + 128247271172, code review agent running
 
 ## Do this next
-probe get_job_logs on those two job ids (404 = running); re-dispatched pt (new run after #271); then dispatch {base,v,pa,uf,last}, bump version, ship
+1) get_job_logs tail 80 on the three jobs (404=still running). 2) pt: BA1 checks must pass (measurement MEASURED, plausible scale, dialog closed, end level); if not read INFO PT/BA1 lines. 3) review agent findings: fix real ones, re-run affected sections. 4) dispatch {base,v,pa,uf,last} (+pt if code changed) on the final commit. 5) tick BA1b-d + AZ1c, bump app/build.gradle.kts to 27 / 0.8.2, ship.sh, android.yml full_build, record-release, tell Tj (TABLET_CHECKLIST_v0.8.2.md)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ probe get_job_logs on those two job ids (404 = running); re-dispatched pt (new r
 
 ## Last ten checkpoints
 ```
+  747eebd ckpt 561: pt phase C fixed (no extra lock); gate jobs: 128247261992 {n,o,t,x,ac,bs,lq}, 
   0d6e1fe ckpt 560: gate runs dispatched on 5e89113: #270 id 42321616646 = {n,o,t,x,ac,bs,lq}, #27
   5e89113 ckpt 559: gate prep: decode retry, Control switch also stops using a stored measurement,
   35e87c1 ckpt 558: HANDOFF 0g + CLAUDE.md lessons written; scrim decision uses the stored measure
@@ -25,8 +26,4 @@ probe get_job_logs on those two job ids (404 = running); re-dispatched pt (new r
   041a233 ckpt 554: BA0-BA3 written into TASKS.md (Tj's 2026-11-07 request: patch end level 100 % 
   b429293 ckpt 553: v0.8.1 SHIPPED and recorded (Release v0.8.1, Build APK run 28 green, BUILDLOG 
   1a81bd9 ckpt 552: v0.8.1 gated (ship.sh OK, commit 7d85b50 pushed, main = branch tip) and androi
-  7d85b50 ckpt 551: gated v0.8.1 (code 26) and pushed it: the handoff self-test, the full unit sui
 ```
-
-(2 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
