@@ -81,7 +81,7 @@ public class PatchRestTest {
         int px = Math.round(PatchRest.EXTRA_BOTTOM_DP * 1.0625f), bf = Math.round(PatchRest.BOTTOM_FEATHER_DP * 1.0625f), f = Math.round(PatchRest.FEATHER_DP * 1.0625f);
         assertEquals(26, px); assertEquals(4, bf); assertEquals(9, f);
         assertEquals(px, PatchRest.clampExtra(px, bf, f, 24));  // 26 px: not clamped at 170 dpi (the shorter bottom fringe pays for it)
-        assertEquals(0, PatchRest.clampExtra(px, bf, f, 2));    // a tiny crop margin: no extension
+        assertEquals(Math.max(0, 2 - PatchRest.CROP_SLACK_PX + (f - bf)), PatchRest.clampExtra(px, bf, f, 2));   // a tiny crop margin: only what the shorter fringe frees (margin - slack + (fringe - bottom fringe))
         int[] w = PatchRest.slotWindow(480, 700, 585, 830, 2, f, px, bf, 600, 1024);
         assertEquals(830 + 2 + 26 + 4, w[3]);                    // the window bottom: 32 px under the panel, inside the crop (35 allowed, 3 slack)
         assertTrue(w[3] <= 830 + 2 + f + 24 - PatchRest.CROP_SLACK_PX);
