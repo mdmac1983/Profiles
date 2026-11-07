@@ -1,13 +1,13 @@
-# CHECKPOINT 599 — read me first, then TASKS.md
+# CHECKPOINT 600 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T07:27:12Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `39e1c3d` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T07:30:47Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `34e8afe` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.3 SHIPPED: android.yml run 30 id 42350762180 on bf6a931 green (handoff gate, keystore, versionCode, unit tests, lint, release build, signature verified, Release published 07:21 UTC with Launcher-v0.8.3.apk 9172898 bytes), recorded in BUILDLOG 07:26, HANDOFF 0g refreshed, CLAUDE.md lessons added
+v0.8.3 is SHIPPED and the AN1 question is CLOSED: proving run #294 id 42350538408 (base,x1,v,ac on 7faba16) = 68 PASS 0 FAIL (AN1 passed; the stale log line did not appear that time, so the epoch filter is unproven but fail-safe); TASKS BB4 closed, BB5 records Tj's 3 messages (importance question answered, 'Build it now' done, 'no different from the last one?' clarified); scenario grep allows a blank-padded epoch column
 
 ## Do this next
-tell Tj the Release link (own line) + what to look at; read the AN1 proving run (emulator.yml base,x1,v,ac dispatched 07:16 on ccr-823c5a56-yg8voe, due ~07:29: find it with list_workflow_runs emulator.yml branch ccr-823c5a56-yg8voe event workflow_dispatch perPage 1) and close BB4 in TASKS either way; then wait for Tj (BB1 faint line, BB3c Control screenshot, dark-theme measurement note)
+NOTHING is waiting on Claude. Waiting on Tj: install v0.8.3 from https://github.com/tjshea90/Launcher/releases/tag/v0.8.3 and say (BB1) whether the faint line under the hidden card is gone (+ one straight photo of the open menu for python3 -I tools/patch_photo_step.py: expect NO CLEAR STEP) and (BB3c) send the Launcher control screenshot after battery saver was on at a lock screen (both themes + 'last started: ... because'); decisions AF2, CBR2, AE6 are Tj's, no hurry. A new session: bash tools/install-hooks.sh first, then read this file; do not start new work without Tj's word
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ tell Tj the Release link (own line) + what to look at; read the AN1 proving run 
 
 ## Last ten checkpoints
 ```
+  ee295be ckpt 599: v0.8.3 SHIPPED: android.yml run 30 id 42350762180 on bf6a931 green (handoff ga
   4f584eb ckpt 598: android.yml full build RUNNING: run 30 id 42350762180 on main bf6a931 (v0.8.3 
   95ccfd5 ckpt 597: Tj said 'Build it now' (07:19 UTC): dispatched android.yml full_build=true on 
   7faba16 ckpt 596: run #293 id 42349158289 (base,x1,v,ac on 8309cc6) AN1 FAILED AGAIN (67 PASS 1 
@@ -25,7 +26,6 @@ tell Tj the Release link (own line) + what to look at; read the AN1 proving run 
   c517c03 ckpt 592: HANDOFF.md 0g refreshed for v0.8.3 + old handoff-launcher.md marked superseded
   fa034b7 ckpt 591: Tj confirmed: it was the camera flashes (BB3 reading a); BB3a per-theme slots 
   4b6dd77 ckpt 590: dispatched on 94671f9 (06:36Z): #291 id 42347732366 and #292 id 42347734404 (p
-  94671f9 ckpt 589: final-head runs: #289/#290 green (n,x,ac,rb + base,x1,e1,o,last: AN1 did not r
 ```
 
 (4 automatic checkpoint(s) since the last deliberate one — the
