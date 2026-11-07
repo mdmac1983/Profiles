@@ -1062,6 +1062,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
                 }
             }
+            if (locked && !paused && !armed && !cleanedNow && !Mode.isCustom(app) && !ReturnReset.invisibleReady(app)) LockLog.add(app, "LOCKPREP", "no shell helper: Quickstep's apps stay until the unlock, which then cleans on screen behind the cover (start the helper with the adb line to make the unlock instant)");   // BE3: the report says WHY an unlock was slow
             // BE2 (Tj: "at no time ... an app that is hidden from the app drawer inside the recent apps"): while locked, in the custom launcher, every task of a non-drawer app is removed by id (helper running, invisible)
             if (locked && !paused && !cleanedNow && !armed && Mode.isCustom(app)) RecentsSweep.requestAsync(app, "lock", RecentsSweep.HIDDEN_ONLY, null, 4000);
             if (locked) { try { refreshLayers(); } catch (Throwable t) { Log.e(TAG, "patch pre-creation failed", t); } }   // BE1: the lock-screen patch window is created NOW, while the screen is dark, not in the wake-up burst
