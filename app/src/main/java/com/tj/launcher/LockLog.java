@@ -48,10 +48,22 @@ public final class LockLog {
         return t.endsWith("\n") ? t : t + "\n";
     }
 
+    private static final java.util.concurrent.ExecutorService BG = java.util.concurrent.Executors.newSingleThreadExecutor(new java.util.concurrent.ThreadFactory() {
+        @Override public Thread newThread(Runnable r) { Thread t = new Thread(r, "tj-lock-log"); t.setDaemon(true); return t; }
+    });
+
+    /** BE1: like {@link #add} but the file is written on a background thread (in order), with the time of the EVENT: for the patch paths, which must not wait for a disk. */
+    public static void addAsync(final Context c, final String event, final String detail) {
+        final long t = System.currentTimeMillis();
+        try { BG.execute(new Runnable() { @Override public void run() { addAt(c, t, event, detail); } }); } catch (Throwable ignored) { }
+    }
+
     /** Appends one line. Safe from any thread. */
-    public static void add(Context c, String event, String detail) {
+    public static void add(Context c, String event, String detail) { addAt(c, System.currentTimeMillis(), event, detail); }
+
+    private static void addAt(Context c, long atMs, String event, String detail) {
         try {
-            String l = line(System.currentTimeMillis(), event, detail);
+            String l = line(atMs, event, detail);
             File f = c.getApplicationContext().getFileStreamPath(FILE);
             synchronized (LOCK) {
                 FileOutputStream o = new FileOutputStream(f, true);

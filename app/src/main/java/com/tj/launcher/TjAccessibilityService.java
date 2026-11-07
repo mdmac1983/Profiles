@@ -2743,6 +2743,10 @@ public class TjAccessibilityService extends AccessibilityService {
     }
     private long lastTouchLogMs = 0;
 
+    private boolean isScreenOn() {
+        try { android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE); return pm != null && pm.isInteractive(); } catch (Throwable t) { return true; }
+    }
+
     /** BE1: a diagnostic line in the persistent lock log, written OFF the main thread (the patch paths must not wait for a file). */
     private void logPatch(final String what) {
         final android.content.Context app = getApplicationContext();
@@ -2752,7 +2756,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private void fastMenuClose(AccessibilityEvent event) {
         if (!patchLockMode || patchView == null) return;
         int type = event.getEventType();
-        if ((overlayShown || patchResting || touchAwayUntilMs > 0 || pinHiddenUntilMs > 0) && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself (BE1: also while the patch is already away: the sign pushes its return out)
+        long awayNow = android.os.SystemClock.uptimeMillis();
+        if ((overlayShown || patchResting || touchAwayUntilMs > awayNow || pinHiddenUntilMs > awayNow) && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself (BE1: also while the patch is already away: the sign pushes its return out)
             CharSequence cn = event.getClassName(), pk = event.getPackageName();
             if (cn != null && pk != null && "com.android.systemui".contentEquals(pk)) {
                 String c = cn.toString();
