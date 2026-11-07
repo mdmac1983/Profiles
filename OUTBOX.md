@@ -561,3 +561,17 @@
 ## 2026-11-07T06:12:15Z
 > Tj says the battery-saver tests work, which is good news. The second sentence is ambiguous: either the helper took a lock-screen screenshot by itself again (a camera flash), or the Screenshot button showed in the power menu again. Before asking, I'll check what the code says could trigger an unprompted lock-screen screenshot, since the battery-saver tests flip the dark theme.
 <!-- sha:834984fbd627 -->
+
+## 2026-11-07T06:17:18Z
+> The first three runs finish around 06:27 and the last three around 06:33. I'm not building anything for you until they are green.
+>
+> **Where things stand**
+> - **Card shadow fix:** done in code, and its emulator runs are the first three.
+> - **Repeated screenshots:** also fixed in code (one remembered result per theme), and its test is in the last three runs.
+> - **If a run fails:** I'll find out why before building.
+>
+> **One question is still open for you**
+> Did you see the **camera flashes** (the tablet taking the screenshot by itself and opening the power menu for a moment), or the **Screenshot button** showing in the power menu?
+> - If it was the flashes, the fix above covers it, and Launcher control will now say why a measurement started.
+> - If it was the button, tell me and I'll look at that instead.
+<!-- sha:75f2759823a1 -->
