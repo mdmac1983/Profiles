@@ -56,3 +56,31 @@ Code reading (`TjAccessibilityService`):
 * The tablet report right after a slow unlock (`tools/tablet-intake.sh`): to confirm how long the cover really stays up and whether the helper runs.
 * Whether he accepts "Recents completely cleared at the start of every custom session" (D2); the switch exists.
 * The helper: one adb line after every boot gives the instant unlock; without it the unlock after a Quickstep session still needs the cover for ~1-2 s (after this change; was 3-5 s).
+
+## 6. What was BUILT (v0.8.5 candidate) and what the first emulator runs and the code review changed
+
+Built: `RecentsSweep` (membership rule, helper, invisible), `clean_start` (default ON in the shipped app, OFF in debug builds), `ReturnReset` clean branch (no stand-in app, complete clear, `settleHome`), the boot flag, the patch changes of section 4, section `cs` / `cs2` in the emulator scenario, `research/TABLET_CHECKLIST_v0.8.5.md`.
+
+Emulator runs (see TASKS BE0c):
+* `ae,ps` 25 PASS; `pt` 28 PASS (the finger-down hide fires 66 ms before the PIN-pad scan finds the pad; `ACTION_OUTSIDE` does reach the patch window on Android 10).
+* `cs` (the hidden-app sweep at the lock and when the home comes back; a plain PIN after a Quickstep session WITHOUT the helper: Recents emptied, no stand-in, custom home in front) 17 PASS after the fix below. `cs2` part C (complete clear AT THE LOCK with the helper: 4 of 7-8 tasks by id, Recents empty) PASS.
+* FOUND by `cs`: the no-helper complete clear used `Clear all`, which the emulator's Recents does not show without scrolling (button NOT FOUND in 1.8 s), so nothing was cleared. `recentsEmpty` now presses `Clear all` when reachable and otherwise closes EVERY card that offers `Close` (what AP1 already relies on).
+* One emulator run stalled for ~9 minutes between two adb commands (infrastructure: the re-run of the same code was normal, 125 s).
+
+Code review of the first version (`code-review` skill, high) found ten things, all fixed before the release:
+1. the "hidden app left the screen" trigger would have swept a hidden app under its OWN share sheet / picker / permission prompt -> now only when the custom HOME or the Recents screen comes back after a hidden app was on screen (`RecentsSweep.hiddenSeenStep`);
+2. a timed-out complete clear was reported as success and cleared the dirty / boot flags -> only a finished clear marks Recents clean (`finishRecentsEmpty`);
+3. the 40-task cap on a complete clear left the rest -> no cap (300 sanity bound), `ShellHelper.removeTasks` sends the ids in chunks of 40;
+4. a sweep request that arrived while another ran or inside the minimum gap was dropped -> one waiting request that runs as soon as it can;
+5. the guard only protected us / stock / keyboard / system -> `RecentsSweep.systemLike` (dialer, in-call UI, installer, permission controller, documents UI, Bluetooth, NFC, emergency) is never removed;
+6. `settleHome` did nothing without the accessibility helper -> it starts the custom home itself;
+7. the usage-log query ran on the main thread during the unlock -> answered at the lock (`AppOrigin.refreshUsedCacheAsync`), invalidated when a Quickstep session begins;
+8. the boot flag had no expiry -> 24 h (`ReturnReset.bootCleanValid`);
+9. opening the menu zeroed the PIN-pad guard even a moment after a pad sign -> a sign younger than 1.5 s is kept (`padSignFresh`);
+10. the scenario helpers were copied into two sections and left a PIN set when aborted -> hoisted, each section starts from a known PIN state.
+
+## 7. Honest limits
+* Nothing was measured on the real tablet. The unlock numbers (`HOME custom home in front +N ms`, `RESET ... took N ms`, `CLEANLOCK`) are in the lock log of the next tablet report.
+* Without the shell helper the unlock after a Quickstep session still needs the cover while the shade and Recents are cleared on screen (about 1-2 s on the emulator; unknown on the tablet). With the helper (one adb line after every restart) the whole clean-up happens at the lock and the unlock is instant. A persistent helper would need adb over TCP, which this ROM does not keep (`service.adb.tcp.port` empty).
+* A notification listener (to clear the shade without UI) is NOT possible on this Go device: the system refuses managed services on low-RAM devices (TASKS STEP 17 RESULT).
+* A hidden app that Tj opens on purpose in the custom launcher stays in Recents while it is on screen; it goes when the home or Recents comes back (helper) or when Recents opens (the label filter closes the card).
