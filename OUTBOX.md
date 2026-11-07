@@ -598,3 +598,13 @@
 > - **Faint line:** you'll need to look at it again on v0.8.3. One straight photo of the open menu would let me check it with the photo tool.
 > - **Control screen:** after v0.8.3, a screenshot of the Launcher control screen will show the new "why a measurement started" line.
 <!-- sha:9730e46291e6 -->
+
+## 2026-11-07T06:48:16Z
+> The local release checks passed and v0.8.3 (code 28) is pushed, but nothing has shipped yet. I'm waiting on the two emulator runs that test the final code.
+>
+> - **Code review:** I re-read the product-code changes since v0.8.2 (six files, about 108 added lines) and found nothing wrong.
+> - **Lessons:** I added this session's lessons to `CLAUDE.md`.
+> - **Timing:** both runs should finish around 06:52 UTC, and I'll read them at 06:53.
+> - **If both are green:** I'll start the GitHub build and send you the Release link.
+> - **If either fails:** I'll fix the cause before anything ships.
+<!-- sha:b514b130332f -->
