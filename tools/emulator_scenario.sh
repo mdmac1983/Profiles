@@ -1315,16 +1315,8 @@ adb shell locksettings clear --old 1234 > "$OUT/ac-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section ac
-if want bs; then # section bs
-ensurehome
-beat "before BS"
-# ---- AZ2 (Tj, 2026-11-06 20:40: "If I open the full settings and go to battery saver, then try to turn it off there, it says it turned off but it never does").
-#      ROOT CAUSE (Android 10 source, research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md): BatterySaverStateMachine switches the saver when Settings.Global low_power is WRITTEN but keeps its own state, so the real
-#      "Turn on now" / "Turn off now" button of the Settings screen is then ignored. This section drives the REAL Settings screen (what a person does) on the real Android 10 system image:
-#        BS1 control: the stock path works.  BS2 the bug as Tj saw it (INFO only: it documents Android, with the state machine's own dump).
-#        BS3 the launcher's switch-off in the custom launcher, then a "Turn on now" tap: it must still work (the self-heal), and so must "Turn off now" after it.  BS4 a saver an older version left stuck is cleared once.
-adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
-adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
+# ---- shared helpers of sections bs and bl (BA2 needs the same real-Settings driver): defined once, at global scope
+# ----------------------------------------------------------------------------------------------------
 lowpower(){ adb shell settings get global low_power | tr -d '\r\n'; }
 # bsfeat <guard switch true|false> <battery_saver_last text> <bs_unstick_done true|false>: the usual test features (the custom launcher opens no app)
 bsfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_strict\\\" value=\\\"false\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"true\\\" /><boolean name=\\\"profile_end_on_lock\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"$1\\\" /><boolean name=\\\"bs_unstick_done\\\" value=\\\"$3\\\" /><string name=\\\"battery_saver_last\\\">$2</string><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
@@ -1357,6 +1349,16 @@ bstap(){ local id="state_$1_button" frag="turn $1 now" xy
 # the state machine's own view, for the evidence (Android 10 prints it in `dumpsys power`)
 bsstate(){ adb shell dumpsys power 2>/dev/null | tr -d '\r' | grep -iA12 'battery saver state machine' | grep -iE 'mState|Enabled|full=' | tr -s ' ' | tr '\n' ';' | cut -c1-200; }
 
+if want bs; then # section bs
+ensurehome
+beat "before BS"
+# ---- AZ2 (Tj, 2026-11-06 20:40: "If I open the full settings and go to battery saver, then try to turn it off there, it says it turned off but it never does").
+#      ROOT CAUSE (Android 10 source, research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md): BatterySaverStateMachine switches the saver when Settings.Global low_power is WRITTEN but keeps its own state, so the real
+#      "Turn on now" / "Turn off now" button of the Settings screen is then ignored. This section drives the REAL Settings screen (what a person does) on the real Android 10 system image:
+#        BS1 control: the stock path works.  BS2 the bug as Tj saw it (INFO only: it documents Android, with the state machine's own dump).
+#        BS3 the launcher's switch-off in the custom launcher, then a "Turn on now" tap: it must still work (the self-heal), and so must "Turn off now" after it.  BS4 a saver an older version left stuck is cleared once.
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
 # ---- BS1 control: nothing of ours is involved; the stock path must work on this image
 bsfeat true "" true; setmode quickstep; rebind; home; sleep 2
 adb shell settings put global low_power 0; sleep 1
