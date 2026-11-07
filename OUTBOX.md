@@ -557,3 +557,7 @@
 > 🔴 I'd move to a fresh chat now. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
 <!-- sha:7d92250e9c5f -->
+
+## 2026-11-07T06:12:15Z
+> Tj says the battery-saver tests work, which is good news. The second sentence is ambiguous: either the helper took a lock-screen screenshot by itself again (a camera flash), or the Screenshot button showed in the power menu again. Before asking, I'll check what the code says could trigger an unprompted lock-screen screenshot, since the battery-saver tests flip the dark theme.
+<!-- sha:834984fbd627 -->
