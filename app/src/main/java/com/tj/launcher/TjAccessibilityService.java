@@ -1377,7 +1377,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 handler.postDelayed(lockPrepareLater, 700);      // O3/O4: if the tablet locks at once, get everything ready while the screen is still dark
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
             }
-            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); if (calibrating()) { autoShotTries = 0; handler.removeCallbacks(autoShot); handler.postDelayed(autoShot, 2500); } flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { screenOnEpoch = t; unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); if (calibrating()) { autoShotTries = 0; handler.removeCallbacks(autoShot); handler.postDelayed(autoShot, 2500); } flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
