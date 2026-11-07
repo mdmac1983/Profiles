@@ -121,48 +121,56 @@ public final class ReturnReset {
         return new TaskOrigin.Guard() { @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, self, stockPkg, ime); } };
     }
 
-    /** Solitaire (or the target app) at once; the Quickstep apps are force-stopped BEHIND it: Recents cards, notifications and processes vanish with no shade, no Recents screen, no cover. */
-    private static void runInvisible(final Context app) {
+    /**
+     * Solitaire (or the target app) at once; the Quickstep apps are force-stopped BEHIND it: Recents cards, notifications and processes vanish with no shade, no Recents screen, no cover.
+     * BE3: in a clean start nothing is opened at all: the custom home is already the screen, and every Recents task is removed by id behind it (complete clear).
+     */
+    private static void runInvisible(final Context app, final boolean clean) {
         final long t0 = android.os.SystemClock.uptimeMillis();
         final java.util.List<String> pkgs = invisibleTargets(app);
         final boolean first = !AppOrigin.tracked(app);
-        final String target = targetPackage(app);
+        final String target = clean ? null : targetPackage(app);
         final TaskOrigin.Guard guard = guard(app);
         new Thread(new Runnable() { @Override public void run() {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
-            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard);   // AA3: ground truth from the helper's task list when a start-of-session snapshot exists
+            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard, clean);   // AA3: ground truth from the helper's task list when a start-of-session snapshot exists
             int n = ShellHelper.forceStop(oc.stop);
             int m = (n >= 0 && !oc.removeIds.isEmpty()) ? ShellHelper.removeTasks(oc.removeIds) : 0;
             if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
+            if (clean && n >= 0 && oc.listed && m >= 0) { RecentsDirty.clear(app); clearBootClean(app); }   // BE3: the list was read and every task removed: the next return has nothing to redo
             invisAt = 0;
             String line = "INVISIBLE: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped (next return uses the cover method)" : "force-stopped " + n + " of " + oc.stop.size() + " apps"
                     + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; no cover, no shade, no Recents screen; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : ""));
             report(app, line);
         } }, "tj-reset-invisible").start();
-        try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+        try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
     }
 
     /**
      * O4: the clean-up WITHOUT opening anything: force-stop Quickstep's apps (their notifications go with them), remove their Recents cards, radios off. Used at LOCK, so the unlock has nothing left to do.
-     * Only with the shell helper (nothing here touches the screen). Returns false (and does nothing) when the helper is not reachable.
+     * Only with the shell helper (nothing here touches the screen). Returns false (and does nothing) when the helper is not reachable. BE3: with a clean start EVERY Recents task goes (complete clear).
      */
     public static boolean cleanAtLock(final Context c) {
         final Context app = c.getApplicationContext();
         if (!enabled(app) || !invisibleReady(app)) return false;
         final long t0 = android.os.SystemClock.uptimeMillis();
+        final boolean clean = cleanStart(app);
         final java.util.List<String> pkgs = invisibleTargets(app);
         final boolean first = !AppOrigin.tracked(app);
-        final String target = targetPackage(app);
+        final String target = clean ? null : targetPackage(app);
         final TaskOrigin.Guard guard = guard(app);
         new Thread(new Runnable() { @Override public void run() {
             try { radiosOff(app); } catch (Throwable t) { Log.e(TAG, "radios failed", t); }
-            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard);   // AA3
+            TaskOrigin.Outcome oc = TaskOrigin.finish(app, pkgs, target, guard, clean);   // AA3
             int n = ShellHelper.forceStop(oc.stop);
             int m = (n >= 0 && !oc.removeIds.isEmpty()) ? ShellHelper.removeTasks(oc.removeIds) : 0;
             if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
+            if (clean && n >= 0 && oc.listed && m >= 0) { RecentsDirty.clear(app); clearBootClean(app); }
             invisAt = 0;
-            report(app, "AT LOCK: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped" : "force-stopped " + n + " of " + oc.stop.size() + " apps" + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : "") + " ")
-                    + "; the unlock has nothing left to close");
+            String line = "AT LOCK: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped" : "force-stopped " + n + " of " + oc.stop.size() + " apps" + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : "") + " ")
+                    + "; the unlock has nothing left to close";
+            report(app, line);
+            LockLog.add(app, "CLEANLOCK", (clean ? "complete clear: " : "") + oc.note);   // BE3: the persistent log shows what the lock-time clean-up did (it was only in the report before)
         } }, "tj-lock-clean").start();
         return true;
     }
@@ -170,7 +178,8 @@ public final class ReturnReset {
     public static void run(final Context c) {
         if (!enabled(c)) return;
         final Context app = c.getApplicationContext();
-        if (invisibleReady(app)) { runInvisible(app); return; }
+        final boolean clean = cleanStart(app);
+        if (invisibleReady(app)) { runInvisible(app, clean); return; }
         // W1: the slow, blocking parts (a binder call per app, Wi-Fi/Bluetooth) run on their own thread, so the main thread starts pressing "Clear all" at once.
         new Thread(new Runnable() { @Override public void run() {
             try { killApps(app); } catch (Throwable t) { Log.e(TAG, "kill failed", t); }
@@ -179,28 +188,31 @@ public final class ReturnReset {
         final boolean notif = clearNotifications(app), recents = clearRecents(app);
         TjAccessibilityService svc = TjAccessibilityService.get();
         if (svc != null && (notif || recents)) {
-            // B4: look first. Nothing in the status bar = no shade step; Recents untouched since the last clear = no Recents step. Both skipped = Solitaire at once, nothing else on screen.
+            // B4: look first. Nothing in the status bar = no shade step; Recents untouched since the last clear = no Recents step. Both skipped = the home at once, nothing else on screen.
             Boolean icons = notif ? svc.hasNotificationIcons() : Boolean.FALSE;
             final boolean doShade = notif && (icons == null || icons.booleanValue());
             // D5: only apps opened from QUICKSTEP are closed; apps opened from the custom launcher stay. First run after install (untracked) clears everything once.
+            // BE3 (clean start): complete clear = Recents "Clear all", whenever anything was used since the last clear (no label matching: nothing can be mis-matched or missed)
             final boolean tracked = AppOrigin.tracked(app);
             final java.util.Set<String> pendPkgs = AppOrigin.pending(app);
-            final boolean doRecents = recents && (!tracked || !pendPkgs.isEmpty());
-            final java.util.Set<String> labels = (tracked && !AppOrigin.custom(app).isEmpty()) ? labelsOf(app, pendPkgs) : null;   // selective dismissal only when something must be preserved
+            final boolean doRecents = recents && (clean ? recentsNeeded(app) : (!tracked || !pendPkgs.isEmpty()));
+            final java.util.Set<String> labels = (!clean && tracked && !AppOrigin.custom(app).isEmpty()) ? labelsOf(app, pendPkgs) : null;   // selective dismissal only when something must be preserved
             // AI1: why an app was (not) closed is now in the lock log. v0.7.6 (review): LockLog cuts a line at 200 characters, so the decision flags and the COUNTS come first and the unbounded lists last
-            LockLog.add(app, "RESET", "plan: tracked=" + tracked + ", Recents step=" + doRecents + ", shade step=" + doShade + ", pending=" + pendPkgs.size() + ", kept(custom)=" + AppOrigin.custom(app).size() + ", cards to close=" + labels + ", opened in Quickstep=" + pendPkgs);
+            LockLog.add(app, "RESET", "plan: " + (clean ? "clean start, " : "") + "tracked=" + tracked + ", Recents step=" + doRecents + ", shade step=" + doShade + ", pending=" + pendPkgs.size() + ", kept(custom)=" + AppOrigin.custom(app).size() + ", cards to close=" + labels + ", opened in Quickstep=" + pendPkgs);
             if (!doShade && !doRecents) {
                 fastActive = false;
-                svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no app was opened from Quickstep since the last clear" : "") + "): Solitaire at once");
-                Log.i(TAG, "RESET nothing to clear: Solitaire at once");
-                try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+                svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no app was opened from Quickstep since the last clear" : "") + "): " + (clean ? "the custom home stays" : "Solitaire at once"));
+                Log.i(TAG, "RESET nothing to clear: " + (clean ? "the custom home stays" : "Solitaire at once"));
+                try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
                 return;
             }
             final boolean fast = AnimationSpeedup.begin(app);   // Y2b: no animations while the reset runs (restored below, and by three failsafes)
             fastActive = fast;
             if (Features.get(app, COVER_KEY, true)) svc.showResetCover();   // the shade / Recents are driven behind a black cover: you never see them flicker
-            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app.
-            try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() { try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); } AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
+            // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app (BE3: then show the home).
+            try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() {
+                try { if (clean) { if (doRecents) { RecentsDirty.clear(app); clearBootClean(app); } settleHome(app); } else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+                AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
         } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
@@ -208,8 +220,17 @@ public final class ReturnReset {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Both Clear all switches are OFF.");
         }
         if (notif) { try { clearNotifications(); } catch (Throwable t) { Log.e(TAG, "notifications failed", t); } }
-        try { openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+        try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
         AnimationSpeedup.restoreLater(app, 0);
+    }
+
+    /**
+     * BE3 (clean start): the custom home is the screen. After the clean-up (or when there was nothing to clean) the accessibility helper makes sure the custom launcher is the front window (one Home press if
+     * Recents or the shade is still up) and takes the black cover away THE MOMENT it is: the cover used to stay until a cold Solitaire start was verified, which on this tablet took seconds.
+     */
+    static void settleHome(Context c) {
+        TjAccessibilityService svc = TjAccessibilityService.get();
+        if (svc != null) svc.settleHome();
     }
 
     /** True while this reset runs with the animations off: the waits can be shorter. */
