@@ -716,3 +716,28 @@
 >
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with "Yes Boss!", so you'll notice if I start losing track.
 <!-- sha:0e49132776e6 -->
+
+## 2026-11-07T16:31:33Z
+> I found the cause of both problems and have both fixes coded. They're in emulator testing now and not released yet. I also have an answer to your Brave question.
+>
+> **The sliver**
+> - In your video it's a thin light strip along the last few pixels of the screen's right edge, as tall as the hidden Screenshot slot.
+> - The stock menu draws a light line in the 4 px gap between its card and the screen edge. The patch faded out over its last 2 px, so 26–74% of that line showed through.
+> - The fix makes the patch run solid to the screen edge, with no fade there.
+> - The unit tests pass. The emulator test will check the edge columns directly.
+>
+> **The flicker when closing**
+> - When the menu closes, the stock card and dimming fade out over 0.3 s, slowly at first and fast at the end.
+> - The patch stayed dark until it noticed the menu window was gone. Last release's emulator film shows it still dark about 100 ms after the screen had already brightened.
+> - The patch now follows the stock fade-out the same way it follows the fade-in. It snaps to normal the moment the menu window is removed.
+> - Tapping in the middle should start the fade at the tap. I can't yet tell what signal the pull-up gives, so the emulator test now films the close three ways: the BACK key, a tap in the middle, and a swipe up. I'll read the numbers at about 16:41 UTC and tune from them.
+>
+> **Brave freezing** (from experience; I haven't tested this on your tablet)
+> - Frozen while typing, fixed by switching apps and back, usually means the screen drawing stalls, not the page. Chromium browsers do this on low-end MediaTek GPUs with little RAM.
+> - Try these in order, testing after each:
+>   1. In Brave, open `brave://flags`. Set GPU rasterization, Zero-copy rasterizer and Accelerated 2D canvas to Disabled, then relaunch.
+>   2. Keep fewer tabs open and turn off Brave News, Rewards and Wallet.
+>   3. In Developer options, turn on Disable HW overlays.
+>   4. Update Brave.
+> - For a lighter browser, try Firefox. It has its own engine and doesn't use the Chromium graphics path. DuckDuckGo or Via are also lighter.
+<!-- sha:8d92bf40e038 -->
