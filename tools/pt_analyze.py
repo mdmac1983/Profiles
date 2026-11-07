@@ -128,7 +128,7 @@ def events(text):
             rows.append([t, "%s%s a%s r%so%s%s" % (kind, short, m.group(5), m.group(6), m.group(7), ids)])
             last_t = t
             continue
-        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off|scan|hold|close start|close end|input \\w+)(.*)", ln)
+        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off|scan|hold|close start|close end|input \w+)(.*)", ln)
         if m:
             tm = re.search(r" t=(\d+)", m.group(2))
             t = int(tm.group(1)) if tm else last_t
