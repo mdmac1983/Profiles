@@ -386,3 +386,38 @@
 > - Patch photos: answered earlier. This closes once v0.8.2 is on the tablet and a new photo looks right.
 > - Resume from the checkpoint: shipping v0.8.2, in progress.
 <!-- sha:4df3fea2ff29 -->
+
+## 2026-11-07T02:55:40Z
+> **v0.8.2 is released.** It is signed by GitHub and installs over your current version as an update.
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.2
+>
+> It is not proven on your tablet yet. The emulator's dimming is a plain 80 %, and yours has a tint, so only your tablet can show whether the square is gone.
+>
+> **What's new**
+> - **Wallpaper patch:** the tablet measures the stock power menu's real dimming once and paints the square with the same maths. From your photos I expect it to report a scale near 0.80 and an offset of a few levels in red and green.
+> - **Battery saver:** it is off whenever the lock screen is up. After a gesture unlock into Quickstep, its last state comes back only when Android can't have lost track of it. After a charger plug-in or a restart it deliberately does not come back.
+>
+> **What you'll see once**
+> - On the first plain lock screen after installing, the tablet makes two camera flashes and opens the power menu by itself for about 2 seconds, then closes it. Leave it alone.
+> - To switch this off: Launcher control > Power menu (side key) > "Measure the menu's real dimming".
+> - If the measurement fails, the square stays as it was in v0.8.1.
+>
+> **What to check**
+> - Press the side key and look under Restart. It should be invisible now.
+> - Test battery saver in four cases: lock from Quickstep with saver on, gesture unlock, plain PIN unlock, and a charger plug-in while locked. These are in `research/TABLET_CHECKLIST_v0.8.2.md`; I can paste them here if you'd rather.
+>
+> **What to send back**
+> - The "Menu dimming measurement" line in Launcher control.
+> - What you still see at the end of the open, if anything.
+> - One more straight photo like those, with the menu and the area under Restart in frame and the flash off. I'll measure it with the new tool.
+>
+> The final safety check passed on the exact released code. One of my own tests had a wrong assumption and is fixed.
+>
+> **Still open**
+> - **Patch photos:** this closes when v0.8.2 is on the tablet and a new photo looks right.
+> - **Waiting on you, no hurry:**
+>   - the old photos in the public repo (AF2)
+>   - keeping your settings after a crash-breaker trip (CBR2)
+>   - the mailbox-vs-batch question (AE6)
+<!-- sha:658ea0ae6974 -->
