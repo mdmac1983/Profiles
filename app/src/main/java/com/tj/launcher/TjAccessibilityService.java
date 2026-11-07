@@ -2903,8 +2903,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 } else {
                     if (points == null || ref == null) { postFinish("stopped: no bare frame to compare with"); return; }
                     int n = points.length;
-                    int[] xr = ScrimMeasure.channel(ref, 0, null, 0);   // placeholder, replaced below (reference values are packed RGB per point)
-                    int[][] x = new int[3][n], y = new int[3][n];
+                    int[][] x = new int[3][n], y = new int[3][n];   // x = the bare frame (packed RGB per point), y = the menu frame at the same points
                     int[] shifts = { 16, 8, 0 };
                     for (int c = 0; c < 3; c++) for (int k = 0; k < n; k++) { x[c][k] = (ref[k] >> shifts[c]) & 255; y[c][k] = (px[(points[k] >>> 16) * W + (points[k] & 0xFFFF)] >> shifts[c]) & 255; }
                     ScrimFit.Result r = ScrimFit.fitChannel(x[0], y[0], n), g = ScrimFit.fitChannel(x[1], y[1], n), b = ScrimFit.fitChannel(x[2], y[2], n);
