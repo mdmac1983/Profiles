@@ -292,3 +292,7 @@
 ## 2026-11-07T01:09:27Z
 > No change yet: the `pt` job is still running and should end around 01:12 UTC. I'm holding until its timer fires.
 <!-- sha:6e15e21397d4 -->
+
+## 2026-11-07T01:09:41Z
+> Waiting on the `pt` run, which should end around 01:12 UTC. The next wake-up is a wall-clock timer set for 01:13.
+<!-- sha:49231aeead5c -->
