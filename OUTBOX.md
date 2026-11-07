@@ -264,3 +264,19 @@
 ## 2026-11-07T01:07:28Z
 > Both unit-test runs are green (18 `ScrimFit` tests including the new one; full suite and lint on the current tree). Nothing else is useful to do until the `pt` run, the two gate runs and the code review report back, so I'm pausing here. The background timers will wake me, and I'll read each result as it lands.
 <!-- sha:64835513a781 -->
+
+## 2026-11-07T01:08:24Z
+> Yes, a photo helps, and it fits well with this fix. It is saved in `TASKS.md` as BA4. The new version is not out yet: the proof runs and the final gate are still in progress. The photo is most useful once v0.8.2 is on your tablet, because that version measures the menu's real dimming on the tablet itself.
+>
+> **For the best photo:**
+> - Hold the tablet square-on with the screen filling the frame, and no flash.
+> - If your camera allows it, tap and hold on the screen to lock the exposure. That way the camera doesn't re-brighten the dark parts and hide the difference.
+> - Show the lock screen with the power menu open. Wait a second so the dimming has finished, then shoot. The Screenshot spot and the wallpaper around it should both be visible.
+> - If you can, include one where you can still see the patch edge, and tell me whether the square looks darker or lighter than its surroundings.
+>
+> **Please also send the numbers.** After v0.8.2 runs once, open Launcher control and find "Menu dimming measurement" in the Power menu section. Send me that line as text or a screenshot. It says either "MEASURED scale … offset …" or the reason it didn't measure. Those numbers are more exact than a photo, and the photo shows me what your eye sees.
+>
+> I'll only look at the photo here in the chat. It never goes into the repo, because the repo is public. If it shows your name, an ID or the lock number, I'll describe it in words without them.
+>
+> I'm still waiting on the patch-measurement proof run, the two final-gate runs and the independent code review.
+<!-- sha:53301d6257fe -->
