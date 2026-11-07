@@ -16,8 +16,10 @@ between 0.97 and 1.15 item pitches below the card, fit a line on each side (0.05
 patch is DARKER than the wallpaper under it, in camera units 0-255 (auto exposure and tone curve apply: the card's white reads ~247, so the gain is near 1; direction and rough size only, the helper's own screenshot
 measurement is the exact one). The left edge (rows of the patch) is printed as a second opinion (raw: the wallpaper's own horizontal gradient is not removed).
 
-RESULT 2026-11-07 on v0.8.1 (four photos, all agree): the edge sits 1.04 to 1.10 pitches below the card, the patch is darker by +4.1 to +6.4 units at brightness levels from 38 to 127 (a nearly constant step: an
-ADDITIVE part of the real scrim, which a scalar dim can never remove; v0.8.2 measures scale + offset on the tablet). After v0.8.2 the same command should show 'no clear step'.
+RESULT 2026-11-07 on v0.8.1 (Tj's four photos): the edge sits 1.04 to 1.13 pitches below the card; the whole-tablet photo says DARKER by 7.4 (halves 7.0 / 6.7), the sharpest close-up 5.9 (5.3 / 4.6), a third close-up
+5.4 (5.5 / 5.3, but its control strip is busy), the fourth is too soft and the tool says so. A nearly constant step at wallpaper levels from 38 to 143 = an ADDITIVE part of the real scrim, which a scalar dim can
+never remove; v0.8.2 measures scale + offset on the tablet. After v0.8.2 the same command should print 'NO CLEAR STEP' (net within about +-2). The tool is conservative: 'no clear step' also appears for a soft photo.
+Self-test: synthetic photo with the patch 5 units too dark / exact / 5 units too light.
 Needs numpy and Pillow only. Run it with python3 -I (the input is untrusted data).
 """
 import importlib.util
