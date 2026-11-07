@@ -2081,12 +2081,13 @@ ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   case "$M" in
     tap) ptinput tap "input tap 150 700";;
+    pin) ptinput pin "wm dismiss-keyguard";;   # BC5: the keyguard shows its PIN pad without a touch (a swipe up is swallowed by the modal dialog on the emulator)
     dlg) ptinput dlg "am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS --es reason homekey";;   # what the Home key / a gesture sends: the stock dialog obeys it with its fade-out (run #295: a swipe up did nothing on the emulator's modal dialog, run #296: the Home key does nothing on a locked screen)
     *) ptinput back "input keyevent KEYCODE_BACK";;
   esac; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|input|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-$L.txt" 2>&1)"
   if [ "$M" != back ]; then   # BC2: the CLOSE is at the END of the timeline (the opening alone fills the first 1000 characters)
     local EVT; EVT="$(echo "$EVS" | tail -c 1000)"
@@ -2207,6 +2208,15 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   grep -E "PTCLOSE label=(closeback|closetap|closedlg) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
   # BC2's claim: a menu closed by a TAP (a click in the stock dialog) is followed along the stock fade-out: the helper noticed the click, ended with the window's removal, and the patch never differed from its surround by
   # more than 10 % (v0.8.3: 20 %; run #296: 3.8 %). The BACK key has no sign the helper can see (INFO: it stays at the v0.8.3 level), the broadcast is INFO (the emulator's dialog may ignore an adb-sent one).
+  # ---- G (BC5, Tj, 2026-11-07: "For the pull up for the pin, the patch should disappear immediately, as fast as possible after the pull up from the bottom"): the PIN pad comes up while the stock menu is open (`wm dismiss-keyguard`
+  #      makes the keyguard show its bouncer without a touch). The helper must hide the patch at once ('PATCH pin hide', from the keyguard view's own event or the PIN-pad scan); the timeline (INFO) shows how long after
+  #      the input that was. The film itself is not judged (with the patch gone the stock card's Screenshot slot shows for the rest of its fade-out: that is what Tj asked for).
+  padcount(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | grep -c 'PAD shown'; }
+  PAD0="$(padcount)"; ptrun closepin pin; PAD1="$(padcount)"
+  info "PT/BC5: the helper: $(grep -E 'PATCH (pin hide|close|menu closed|input)' "$OUT/pt-all-closepin.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-400) PIN pads shown during the film: $(( ${PAD1:-0} - ${PAD0:-0} ))"
+  if [ "$(( ${PAD1:-0} - ${PAD0:-0} ))" -ge 1 ]; then check "BC5: the PIN pad came up over the open menu and the patch was hidden at once (the helper logged 'pin hide')" grep -q 'PATCH pin hide' "$OUT/pt-all-closepin.txt"
+  else info "PT/BC5: no PIN pad appeared on the emulator: nothing to judge"; fi
+  palock; sleep 2
   check "BC2: a tap in the middle closes the menu with the patch following the stock fade-out (the helper logged the click and the window's removal)" bash -c "grep -q 'close start (a click in the stock dialog)' $OUT/pt-all-closetap.txt && grep -q 'close end (the dialog window was removed)' $OUT/pt-all-closetap.txt"
   check "BC2: the largest patch-versus-surround mismatch around that close is within 10 % (it was 20 % when the patch held its dark look until a scan noticed)" awk -v m="$(ptget closetap close_max)" 'BEGIN{exit !(m != "" && m+0 >= 0 && m+0 <= 0.10)}'
   # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom
