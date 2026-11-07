@@ -306,3 +306,50 @@
 ## 2026-11-07T01:32:27Z
 > Final gate status: four runs are on the shipping commit (v0.8.2, code 27), plus one diagnostic run to understand the `ps` ordering flake. The independent review's three major findings are fixed and recorded. I'll read all results at about 01:43 UTC and then ship.
 <!-- sha:14452de44d35 -->
+
+## 2026-11-07T01:45:46Z
+> The independent review found three real bugs in my new battery-saver and measurement code, and I fixed all three. v0.8.2 is not shipped yet because three final-gate runs and one confirmation run are still going.
+>
+> - **What the review found and what I did:**
+>   - **Wiped saver memory.** An abandoned unlock handshake could wipe Quickstep's saved battery-saver state.
+>   - **Unsafe restore.** The saver could be switched back on after you had turned it off yourself in Settings, which would have brought back the old "Turn off does nothing" bug.
+>   - **Stray BACK press.** The measurement could press BACK over the PIN pad or an app after you unlocked.
+>   - The smaller findings are fixed too, and the one I deliberately left unfixed is recorded in `TASKS.md`.
+> - **Gate so far:** the lock-screen and battery-saver sections passed, `ps` alone passed, and the patch-measurement proof passed. One `ps` failure turned out to be a test problem: stale notification cards left on the lock screen by an earlier test section. That also explains the older `pa` flake (AZ4). I've fixed the test setup and started a confirmation run.
+> - **Still running:** the remaining final-gate runs on the shipping commit (v0.8.2, code 27). I'll read them around 01:52 UTC, then build and release.
+>
+> 📌 **Chat checkpoint: 🔴 Red**
+>
+> **Goal:** Launcher (`com.tj.launcher`, Android 10 Go tablet): the open power-menu patch must match the darkened lock screen exactly. Battery saver stays off while the lock screen is up, and Quickstep's state is restored after a gesture unlock only when safe. Ship as v0.8.2.
+>
+> **Decisions made:**
+> - The tablet measures the stock menu's dimming itself (bare frame, helper opens the menu, second frame, BACK; scale and offset per channel). It is on in the app and off in debug builds.
+> - The saver is set to 0 at the lock. It is restored to 1 only after a gesture unlock with no doubt: not charging, no plug-in or level rise, same boot, hold not released by the person.
+> - Tj's photo of the patch is welcome later. It stays out of the repo (BA4 in `TASKS.md`).
+>
+> **Changed / rejected:**
+> - Guessing `DIM_OPEN` (0.79, then 0.80) is replaced by the measured transform.
+> - An occlusion guard for alarms or the camera was not added (accepted low risk, written in `TASKS.md`).
+>
+> **Key details:**
+> - Branch `claude/power-menu-wallpaper-brightness-g7588s`, shipping commit `dced3e9` (code 27, 0.8.2). Tip `2675d47` changes only the test scenario and docs.
+> - Proofs: `bl` #265 (21 PASS), `bs` #268 (13 PASS), `pt` #272 (15 PASS; measured 0.7997/0.7999/0.7999, offset ≈ 0).
+> - Final gate on `dced3e9`: #276 {n,o,t,x,ac,bs,lq} id 42324558796, #277 {base,v,pa,pt,uf,last} id 42324561598, #278 {x1,e1,bl,rb} id 42324581655, #279 `ps` green. Confirmation run `bl,ps,pa` on `2675d47`.
+> - Last release was v0.8.1 (code 26).
+>
+> **Done so far:**
+> - Battery-saver lock rules and the patch measurement are coded, unit-tested and emulator-proven.
+> - The independent review is fixed.
+> - The AZ4 root cause is found.
+> - `HANDOFF.md` section 0g
+> [... 312 characters omitted ...]
+> , then `get_release_by_tag v0.8.2`, then `tools/record-release.sh v0.8.2`.
+> 4. Tick the BA boxes, update `HANDOFF.md`, and give Tj the Release link plus the checklist.
+>
+> **Rules to remember:** write Tj's request into `TASKS.md` first; run `ckpt` after every step with short messages; GitHub MCP only; one Gradle at a time; never commit photos or keys; refer to Tj by name with no gendered pronouns; foreground `sleep` is blocked; a job log returns 404 until the job ends.
+>
+> ⚠️ **Health:** Red. This session is very long. Nothing is lost, because `CHECKPOINT.md` and `TASKS.md` hold the exact state, but a fresh session would work more reliably.
+>
+> 🔴 I'd move to a fresh chat now. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:7941617836d0 -->
