@@ -1776,9 +1776,17 @@ public class TjAccessibilityService extends AccessibilityService {
 
     // ---------------------------------------------------------------- O1: rotation twirl + shake / knock (accelerometer, only while the lock screen is up and one of them is selected)
     private int lastOrientation = -1;
+    private int lastNightSeen = -1;   // BB2: -1 = not seen yet, 0 light, 1 dark
 
     @Override public void onConfigurationChanged(android.content.res.Configuration c) {
         super.onConfigurationChanged(c);
+        try {   // BB2: battery saver / the dark theme flipped: use (or look for) the measurement of the NEW theme at once, never measure again just because the other theme was measured
+            int nightNow = isNightNow() ? 1 : 0;
+            if (lastNightSeen != nightNow) {
+                boolean first = lastNightSeen == -1; lastNightSeen = nightNow;
+                if (!first) { reloadScrim(); if (patchView != null) patchView.invalidate(); handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "theme change failed", t); }
         try {
             int o = c == null ? -1 : c.orientation;
             boolean first = lastOrientation == -1;
@@ -2702,12 +2710,12 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Is there a stored measurement valid for the lock screen as it is now? (binder calls; a rare path) */
     private boolean scrimStored() {
-        try { return ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation()), ""), shotSig(), isNightNow()) != null; } catch (Throwable t) { return false; }
+        try { boolean n = isNightNow(); return ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation(), n), ""), shotSig(), n) != null; } catch (Throwable t) { return false; }
     }
 
     /** Loads the measurement stored for the lock screen as it is now (binder calls: not per frame). */
     private void reloadScrim() {
-        try { scrimT = ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation()), ""), shotSig(), isNightNow()); }
+        try { boolean n = isNightNow(); scrimT = ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation(), n), ""), shotSig(), n); }   // BB2: one slot per theme
         catch (Throwable t) { scrimT = null; Log.e(TAG, "scrim reload failed", t); }
     }
 
@@ -2736,6 +2744,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     // ---------------------------------------------------------------- the measurement stage: bare frame -> the stock menu opened by the helper -> second frame -> menu closed
+    private boolean scrimNight = false;   // BB2: the theme the running stage started in (its frames and its stored value belong to that theme)
     private int scrimStage = 0;     // 0 idle, 1 waiting for the bare frame, 2 the gap after it, 3 the menu is opening, 4 waiting for the menu frame, 5 closing the menu
     private long scrimBeganAt = 0, scrimStageAt = 0, scrimLastStartMs = 0, scrimAskedAt = 0, scrimMenuAt = 0, scrimPollAt = 0;
     private volatile long scrimLastShotId = -1;   // shared with the worker thread (review nit)
@@ -2778,7 +2787,7 @@ public class TjAccessibilityService extends AccessibilityService {
         st.lastStartMs = scrimLastStartMs;
         st.startsThisLock = scrimThisLock;
         st.startsToday = AutoCalibration.startsWithinDay(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now);
-        st.failures = ScrimMeasure.failures(Features.getString(app, ScrimMeasure.failKey(rotation()), ""), shotSig(), isNightNow());   // review of BA1: a lock screen that cannot be fitted is not retried every day
+        st.failures = ScrimMeasure.failures(Features.getString(app, ScrimMeasure.failKey(rotation(), isNightNow()), ""), shotSig(), isNightNow());   // review of BA1: a lock screen that cannot be fitted is not retried every day
         return st;
     }
 
@@ -2796,11 +2805,14 @@ public class TjAccessibilityService extends AccessibilityService {
             return;
         }
         scrimLastStartMs = st.now; scrimThisLock++;
+        scrimNight = isNightNow();
+        final String because = ScrimFit.reasonMissing(Features.getString(app, ScrimMeasure.valueKey(rotation(), scrimNight), ""), shotSig(), scrimNight);   // BB2: "why again?" answered on the tablet
+        Features.setString(app, ScrimMeasure.WHY_KEY, new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US).format(new java.util.Date()) + " started because " + because);
         Features.setString(app, ScrimMeasure.TRIES_KEY, AutoCalibration.addTry(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now));
         scrimBeganAt = android.os.SystemClock.uptimeMillis(); scrimStageAt = scrimBeganAt;
         scrimStage = 1; scrimOpenedMenu = false; scrimPoints = null; scrimRef = null; scrimCloseTries = 0; scrimMenuAt = 0; scrimPollAt = 0; scrimGoneTicks = 0; scrimOutcome = "";
         scrimNote("started (" + why + "): a bare frame of the lock screen first");
-        Log.i(TAG, "SCRIM measurement started (" + why + ")");
+        Log.i(TAG, "SCRIM measurement started (" + why + "): " + because);
         scrimAskShot();
         handler.removeCallbacks(scrimTick); handler.postDelayed(scrimTick, 400);
     }
@@ -2821,6 +2833,7 @@ public class TjAccessibilityService extends AccessibilityService {
         android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
         if (pm == null || !pm.isInteractive()) return "the screen went off";
         if (!keyguardLocked()) return "the tablet was unlocked";
+        if (isNightNow() != scrimNight) return "the theme changed (battery saver / dark theme) during the measurement";   // BB2: the two frames must be taken in the same theme
         if (lastBouncer) return "the PIN pad came up";
         if (unlock.armedMethod() != null) return "an unlock gesture started";
         if (calibrating()) return "a calibration started";
@@ -2876,7 +2889,7 @@ public class TjAccessibilityService extends AccessibilityService {
         scrimOutcome = outcome == null ? "" : outcome;
         scrimNote(scrimOutcome);
         try {   // review of BA1 (finding 5): frames that were taken but could not be fitted are counted per lock screen; an interruption is not
-            if (ScrimMeasure.measurementFailure(scrimOutcome)) { android.content.Context app = getApplicationContext(); String k = ScrimMeasure.failKey(rotation()); Features.setString(app, k, ScrimMeasure.addFailure(Features.getString(app, k, ""), shotSig(), isNightNow())); }
+            if (ScrimMeasure.measurementFailure(scrimOutcome)) { android.content.Context app = getApplicationContext(); String k = ScrimMeasure.failKey(rotation(), scrimNight); Features.setString(app, k, ScrimMeasure.addFailure(Features.getString(app, k, ""), shotSig(), scrimNight)); }
         } catch (Throwable ignored) { }
         Log.i(TAG, "SCRIM finished: " + scrimOutcome);
         scrimPoints = null; scrimRef = null;
@@ -2913,7 +2926,7 @@ public class TjAccessibilityService extends AccessibilityService {
         final android.content.Context app = getApplicationContext();
         final long asked = scrimAskedAt;
         final Rect panel = cachedCard(), patch = patchView != null && patchLockMode ? new Rect(patchAt) : null;
-        final int rot = rotation(); final String sig = shotSig(); final boolean night = isNightNow();
+        final int rot = rotation(); final String sig = shotSig(); final boolean night = scrimNight;   // BB2: the theme the stage STARTED in (it stops if the theme changes meanwhile)
         final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final int shadow = Math.round(18 * dm.density);
@@ -2954,7 +2967,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     String[] why = new String[1];
                     final ScrimFit.Transform t = ScrimFit.combine(r, g, b, why);
                     if (t == null) { postFinish("not measured: " + why[0]); return; }
-                    Features.setString(app, ScrimMeasure.valueKey(rot), ScrimFit.encode(t, sig, night, System.currentTimeMillis()));
+                    Features.setString(app, ScrimMeasure.valueKey(rot, night), ScrimFit.encode(t, sig, night, System.currentTimeMillis()));
                     final String line = "MEASURED " + ScrimFit.describe(t);
                     handler.post(new Runnable() { @Override public void run() {
                         try { reloadScrim(); if (patchView != null) patchView.invalidate(); } catch (Throwable ignored) { }
