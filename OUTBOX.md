@@ -581,3 +581,7 @@
 >
 > Nothing new for Tj yet. Still waiting on his answer about what he saw, and I'll send v0.8.3 only after both runs are green.
 <!-- sha:e477049a3327 -->
+
+## 2026-11-07T06:43:08Z
+> That confirms it: the camera flashes, which is exactly the repeated measurement the fix targets. With the context nearly full, I'm recording your answer and a precise resume point first, then checking whether the two emulator runs are done.
+<!-- sha:d0f76aba524a -->
