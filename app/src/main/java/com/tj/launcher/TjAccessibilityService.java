@@ -473,8 +473,22 @@ public class TjAccessibilityService extends AccessibilityService {
             int m = (int) (12 * dm.density);
             return new Rect(Math.max(0, r.left - m), Math.max(0, r.top - m), Math.min(dm.widthPixels, r.right + m), Math.min(dm.heightPixels, r.bottom + m));
         }
-        int[] w = PatchRest.slotWindow(r.left, cardAreaGeom(r).bottom, r.right, r.bottom, Math.round(PatchRest.EDGE_DP * dm.density), Math.round(PatchRest.FEATHER_DP * dm.density), dm.widthPixels, dm.heightPixels);
+        int[] w = PatchRest.slotWindow(r.left, cardAreaGeom(r).bottom, r.right, r.bottom, Math.round(PatchRest.EDGE_DP * dm.density), Math.round(PatchRest.FEATHER_DP * dm.density), patchExtraPx(dm), patchBottomFeatherPx(dm), dm.widthPixels, dm.heightPixels);
         return new Rect(w[0], w[1], w[2], w[3]);
+    }
+
+    /** BB1: the width of the patch's bottom fringe in px (hidden preference {@code patch_bfeather_dp}, default = the other fringes). */
+    private int patchBottomFeatherPx(android.util.DisplayMetrics dm) {
+        return Math.max(0, Math.min(PatchShot.MARGIN_PX, Math.round(Features.getInt(this, PatchRest.BOTTOM_FEATHER_KEY, Math.round(PatchRest.FEATHER_DP)) * dm.density)));
+    }
+
+    /**
+     * BB1: how far the opaque core reaches below the stock panel, in px beyond the old window (hidden preference {@code patch_extra_dp}, default {@link PatchRest#EXTRA_BOTTOM_DP}, 0 = the v0.8.2 geometry). Clamped so the
+     * window stays inside the stored real-pixel crop (cut for the old window + {@link PatchShot#MARGIN_PX}): existing calibrations stay valid, no new screenshot.
+     */
+    private int patchExtraPx(android.util.DisplayMetrics dm) {
+        int wanted = Math.round(Features.getInt(this, PatchRest.EXTRA_KEY, Math.round(PatchRest.EXTRA_BOTTOM_DP)) * dm.density);
+        return PatchRest.clampExtra(wanted, patchBottomFeatherPx(dm), Math.round(PatchRest.FEATHER_DP * dm.density), PatchShot.MARGIN_PX);
     }
 
     private static int[] rectArr(Rect r) { return new int[] { r.left, r.top, r.right, r.bottom }; }
