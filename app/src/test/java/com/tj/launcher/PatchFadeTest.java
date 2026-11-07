@@ -72,6 +72,44 @@ public class PatchFadeTest {
         assertEquals(0.9f, PatchFade.mix(1f, 0.8f, 0.5f), 1e-6f);
         assertEquals(PatchFade.OPEN_MS + 30, PatchFade.SETTLE_MS);
     }
+    // ---- BC2: the fade-OUT of the stock dialog (LogAccelerateInterpolator(100, 0), 300 ms; the scrim alpha is (1 - interpolated) * 0.2)
+    @Test public void theLogAccelerateCurveHasItsKnownShape() {
+        assertEquals(0f, PatchFade.logAccelerate(0f), 1e-6f);
+        assertEquals(1f, PatchFade.logAccelerate(1f), 1e-6f);
+        assertEquals(0.0909f, PatchFade.logAccelerate(0.5f), 0.001f);   // slow start: 9 % at half time
+        assertEquals(0.392f, PatchFade.logAccelerate(0.8f), 0.002f);
+        assertEquals(0.627f, PatchFade.logAccelerate(0.9f), 0.002f);
+    }
+    @Test public void theCloseProgressRunsFromOneToZeroAndOnlyEverFalls() {
+        assertEquals(1f, PatchFade.closeProgress(-20), 1e-6f);   // the dismissal has not begun
+        assertEquals(1f, PatchFade.closeProgress(0), 1e-6f);
+        assertEquals(0f, PatchFade.closeProgress(PatchFade.CLOSE_MS), 1e-6f);
+        assertEquals(0f, PatchFade.closeProgress(900), 1e-6f);
+        float prev = 1f;
+        for (long t = 0; t <= PatchFade.CLOSE_MS; t += 5) { float p = PatchFade.closeProgress(t); assertTrue("t=" + t, p <= prev + 1e-6f); prev = p; }
+    }
+    @Test public void theStockScrimIsStillNinetyPercentThereAtHalfTimeAndGoneInTheLastHundredMilliseconds() {
+        // the numbers behind the film of run #291 (section pt): the surround stayed at 0.80 until the last quarter, then brightened within ~60 ms
+        assertEquals(0.909f, PatchFade.closeProgress(150), 0.002f);
+        assertEquals(0.79f, PatchFade.closeProgress(200), 0.005f);
+        assertEquals(0.608f, PatchFade.closeProgress(240), 0.005f);
+        assertEquals(0.373f, PatchFade.closeProgress(270), 0.005f);
+        assertTrue(PatchFade.closeProgress(285) < 0.25f);
+    }
+    @Test public void theLeadMakesTheFrameRightWhenItIsSeen() {
+        assertEquals(PatchFade.closeProgress(210), PatchFade.closeProgressAt(1200, 1000, 10), 1e-6f);   // 200 ms after the start + a 10 ms lead
+        assertEquals(1f, PatchFade.closeProgressAt(1000, 1015, 10), 1e-6f);                              // a start that lies a few ms ahead (our own BACK): nothing changes yet
+        assertTrue(PatchFade.closing(1000 + 289, 1000, 10));
+        assertFalse(PatchFade.closing(1000 + 290, 1000, 10));
+    }
+    @Test public void theOpenLookDimsTheSurroundAsTheStockScrimDoesWhileItFadesOut() {
+        // out = (1 - 0.2 * p) * L: at p = closeProgress the patch mixes identity -> the measured look with the SAME progress, so patch and surround agree at every instant (here the generic 0.80 look)
+        for (long t = 0; t <= 300; t += 20) {
+            float p = PatchFade.closeProgress(t);
+            float surround = 1f - 0.2f * p, patch = PatchFade.mix(1f, 0.8f, p);
+            assertEquals("t=" + t, surround, patch, 1e-5f);
+        }
+    }
     @Test public void theMixWorksForTheWallpaperModelToo() {
         // the MODEL patch rests at 0.77 (the keyguard's own dim) and ends at 0.77 * 0.79: the fade runs between those two
         float rest = 0.77f, open = 0.77f * 0.79f;
