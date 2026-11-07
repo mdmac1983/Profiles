@@ -2800,7 +2800,8 @@ public class TjAccessibilityService extends AccessibilityService {
         if (unlock.armedMethod() != null) return "an unlock gesture started";
         if (calibrating()) return "a calibration started";
         if (scrimStage < 3 && overlayShown) return "the power menu was opened by someone else";
-        if ((scrimStage == 3 || scrimStage == 4) && scrimMenuAt > 0 && !overlayShown) return "the power menu was closed before the second frame";
+        if ((scrimStage == 3 || scrimStage == 4) && scrimMenuAt > 0 && !overlayShown) { if (++scrimGoneTicks >= 3) return "the power menu was closed before the second frame"; }   // three ticks in a row (~0.9 s): the helper's own detection may blink during the menu's window burst
+        else scrimGoneTicks = 0;
         return "";
     }
 
