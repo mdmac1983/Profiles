@@ -45,6 +45,7 @@ public final class BatterySaverGuard {
                     lowPowerChangedAt = System.currentTimeMillis();
                     // AG2 (Tj, 2026-11-06: the battery saver TILE in Quickstep does not work): every change of low_power is written to the lock log with the mode and the guard's switches, so a report says WHY
                     try { LockLog.add(app, "BATSAVER", "low_power is now " + Settings.Global.getString(app.getContentResolver(), BatterySaverPolicy.SETTING) + ", mode=" + Mode.get(app) + ", off-in-custom=" + enabled(app) + ", strict=" + strict(app) + ", power=" + powerSource(app) + (CrashGuard.automationOff(app) ? " PAUSED" : "")); } catch (Throwable ignored) { }
+                    onSettingChanged(app);   // BA2: Quickstep's own state is remembered; a saver turned on while the lock screen is up is switched off again
                     check(app, "setting changed", true);   // AN1: does nothing unless "strict" is on: a change made on the tile is left alone
                 }
             };
