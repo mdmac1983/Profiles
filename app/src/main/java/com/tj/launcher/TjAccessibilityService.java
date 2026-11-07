@@ -1015,14 +1015,18 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean paused = CrashGuard.automationOff(app);
             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
             if (locked && !paused) lockQuietNow(why);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock); AW2: and the quick settings show the rotation tile only
+            boolean cleanedNow = false;
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
                 if (ReturnReset.cleanAtLock(app)) {
-                    preCleanedThisLock = true;
+                    preCleanedThisLock = true; cleanedNow = true;
                     qsApp = null;     // AD5: the helper closed the apps: nothing is left to come back to
                     Mode.set(app, Mode.CUSTOM);
                     profileNote("lock (" + why + "): Quickstep's apps + notifications closed, custom account active behind the lock screen");
                 }
             }
+            // BE2 (Tj: "at no time ... an app that is hidden from the app drawer inside the recent apps"): while locked, in the custom launcher, every task of a non-drawer app is removed by id (helper running, invisible)
+            if (locked && !paused && !cleanedNow && !armed && Mode.isCustom(app)) RecentsSweep.requestAsync(app, "lock", RecentsSweep.HIDDEN_ONLY, null, 4000);
+            if (locked) { try { refreshLayers(); } catch (Throwable t) { Log.e(TAG, "patch pre-creation failed", t); } }   // BE1: the lock-screen patch window is created NOW, while the screen is dark, not in the wake-up burst
             if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, paused)) prearmCustom(why);
         } catch (Throwable t) { Log.e(TAG, "lock prepare failed", t); }
     }
@@ -1140,11 +1144,18 @@ public class TjAccessibilityService extends AccessibilityService {
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
                 Log.i(TAG, "UNLOCKPICK custom (session ended)");
                 LockLog.add(app, "UNLOCK", "plain -> custom (a Quickstep session ended), Enter to unlock " + sinceEnter + " ms");
+            } else if (!CrashGuard.automationOff(app) && ReturnReset.cleanStart(app) && ReturnReset.bootCleanPending(app)) {
+                // BE2/BE3: the first unlock after a boot starts the custom session clean: the persisted Recents list of the last boot (Quickstep's apps among them) goes
+                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (first unlock after a boot: Recents cleared)");
+                Log.i(TAG, "UNLOCKPICK custom (boot clean)");
+                LockLog.add(app, "UNLOCK", "plain, first unlock after a boot: the custom session starts clean (Recents cleared), Enter to unlock " + sinceEnter + " ms");
+                ReturnReset.run(app);
             } else {
                 hideResetCover();
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
                 Log.i(TAG, "UNLOCKPICK custom");
                 LockLog.add(app, "UNLOCK", "plain, mode " + Mode.get(app) + (CrashGuard.automationOff(app) ? " (automation paused: the mode is left alone)" : "") + ", Enter to unlock " + sinceEnter + " ms");
+                sweepSoon("unlock", 700);   // BE2: the drawer-only guarantee after the unlock (helper running, invisible)
             }
         } catch (Throwable t) { Log.e(TAG, "unlock choice failed", t); }
     }
@@ -1248,6 +1259,56 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Presses Home (used by the reset when there is no app to open, so Recents / the shade are not left on screen). */
     public void goHome() { performGlobalAction(GLOBAL_ACTION_HOME); }
+
+    /**
+     * BE3 (clean start): the custom home must be the screen once the clean-up is done (or when there was nothing to clean). Looks every 40 ms for at most 1.5 s: our launcher in front = done, the black cover goes at
+     * that very moment (it used to stay until a cold Solitaire start was verified); Recents / the shade still in front after 200 ms = one Home press. Never throws, the cover's own 4.5 s failsafe still exists.
+     */
+    public void settleHome() {
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        final boolean[] pressed = { false };
+        handler.post(new Runnable() { @Override public void run() {
+            try {
+                long dt = android.os.SystemClock.uptimeMillis() - t0;
+                if (isForeground(getPackageName())) {
+                    hideResetCover();
+                    appendReport("clean start: the custom home is on screen (+" + dt + " ms)");
+                    LockLog.add(getApplicationContext(), "HOME", "custom home in front +" + dt + " ms after the clean-up" + (pressed[0] ? " (one Home press)" : ""));
+                    return;
+                }
+                if (!pressed[0] && dt >= 200) { pressed[0] = true; goHome(); }
+                if (dt < 1500) { handler.postDelayed(this, 40); return; }
+                hideResetCover();
+                appendReport("clean start: the custom home was not confirmed in front after " + dt + " ms (cover removed anyway)");
+                LockLog.add(getApplicationContext(), "HOME", "custom home NOT confirmed in front after " + dt + " ms; cover removed anyway");
+            } catch (Throwable t) { Log.e(TAG, "settle home failed", t); hideResetCover(); }
+        } });
+    }
+
+    /** BE2: the drawer-only sweep of Recents a moment from now (helper running; skips the app on screen). */
+    private void sweepSoon(final String why, long delayMs) {
+        handler.postDelayed(new Runnable() { @Override public void run() {
+            try {
+                String fg = fgPkg;
+                java.util.Set<String> skip = (fg == null || fg.isEmpty() || fg.equals(getPackageName())) ? null : java.util.Collections.singleton(fg);
+                RecentsSweep.requestAsync(getApplicationContext(), why, RecentsSweep.HIDDEN_ONLY, skip, 3000);
+            } catch (Throwable t) { Log.e(TAG, "sweep request failed", t); }
+        } }, delayMs);
+    }
+
+    /** BE2: the app that was in front is an app of no drawer and has just left the screen: its card must be gone before the Recents screen could list it. */
+    private void sweepIfHiddenLeft(String prev, String now) {
+        try {
+            if (prev == null || prev.isEmpty() || prev.equals(now) || prev.equals(getPackageName())) return;
+            android.content.Context app = getApplicationContext();
+            if (!Mode.isCustom(app) || !RecentsSweep.enabled(app) || keyguardLockedFast() || HiddenApps.isPackageShown(app, prev)) return;   // the common case ends here: a drawer app
+            if (!RecentsSweep.hiddenAppLeft(true, true, prev, now, ReturnReset.guardFor(app).mayClose(prev), false)) return;
+            final String keep = now;
+            handler.postDelayed(new Runnable() { @Override public void run() {
+                try { RecentsSweep.requestAsync(getApplicationContext(), "a hidden app left the screen", RecentsSweep.HIDDEN_ONLY, keep == null || keep.isEmpty() ? null : java.util.Collections.singleton(keep), 1500); } catch (Throwable ignored) { }
+            } }, 400);
+        } catch (Throwable t) { Log.e(TAG, "hidden app check failed", t); }
+    }
 
     /** Public wrapper for the reset: TRUE = notification icons in the status bar, FALSE = none, null = cannot tell. */
     public Boolean hasNotificationIcons() { return notificationIconsPresent(); }
@@ -1629,7 +1690,9 @@ public class TjAccessibilityService extends AccessibilityService {
         if ("com.android.systemui".equals(pk) || pk.startsWith("com.google.android.inputmethod") || pk.contains("inputmethod") || pk.contains("keyboard") || pk.contains("swiftkey")) return;
         noteUnlockSpeed(pk);
         if (pk.equals(fgPkg)) return;
+        String prevFg = fgPkg;
         fgPkg = pk;
+        sweepIfHiddenLeft(prevFg, pk);   // BE2
         try { rememberQuickstepApp(pk); } catch (Throwable t) { Log.e(TAG, "remember app failed", t); }
         updateHotspot();
     }

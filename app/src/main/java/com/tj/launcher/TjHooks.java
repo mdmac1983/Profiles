@@ -24,7 +24,7 @@ public final class TjHooks {
         try {
             if (!startedOnce) {
                 startedOnce = true;
-                if (Mode.isCustom(c) && Features.get(c, STARTUP_KEY, true)) {
+                if (Mode.isCustom(c) && ReturnReset.autoOpenWanted(c)) {   // BE3: a clean start opens no stand-in app
                     new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
                         @Override public void run() { try { ReturnReset.openStartupApp(c); } catch (Throwable t) { android.util.Log.e("TjHooks", "startup open failed", t); } }
                     }, 350);
