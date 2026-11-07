@@ -57,17 +57,27 @@ public final class AnimationSpeedup {
             android.content.ContentResolver cr = app.getContentResolver();
             if (next != 0) {
                 if (!permitted(app)) return holds;
-                if (!pending) {   // the first reason: the originals and the hold are on disk BEFORE the first change
-                    SharedPreferences.Editor e = sp.edit();
-                    for (String n : NAMES) e.putString(n, AnimationPolicy.originalOf(Settings.Global.getString(cr, n)));
-                    e.putBoolean("pending", true).putInt("holds", next).commit();
-                } else if (next != holds) {
-                    sp.edit().putInt("holds", next).commit();
+                final boolean first = holds == 0 || !pending;   // nobody held them before: this reason makes them zero. A reason that JOINS one already holding rewrites nothing: a scale Tj changed by hand since stays his
+                try {
+                    if (!pending) {   // the first reason: the originals and the hold are on disk BEFORE the first change
+                        SharedPreferences.Editor e = sp.edit();
+                        for (String n : NAMES) e.putString(n, AnimationPolicy.originalOf(Settings.Global.getString(cr, n)));
+                        e.putBoolean("pending", true).putInt("holds", next).commit();
+                    } else if (next != holds) {
+                        sp.edit().putInt("holds", next).commit();
+                    }
+                    if (first) {   // a scale that already is zero is left alone (Tj's own permanent setting)
+                        for (String n : NAMES) if (AnimationPolicy.needsZero(Settings.Global.getString(cr, n))) Settings.Global.putString(cr, n, "0");
+                    }
+                    return next;
+                } catch (Throwable t) {   // a write failed half way: put back what may already be zero and forget this hold, so the stored mask never claims a hold that does not exist
+                    Log.e(TAG, "could not turn animations off", t);
+                    if (first) {
+                        try { for (String n : NAMES) { String w = AnimationPolicy.restoreValue(Settings.Global.getString(cr, n), sp.getString(n, "1.0")); if (w != null) Settings.Global.putString(cr, n, w); } } catch (Throwable ignored) { }
+                    }
+                    try { sp.edit().putInt("holds", holds).putBoolean("pending", pending).commit(); } catch (Throwable ignored) { }
+                    return holds;
                 }
-                if (holds == 0 || !pending) {   // nobody held them before: make them zero (a scale that already is zero is left alone). A reason that JOINS one already holding rewrites nothing: a scale Tj changed by hand since stays his
-                    for (String n : NAMES) if (AnimationPolicy.needsZero(Settings.Global.getString(cr, n))) Settings.Global.putString(cr, n, "0");
-                }
-                return next;
             }
             if (holds == 0 && !pending) return 0;   // nothing was ever held
             if (pending) {
