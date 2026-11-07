@@ -2684,6 +2684,11 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean debuggable() { return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
     private boolean isNightNow() { return (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES; }
 
+    /** Is there a stored measurement valid for the lock screen as it is now? (binder calls; a rare path) */
+    private boolean scrimStored() {
+        try { return ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation()), ""), shotSig(), isNightNow()) != null; } catch (Throwable t) { return false; }
+    }
+
     /** Loads the measurement stored for the lock screen as it is now (binder calls: not per frame). */
     private void reloadScrim() {
         try { scrimT = ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation()), ""), shotSig(), isNightNow()); }
@@ -2739,8 +2744,8 @@ public class TjAccessibilityService extends AccessibilityService {
         st.paused = CrashGuard.automationOff(app);
         st.permitted = checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         st.geometryKnown = cachedCard() != null;
-        st.validCrop = patchShotBmp != null;
-        st.haveMeasurement = scrimT != null;
+        st.validCrop = patchShotBmp != null || PatchShot.has(app, rotation(), shotSig());   // the same test as the automatic calibration: the picture exists, whether or not the patch window has loaded it yet
+        st.haveMeasurement = scrimT != null || scrimStored();                                // the STORED value counts too: right after a restart the memory copy is only loaded when the patch window is built
         st.calibrating = calibrating();
         st.stageRunning = scrimStage != 0;
         android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
