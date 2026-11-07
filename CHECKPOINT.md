@@ -1,23 +1,23 @@
-# CHECKPOINT 613 — read me first, then TASKS.md
+# CHECKPOINT 614 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T17:18:03Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `92a28dd` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T17:22:26Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `349cf7c` (this checkpoint is the commit after it)
 
 ## Just done
-Tj corrected BC5 (17:17 UTC): the PIN-pad hide must work with NO power menu open (the resting patch too): pinPadCameUp now hides the resting patch (alpha 0 at once, away 2.5 s) as well as the open one; fastMenuClose's bouncer sign no longer needs the menu; scenario pt phase H (swipe up on the plain lock screen, 'pin hide ... resting' check); TASKS BC5b
+gate read: #297 and #298 green on a8f76b6, #299 (pt,last) 3 FAIL = the noisy opening-timing check + my two BC2 tap checks on a late stock animator (window removed 397 ms after the click, patch led its scrim by 10.3 %): tuned (start +40 ms, 10 % floor, scan slack 100 ms, checks accept 'menu closed', bound 15 %); the close-system-dialogs broadcast path works on the emulator (close_max 0.040)
 
 ## Do this next
-read the 3 gate runs (#297 id 42394250639, #298 id 42394253079, #299 id 42394255486, due ~17:19); then dispatch pt,ae,ps,x1 on this head (BC5 + BC5b), read PT/BC5 and PT/BC5b lines; ship v0.8.4
+dispatch on the final head: {pt,last} and {ae,ps,pa,x1,v} (two parallel emulator.yml runs on ccr-823c5a56-yg8voe, ~16 min); read: pt must show PT/BC5 (pin hide over the open menu) and PT/BC5b (pin hide resting) lines and 0 FAIL; then bump 0.8.4 / code 29, ship.sh, android.yml, release, tell Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
      M TASKS.md
-     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  986ddfa ckpt 613: Tj corrected BC5 (17:17 UTC): the PIN-pad hide must work with NO power menu op
   4a16127 ckpt 612: BD1/BD2 leads written to TASKS (ReturnReset black cover, TaskOrigin/RMTASKS by
   6bf1bcb ckpt 611: Tj's new message (17:12 UTC): BD1 hidden apps (Telegram, Claude) were in the R
   9c8439b ckpt 610: BC5 coded: TjAccessibilityService pinPadCameUp (patch alpha 0 at once + untouc
@@ -27,7 +27,6 @@ read the 3 gate runs (#297 id 42394250639, #298 id 42394253079, #299 id 42394255
   a8f76b6 ckpt 606: emulator #296 read: the tap close is followed along the stock fade-out (close_
   daf4f15 ckpt 605: emulator #295 read (BC1 edge covered to 0.1 level; BC2: click + dialog-removal
   e079c40 ckpt 604: merged Tj's 16:13 message (a browser question, captured on main only) into the
-  a502af8 ckpt 603: BC2/BC1 emulator proof coded: pt phase F (the menu closed by BACK / a tap in t
 ```
 
 (2 automatic checkpoint(s) since the last deliberate one — the
