@@ -796,3 +796,22 @@
 >
 > The three test runs for v0.8.4 finish at about 17:19 UTC. Because this change touches the patch, I'll re-run the patch tests on the final code before releasing, then send you the link.
 <!-- sha:cf591697c7f3 -->
+
+## 2026-11-07T17:16:38Z
+> Both are written down in your words. I haven't looked at your tablet yet, so these are my best understanding of the causes, from the code.
+>
+> **Hidden apps in Recents**
+> - Today, when the tablet locks, the helper removes the apps that Quickstep opened. Separately, the Recents screen closes cards of apps that aren't in the drawer only after it has opened. So a hidden app's card can show for a moment, or be missed if the helper wasn't running.
+> - You want a stricter rule. The plan is to remove, behind the cover, every Recents entry whose app isn't in the drawer, as soon as you unlock into the custom launcher. This would be done by task id, which is instant. A guard would also remove any such entry the moment it appears while the custom launcher is active, before Recents can show it.
+>
+> **Slow unlock and black screen**
+> - The black cover stays up while the clean-up presses things on screen: Clear all, the notification shade and the radios. That takes seconds.
+> - The plan is to do the removal directly by task id, which takes milliseconds. Solitaire would be the cover if it's already running. The cover would drop the moment the custom launcher draws its first frame.
+>
+> **What I need from you**
+> - Right after an unlock that is slow or shows those apps, send me the tablet report from Launcher control. It holds the clean-up log, the unlock timings and whether the invisible clean-up helper is running.
+>
+> **Order of work**
+> - v0.8.4 comes first. It has the sliver fix, the flicker fix and the instant hide for the pull-up PIN. The gate's last runs finish in a few minutes.
+> - These two items are bigger changes, so I'll start them in a fresh session after v0.8.4 is out, since this one is very long. I'll tell you when it's time.
+<!-- sha:fbe49d94ba81 -->

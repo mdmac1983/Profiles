@@ -1132,3 +1132,10 @@ For the pull up for the pin, the patch should disappear immediately, as fast as 
 ```
 I just unlocked from the lock screen to the custom launcher, and telegram and Claude were in the recent apps list. They were not opened from the custom launcher, they are hidden from the custom launcher. No apps should appear at any time in the recents list in the custom launcher unless they are already unhidden in the custom launcher app drawer. Also unlocking to the custom launcher from the lock screen is slow, and keeps up the black screen for a long time. Speed it up as much as possible. If everything can be done behind solitaire then that is good 
 ```
+
+## 2026-11-07T17:16:40Z
+```
+You said "When the PIN pad comes up while the power menu is open"
+
+But the power menu doesn't need to be opened. Any time I pull up to type the pin number the wallpaper patch should disappear immediately, as fast as possible 
+```
