@@ -642,3 +642,9 @@
 >
 > My recommendation is to wait for it. If you'd rather have v0.8.3 right now, say so and I'll start the build immediately. The risk is low either way.
 <!-- sha:28e56959724a -->
+
+## 2026-11-07T07:19:41Z
+> The v0.8.3 build is running on GitHub. It started at 07:19 UTC and builds the same app code that passed the other tests; only the version number changed. I'll check it around 07:26. If it's green, I'll confirm the Release and send you the link.
+>
+> The AN1 re-run is still going and should finish around 07:29. It only decides whether the test fix holds. It doesn't change this build.
+<!-- sha:858f180463d6 -->
