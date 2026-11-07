@@ -183,19 +183,24 @@ public final class AnimationSpeedup {
             f.helperUp = TjAccessibilityService.get() != null;
             f.quickstepMode = Mode.QUICKSTEP.equals(Mode.get(app));
             f.automationOff = CrashGuard.automationOff(app);
-            if (!holding && (!f.switchOn || !f.grant || !f.helperUp || !f.quickstepMode || f.automationOff)) return;   // nothing held, nothing could start: no binder call (this runs at every screen off and mode change)
-            f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : interactive(app);
-            f.lockUp = f.screenOn && keyguardUp(app);
-            if (lockCycle) {
-                if (!f.screenOn || f.lockUp) unlockSeenAt = 0;   // still dark or locked: the unlock is still to come
-                else {
-                    long now = SystemClock.uptimeMillis();
-                    if (unlockSeenAt == 0) unlockSeenAt = now;
-                    if (now - unlockSeenAt > AnimationPolicy.UNDECIDED_MAX_MS) { lockCycle = false; unlockSeenAt = 0; }   // the handler never answered: stop waiting for it
-                    else f.unlockUndecided = true;
+            // stage 1, no binder call: with the screen and the lock assumed fine, is anything else against it? (this runs at every screen off and every mode change)
+            f.screenOn = true; f.lockUp = false; f.unlockUndecided = false;
+            String why = AnimationPolicy.why(f);
+            if (!why.isEmpty() && !holding) return;   // nothing held and nothing could start
+            if (why.isEmpty()) {   // stage 2: the screen and the lock screen
+                f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : interactive(app);
+                f.lockUp = f.screenOn && keyguardUp(app);
+                if (lockCycle) {
+                    if (!f.screenOn || f.lockUp) unlockSeenAt = 0;   // still dark or locked: the unlock is still to come
+                    else {
+                        long now = SystemClock.uptimeMillis();
+                        if (unlockSeenAt == 0) unlockSeenAt = now;
+                        if (now - unlockSeenAt > AnimationPolicy.UNDECIDED_MAX_MS) { lockCycle = false; unlockSeenAt = 0; }   // the handler never answered: stop waiting for it
+                        else f.unlockUndecided = true;
+                    }
                 }
+                why = AnimationPolicy.why(f);
             }
-            final String why = AnimationPolicy.why(f);
             final boolean want = why.isEmpty();
             final int after = setHold(app, AnimationPolicy.HOLD_QUICKSTEP, want);
             if (AnimationPolicy.has(before, AnimationPolicy.HOLD_QUICKSTEP) != AnimationPolicy.has(after, AnimationPolicy.HOLD_QUICKSTEP)) {
