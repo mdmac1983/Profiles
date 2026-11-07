@@ -1139,3 +1139,10 @@ You said "When the PIN pad comes up while the power menu is open"
 
 But the power menu doesn't need to be opened. Any time I pull up to type the pin number the wallpaper patch should disappear immediately, as fast as possible 
 ```
+
+## 2026-11-07T20:17:28Z
+```
+The new lock screen power menu and wallpaper patch are 99% perfect. Every once in a while there is a very quick flicker of the wallpaper patch  when I pull up to enter pin. And one time the screenshot button showed for a split second, maybe the wallpaper patch didn't load first. See if these can be any faster, ideally instantly with no flicker.
+
+Audit how recent apps show in the list for the custom launcher. At no time should there ever be an app that is hidden from the app drawer for the custom launcher inside the recent apps for the custom launcher. If it is better, do not start the custom launcher with solitaire, but start it with no apps at all and completely clear the recent apps list every time the custom launcher starts. Figure it out how to make the custom launcher start from the lock screen as fast as possible. If it can be prepped invisibly in the lock screen or when the screen is off, do so. For the Quickstep launcher, it is allowed to start a little slower if needed, but the custom launcher must be immediate or as close as possible to immediate.
+```
