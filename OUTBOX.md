@@ -864,3 +864,7 @@
 >
 > If the confirmation passes, I start the GitHub build. If it fails again, I treat it as a real problem in my change and diagnose before anything ships.
 <!-- sha:66465ccdf8ba -->
+
+## 2026-11-07T18:19:18Z
+> The confirmation run passed, so the earlier `e1` failure was a timing flake. Every test is now green on the v0.8.4 code, and the GitHub build for v0.8.4 started at about 18:19 UTC. It takes about 3 minutes. I'll check it at about 18:25 UTC, confirm the Release, and send you the link.
+<!-- sha:fe8cb3cb035f -->
