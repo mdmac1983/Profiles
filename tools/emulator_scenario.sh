@@ -1242,13 +1242,21 @@ check "AN1: a real change to the custom launcher still switches battery saver of
 sleep 3     # runs #287 and #292 (section order base,x1,v,ac; never in n,x,ac,rb) counted a 'BATSAVER off' line AFTER the log was cleared although the saver stayed on (the value check below passed): the tail of the launcher change above (a late Home / router / window event) now finishes BEFORE the clear, so only reactions to the tap below are counted
 AN1_T0="$(adb shell date +%T 2>/dev/null | tr -d '\r')"
 adb logcat -c
+AN1_E0="$(adb shell date +%s 2>/dev/null | tr -d '\r\n ')"     # device epoch second: the tap below happens after it
 adb shell settings put global low_power 1; sleep 3
 AN1_T1="$(adb shell date +%T 2>/dev/null | tr -d '\r')"
 check "AN1: in the custom launcher a battery saver turned on by the user (the tile, the Settings screen) stays on until the launcher changes again" bash -c "[ \"$(lowpower)\" = 1 ]"
-adb logcat -d -s TjBatSaver:I | grep -c "BATSAVER off" > "$OUT/an1-offs.txt" 2>&1
-[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1: the guard's 'BATSAVER off' line(s) in the 3 s after the saver was turned on: $(adb logcat -d -s TjBatSaver:I | grep 'BATSAVER off' | head -3 | cut -c1-160 | tr '\n' '|') (what was running: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-120))"   # run #287 failed here once; this names the cause next time
-[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1 timeline: log cleared at $AN1_T0 (device clock), count taken at $AN1_T1; the app's own lock log, last lines: $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r' | tail -16 | cut -c1-105 | tr '\n' '|')"   # #292: which event flipped the launcher again?
-check "AN1: the guard wrote nothing to battery saver in between (no 'BATSAVER off' line)" bash -c "[ \"\$(tr -d ' \\r\\n' < $OUT/an1-offs.txt)\" = 0 ]"
+# Run #293 (3 s settle added) still counted ONE line, stamped 07:06:15.948, i.e. 7.5 s BEFORE the clear (07:06:23) and before the tap: the line of the double-Home change itself (the guard's legitimate switch-off), delivered by logd AFTER the clear (the emulator is slow after section v: its guest clock ran ~16 % slow). What the check means is "nothing after the tap", so the lines are counted by their own time stamp (logcat -v epoch against the device clock), not by the clear.
+adb logcat -d -v epoch -s TjBatSaver:I > "$OUT/an1-log.txt" 2>&1
+awk -v t="${AN1_E0:-0}" '/BATSAVER off/ && ($1+0) >= t' "$OUT/an1-log.txt" | wc -l | tr -d ' \r\n' > "$OUT/an1-offs.txt"
+AN1_STALE="$(awk -v t="${AN1_E0:-0}" '/BATSAVER off/ && ($1+0) < t' "$OUT/an1-log.txt" | wc -l | tr -d ' \r\n')"
+AN1_PARSED="$(grep -c '^[0-9]\{9,\}\.[0-9]' "$OUT/an1-log.txt" | tr -d ' \r\n')"; AN1_ALL="$(grep -c 'BATSAVER off' "$OUT/an1-log.txt" | tr -d ' \r\n')"
+if [ "${AN1_ALL:-0}" != 0 ] && [ "${AN1_PARSED:-0}" = 0 ]; then echo "$AN1_ALL" > "$OUT/an1-offs.txt"; info "AN1: the epoch time stamps were not recognised, so EVERY 'BATSAVER off' line counts"; fi   # never a vacuous pass
+info "AN1: tap after device epoch ${AN1_E0:-?} (log cleared at $AN1_T0, count taken at $AN1_T1): 'BATSAVER off' lines after the tap: $(tr -d ' \r\n' < "$OUT/an1-offs.txt"); older ones still in the log after the clear (ignored: the double-Home change's own switch-off): ${AN1_STALE:-?}; log lines parsed: ${AN1_PARSED:-?}"
+[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1: the guard's 'BATSAVER off' line(s) after the tap: $(grep 'BATSAVER off' "$OUT/an1-log.txt" | head -3 | cut -c1-110 | tr '\n' '|') (what was running: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-110))"
+[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1 timeline (lock log, 1/2): $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r' | tail -14 | head -7 | cut -c1-62 | tr '\n' '|')"
+[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1 timeline (lock log, 2/2): $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r' | tail -7 | cut -c1-62 | tr '\n' '|')"
+check "AN1: the guard wrote nothing to battery saver after the tap (no 'BATSAVER off' line stamped after it)" bash -c "[ \"\$(tr -d ' \\r\\n' < $OUT/an1-offs.txt)\" = 0 ]"
 adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
 
 # ---- the lock screen tests need a PIN (the same one as section n)
