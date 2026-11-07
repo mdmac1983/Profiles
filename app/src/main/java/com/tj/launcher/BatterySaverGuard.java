@@ -60,14 +60,20 @@ public final class BatterySaverGuard {
     }
 
     /** Switches battery saver off now if the rules say so. {@code why} is for the log / status line only. A DELIBERATE check (a mode change, the process start): the switch-off that follows is never capped. */
-    public static void check(Context c, String why) { check(c, why, false); }
+    public static void check(Context c, String why) { check(c, why, false, false); }
 
-    /** {@code reactive}: called because the setting CHANGED (something turned the saver on): only these switch-offs count toward the cap that protects against a tight loop. */
-    static void check(Context c, String why, boolean reactive) {
+    static void check(Context c, String why, boolean reactive) { check(c, why, reactive, false); }
+
+    /**
+     * {@code reactive}: called because the setting CHANGED (something turned the saver on): only these switch-offs count toward the cap that protects against a tight loop.
+     * {@code fromQuickstep} (BA2): a Quickstep session has just ended, so the saver's state RIGHT NOW is Quickstep's state: it is remembered before the switch-off so a later gesture unlock can bring it back.
+     */
+    static void check(Context c, String why, boolean reactive, boolean fromQuickstep) {
         try {
             if (!BatterySaverPolicy.mayAct(reactive, strict(c))) return;   // AN1: a change behind our back (the tile, Android) is left alone unless "strict" is on
             ContentResolver cr = c.getContentResolver();
             boolean on = BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.SETTING));
+            if (fromQuickstep) rememberQuickstep(c, on);   // BA2: before anything is written, also when it is off (a stale "on" memory is cleared)
             if (!on) return;   // nothing to do (one settings read); AZ2: the saver is never switched ON from here (Quickstep is stock)
             long now = System.currentTimeMillis();
             synchronized (BatterySaverGuard.class) {
@@ -75,12 +81,214 @@ public final class BatterySaverGuard {
                 if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  battery saver is on but the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
                 writes[writeIdx++ % writes.length] = now;
             }
-            Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 0);
-            if (BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.STICKY_SETTING))) Settings.Global.putInt(cr, BatterySaverPolicy.STICKY_SETTING, 0);
+            writeOff(c, cr, now);
             Features.setString(c, BatterySaverPolicy.LAST_KEY, stamp(now) + "  switched battery saver off in the custom launcher (" + why + ")");
             Log.i(TAG, "BATSAVER off (" + why + ")");
             LockLog.add(c, "BATSAVER", "guard switched it OFF (custom launcher active; " + why + ")");   // AG2
         } catch (Throwable t) { Log.e(TAG, "battery saver check failed", t); }
+    }
+
+    /** The one place that writes low_power = 0 (and the sticky flag): stamps {@link #selfWriteAt} (the observer must not take the echo for the person's choice) and starts / keeps the hold. */
+    private static void writeOff(Context c, ContentResolver cr, long now) {
+        selfWriteAt = now;
+        Settings.Global.putInt(cr, BatterySaverPolicy.SETTING, 0);
+        if (BatterySaverPolicy.isOn(Settings.Global.getString(cr, BatterySaverPolicy.STICKY_SETTING))) Settings.Global.putInt(cr, BatterySaverPolicy.STICKY_SETTING, 0);
+        markHeld(c, now);
+    }
+
+    // ---------------------------------------------------------------- BA2: the lock screen keeps the saver OFF; a gesture unlock into Quickstep brings Quickstep's own state back
+
+    /** When we last wrote low_power ourselves (the observer ignores the echo of that), and when the last restore was done (the keep-off rule leaves the unlock alone for a few seconds). */
+    private static volatile long selfWriteAt = 0, restoredAt = 0;
+    private static final long[] lockWrites = new long[BatterySaverPolicy.MAX_LOCK_WRITES];
+    private static int lockWriteIdx = 0;
+    private static final long[] restores = new long[BatterySaverPolicy.MAX_RESTORES];
+    private static int restoreIdx = 0;
+
+    /** Launcher control: the lock screen always has the saver off (any launcher). Default ON. */
+    public static boolean lockOffEnabled(Context c) { return Features.get(c, BatterySaverPolicy.LOCK_OFF_KEY, true); }
+    /** Launcher control: a gesture unlock into Quickstep brings Quickstep's own saver state back. Default ON. */
+    public static boolean lockRestoreEnabled(Context c) { return Features.get(c, BatterySaverPolicy.LOCK_RESTORE_KEY, true); }
+
+    private static long bootEpoch() { return System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime(); }
+
+    /** The battery level in percent, -1 when it cannot be read. */
+    static int batteryLevel(Context c) {
+        try {
+            android.content.Intent i = c.registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            if (i == null) return -1;
+            int level = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1), scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1);
+            return level < 0 || scale <= 0 ? -1 : Math.round(level * 100f / scale);
+        } catch (Throwable t) { return -1; }
+    }
+
+    private static boolean saverOn(Context c) { return BatterySaverPolicy.isOn(Settings.Global.getString(c.getContentResolver(), BatterySaverPolicy.SETTING)); }
+
+    /** BA2: a lock or unlock event: has the battery level risen since the last one? Then the tablet was charged meanwhile, and (while the guard holds the saver off) Android's own state was reset. */
+    private static void noteLevel(Context c) {
+        try {
+            int last = -1;
+            try { last = Integer.parseInt(Features.getString(c, BatterySaverPolicy.LEVEL_KEY, "-1")); } catch (NumberFormatException ignored) { }
+            int now = batteryLevel(c);
+            if (Features.get(c, BatterySaverPolicy.HELD_KEY, false) && BatterySaverPolicy.levelRose(last, now)) Features.setString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "1");
+            if (now >= 0) Features.setString(c, BatterySaverPolicy.LEVEL_KEY, String.valueOf(now));
+        } catch (Throwable ignored) { }
+    }
+
+    /** BA2: starts a hold (the saver is off BECAUSE of the guard) unless one is running: the facts the restore will check are recorded now. */
+    private static synchronized void markHeld(Context c, long now) {
+        if (Features.get(c, BatterySaverPolicy.HELD_KEY, false)) return;
+        Features.set(c, BatterySaverPolicy.HELD_KEY, true);
+        Features.setString(c, BatterySaverPolicy.HELD_AT_KEY, String.valueOf(now));
+        Features.setString(c, BatterySaverPolicy.HELD_BOOT_KEY, String.valueOf(bootEpoch()));
+        Features.setString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0");
+        int lv = batteryLevel(c);
+        if (lv >= 0) Features.setString(c, BatterySaverPolicy.LEVEL_KEY, String.valueOf(lv));
+    }
+
+    private static long heldAt(Context c) { try { return Long.parseLong(Features.getString(c, BatterySaverPolicy.HELD_AT_KEY, "0")); } catch (NumberFormatException e) { return 0; } }
+
+    /**
+     * BA2: remember what Quickstep's saver state is at the moment the guard is about to switch it off (or finds it off). A hold that began before the current Quickstep session is not this session's
+     * ({@link BatterySaverPolicy#holdStillValid}): it is dropped first, so the live state is what counts.
+     */
+    private static synchronized void rememberQuickstep(Context c, boolean on) {
+        boolean quickstepNow = Mode.QUICKSTEP.equals(Mode.get(c)) || true;   // callers only ask while a Quickstep session is the one ending / locking
+        boolean held = BatterySaverPolicy.holdStillValid(Features.get(c, BatterySaverPolicy.HELD_KEY, false), heldAt(c), Mode.qsStartAt(c), quickstepNow);
+        if (!held && Features.get(c, BatterySaverPolicy.HELD_KEY, false)) Features.set(c, BatterySaverPolicy.HELD_KEY, false);   // a Quickstep session began after that hold: start over
+        String stored = Features.getString(c, BatterySaverPolicy.QS_ON_KEY, "");
+        String next = BatterySaverPolicy.qsStateAtHold(true, held, on, stored);
+        if (!next.equals(stored)) Features.setString(c, BatterySaverPolicy.QS_ON_KEY, next);
+    }
+
+    /**
+     * BA2: THE LOCK MOMENT (screen off while locked, or the first locked wake): whichever launcher it came from, the lock screen has battery saver OFF. Quickstep's own state is remembered first. A saver that is
+     * already off needs no write. Blocking settings calls: call from a worker thread ({@link #onLockAsync}). Never throws; does nothing when switched off, paused, or without the adb permission.
+     */
+    public static void onLock(Context c, String why) {
+        try {
+            noteLevel(c);
+            if (!lockOffEnabled(c) || CrashGuard.automationOff(c)) return;
+            boolean locked = TileProfile.keyguardLocked(c);
+            if (!locked) return;
+            boolean on = saverOn(c);
+            boolean qs = Mode.QUICKSTEP.equals(Mode.get(c));
+            if (qs) rememberQuickstep(c, on);   // locked from Quickstep: the state right now is Quickstep's (also when it is off: a stale "on" is cleared)
+            if (!BatterySaverPolicy.lockOffWanted(true, locked, false, on)) return;
+            if (!permitted(c)) { Features.setString(c, BatterySaverPolicy.NOTE_KEY, stamp(System.currentTimeMillis()) + "  the lock screen has battery saver on: the adb permission (WRITE_SECURE_SETTINGS) is missing"); return; }
+            switchOffForLock(c, "lock screen: " + why, false);
+        } catch (Throwable t) { Log.e(TAG, "lock battery saver failed", t); }
+    }
+
+    public static void onLockAsync(final Context c, final String why) {
+        final Context app = c.getApplicationContext();
+        new Thread(new Runnable() { @Override public void run() { onLock(app, why); } }, "tj-bs-lock").start();
+    }
+
+    /** One switch-off for the lock screen. {@code reactive}: something turned the saver on while the lock screen is up (capped, see {@link BatterySaverPolicy#keepOffWanted}). True when it wrote. */
+    private static boolean switchOffForLock(Context c, String why, boolean reactive) {
+        long now = System.currentTimeMillis();
+        synchronized (BatterySaverGuard.class) {
+            if (reactive) {
+                if (!BatterySaverPolicy.keepOffWanted(true, true, false, true, now, restoredAt, lockWrites)) return false;
+                lockWrites[lockWriteIdx++ % lockWrites.length] = now;
+            }
+        }
+        writeOff(c, c.getContentResolver(), now);
+        Features.setString(c, BatterySaverPolicy.NOTE_KEY, stamp(now) + "  battery saver switched off (" + why + ")");
+        Log.i(TAG, "BATSAVER lock off (" + why + ")");
+        LockLog.add(c, "BATSAVER", "lock rule: switched OFF (" + why + "); " + BatterySaverPolicy.describe(Features.getString(c, BatterySaverPolicy.QS_ON_KEY, ""), true, false));
+        return true;
+    }
+
+    /**
+     * BA2: the observer saw {@code low_power} change. (1) While Quickstep has the tablet and the person made the change, that is Quickstep's state now (and the guard's hold is over). (2) While the lock screen is
+     * up and the saver came on again (Android's low-battery trigger, a notification button): switch it off again (capped). Never on our own echo.
+     */
+    private static void onSettingChanged(final Context app) {
+        try {
+            long ts = System.currentTimeMillis();
+            boolean own = ts - selfWriteAt < 1500;
+            boolean on = saverOn(app);
+            boolean locked = TileProfile.keyguardLocked(app);
+            boolean quickstep = Mode.QUICKSTEP.equals(Mode.get(app));
+            String stored = Features.getString(app, BatterySaverPolicy.QS_ON_KEY, "");
+            String next = BatterySaverPolicy.qsStateLive(quickstep, locked, own, on, stored);
+            if (!next.equals(stored)) {
+                Features.setString(app, BatterySaverPolicy.QS_ON_KEY, next);
+                if (Features.get(app, BatterySaverPolicy.HELD_KEY, false)) Features.set(app, BatterySaverPolicy.HELD_KEY, false);   // the person is in control again
+            }
+            if (!own && locked && on && lockOffEnabled(app) && !CrashGuard.automationOff(app) && permitted(app)) {
+                new Thread(new Runnable() { @Override public void run() { try { switchOffForLock(app, "something turned it on while the lock screen is up", true); } catch (Throwable t) { Log.e(TAG, "keep-off failed", t); } } }, "tj-bs-keepoff").start();
+            }
+        } catch (Throwable t) { Log.e(TAG, "battery saver change failed", t); }
+    }
+
+    /**
+     * BA2: AN UNLOCK was handled. Only a GESTURE unlock into Quickstep brings the saver back, and only when Android's own state cannot have been reset (see {@link BatterySaverPolicy#restoreRefusal}: not plugged in
+     * now, not plugged in or charged meanwhile, the same boot): the guard's switch-off left Android in "on" (MANUAL_ON / AUTOMATIC_ON), so one write of low_power = 1 puts the saver and Android's state in line again
+     * and the tile / Settings can turn it off. A plain unlock (the custom launcher) leaves the saver off and keeps the memory for the next gesture unlock. Whatever happens, what is on afterwards is Quickstep's state.
+     * Blocking: worker thread ({@link #onUnlockAsync}).
+     */
+    public static void onUnlock(Context c, boolean quickstepGesture) {
+        try {
+            noteLevel(c);
+            if (CrashGuard.automationOff(c)) return;
+            if (!Features.get(c, BatterySaverPolicy.HELD_KEY, false)) return;
+            if (!quickstepGesture) return;   // plain unlock = the custom launcher: the saver stays off; the hold and the memory wait for a later gesture unlock
+            for (int i = 0; i < 5 && TileProfile.keyguardLocked(c); i++) Thread.sleep(400);   // the keyguard can report "locked" for a moment after the unlock broadcast
+            long now = System.currentTimeMillis();
+            BatterySaverPolicy.Restore s = new BatterySaverPolicy.Restore();
+            s.switchOn = lockOffEnabled(c); s.restoreOn = lockRestoreEnabled(c); s.automationOff = false; s.permitted = permitted(c);
+            s.quickstepGesture = Mode.QUICKSTEP.equals(Mode.get(c));
+            s.held = true;
+            s.qsOn = Features.getString(c, BatterySaverPolicy.QS_ON_KEY, "");
+            s.saverOnNow = saverOn(c);
+            s.keyguardLocked = TileProfile.keyguardLocked(c);
+            s.chargingOrUnknown = !"no".equals(powerSource(c));
+            int last = -1;
+            try { last = Integer.parseInt(Features.getString(c, BatterySaverPolicy.LEVEL_KEY, "-1")); } catch (NumberFormatException ignored) { }
+            s.plugSeen = "1".equals(Features.getString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0"));
+            try { s.heldBootEpoch = Long.parseLong(Features.getString(c, BatterySaverPolicy.HELD_BOOT_KEY, "0")); } catch (NumberFormatException e) { s.heldBootEpoch = 0; }
+            s.nowBootEpoch = bootEpoch(); s.now = now;
+            synchronized (BatterySaverGuard.class) { s.recentRestores = restores.clone(); }
+            String why = BatterySaverPolicy.restoreRefusal(s);
+            if (why.isEmpty()) {
+                synchronized (BatterySaverGuard.class) { restores[restoreIdx++ % restores.length] = now; }
+                selfWriteAt = now; restoredAt = now;
+                Settings.Global.putInt(c.getContentResolver(), BatterySaverPolicy.SETTING, 1);
+                Features.setInt(c, BatterySaverPolicy.RESTORES_KEY, Features.getInt(c, BatterySaverPolicy.RESTORES_KEY, 0) + 1);
+                Features.setString(c, BatterySaverPolicy.NOTE_KEY, stamp(now) + "  gesture unlock into Quickstep: battery saver switched back on (it was on the last time in Quickstep)");
+                Log.i(TAG, "BATSAVER restored for Quickstep");
+                LockLog.add(c, "BATSAVER", "gesture unlock into Quickstep: low_power set to 1 (Quickstep had it on)");
+            } else {
+                Features.setString(c, BatterySaverPolicy.NOTE_KEY, stamp(now) + "  gesture unlock into Quickstep: battery saver left off (" + why + ")");
+                Log.i(TAG, "BATSAVER not restored: " + why);
+                LockLog.add(c, "BATSAVER", "gesture unlock into Quickstep: NOT switched back on (" + why + ")");
+            }
+            Thread.sleep(300);
+            // Quickstep has the tablet again: whatever happened above, what is on now is Quickstep's state and the guard holds nothing
+            Features.set(c, BatterySaverPolicy.HELD_KEY, false);
+            Features.setString(c, BatterySaverPolicy.QS_ON_KEY, saverOn(c) ? "1" : "0");
+        } catch (Throwable t) { Log.e(TAG, "unlock battery saver failed", t); }
+    }
+
+    public static void onUnlockAsync(final Context c, final boolean quickstepGesture) {
+        final Context app = c.getApplicationContext();
+        new Thread(new Runnable() { @Override public void run() { onUnlock(app, quickstepGesture); } }, "tj-bs-unlock").start();
+    }
+
+    /** BA2: a charger was plugged in: while the guard holds the saver off, Android's own state is reset by that, so the saver is never switched back on from outside. */
+    public static void onPowerEvent(Context c, boolean connected) {
+        try { if (connected && Features.get(c, BatterySaverPolicy.HELD_KEY, false)) Features.setStringAsync(c, BatterySaverPolicy.PLUG_SEEN_KEY, "1"); } catch (Throwable ignored) { }
+    }
+
+    /** One line for Launcher control and the tablet report. */
+    public static String lockStatus(Context c) {
+        try {
+            return BatterySaverPolicy.describe(Features.getString(c, BatterySaverPolicy.QS_ON_KEY, ""), Features.get(c, BatterySaverPolicy.HELD_KEY, false), "1".equals(Features.getString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0")))
+                    + "; last: " + Features.getString(c, BatterySaverPolicy.NOTE_KEY, "(nothing yet)") + "; restores so far " + Features.getInt(c, BatterySaverPolicy.RESTORES_KEY, 0);
+        } catch (Throwable t) { return "?"; }
     }
 
     // ---------------------------------------------------------------- AZ2: the self-heal
