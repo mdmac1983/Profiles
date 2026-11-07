@@ -2071,22 +2071,27 @@ ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's pr
   local B64; B64="$(base64 -w0 "$OUT/ptset.sed")"
   adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/ptset.sed; sed -i -f files/ptset.sed shared_prefs/tj_features.xml'"; }
 # ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
-ptrun(){ local L="$1"
+ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), swipe (a swipe up from the bottom edge for the PIN pad) (BC2)
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.2; adb shell input keyevent KEYCODE_BACK; sleep 2.2; adb logcat -c   # one unfilmed opening first: the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured; the real use is the second one on
   adb shell rm -f /sdcard/pt.mp4 >/dev/null 2>&1
   ( adb shell screenrecord --time-limit 6 /sdcard/pt.mp4 >/dev/null 2>&1 & )
   sleep 1.6
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
-  adb shell input keyevent KEYCODE_BACK; sleep 3.4
+  case "$M" in
+    tap) adb shell input tap 150 700;;
+    swipe) adb shell input swipe 300 1010 300 300 220;;
+    *) adb shell input keyevent KEYCODE_BACK;;
+  esac; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-$L.txt" 2>&1)"
-  if [ "$L" = fade25 ] || [ "$L" = jump ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
+  if [ "$L" = fade25 ] || [ "$L" = jump ] || [ "$M" != back ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
     info "PT $L events 1: $(echo "$EVS" | cut -c1-330)"; info "PT $L events 2: $(echo "$EVS" | cut -c331-660)"; info "PT $L events 3: $(echo "$EVS" | cut -c661-990)"
   else
-    info "PT $L decisions: $(grep -E 'PATCH (fast|fade|menu closed|scan|hold)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
+    info "PT $L decisions: $(grep -E 'PATCH (fast|fade|close|menu closed|scan|hold)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
   fi
+  [ "$M" = swipe ] && { adb shell input keyevent KEYCODE_BACK; sleep 1; palock; sleep 2; }
   adb logcat -c; }
 ptanim(){ for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }   # the CI emulator runs with animations OFF: the stock scrim then appears in ONE frame; the tablet fades it in over 300 ms
 ptget(){ grep "label=$1 " "$OUT/pt-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
