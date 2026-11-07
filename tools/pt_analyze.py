@@ -11,7 +11,7 @@ looks darker or lighter than its surround = the flicker Tj saw. The metric is th
   python3 -I tools/pt_analyze.py <video.mp4> <label> --disp WxH --p X,Y --s X,Y [--box 20] [--fps 60]
   python3 -I tools/pt_analyze.py --selftest
 
-Prints one line:  PTMETRIC label=... frames=N onset=0.84s r0=1.02 open_max=0.031 open_final=-0.004 open_at=0.11s close_max=... close_final=... rest_noise=0.002
+Prints one line:  PTMETRIC label=... frames=N onset=0.84s r0=1.02 open_max=0.031 open_shape=0.020 open_final=-0.004 open_at=0.11s close_max=... close_final=... rest_noise=0.002
 Needs ffmpeg (the workflow installs it for section pt). Standard library only.
 """
 import re
@@ -175,10 +175,19 @@ def selftest():
     P_late = [1.3 * surround(t - 0.06) for t in ts]
     l = analyse(P_late, S, fps)
     assert m["open_max"] < l["open_max"] < j["open_max"], (m, l, j)
+    # wrong END level, perfect timing (run #277: the scrim settled at 0.75 and the patch at 0.80): open_max counts the end-level offset, open_shape must not
+    def dimmed(t, depth):
+        a = 0.0
+        if t >= 0.8: a = depth * fosi((t - 0.8) / 0.3)
+        if t >= 2.0: a = depth * (1 - logacc((t - 2.0) / 0.3))
+        return 100.0 * (1 - a)
+    d = analyse([1.3 * dimmed(t, 0.25) for t in ts], S, fps)
+    assert d["open_max"] > 0.05 and d["open_shape"] < 0.01, d
+    assert m["open_shape"] < 0.005 and j["open_shape"] > 0.10 and m["open_shape"] < l["open_shape"] < j["open_shape"], (m["open_shape"], l["open_shape"], j["open_shape"])
     # a filmed run in which the menu never opened
     flat = analyse([130.0] * 200, [100.0] * 200, fps)
     assert "error" in flat
-    print("pt_analyze selftest OK: perfect %.4f / late %.4f / jump %.4f (open_max)" % (m["open_max"], l["open_max"], j["open_max"]))
+    print("pt_analyze selftest OK: perfect %.4f / late %.4f / jump %.4f (open_max); open_shape %.4f / %.4f / %.4f; wrong end level: open_max %.4f, open_shape %.4f" % (m["open_max"], l["open_max"], j["open_max"], m["open_shape"], l["open_shape"], j["open_shape"], d["open_max"], d["open_shape"]))
     return 0
 
 
@@ -227,8 +236,8 @@ def main(argv):
     print("PTSERIES label=%s (t_ms:S/P/dev in per-mille from the onset) %s" % (label, series(P, S, fps, on_idx, m["r0"])))
     if "close_onset" in m:   # the same curves around the moment the surround starts to brighten again (the stock dismissal, or the window going away)
         print("PTCLOSE label=%s (t_ms:S/P/dev in per-mille from the half-recovery of the surround) %s" % (label, series(P, S, fps, int(round(m["close_onset"] * fps)), m["r0"], span_ms=(-300, 250), step=1)))
-    print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f hold_max=%.4f hold_at=%.2fs hold_s=%.1f" % (
-        label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0), m.get("hold_max", -1), m.get("hold_at", -1), m.get("hold_s", 0)))
+    print("PTMETRIC label=%s frames=%d onset=%.2fs r0=%.3f rest_noise=%.4f open_max=%.4f open_shape=%.4f open_at=%.2fs open_final=%+.4f close_max=%.4f close_at=%.2fs close_final=%+.4f hold_max=%.4f hold_at=%.2fs hold_s=%.1f" % (
+        label, m["frames"], m["onset"], m["r0"], m["rest_noise"], m["open_max"], m["open_shape"], m["open_at"], m["open_final"], m.get("close_max", -1), m.get("close_at", -1), m.get("close_final", 0.0), m.get("hold_max", -1), m.get("hold_at", -1), m.get("hold_s", 0)))
     return 0
 
 
