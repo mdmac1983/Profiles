@@ -1,13 +1,13 @@
-# CHECKPOINT 595 — read me first, then TASKS.md
+# CHECKPOINT 596 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T06:56:28Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `56c1a0c` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T07:15:39Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `bf1450a` (this checkpoint is the commit after it)
 
 ## Just done
-run #292 id 42347734404 (base,x1,v,ac,ps) on 94671f9: 78 PASS, 1 FAIL = AN1 'guard wrote nothing in between' (same check as #287, same section order base,x1,v,ac; the 'saver stays on' check PASSED, so the guard did not fight the tap: a 'BATSAVER off (the custom launcher became active)' line landed after the log clear). Product code of the guard/Mode/router is unchanged since v0.8.2. Scenario now waits 3 s before the clear + prints device times and the lock-events.log tail when it recurs
+run #293 id 42349158289 (base,x1,v,ac on 8309cc6) AN1 FAILED AGAIN (67 PASS 1 FAIL), the diagnostic found it: the ONE counted line 'BATSAVER off (the custom launcher became active)' is stamped 07:06:15.948 but the log was cleared at 07:06:23 and the tap came after: it is the double-Home change's own legitimate switch-off, delivered by logd after the clear (guest clock ran ~16% slow after section v). Product unchanged. AN1 now counts lines by their own epoch stamp (logcat -v epoch vs device date) + INFO with stale/parsed counts + a never-vacuous guard
 
 ## Do this next
-dispatch emulator.yml sections base,x1,v,ac on ref ccr-823c5a56-yg8voe (about 13 min); if AN1 passes: dispatch android.yml full_build on main, get_release_by_tag v0.8.3, tools/record-release.sh v0.8.3, HANDOFF 0g, tell Tj; if AN1 fails again: read the 'AN1 timeline' INFO line (lock log tail) and fix the cause
+dispatch emulator.yml sections base,x1,v,ac on ccr-823c5a56-yg8voe again (about 12 min, ~07:15 start); AN1 passing = release: dispatch android.yml full_build on main, get_release_by_tag v0.8.3, tools/record-release.sh v0.8.3, HANDOFF 0g, tell Tj; AN1 failing = read the 'AN1:' INFO lines (they now carry stale count, parsed count and the lock-log timeline)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ dispatch emulator.yml sections base,x1,v,ac on ref ccr-823c5a56-yg8voe (about 13
 
 ## Last ten checkpoints
 ```
+  8309cc6 ckpt 595: run #292 id 42347734404 (base,x1,v,ac,ps) on 94671f9: 78 PASS, 1 FAIL = AN1 'g
   661d9df ckpt 594: run #291 id 42347732366 (pt) on 94671f9 GREEN, 0 FAIL: PB reach 28 rows (v0.8.
   34cd3da ckpt 593: gated v0.8.3 (code 28) and pushed it: the handoff self-test, the full unit sui
   c517c03 ckpt 592: HANDOFF.md 0g refreshed for v0.8.3 + old handoff-launcher.md marked superseded
@@ -25,8 +26,7 @@ dispatch emulator.yml sections base,x1,v,ac on ref ccr-823c5a56-yg8voe (about 13
   89fbc42 ckpt 588: gate runs on 84b3dd1: #286 (e1,o,ae,pa,rb,last) 37 PASS + emulator went offlin
   aaf3b24 ckpt 587: six gate runs in flight: ON 84b3dd1 (06:10Z) #285 id 42345818982, #286 id 4234
   6900074 ckpt 586: BB2 (Tj: 'the lock screen screenshot itself again, not sure why'): the helper 
-  35f1518 ckpt 585: dispatched the 3 gate runs on 84b3dd1 at 06:10Z: #285 id 42345818982, #286 id 
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(4 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
