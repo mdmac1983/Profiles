@@ -1,21 +1,23 @@
-# CHECKPOINT 621 — read me first, then TASKS.md
+# CHECKPOINT 622 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T18:19:25Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `c1ddc45` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T18:25:40Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `bceb9aa` (this checkpoint is the commit after it)
 
 ## Just done
-confirmation {base,x1,e1} #306 id 42399859690 = success: the #303 e1 failure was a flake; ALL gates green for v0.8.4; android.yml full_build dispatched on main at 18:19 UTC (head c6cb66b, app code = cc1f17f)
+v0.8.4 SHIPPED: android.yml run 31 id 42400691090 on c6cb66b green, Release v0.8.4 published 18:21 UTC (Launcher-v0.8.4.apk 9178206 bytes, code 29, signed), recorded in BUILDLOG, HANDOFF 0g updated
 
 ## Do this next
-find the android.yml run (list_workflow_runs android.yml branch main event workflow_dispatch perPage 1), wait ~4 min (background timer, then list_workflow_jobs), get_release_by_tag v0.8.4 (Launcher-v0.8.4.apk), bash tools/record-release.sh v0.8.4 '<note>', HANDOFF 0g SHIPPED line, tell Tj (link on its own line)
+NOTHING is waiting on Claude except new requests. Waiting on Tj: (1) install v0.8.4 and say how the right-edge sliver, the tap-close fade and the PIN pull-up hide look (the open-menu PIN case is untested on the emulator); (2) BC4 the screenshots: his Launcher control screenshot (Power menu section) + when it happens; (3) BD1 hidden apps in Recents + BD2 slow unlock: the tablet report right after one (tools/tablet-intake.sh); then do BD1/BD2 in a FRESH session (this one is very long): read TASKS BD1a/BD2a leads; plus BB1/BB3c (v0.8.3 questions)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M HANDOFF.md
 
 ## Last ten checkpoints
 ```
+  36b0efb ckpt 621: confirmation {base,x1,e1} #306 id 42399859690 = success: the #303 e1 failure w
   c6cb66b ckpt 620: HANDOFF 0g refreshed for v0.8.4 (contents, evidence pointers, test lessons, wh
   1231dd8 ckpt 619: core on the final code: #304 {n,o,rb} green; #303 {base,x1,e1,ac} 2 FAIL in e1
   a1c477e ckpt 618: v0.8.4 gated and pushed (code 29); #302 id 42397572681 (v alone) green after t
@@ -25,8 +27,4 @@ find the android.yml run (list_workflow_runs android.yml branch main event workf
   d530023 ckpt 614: gate read: #297 and #298 green on a8f76b6, #299 (pt,last) 3 FAIL = the noisy o
   986ddfa ckpt 613: Tj corrected BC5 (17:17 UTC): the PIN-pad hide must work with NO power menu op
   4a16127 ckpt 612: BD1/BD2 leads written to TASKS (ReturnReset black cover, TaskOrigin/RMTASKS by
-  6bf1bcb ckpt 611: Tj's new message (17:12 UTC): BD1 hidden apps (Telegram, Claude) were in the R
 ```
-
-(1 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
