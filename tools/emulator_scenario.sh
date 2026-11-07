@@ -1239,11 +1239,15 @@ adb shell settings put global low_power 1; sleep 3
 check "AN1: turned on again it stays on" bash -c "[ \"$(lowpower)\" = 1 ]"
 adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 5     # a REAL change to the custom launcher (double Home)
 check "AN1: a real change to the custom launcher still switches battery saver off at once" bash -c "[ \"$(lowpower)\" = 0 ]"
+sleep 3     # runs #287 and #292 (section order base,x1,v,ac; never in n,x,ac,rb) counted a 'BATSAVER off' line AFTER the log was cleared although the saver stayed on (the value check below passed): the tail of the launcher change above (a late Home / router / window event) now finishes BEFORE the clear, so only reactions to the tap below are counted
+AN1_T0="$(adb shell date +%T 2>/dev/null | tr -d '\r')"
 adb logcat -c
 adb shell settings put global low_power 1; sleep 3
+AN1_T1="$(adb shell date +%T 2>/dev/null | tr -d '\r')"
 check "AN1: in the custom launcher a battery saver turned on by the user (the tile, the Settings screen) stays on until the launcher changes again" bash -c "[ \"$(lowpower)\" = 1 ]"
 adb logcat -d -s TjBatSaver:I | grep -c "BATSAVER off" > "$OUT/an1-offs.txt" 2>&1
 [ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1: the guard's 'BATSAVER off' line(s) in the 3 s after the saver was turned on: $(adb logcat -d -s TjBatSaver:I | grep 'BATSAVER off' | head -3 | cut -c1-160 | tr '\n' '|') (what was running: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-120))"   # run #287 failed here once; this names the cause next time
+[ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1 timeline: log cleared at $AN1_T0 (device clock), count taken at $AN1_T1; the app's own lock log, last lines: $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r' | tail -16 | cut -c1-105 | tr '\n' '|')"   # #292: which event flipped the launcher again?
 check "AN1: the guard wrote nothing to battery saver in between (no 'BATSAVER off' line)" bash -c "[ \"\$(tr -d ' \\r\\n' < $OUT/an1-offs.txt)\" = 0 ]"
 adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
 
