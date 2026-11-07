@@ -1380,6 +1380,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
+                BatterySaverGuard.onPowerEvent(getApplicationContext(), android.content.Intent.ACTION_POWER_CONNECTED.equals(act));   // BA2: a plug-in resets Android's own saver state: the guard never switches the saver back on from outside after one
             }
         }
     };
