@@ -1,41 +1,66 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-06T19:24:15.251Z",
+  "generatedAt": "2026-11-07T23:30:39.946Z",
   "project": "Launcher",
-  "session": "6f383830",
-  "headline": "Goal: keep Launcher releasable and handoff-lossless across sessions, ship v0.8.0 safely, then make lock screen behaviour",
-  "summary": "Launcher = Tj's custom Android 10 (API 29) Go-edition home launcher, Java, in-repo Launcher3, applicationId com.tj.launcher, sideloaded, public repo tjshea90/Launcher. Claude writes code; GitHub Actions builds/signs APKs and runs emulator gate. Session 2026-11-06 took over from dead chat (branch claude/new-session-7a9vpi, died \"Prompt is too long\" mid-way to v0.8.0). Fast-forwarded to tip, read two failed CI runs, diagnosed, fixed, gated, independently reviewed, released v0.8.0 (code 25) 19:14Z: https://github.com/tjshea90/Launcher/releases/tag/v0.8.0 . android.yml run 27 (id 42277575772) built from e5f28ea (gated product code + version bump); BUILDLOG line recorded in 51eb264. Release contents: AM1 invisible lock-screen patch (real pixels from one system screenshot, calibrated once via Launcher control > Power menu > Calibrate the patch); AR1 Launcher control in 10 collapsible groups + fixed Restore footer; AQ1 unlock/restart checks; audits research/SETTINGS_AUDIT.md + research/PERF_AUDIT.md; two review fixes. Gate: all 28 emulator sections green on final or product-identical code, 454 unit tests, lint clean. Tablet checklist for Tj: research/TABLET_CHECKLIST_v0.8.0.md. Session branch claude/new-session-8o8uj9; main still v0.7.4 on purpose (MIRROR_MAIN off). Open: new Tj lock-screen requirement (AW1 audit: tiles GAP, radios/notifications hold weakly, number holds, Screenshot gap until calibrated); AW5 and AF2 decisions pending from Tj.",
-  "taskDescription": "Goal: keep Launcher releasable and handoff-lossless across sessions, ship v0.8.0 safely, then make lock screen behaviour match Tj's strict requirement without breaking anything (safety first, L10). Core intent: lock screen from ANY launcher at ANY time shows rotation tile only in quick settings, never Wi-Fi/Bluetooth/notifications, lock number always at bottom, power menu always hides Screenshot. Stock Quickstep v10 is the visual ground truth.",
-  "currentStatus": "DONE: v0.8.0 released and gated (see summary). Independent read-only code review before release: no blocker; fixed 2 items in TjAccessibilityService.patchShow (no synchronous commit/fsync on UI thread: diagnostic restInfo moved to restRecheck, written via apply through Features.setStringAsync; patch set non-touchable whenever menu closed); other review items logged as TASKS AU2-AU8. tools/resume.sh briefing now shows 20 newest open tasks (was oldest 30, hid recent requests, exceeded 10,000-char hook cap). REMAINS: AW2-AW4 lock-screen implementation for v0.8.1 not started. AW1 RESULT written in TASKS.md: tiles = GAP (TileProfile applies only through Mode.set; nothing at lock; Tj's tablet keeps Quickstep tile list on lock after locking from Quickstep); radios/notifications hold only weakly (LockQuiet: 3 switch-offs per 60 s cap, nothing before helper binds after restart); number holds (LockNumber.shouldShow ignores mode); Screenshot = gap until calibrated (review AU3). Tablet verification of v0.8.0 incl. notification panel pulled down on lock screen still open (review AU5). Checkpoints ckpt 510-521 in CHECKPOINT.md. Tablet has no reachable shell helper: lock-screen mode flips only at unlock on real device, unlike emulator.</currentStatus>\n<parameter name=\"keyDecisions\">[\"Decision: build releases from working branch; main untouched and MIRROR_MAIN stays off — Reason: concurrent-session safety, android.yml builds main HEAD, v0.7.5-0.7.7 shipped the same way; move main only on Tj's word.\", \"Decision: after a small product change use delta gate (bash tools/gate.sh <base-rev>) instead of full re-gate — Reason: Tj rule, only reasonable fast tests.\", \"Decision: gate grouping: base and legacy in same run — Reason: scenario check reset2 passes only after base (known RS1); rg in its own run — Reason: order-sensitive; AA1 in section im is a known flake (also fails on v0.7.7 tag, passes on tip).\", \"Decision: independent read-only code review before every release — Reason: Tj rule L10 safety overrides everything.\", \"Decision: resume.sh shows 20 newest open tasks — Reason: oldest-30 view hid every recent request and broke the 10,000-char hook cap.\", \"Decision: v0.8.1 plan: TileProfile.listFor(mode, keyguardLocked) pure rule; apply custom tile list at lock (LockQuiet.onLockAsync path, TjAccessibilityService ~849) and at service connect when keyguard up; re-apply Mode.get list at every unlock (gesture ~918, plain ~923, reconcile ~952). LockQuiet retries radios slowly while locked instead of 3-per-60 s give-up; enforce at connect. Reason: AW1 audit gaps; real-device behaviour (no helper) must be proven, not emulator behaviour.\"]",
-  "keyDecisions": [],
-  "userContribution": "Tj sent screenshots of the dead chat (implicit instruction to resume v0.8.0 work) and asked whether the release already enforces a quiet lock screen with one tile. Tj then specified the strict lock-screen requirement: rotation tile only in quick settings, no Wi-Fi/Bluetooth/notifications ever, lock number always at bottom, power menu always hides Screenshot.",
+  "session": "14e1bbae",
+  "headline": "Goal: custom Android 10 Go-edition home launcher (com.tj.launcher, Java, sideloaded port of AOSP Launcher3 plus TjAccess",
+  "summary": "Launcher v0.8.5 (versionCode 30) done and released. Tj 2026-11-07 ~20:17 UTC report after v0.8.4: BE1 lock-screen power-menu patch flicker + brief stock Screenshot flash; BE2 custom Recents must never show hidden-from-drawer apps; BE3 custom launcher must start from lock screen instantly, prep invisibly. All three shipped: RecentsSweep membership guard, clean start (no Solitaire, empty Recents at custom start), immediate hide at finger down, fast open path fix, pre-created patch window. Build: android.yml full_build run passed, cert verified, Release published, recorded in BUILDLOG.md. Gate: emulator runs plus core sections green; /code-review high run before gate found 10 real lock-safety bugs, all fixed. Only BE4 (Tj tablet check) open. Not measured on real tablet: only CI emulator and JVM tests.",
+  "taskDescription": "Goal: custom Android 10 Go-edition home launcher (com.tj.launcher, Java, sideloaded port of AOSP Launcher3 plus TjAccessibilityService) must feel stock-instant and trustworthy on low-RAM Go tablet. Intent: hidden apps stay hidden everywhere incl. Recents; lock-screen transitions flicker-free; custom home reachable from lock screen immediately; Quickstep (stock) may be slower. Claude writes code, GitHub Actions builds signed APK, many sessions over time, handoff must be lossless.",
+  "currentStatus": "DONE: v0.8.5 released, BE1-BE3, BD1, BD2 ticked in TASKS.md with proof. Final reply with Release link, limits, tablet-check request already sent to Tj. CHECKPOINT.md latest ckpt pushed; branch and main in sync. OPEN: BE4 = Tj tablet check, checklist at research/TABLET_CHECKLIST_v0.8.5.md. Not verified on real hardware. Why: release gate needs emulator plus JVM; tablet-only behaviour (PIN pad timing, Screenshot flash, no-helper cover time) only Tj can confirm.",
+  "keyDecisions": [
+    "Decision: Recents guarantee by drawer MEMBERSHIP (new RecentsSweep, HiddenApps.isPackageShown), not origin tracking — Reason: origin heuristics missed window events and counted leftover tasks as custom (Telegram and Claude leak seen on tablet).",
+    "Decision: clean start = no Solitaire stand-in; switch clean_start, release default ON, debug default OFF (same pattern as ScrimMeasure.defaultOn and recents_sweep) — Reason: debug keeps older emulator sections' Solitaire expectations; Tj delegated the choice ('if it is better'), so Claude decided; Tj can flip it in Launcher control.",
+    "Decision: complete Recents clear only when custom session STARTS (Quickstep session ended, first unlock after boot, boot flag expires after 24 h), not every unlock — Reason: keeps apps Tj is actively using; HIDDEN_ONLY sweep gives the any-time guarantee.",
+    "Decision: with adb shell helper, invisible sweeps by task id (same as swiping a card, no force-stop) at lock time, after plain unlock, when Recents opens, 0.4 s after a hidden app leaves screen. Without helper: on-screen recentsEmpty (Clear all, else Close every card via accessibility) behind black cover; settleHome removes cover as soon as custom home is in front — Reason: old cover waited for Solitaire cold start (seconds).",
+    "Decision: patch hides at finger DOWN via FLAG_WATCH_OUTSIDE_TOUCH / ACTION_OUTSIDE; fast open path no longer refuses a merely 'away' patch; patch window pre-created while screen dark (lockPrepare / layerRefresh) — Reason: keyguard 'PIN pad coming' event arrives late when busy (emulator: hidden 64-73 ms after finger down); refusal of 'away' patch caused the Screenshot flash.",
+    "Decision: run /code-review high on diff BEFORE gate, then gate once; tiered gate via tools/gate.sh and tools/gate-map.txt — Reason: review found 10 real bugs in ~700 lock-safety lines; tiered gate keeps Actions minutes low."
+  ],
+  "userContribution": "Tj used v0.8.4 on the real tablet and reported both symptoms (brief patch flicker at PIN pull-up; one Screenshot-button flash). Tj wrote the Recents requirement twice (BD1/BD2 and the 20:17 audit request). Tj asked for immediate custom unlock from lock screen. Tj asked for status mid-session.",
   "userDecisions": [
     {
-      "decision": "Lock screen from any launcher at any time: rotation tile only in quick settings, no Wi-Fi/Bluetooth/notifications, number at bottom, power menu always hides Screenshot.",
-      "reason": "Tj's stated requirement after asking whether v0.8.0 already gives a quiet lock screen with one tile.",
-      "alternativesRejected": "Accepting the v0.8.0 lock-screen behaviour as sufficient."
+      "decision": "Hidden-from-drawer apps must never appear in custom Recents",
+      "reason": "Telegram and Claude were seen in custom Recents",
+      "alternativesRejected": "none stated"
+    },
+    {
+      "decision": "Custom launcher start must be immediate; Quickstep may be slower",
+      "reason": "Custom launcher is the daily driver",
+      "alternativesRejected": "none stated"
     }
   ],
   "failedApproaches": [
-    "Approach: old chat concluded resting lock patch stays hidden because emulator section ps red-crop control failed → Result: wrong; cause was bare rebind keeping old service instance with in-memory real crop → Lesson: restart in scenarios with am force-stop + sleep + rebind (like section ae); fixed in tools/emulator_scenario.sh, proof run 226 (15 PASS).",
-    "Approach: listing CI runs and long log tails → Result: 10 KB+ outputs because run listings echo head commit message → Lesson: keep ckpt text short; confirm green via get_workflow_run conclusion; fetch long tail (>=110 lines) only on failure.",
-    "Approach: waiting for CI with date-based shell timers → Result: VM clock lags GitHub by ~20 min → Lesson: wait by duration or ask GitHub; get_job_logs 404 means job still running.",
-    "Approach: full emulator gate runs → Result: one died with 'emulator went offline' (infra), another hung 25 min → Lesson: cancel and redispatch only the unreached sections.",
-    "Approach: told Tj lock screen normally shows one tile because emulator flips mode to custom at lock within ~1 s → Result: wrong on Tj's tablet (no shell helper: mode flips only at unlock; TjAccessibilityService ~849-854, 926, 952; PowerMenuRule comment) → Lesson: emulator has shell helper, Tj's tablet does not; verify real-device behaviour in code before claiming it."
+    "Approach: no-helper complete clear relied on shade Clear all within 1.8 s -> Result: did nothing on emulator (runs 307 and 314 class of failures) -> Lesson: added recentsEmpty fallback closing every card via accessibility Close.",
+    "Approach: recentsEmpty v1 returned after pressing Close without reaching its deadline -> Result: endless loop, reset hung with no result line -> Lesson: every polling loop checks deadline FIRST; max 3 presses per card; only cards with descriptions.",
+    "Approach: scenario injected boot flag without timestamp -> Result: invalid under new 24 h expiry -> Lesson: scenario writes clean_pending_boot_at from device clock.",
+    "Approach: scenario CS-A premise (restart process, expect old behaviour) -> Result: broken by correct new trigger -> Lesson: open Calendar then Contacts instead to test the trigger path.",
+    "Approach: hard-coded 0.80 scrim and strict fade-vs-step comparator in section pt -> Result: failed on CI emulator (state-dependent 0.75 or 0.80, noisy film) -> Lesson: use fitted scrim value and relaxed comparator.",
+    "Approach: big gate groups -> Result: emulator adb stall (~9 min) and GL checksum crash, one run cancelled at 50 min -> Lesson: split into smaller groups; infra flake, not product.",
+    "Approach: pulling large pt log tails into main session -> Result: heavy token use -> Lesson: read CI logs with small tail_lines or a read-only subagent."
   ],
-  "blockers": "none",
+  "blockers": "none for Claude. Waiting on Tj: BE4 tablet check. Limits: instant unlock needs adb helper re-run after every tablet restart (helper dies at reboot; persistent helper needs adb over TCP plus cable). Without helper cover still about 1.5 s on emulator. NotificationListener cannot be enabled on this low-RAM device.",
   "modifiedFiles": [
-    "tools/emulator_scenario.sh: ps control restart via force-stop + pid info",
-    "tools/resume.sh: briefing shows 20 newest open tasks",
-    "app/src/main/java/com/tj/launcher/TjAccessibilityService.java: patchShow non-touchable when menu closed; restInfo moved to restRecheck",
-    "app/src/main/java/com/tj/launcher/Features.java: setStringAsync with apply",
-    "app/build.gradle.kts: version 0.8.0 code 25",
-    "TASKS.md: added AT1-AT5, AU1-AU8, AV1-AV2, AW1-AW6 plus AW1 RESULT; ticked AM1, AQ1, AR1, AS1",
-    "HANDOFF.md: new section 0e",
-    "research/TABLET_CHECKLIST_v0.8.0.md: new plain tablet checklist",
-    "research/SETTINGS_AUDIT.md and research/PERF_AUDIT.md: audits",
-    "BUILDLOG.md: v0.8.0 line",
-    "CHECKPOINT.md: ckpt 510-521"
+    "app/src/main/java/com/tj/launcher/RecentsSweep.java: NEW membership sweep, policies HIDDEN_ONLY and ALL, systemLike guard, pending-request slot",
+    "app/src/main/java/com/tj/launcher/ReturnReset.java: clean start, boot-clean flag, cleanAtLock, settleHome, mayHaveWork",
+    "app/src/main/java/com/tj/launcher/TaskOrigin.java: finish complete mode",
+    "app/src/main/java/com/tj/launcher/AppOrigin.java: usage cache",
+    "app/src/main/java/com/tj/launcher/Mode.java, ProfileSession.java, TjHooks.java: small hooks",
+    "app/src/main/java/com/tj/launcher/ShellHelper.java: removeTasks in chunks of 40",
+    "app/src/main/java/com/tj/launcher/LockLog.java: addAsync",
+    "app/src/main/java/com/tj/launcher/RecentsFilter.java: one-pass close, sweep trigger",
+    "app/src/main/java/com/tj/launcher/TjAccessibilityService.java: ACTION_OUTSIDE hide, away guards, fastDecline fix, lockPrepare pre-create and sweep, recentsEmpty, boot-clean branch",
+    "app/src/main/java/com/tj/launcher/ControlActivity.java: 2 new toggles",
+    "app/src/main/java/com/tj/launcher/ReportState.java: allow-list keys",
+    "app/src/test: RecentsSweepTest.java NEW, CleanStartDefaultTest.java NEW",
+    "tools/emulator_scenario.sh: sections cs, cs2, pt phase H added",
+    "tools/gate-map.txt: tiered gate map",
+    ".github/workflows/emulator.yml: sections input",
+    "research/RECENTS_AND_UNLOCK_AUDIT_2026-11-07.md: NEW audit doc",
+    "research/TABLET_CHECKLIST_v0.8.5.md: NEW tablet check list for Tj",
+    "HANDOFF.md: section 0h added",
+    "CLAUDE.md: lessons sections for v0.8.5",
+    "TASKS.md: BE0-BE4 entries",
+    "BUILDLOG.md: v0.8.5 record",
+    "app/build.gradle.kts: versionCode 30, versionName 0.8.5"
   ],
   "implicitRules": [
     "Stack: Java (not Kotlin), Android 10 API 29, Go-edition launcher; Tj's Android 16 preference does not apply here.",
@@ -47,23 +72,32 @@
     "CI only via emulator.yml (sections input) and android.yml (full_build); no push triggers on workflows (minutes are scarce).",
     "Local Gradle only via bash tools/gradle.sh, one at a time; never ./gradlew directly.",
     "Live cable session with Tj: one short step per message, command in last message of turn.",
-    "Refer to Tj by name; no gendered pronouns."
+    "Refer to Tj by name; no gendered pronouns.",
+    "Release order: bash ship.sh note, then android.yml full_build=true, get_release_by_tag, record-release.sh only after green, then Release link as plain text on own line.",
+    "New Tj-facing behaviour switches default ON in release and OFF in debug (ScrimMeasure.defaultOn, recents_sweep, clean_start).",
+    "Every polling loop checks its deadline first.",
+    "Scenario must am force-stop the app before writing shared_prefs/tj_features.xml.",
+    "CI RESULTS block lists only FAIL and INFO lines (PASS not listed); read with small tail_lines.",
+    "ckpt text doubles as run log: put run ids in it.",
+    "Never switch tools/MIRROR_MAIN off; after push check origin main equals branch tip.",
+    "Fix flaky tests instead of rerunning the gate.",
+    "Tablet/emulator: CI emulator is not Tj's tablet; stock menu differs (4th Emergency entry, scrim 0.75 or 0.80 by state); cmd uimode night does nothing on image; dark path proven by JVM tests."
   ],
   "nextSteps": [
-    "Fresh session: bash tools/install-hooks.sh; read CHECKPOINT.md and TASKS.md section AW1 RESULT.",
-    "Get Tj's AW5 answer: A = helper auto-calibrates itself and leaves a gallery screenshot; B = plain cover over Screenshot slot until real crop exists; both recommended. Also AF2 privacy: 4 old unblurred lock-screen screenshots in public repo research/uploads/2026-11-03/ (options: remove from tree, make repo private, purge history).",
-    "Implement v0.8.1: AW2 (TileProfile.listFor rule, apply at lock and connect, re-apply at unlock); AW3 (LockQuiet slow retry while locked, enforce at connect); AW4 (prove number in both modes); AW5 per Tj. Add JVM tests. Emulator checks in sections lq and t with shell helper killed (pkill ShellServer): handshake into Quickstep, lock, sysui_qs_tiles must be rotation only; gesture unlock into Quickstep gives wifi,bt,rotation.",
-    "Delta gate: bash tools/gate.sh 51eb264; dispatch emulator.yml on the branch; read RESULTS block; then bump to 0.8.1 code 26, bash ship.sh \"note\", android.yml full_build on the branch, get_release_by_tag, tools/record-release.sh, tell Tj the Release link.",
-    "Verify v0.8.0 on tablet with Tj's checklist (research/TABLET_CHECKLIST_v0.8.0.md), incl. notification panel pulled down on lock screen (AU5).",
-    "Later: review follow-ups AU2-AU8 in TASKS.md."
+    "Nothing waits on Claude except new Tj requests. New Tj message: write into TASKS.md in his words, ckpt, then code.",
+    "When Tj returns BE4 results: bash tools/tablet-intake.sh <file>, then read research/tablet/LATEST.md, then read lock-log lines RESET, HOME custom home in front +N ms, CLEANLOCK, SWEEP, LOCKPREP no shell helper, PATCH order.",
+    "If no-helper cover still too long: drop the Enter-tap cover in a clean start when pre-armed home is the only thing under keyguard. Persistent helper needs adb over TCP plus cable.",
+    "If a hidden app still shows in custom Recents: check whether helper ran (SWEEP lines), then noteHiddenForSweep and RecentsFilter fallback.",
+    "Older open items in TASKS.md: BB1, BB3c, BC4 (lock screen takes a screenshot by itself, not diagnosed), AU5, RS1a-c, CBR2, AF2 (Tj decides on 4 old lock-screen screenshots in public repo)."
   ],
   "keywords": [
-    "launcher v0.8.0",
-    "lock screen",
-    "tileprofile",
-    "emulator gate",
-    "handoff",
-    "aw5 pending",
-    "release routine"
+    "launcher handoff",
+    "recents sweep",
+    "clean start",
+    "lock screen patch",
+    "v0.8.5",
+    "tablet check",
+    "release routine",
+    "gate tiers"
   ]
 }
