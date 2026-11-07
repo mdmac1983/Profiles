@@ -585,3 +585,16 @@
 ## 2026-11-07T06:43:08Z
 > That confirms it: the camera flashes, which is exactly the repeated measurement the fix targets. With the context nearly full, I'm recording your answer and a precise resume point first, then checking whether the two emulator runs are done.
 <!-- sha:d0f76aba524a -->
+
+## 2026-11-07T06:46:24Z
+> v0.8.3 is not released yet. I'm waiting on the last two emulator runs and the local release checks.
+>
+> - **Emulator runs:** one covers the faint-line fix and the once-per-theme measurement. The other covers the lock-safety core. They should finish around 06:52 UTC, and I'll read both then.
+> - **Local checks:** the version is bumped to 0.8.3 (code 28). The unit tests and lint are running, and the commit is pushed only if they pass.
+> - **If both runs are green:** I'll start the GitHub build and send you the Release link.
+> - **If either run fails:** I'll fix it before anything ships.
+>
+> Your two open items:
+> - **Faint line:** you'll need to look at it again on v0.8.3. One straight photo of the open menu would let me check it with the photo tool.
+> - **Control screen:** after v0.8.3, a screenshot of the Launcher control screen will show the new "why a measurement started" line.
+<!-- sha:9730e46291e6 -->
