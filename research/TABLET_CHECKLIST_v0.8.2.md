@@ -30,4 +30,4 @@ Install: open the Release page, download `Launcher-v0.8.2.apk`, install it over 
 ## Send back
 - The `Menu dimming measurement` line (Launcher control) and, if you can, the tablet report lines starting `menu dimming measurement (BA1)` and `battery saver on the lock screen (BA2)`.
 - What you still see at the end of the open (darker / lighter, whole square or edge), and anything that flashed.
-- Photos only in the chat, never in the repo.
+- Photos only in the chat, never in the repo. A new photo of the open menu is measured with `python3 -I tools/patch_photo_step.py <photo>` (2026-11-07: the same command on Tj's v0.8.1 photos said the square under Restart was 5 to 7 units of 255 darker than the lock screen around it; after v0.8.2 it should say NO CLEAR STEP). Best photo: straight on, the open menu AND the area under it in the frame (about 1.75 button heights below Restart), sharp, flash off, exposure locked, taken after the 300 ms fade.
