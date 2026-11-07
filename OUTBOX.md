@@ -457,3 +457,40 @@
 ## 2026-11-07T05:33:55Z
 > Waiting on emulator run #283 (about 8 minutes). It will give me the stock card's shadow depth and length on the emulator, and the line each patch geometry leaves.
 <!-- sha:b2df729803c0 -->
+
+## 2026-11-07T05:34:42Z
+> Here are the steps, in order. Each one is a quick test, and a plain answer to each is enough.
+>
+> **First, turn the saver on (in Quickstep)**
+> - Swipe down twice for Quick Settings and tap the **Battery Saver** tile.
+> - Or go to Settings > Battery > Battery Saver > **Turn on now**.
+> - The status bar then shows the saver is on.
+>
+> **The four checks**
+> 1. **Lock with the saver on.**
+>    - In Quickstep, with the saver on, press the side key to lock the tablet and wake it.
+>    - On the lock screen the saver should now be **off**, and the quick settings should show only the rotation tile.
+> 2. **Gesture unlock into Quickstep.**
+>    - Unlock with your gesture.
+>    - The saver should come **back on**. The screen may redraw once, because the dark theme switches back.
+>    - Then check that the tile, or Settings > Battery, turns it off again right away.
+> 3. **Plain PIN unlock (custom launcher).**
+>    - Turn the saver on in Quickstep, then lock the tablet.
+>    - Unlock with the plain PIN. You land in the custom launcher and the saver should **stay off**.
+>    - Lock again and unlock into Quickstep with the gesture. It should come back **on**, because it was on the last time you were in Quickstep.
+> 4. **Charger while locked.**
+>    - Lock the tablet, plug the charger in, unplug it, then gesture-unlock into Quickstep.
+>    - The saver should **stay off**. This is on purpose: after a plug-in Android can lose track of the saver, so it is not forced back on.
+>    - Check that the tile still works.
+>
+> **What to send me**
+> - One line per check: "as described" or what you saw instead.
+> - The "Menu dimming measurement" line is already in, thanks.
+> - If you can, send the tablet report. It has the `battery saver on the lock screen (BA2)` line.
+>
+> These two switches are in Launcher control > Battery, radios & speed. Turn either one off if the behavior bothers you:
+> - "Battery saver off on the lock screen"
+> - "Bring Quickstep's battery saver back after a gesture unlock"
+>
+> I'm still waiting on the emulator run for the faint line under the card, and I'll report that as soon as the numbers are in.
+<!-- sha:65c0917bf4f8 -->
