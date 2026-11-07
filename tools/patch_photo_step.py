@@ -12,7 +12,7 @@ INPUT: a photo of the tablet with the stock power menu OPEN on the lock screen (
 orientation is honoured. The photo is Tj's PRIVATE data: this tool only READS it and prints numbers (never copy a photo into the repo; the repo is public).
 
 METHOD: find the card (the biggest bright block), its item pitch = height / 2. Take the mean row profile of the columns under the card (12 % margin) and of a control strip left of the card. For each candidate edge row
-between 0.85 and 1.25 item pitches below the card, fit a line on each side (0.05-0.40 pitch away), extrapolate both to the edge and subtract. Net step = inside - control (luminance; per channel too). Positive = the
+between 0.97 and 1.15 item pitches below the card, fit a line on each side (0.05-0.40 pitch away), extrapolate both to the edge and subtract. Net step = inside - control (luminance; per channel too). Positive = the
 patch is DARKER than the wallpaper under it, in camera units 0-255 (auto exposure and tone curve apply: the card's white reads ~247, so the gain is near 1; direction and rough size only, the helper's own screenshot
 measurement is the exact one). The left edge (rows of the patch) is printed as a second opinion (raw: the wallpaper's own horizontal gradient is not removed).
 
@@ -27,7 +27,7 @@ import sys
 import numpy as np
 from PIL import Image, ImageOps
 
-EDGE_FROM, EDGE_TO = 0.85, 1.25      # where the patch's bottom edge is searched, in item pitches below the card
+EDGE_FROM, EDGE_TO = 0.97, 1.15      # where the patch's bottom edge is searched, in item pitches below the card (v0.8.1 geometry: 1.04-1.10 measured)
 EXPECT_ASPECT = 1.93                 # card height / width of the two-item lock-screen menu
 
 
@@ -92,26 +92,27 @@ def measure(a):
     if y1 - y0 < 1.3 * item or L - 0.95 * W < 0:
         return dict(out, error="the photo does not show enough below / left of the card (need 1.75 item pitches below it and a strip on its left)")
     y = np.arange(y0, y1)
-    p_in = a[y0:y1, int(L + 0.12 * W):int(R - 0.12 * W)].mean(1)
-    p_ct = a[y0:y1, int(L - 0.95 * W):int(L - 0.20 * W)].mean(1)
+    x_a, x_m, x_b = int(L + 0.12 * W), int(L + 0.50 * W), int(R - 0.12 * W)
+    prof = lambda x0, x1: np.median(a[y0:y1, x0:x1], axis=1)      # median over columns: a bright dust speck does not move it
+    p_in, p_ct = prof(x_a, x_b), prof(int(L - 0.95 * W), int(L - 0.20 * W))
+    p_l, p_r = prof(x_a, x_m), prof(x_m, x_b)                    # the two halves of the patch: repeatability
     cand = []
     for yb in np.arange(B + EDGE_FROM * item, B + EDGE_TO * item, max(1.0, item / 80)):
         s_in, lvl = _step(y, p_in, yb, item)
         s_ct, _ = _step(y, p_ct, yb, item)
         cand.append((lum(s_in) - lum(s_ct), yb, s_in, s_ct, lvl))
-    net = np.array([c[0] for c in cand])
-    k = int(np.abs(net).argmax())
-    _, yb, s_in, s_ct, lvl = cand[k]
-    far = np.array([abs(c[1] - yb) > 0.10 * item for c in cand])
-    noise = 1.4826 * np.median(np.abs(net[far] - np.median(net[far]))) if far.sum() > 4 else 0.0
-    out.update(edge=(yb - B) / item, net=float(net[k]), per_channel=s_in - s_ct, control=s_ct, level=lvl, noise=float(noise), level_lum=float(lum(lvl)))
-    out["clear"] = abs(out["net"]) >= max(1.0, 3.0 * noise)
+    k = int(np.abs(np.array([c[0] for c in cand])).argmax())
+    net, yb, s_in, s_ct, lvl = cand[k]
+    half = [float(lum(_step(y, p, yb, item)[0]) - lum(s_ct)) for p in (p_l, p_r)]
+    out.update(edge=(yb - B) / item, net=float(net), per_channel=s_in - s_ct, control=s_ct, level=lvl, level_lum=float(lum(lvl)), halves=half)
+    agree = half[0] * net > 0 and half[1] * net > 0 and min(abs(half[0]), abs(half[1])) >= 0.4 * abs(net)
+    out["clear"] = bool(abs(net) >= 2.0 and agree and abs(lum(s_ct)) < 0.5 * abs(net))
     if (lvl > 240).any():
         out["flags"].append("a channel is above 240 on the wallpaper side (%s): the camera clips it, ignore that channel" % "".join("RGB"[i] for i in range(3) if lvl[i] > 240))
-    if out["clear"] and not 0.95 <= out["edge"] <= 1.2:
-        out["flags"].append("the edge is %.2f pitches below the card, expected about 1.05" % out["edge"])
-    if abs(lum(s_ct)) > 0.5 * abs(out["net"]) and out["clear"]:
+    if abs(lum(s_ct)) >= 0.5 * abs(net) and abs(net) >= 2.0:
         out["flags"].append("the control strip shows a similar step (%+.1f): the wallpaper itself is not smooth here, do not trust the number" % lum(s_ct))
+    if abs(net) >= 2.0 and not agree:
+        out["flags"].append("the left and right halves of the patch disagree (%+.1f / %+.1f): do not trust the number" % (half[0], half[1]))
     out["left_raw"] = _left_step(a, L, W, B + 0.15 * item, B + 0.90 * item)
     return out
 
@@ -127,9 +128,9 @@ def report(name, r):
     pc, lv = r["per_channel"], r["level"]
     if r["clear"]:
         word = "DARKER" if r["net"] > 0 else "LIGHTER"
-        print("   the patch is %s than the wallpaper under it by %+.1f units of 255 (%.1f %% of the level %.0f); edge %.2f pitches below the card" % (word, abs(r["net"]), 100 * abs(r["net"]) / max(1.0, r["level_lum"]), r["level_lum"], r["edge"]))
+        print("   the patch is %s than the wallpaper under it by %.1f units of 255 (%.1f %% of the level %.0f); halves %+.1f / %+.1f; edge %.2f pitches below the card" % (word, abs(r["net"]), 100 * abs(r["net"]) / max(1.0, r["level_lum"]), r["level_lum"], r["halves"][0], r["halves"][1], r["edge"]))
     else:
-        print("   NO CLEAR STEP: |%.1f| is within the photo's noise (%.2f): the patch is invisible in this photo (or the photo is too soft to tell)" % (abs(r["net"]), r["noise"]))
+        print("   NO CLEAR STEP (net %+.1f, halves %+.1f / %+.1f, control %+.1f): the patch is invisible in this photo, or the photo is too soft / the wallpaper too busy to tell" % (r["net"], r["halves"][0], r["halves"][1], lum(r["control"])))
     print("   per channel (positive = patch darker): R %+.1f  G %+.1f  B %+.1f | wallpaper-side levels R %.0f G %.0f B %.0f | control strip %+.1f | left edge raw R %+.1f G %+.1f B %+.1f (negative = patch darker)" % (
         pc[0], pc[1], pc[2], lv[0], lv[1], lv[2], lum(r["control"]), r["left_raw"][0], r["left_raw"][1], r["left_raw"][2]))
     for f in r["flags"]:
