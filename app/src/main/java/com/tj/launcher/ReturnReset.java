@@ -51,8 +51,11 @@ public final class ReturnReset {
      * BE3: does the complete clear of Recents have anything to do? Not when nothing was used since the last clear: the dirty flag, the tracker, Android's own usage log (any app resumed since, whoever opened it) and
      * a fresh boot all say "yes"; the first run after an install and any doubt count as "yes" too.
      */
-    static boolean recentsNeeded(Context c) {
-        return !AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty() || RecentsDirty.isDirty(c) || bootCleanPending(c) || !AppOrigin.usedSinceClear(c).isEmpty();
+    static boolean recentsNeeded(Context c) { return recentsNeededCheap(c) || !AppOrigin.usedSinceClear(c).isEmpty(); }
+
+    /** The same without the usage-log query (a few preference reads): for the Enter tap, which runs on the main thread while the cover must go up at once. */
+    static boolean recentsNeededCheap(Context c) {
+        return !AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty() || RecentsDirty.isDirty(c) || bootCleanPending(c);
     }
 
     public static boolean clearNotifications(Context c) { return Features.get(c, CLEAR_NOTIF_KEY, true); }
@@ -377,7 +380,7 @@ public final class ReturnReset {
     /** N3: might the return reset have anything to do (used to decide whether the black cover goes up at the Enter tap)? */
     public static boolean mayHaveWork(Context c) {
         if (!enabled(c) || invisibleReady(c)) return false;   // the invisible path needs no cover
-        return clearNotifications(c) || (clearRecents(c) && (cleanStart(c) ? recentsNeeded(c) : (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty())));
+        return clearNotifications(c) || (clearRecents(c) && (cleanStart(c) ? recentsNeededCheap(c) : (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty())));
     }
 
     /** Puts the target app in front because the custom launcher just STARTED (boot / restart). Same safe, verified launch as the return reset; nothing else is touched. */

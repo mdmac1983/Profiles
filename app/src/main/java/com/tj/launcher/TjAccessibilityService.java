@@ -1188,6 +1188,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 Log.i(TAG, "UNLOCKPICK custom (boot clean)");
                 LockLog.add(app, "UNLOCK", "plain, first unlock after a boot: the custom session starts clean (Recents cleared), Enter to unlock " + sinceEnter + " ms");
                 ReturnReset.run(app);
+                handler.postDelayed(new Runnable() { @Override public void run() { ReturnReset.clearBootClean(getApplicationContext()); } }, 10_000);   // whatever run() decided, the flag never repeats the clean-up at every later unlock
             } else {
                 hideResetCover();
                 Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
@@ -2756,7 +2757,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!patchLockMode || patchView == null) return;
         int type = event.getEventType();
         long awayNow = android.os.SystemClock.uptimeMillis();
-        if ((overlayShown || patchResting || touchAwayUntilMs > awayNow || pinHiddenUntilMs > awayNow) && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself (BE1: also while the patch is already away: the sign pushes its return out)
+        if ((overlayShown || patchResting || lastBouncer || touchAwayUntilMs > awayNow || pinHiddenUntilMs > awayNow) && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself (BE1: also while the patch is already away: the sign pushes its return out)
             CharSequence cn = event.getClassName(), pk = event.getPackageName();
             if (cn != null && pk != null && "com.android.systemui".contentEquals(pk)) {
                 String c = cn.toString();
