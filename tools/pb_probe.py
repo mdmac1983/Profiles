@@ -137,6 +137,13 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
         out["line_at"] = at
         out["line_sign"] = (ln[at] > 0) - (ln[at] < 0) if ln else 0
         out["core_mean"] = sum(core) / len(core) if core else 0.0
+        reach = 0                                    # how many rows below the panel the patch keeps matching (|deviation| < 1.5 levels) before the first row that does not
+        for d in range(0, 120):
+            v = out["profile"].get(d)
+            if v is None or abs(v[0]) >= 1.5:
+                break
+            reach = d + 1
+        out["reach"] = reach
     out["label"] = label
     out["kind"] = "stock" if stock else "patch"
     out["grid"] = grid(label, bare, shot, model, panel, disp) if want_grid else []
@@ -167,8 +174,8 @@ SIM_GEOMETRIES = ((0, 9), (10, 9), (21, 9), (21, 4), (26, 4), (30, 0))
 
 
 def report(o):
-    keys = ("shadow_max", "shadow_ext") if o["kind"] == "stock" else ("line_max", "line_at", "core_mean")
-    vals = " ".join(("%s=%d" % (k, o[k])) if k.endswith(("_ext", "_at")) else ("%s=%+.2f" % (k, o[k]) if k == "core_mean" else "%s=%.2f" % (k, o[k])) for k in keys)
+    keys = ("shadow_max", "shadow_ext") if o["kind"] == "stock" else ("line_max", "line_at", "core_mean", "reach")
+    vals = " ".join(("%s=%d" % (k, o[k])) if k.endswith(("_ext", "_at", "reach")) else ("%s=%+.2f" % (k, o[k]) if k == "core_mean" else "%s=%.2f" % (k, o[k])) for k in keys)
     print("PBMETRIC label=%s kind=%s scale=%.3f/%.3f/%.3f offset=%.1f/%.1f/%.1f %s" % (o["label"], o["kind"], *o["scale"], *o["offset"], vals))
     print("PBPROFILE label=%s (d = px below the panel's bottom edge : deviation in levels, luminance; negative = darker than the dimmed wallpaper) %s" % (
         o["label"], " ".join("%d:%+.1f" % (d, o["profile"][d][0]) for d in PROBE_D if d in o["profile"])))

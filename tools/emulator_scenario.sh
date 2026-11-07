@@ -2183,21 +2183,32 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     pbrestart; shot pb-bare                                                   # the menu closed (the resting patch is invisible)
     ptkey lock_patch false; pbrestart; pbwarm; pbopen; shot pb-stock
     adb shell dumpsys window windows 2>/dev/null | grep -E "^ +Window #" | sed 's/^ *//; s/Window{[0-9a-f]* u0 //; s/}:$//' | cut -c1-90 > "$OUT/pb-windows.txt"   # what is on screen while the stock menu is open
+    adb shell uiautomator dump /sdcard/pb-ui.xml >/dev/null 2>&1; adb pull /sdcard/pb-ui.xml "$OUT/pb-ui.xml" >/dev/null 2>&1   # the menu's entries (the emulator's menu has a 4th card under the panel)
     pbclose; ptkey lock_patch true   # the stock panel alone: its shadow
     python3 -I tools/pb_probe.py stock "$OUT/pb-bare.png" "$OUT/pb-stock.png" --panel "$PBPANEL" --stock --grid 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
-    for V in "0 8" "10 8" "20 8" "20 4"; do
+    for V in "0 8" "12 4" "24 8" "24 4"; do   # the v0.8.2 geometry, half the extension, the deepest core with the old fringe, the DEFAULT (24 dp, 4 dp)
       set -- $V; XE=$1; XB=$2
       pbint patch_extra_dp "$XE"; pbint patch_bfeather_dp "$XB"; pbrestart; pbwarm; pbopen; shot "pb-x${XE}b${XB}"; pbclose
-      GR=""; [ "$XE" = 20 ] && [ "$XB" = 8 ] && GR="--grid"
+      GR=""; [ "$XE" = 24 ] && [ "$XB" = 4 ] && GR="--grid"
       python3 -I tools/pb_probe.py "x${XE}b${XB}" "$OUT/pb-bare.png" "$OUT/pb-x${XE}b${XB}.png" --panel "$PBPANEL" $GR 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
     done
-    pbint patch_extra_dp 20; pbint patch_bfeather_dp 8; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2   # back to the defaults for the clean-up below
+    pbint patch_extra_dp 24; pbint patch_bfeather_dp 4; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2   # back to the defaults for the clean-up below
     info "PB panel $PBPANEL (scale / offset are the scrim the probe fitted per run)"
     grep -E "PBMETRIC" "$OUT/pb-metrics.txt" | sed 's/PBMETRIC //' | while IFS= read -r L; do info "PB $L"; done
     grep -E "PBPROFILE" "$OUT/pb-metrics.txt" | sed 's/PBPROFILE //' | while IFS= read -r L; do info "PB profile $(echo "$L" | cut -c1-330)"; done
     grep -E "PBGRID" "$OUT/pb-metrics.txt" | sed 's/PBGRID //' | while IFS= read -r L; do info "PB grid $L"; done
     info "PB windows while the stock menu is open: $(tr '\n' '|' < "$OUT/pb-windows.txt" | cut -c1-700)"
+    grep -E "PBSHADOW|PBSIM" "$OUT/pb-metrics.txt" | while IFS= read -r L; do info "PB $(echo "$L" | cut -c1-430)"; done
+    info "PB menu entries (text [bounds]): $(python3 -I tools/pb_ui.py "$OUT/pb-ui.xml" 2>&1 | cut -c1-520)"
     check "PB: the probe measured the stock panel and the four geometries without an error" bash -c "! grep -q 'error=' $OUT/pb-metrics.txt && [ \"\$(grep -c PBMETRIC $OUT/pb-metrics.txt)\" -ge 5 ]"
+    pbval(){ grep PBMETRIC "$OUT/pb-metrics.txt" | grep "label=$1 " | grep -o "$2=[-+0-9.]*" | head -1 | cut -d= -f2; }
+    PBR_OLD="$(pbval x0b8 reach)"; PBR_NEW="$(pbval x24b4 reach)"; PBC_NEW="$(pbval x24b4 core_mean)"
+    info "PB: how far below the panel the patch keeps matching (rows): v0.8.2 geometry ${PBR_OLD:-?}, default ${PBR_NEW:-?}; slot interior mean deviation of the default ${PBC_NEW:-?} levels"
+    check "PB: the default geometry keeps matching the lock screen at least 24 px below the stock panel, the v0.8.2 geometry does not (within 8 px)" awk -v n="${PBR_NEW:-0}" -v o="${PBR_OLD:-99}" 'BEGIN{exit !(n+0>=24 && o+0<=8)}'
+    check "PB: the slot interior of the default geometry still matches (mean deviation within 1.5 levels)" awk -v c="${PBC_NEW:-9}" 'BEGIN{exit !((c<0?-c:c) < 1.5)}'
+    PBP0="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra0/fringe9=[0-9.]*' | head -1 | cut -d= -f2)"; PBP1="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra26/fringe4=[0-9.]*' | head -1 | cut -d= -f2)"
+    info "PB: the line a geometry would leave on a menu WITHOUT the second card, predicted from the stock shadow measured under it (levels): v0.8.2 geometry ${PBP0:-?}, default ${PBP1:-?}"
+    check "PB: from the stock shadow the default geometry leaves a line of at most 2 levels, and no more than the v0.8.2 geometry" awk -v n="${PBP1:-99}" -v o="${PBP0:-0}" 'BEGIN{exit !(n+0 <= 2.0 && n+0 <= o+0)}'
   else info "PB: no measurement, so phase D (the shadow line) is skipped"; fi
 else info "PT: no menu geometry (no CARD area line)"; check "PT: the menu rectangle was learned" false; fi
 
