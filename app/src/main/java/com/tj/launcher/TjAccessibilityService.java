@@ -287,6 +287,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
         try { LockQuiet.applyNotificationsAsync(this); } catch (Throwable t) { Log.e(TAG, "lock quiet failed", t); }   // AK1
         try { if (calibrating()) calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration resume failed", t); }   // AM1
+        try { AnimationSpeedup.syncSoon(this, "helper connected"); } catch (Throwable t) { Log.e(TAG, "animation sync failed", t); }   // BF1: a Quickstep session that was already running when the helper (re)connected gets its animations off; the helper is what hears the screen go off
     }
 
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
