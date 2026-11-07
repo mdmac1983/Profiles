@@ -2672,6 +2672,259 @@ public class TjAccessibilityService extends AccessibilityService {
         Log.i(TAG, "PATCHSHOT automatic calibration started (" + why + ")");
     }
 
+    // ================================================================================================================================================================================
+    // BA1 (Tj, 2026-11-07: "the final wallpaper patch is very slightly too dark and I can see the square patch, but barely. Try to make the brightness of the square patch match the darkened lock screen after the side
+    // key press 100% identical"): the helper MEASURES the stock menu's real scrim on this tablet (the maths: ScrimFit; the policy: ScrimMeasure) and the open patch is drawn with it (setOpenLook).
+    // ================================================================================================================================================================================
+    /** The scrim measured for the CURRENT lock screen (wallpaper / rotation / size / theme), null = none yet: the patch then uses the generic brightness (0.80 x Tj's nudges). Read by the draw. */
+    private volatile ScrimFit.Transform scrimT;
+    private float openLookQ = -1f, openLookNudge = -1f; private android.graphics.ColorFilter openLookFilter; private ScrimFit.Transform openLookT;
+    private long screenOnEpoch = 0;   // when the screen last came on (wall clock): the lock screen settles before it is measured
+
+    private boolean debuggable() { return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
+    private boolean isNightNow() { return (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES; }
+
+    /** Loads the measurement stored for the lock screen as it is now (binder calls: not per frame). */
+    private void reloadScrim() {
+        try { scrimT = ScrimFit.decode(Features.getString(this, ScrimMeasure.valueKey(rotation()), ""), shotSig(), isNightNow()); }
+        catch (Throwable t) { scrimT = null; Log.e(TAG, "scrim reload failed", t); }
+    }
+
+    /**
+     * The look of the patch while the stock menu is open, {@code progress} 0..1 along the stock fade (0 = the screen as it was, 1 = the scrim complete). With a measurement: per channel {@code out = s * in + o},
+     * interpolated from the identity exactly as the stock scrim ((1 - a) * L + a * C) grows with its alpha; Tj's two brightness nudges scale the measured s (0 % = exactly what was measured). Without one: the
+     * generic brightness of v0.8.1 (a black scrim of 0.80).
+     */
+    private void setOpenLook(android.graphics.Paint p, float progress) {
+        ScrimFit.Transform t = scrimT;
+        if (t == null) { setDim(p, PatchFade.mix(restDim(true), lockPatchDim(true), progress)); return; }
+        float nudge = (1f + Features.getInt(this, PATCH_SCRIM_KEY, 0) / 100f) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
+        float q = Math.round(Math.max(0f, Math.min(1f, progress)) * 255f) / 255f;
+        if (openLookFilter == null || q != openLookQ || t != openLookT || nudge != openLookNudge) {   // one filter per step of the fade, not one per draw
+            float[] m = new float[20];
+            for (int c = 0; c < 3; c++) {
+                float sEnd = Math.max(0.3f, Math.min(1f, t.s[c] * nudge));
+                m[c * 6] = 1f + (sEnd - 1f) * q;      // the diagonal: 0, 6, 12
+                m[c * 5 + 4] = t.o[c] * q;            // the translate column: 4, 9, 14 (levels, 0..255)
+            }
+            m[18] = 1f;                                // alpha stays
+            openLookFilter = new android.graphics.ColorMatrixColorFilter(m); openLookQ = q; openLookT = t; openLookNudge = nudge;
+        }
+        p.setColorFilter(openLookFilter);
+    }
+
+    // ---------------------------------------------------------------- the measurement stage: bare frame -> the stock menu opened by the helper -> second frame -> menu closed
+    private int scrimStage = 0;     // 0 idle, 1 waiting for the bare frame, 2 the gap after it, 3 the menu is opening, 4 waiting for the menu frame, 5 closing the menu
+    private long scrimBeganAt = 0, scrimStageAt = 0, scrimLastStartMs = 0, scrimAskedAt = 0, scrimMenuAt = 0, scrimPollAt = 0, scrimLastShotId = -1;
+    private int scrimThisLock = 0, scrimCloseTries = 0;
+    private boolean scrimOpenedMenu = false, scrimIngesting = false;
+    private int[] scrimPoints, scrimRef;   // the sample points of the bare frame ((y << 16) | x) and its pixels there
+    private String lastScrimNote = "", scrimOutcome = "";
+
+    private void scrimNote(String note) {
+        if (note == null || note.equals(lastScrimNote)) return;
+        lastScrimNote = note;
+        try { Features.setStringAsync(this, ScrimMeasure.NOTE_KEY, now() + "  " + note); } catch (Throwable ignored) { }
+    }
+
+    private final Runnable scrimTrigger = new Runnable() { @Override public void run() { try { maybeMeasureScrim("timer"); } catch (Throwable t) { Log.e(TAG, "scrim trigger failed", t); } } };
+    private final Runnable scrimTick = new Runnable() { @Override public void run() { try { scrimStep(); } catch (Throwable t) { Log.e(TAG, "scrim step failed", t); try { scrimFinish("an error: " + t); } catch (Throwable ignored) { } } } };
+
+    private ScrimMeasure.State scrimState() {
+        android.content.Context app = getApplicationContext();
+        ScrimMeasure.State st = new ScrimMeasure.State();
+        st.switchOn = Features.get(app, ScrimMeasure.KEY, ScrimMeasure.defaultOn(debuggable()));
+        st.coverOn = Features.isCover(Features.powerMode(app));
+        st.lockPatchOn = Features.get(app, LOCK_PATCH_KEY, true);
+        st.paused = CrashGuard.automationOff(app);
+        st.permitted = checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        st.geometryKnown = cachedCard() != null;
+        st.validCrop = patchShotBmp != null;
+        st.haveMeasurement = scrimT != null;
+        st.calibrating = calibrating();
+        st.stageRunning = scrimStage != 0;
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        st.interactive = pm != null && pm.isInteractive();
+        st.keyguardLocked = keyguardLocked();
+        st.pinPadUp = lastBouncer;
+        st.menuOpen = overlayShown;
+        st.handshakeArmed = unlock.armedMethod() != null;
+        st.now = System.currentTimeMillis();
+        st.screenOnMs = screenOnEpoch;
+        st.lastStartMs = scrimLastStartMs;
+        st.startsThisLock = scrimThisLock;
+        st.startsToday = AutoCalibration.startsWithinDay(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now);
+        return st;
+    }
+
+    /** Starts the measurement when {@link ScrimMeasure#decision} says go; every "not yet" reason is shown in Launcher control, and a "waiting" one is looked at again in a moment. */
+    private void maybeMeasureScrim(String why) {
+        if (scrimStage != 0) return;
+        android.content.Context app = getApplicationContext();
+        ScrimMeasure.State st = scrimState();
+        if (st.haveMeasurement) { scrimNote("measured for this lock screen: " + ScrimFit.describe(scrimT)); return; }
+        String reason = ScrimMeasure.decision(st);
+        if (!reason.isEmpty()) {
+            scrimNote(reason);
+            if (reason.startsWith("waiting") && st.switchOn && st.keyguardLocked) { handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000); }
+            return;
+        }
+        scrimLastStartMs = st.now; scrimThisLock++;
+        Features.setString(app, ScrimMeasure.TRIES_KEY, AutoCalibration.addTry(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now));
+        scrimBeganAt = android.os.SystemClock.uptimeMillis(); scrimStageAt = scrimBeganAt;
+        scrimStage = 1; scrimOpenedMenu = false; scrimPoints = null; scrimRef = null; scrimCloseTries = 0; scrimMenuAt = 0; scrimPollAt = 0; scrimOutcome = "";
+        scrimNote("started (" + why + "): a bare frame of the lock screen first");
+        Log.i(TAG, "SCRIM measurement started (" + why + ")");
+        scrimAskShot();
+        handler.removeCallbacks(scrimTick); handler.postDelayed(scrimTick, 400);
+    }
+
+    private void scrimAskShot() {
+        scrimAskedAt = System.currentTimeMillis();
+        boolean ok = false;
+        try { ok = performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT); } catch (Throwable ignored) { }
+        Log.i(TAG, "SCRIM asked for a screenshot (stage " + scrimStage + ", accepted=" + ok + ")");
+        if (!ok) scrimFinish("Android refused to take a screenshot");
+    }
+
+    /** Why the sequence must stop NOW ("" = carry on). Anything but a plain lock screen ends it; the lock screen is never held up. */
+    private String scrimInterrupted(long up) {
+        if (up - scrimBeganAt > ScrimMeasure.STAGE_LIMIT_MS) return "it took too long";
+        android.content.Context app = getApplicationContext();
+        if (CrashGuard.automationOff(app)) return "automation was paused";
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        if (pm == null || !pm.isInteractive()) return "the screen went off";
+        if (!keyguardLocked()) return "the tablet was unlocked";
+        if (lastBouncer) return "the PIN pad came up";
+        if (unlock.armedMethod() != null) return "an unlock gesture started";
+        if (calibrating()) return "a calibration started";
+        if (scrimStage < 3 && overlayShown) return "the power menu was opened by someone else";
+        if ((scrimStage == 3 || scrimStage == 4) && scrimMenuAt > 0 && !overlayShown) return "the power menu was closed before the second frame";
+        return "";
+    }
+
+    private void scrimStep() {
+        if (scrimStage == 0) return;
+        long up = android.os.SystemClock.uptimeMillis();
+        if (scrimStage != 5) {
+            String stop = scrimInterrupted(up);
+            if (!stop.isEmpty()) { scrimFinish("stopped: " + stop); return; }
+        }
+        switch (scrimStage) {
+            case 1:   // the bare frame
+                if (up - scrimStageAt > ScrimMeasure.SHOT_WAIT_MS) { scrimFinish("no screenshot appeared"); return; }
+                if (up - scrimPollAt >= 700) { scrimPollAt = up; scrimIngest(false); }
+                break;
+            case 2:   // the gap: the first screenshot's own animation must be over
+                if (up - scrimStageAt >= ScrimMeasure.SHOT_GAP_MS) { scrimOpenMenu(up); if (scrimStage == 0 || scrimStage == 5) return; }
+                break;
+            case 3:   // the menu opens (the helper's own detection), then its fade finishes
+                if (overlayShown) {
+                    if (scrimMenuAt == 0) scrimMenuAt = up;
+                    if (up - scrimMenuAt >= ScrimMeasure.OPEN_SETTLE_MS) { scrimStage = 4; scrimStageAt = up; scrimPollAt = 0; scrimAskShot(); if (scrimStage == 5) return; }
+                } else if (up - scrimStageAt > ScrimMeasure.MENU_WAIT_MS) { scrimFinish("the power menu did not open"); return; }
+                break;
+            case 4:   // the menu frame
+                if (up - scrimStageAt > ScrimMeasure.SHOT_WAIT_MS) { scrimFinish("no screenshot appeared with the menu open"); return; }
+                if (up - scrimPollAt >= 700) { scrimPollAt = up; scrimIngest(true); }
+                break;
+            case 5:   // closing the menu again (it is ours to close only if the helper opened it)
+                scrimCloseStep();
+                return;
+        }
+        handler.postDelayed(scrimTick, 300);
+    }
+
+    private void scrimOpenMenu(long up) {
+        if (overlayShown) { scrimFinish("the power menu is already open"); return; }
+        scrimStage = 3; scrimStageAt = up; scrimMenuAt = 0; scrimOpenedMenu = true;   // from here on the helper owns an open menu: every way out closes it
+        boolean ok = false;
+        try { ok = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG); } catch (Throwable ignored) { }
+        Log.i(TAG, "SCRIM opened the stock power menu (accepted=" + ok + ")");
+        scrimNote("the stock menu is opening by itself (once, for about two seconds) to measure its dimming");
+        if (!ok) scrimFinish("Android refused to open the power menu");
+    }
+
+    private void scrimFinish(String outcome) {
+        scrimOutcome = outcome == null ? "" : outcome;
+        scrimNote(scrimOutcome);
+        Log.i(TAG, "SCRIM finished: " + scrimOutcome);
+        scrimPoints = null; scrimRef = null;
+        scrimStage = 5; scrimStageAt = android.os.SystemClock.uptimeMillis(); scrimCloseTries = 0;
+        handler.removeCallbacks(scrimTick); handler.post(scrimTick);   // the closing step runs next
+    }
+
+    private void scrimCloseStep() {
+        if (!scrimOpenedMenu || !overlayShown) { scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); try { layerRefresh.run(); } catch (Throwable ignored) { } return; }   // done: the menu is gone (or was never ours)
+        if (scrimCloseTries >= ScrimMeasure.CLOSE_TRIES) { scrimNote(scrimOutcome + "; the power menu would not close by itself: tap outside it"); scrimStage = 0; scrimOpenedMenu = false; return; }
+        scrimCloseTries++;
+        try { performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { }
+        handler.postDelayed(scrimTick, ScrimMeasure.CLOSE_STEP_MS);
+    }
+
+    /** One look for the screenshot (worker thread): the bare frame fixes the sample points, the menu frame is fitted against them. Nothing here may throw into the lock screen. */
+    private void scrimIngest(final boolean open) {
+        if (scrimIngesting) return;
+        scrimIngesting = true;
+        final android.content.Context app = getApplicationContext();
+        final long asked = scrimAskedAt;
+        final Rect panel = cachedCard(), patch = patchView != null && patchLockMode ? new Rect(patchAt) : null;
+        final int rot = rotation(); final String sig = shotSig(); final boolean night = isNightNow();
+        final android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        final int shadow = Math.round(18 * dm.density);
+        final int[] points = scrimPoints, ref = scrimRef;
+        new Thread(new Runnable() { @Override public void run() {
+            try {
+                PatchShot.Shot row = PatchShot.newestShot(app, asked);
+                if (row == null) return;   // not there yet: the next tick looks again
+                long id = android.content.ContentUris.parseId(row.uri);
+                if (id == scrimLastShotId) return;
+                if (!AutoCalibration.ownerOk(row.owner) && !isSystemPackage(row.owner)) { postFinish("stopped: the screenshot was written by another app (" + row.owner + ")"); return; }
+                android.graphics.Bitmap full = PatchShot.decode(app, row.uri);
+                if (full == null) { postFinish("stopped: the screenshot could not be read"); return; }
+                scrimLastShotId = id;
+                final int W = full.getWidth(), H = full.getHeight();
+                if (W != dm.widthPixels || H != dm.heightPixels) { full.recycle(); postFinish("stopped: the screenshot is " + W + "x" + H + " but the screen is " + dm.widthPixels + "x" + dm.heightPixels); return; }
+                int[] px = new int[W * H];
+                full.getPixels(px, 0, W, 0, 0, W, H); full.recycle();
+                PatchShot.deleteQuietly(app, row.uri);   // best effort: Android usually does not allow it without the storage WRITE permission
+                if (!open) {
+                    int[][] ex = ScrimMeasure.excludeRects(W, H, panel == null ? null : new int[] { panel.left, panel.top, panel.right, panel.bottom }, patch == null ? null : new int[] { patch.left, patch.top, patch.right, patch.bottom }, shadow);
+                    final int[] pts = ScrimMeasure.pickPoints(px, W, H, ex);
+                    if (pts.length < ScrimFit.MIN_SAMPLES) { postFinish("stopped: too little plain wallpaper on this lock screen to measure (" + pts.length + " usable points)"); return; }
+                    final int[] rgb = new int[pts.length];
+                    for (int k = 0; k < pts.length; k++) rgb[k] = px[(pts[k] >>> 16) * W + (pts[k] & 0xFFFF)];
+                    handler.post(new Runnable() { @Override public void run() {
+                        if (scrimStage != 1) return;
+                        scrimPoints = pts; scrimRef = rgb; scrimStage = 2; scrimStageAt = android.os.SystemClock.uptimeMillis();
+                        scrimNote("bare frame taken (" + pts.length + " sample points); the menu comes next");
+                    } });
+                } else {
+                    if (points == null || ref == null) { postFinish("stopped: no bare frame to compare with"); return; }
+                    int n = points.length;
+                    int[] xr = ScrimMeasure.channel(ref, 0, null, 0);   // placeholder, replaced below (reference values are packed RGB per point)
+                    int[][] x = new int[3][n], y = new int[3][n];
+                    int[] shifts = { 16, 8, 0 };
+                    for (int c = 0; c < 3; c++) for (int k = 0; k < n; k++) { x[c][k] = (ref[k] >> shifts[c]) & 255; y[c][k] = (px[(points[k] >>> 16) * W + (points[k] & 0xFFFF)] >> shifts[c]) & 255; }
+                    ScrimFit.Result r = ScrimFit.fitChannel(x[0], y[0], n), g = ScrimFit.fitChannel(x[1], y[1], n), b = ScrimFit.fitChannel(x[2], y[2], n);
+                    String[] why = new String[1];
+                    final ScrimFit.Transform t = ScrimFit.combine(r, g, b, why);
+                    if (t == null) { postFinish("not measured: " + why[0]); return; }
+                    Features.setString(app, ScrimMeasure.valueKey(rot), ScrimFit.encode(t, sig, night, System.currentTimeMillis()));
+                    final String line = "MEASURED " + ScrimFit.describe(t);
+                    handler.post(new Runnable() { @Override public void run() {
+                        try { reloadScrim(); if (patchView != null) patchView.invalidate(); } catch (Throwable ignored) { }
+                        scrimFinish(line);
+                    } });
+                }
+            } catch (Throwable t) { Log.e(TAG, "scrim ingest failed", t); postFinish("stopped: " + t); }
+            finally { scrimIngesting = false; }
+        } }, "tj-scrim").start();
+    }
+
+    private void postFinish(final String outcome) { handler.post(new Runnable() { @Override public void run() { if (scrimStage != 0 && scrimStage != 5) scrimFinish(outcome); } }); }
+
     private final Runnable shotIngest = new Runnable() { @Override public void run() { try { ingestShot(); } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); } } };
     private final Runnable shotEnd = new Runnable() { @Override public void run() {
         try {
