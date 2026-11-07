@@ -101,6 +101,17 @@ public final class PatchFade {
     /** The progress to draw at {@code nowMs} for a fade-out that began at {@code startMs} (uptime ms; may lie in the past or a few ms ahead): the lead is added so the frame is right when it is SEEN. */
     public static float closeProgressAt(long nowMs, long startMs, long leadMs) { return closeProgress(nowMs + leadMs - startMs); }
 
+    /**
+     * The stock animator starts a little AFTER the sign that told us (SystemUI's main thread runs the click / the broadcast, the animator's first frame comes later) and the dialog's window is removed only at its end:
+     * run #296 saw the window removed 341 ms after the click, run #299 397 ms (the emulator's SystemUI answered 40 and 97 ms late). The model therefore starts this long after the sign ...
+     */
+    public static final long CLOSE_START_DELAY_MS = 40;
+    /** ... and never goes below this share of the open look until the dialog's removal (or the timer) ends the fade-out: a late animator must not leave the patch brighter than its scrim (run #299: +10 % over the last 50 ms). */
+    public static final float CLOSE_FLOOR = 0.10f;
+
+    /** What the patch draws while it follows the fade-out: {@link #closeProgressAt}, but never below {@link #CLOSE_FLOOR}. */
+    public static float closeLook(long nowMs, long startMs, long leadMs) { return Math.max(CLOSE_FLOOR, closeProgressAt(nowMs, startMs, leadMs)); }
+
     /** True while a frame drawn at {@code nowMs} still has something to follow (the fade-out is not over). */
     public static boolean closing(long nowMs, long startMs, long leadMs) { return nowMs + leadMs - startMs < CLOSE_MS; }
 }

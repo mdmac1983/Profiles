@@ -319,7 +319,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean closing = false;                   // the patch's open look is following the stock fade-OUT (main thread only)
     private long closeStartMs = 0;                     // uptime ms at which the stock dismissal began (a sign of it we saw, or our own BACK); may lie a few ms ahead
     private volatile int dialogWindowId = -1;          // the accessibility window id of the newest stock dialog (from its window-state event): the event that removes that window ends the fade-out at once
-    static final long CLOSE_SLACK_MS = 60, CLOSE_SAFETY_MS = 150;   // a scan may end the fade-out this long after its predicted end; the clock ends it (and verifies with a scan) this long after, whatever else happens
+    static final long CLOSE_SLACK_MS = 100, CLOSE_SAFETY_MS = 150;   // a scan may end the fade-out this long after its predicted end; the clock ends it (and verifies with a scan) this long after, whatever else happens
     private final Runnable closeFinishRun = new Runnable() { @Override public void run() { finishClose("the fade-out time is over"); } };
     // BC5 (Tj, 2026-11-07: "For the pull up for the pin, the patch should disappear immediately, as fast as possible after the pull up from the bottom"): the PIN pad came up while the stock menu was open: the patch is
     // hidden AT ONCE and stays hidden until that menu is gone (no fade-follow here; the stock card's Screenshot slot may show for the rest of its fade-out: Tj chose that over any flicker).
@@ -736,7 +736,7 @@ public class TjAccessibilityService extends AccessibilityService {
         v.setOnTouchListener(new View.OnTouchListener() {   // AM1: the window is NOT_TOUCHABLE except while the stock menu is open: then a tap on the hidden Screenshot spot closes the menu (like a tap outside) instead of taking a screenshot
             @Override public boolean onTouch(View view, android.view.MotionEvent e) {
                 if (!patchTouchable) return false;
-                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) { try { startClose(android.os.SystemClock.uptimeMillis() + 20, "a tap on the hidden spot: our own BACK"); performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { } }   // BC2: the stock dismissal begins ~20 ms after the injected BACK
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) { try { startClose(android.os.SystemClock.uptimeMillis(), "a tap on the hidden spot: our own BACK"); performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { } }   // BC2: the stock dismissal begins ~20 ms after the injected BACK
                 return true;
             }
         });
@@ -2567,10 +2567,10 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             if (closing || !overlayShown || patchView == null || !patchLockMode || !patchFadeOn() || cardWanted()) return;
             long now = android.os.SystemClock.uptimeMillis();
-            closing = true; closeStartMs = startMs; fading = false;
+            closing = true; closeStartMs = startMs + PatchFade.CLOSE_START_DELAY_MS; fading = false;   // SystemUI's animator starts a little after the sign (PatchFade.CLOSE_START_DELAY_MS)
             Log.i(TAG, "PATCH close start (" + why + ") t=" + now + " began=" + (startMs - now) + " ms from now lead=" + fadeLeadMs);
             handler.removeCallbacks(closeFinishRun);
-            handler.postDelayed(closeFinishRun, Math.max(0, startMs + PatchFade.CLOSE_MS + CLOSE_SAFETY_MS - now));
+            handler.postDelayed(closeFinishRun, Math.max(0, closeStartMs + PatchFade.CLOSE_MS + CLOSE_SAFETY_MS - now));
             patchView.invalidate();   // the first frame now; fadeFrameDone asks for every following one
         } catch (Throwable t) { closing = false; Log.e(TAG, "close start failed", t); }
     }
@@ -2644,7 +2644,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** AZ1: how far the stock scrim will be when the frame drawn now is SEEN: 0..1 (1 = complete, also when no fade is running). Main thread (onDraw) only. */
     private float fadeProgress() {
-        if (closing) return PatchFade.closeProgressAt(android.os.SystemClock.uptimeMillis(), closeStartMs, fadeLeadMs);   // BC2: the open look runs back to the resting look along the stock fade-OUT
+        if (closing) return PatchFade.closeLook(android.os.SystemClock.uptimeMillis(), closeStartMs, fadeLeadMs);   // BC2: the open look runs back to the resting look along the stock fade-OUT
         if (!fading) return 1f;
         long now = android.os.SystemClock.uptimeMillis();
         float p = PatchFade.progressAt(now, fadeStartMs, fadeLeadMs);

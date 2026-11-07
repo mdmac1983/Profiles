@@ -110,6 +110,14 @@ public class PatchFadeTest {
             assertEquals("t=" + t, surround, patch, 1e-5f);
         }
     }
+    @Test public void aLateAnimatorNeverLeavesThePatchBrighterThanItsScrim() {
+        // the model ends at 300 ms after its start; the stock window may be removed 100 ms later (run #299): until then the patch keeps the floor, the removal / the timer ends it
+        assertEquals(PatchFade.CLOSE_FLOOR, PatchFade.closeLook(1400, 1000, 0), 1e-6f);
+        assertEquals(PatchFade.CLOSE_FLOOR, PatchFade.closeLook(5000, 1000, 10), 1e-6f);
+        assertEquals(1f, PatchFade.closeLook(1000, 1040, 10), 1e-6f);   // before the (delayed) start: the open look
+        assertEquals(PatchFade.closeProgress(150), PatchFade.closeLook(1150, 1000, 0), 1e-6f);   // in the middle the floor does not matter
+        assertTrue(PatchFade.CLOSE_START_DELAY_MS >= 20 && PatchFade.CLOSE_START_DELAY_MS <= 100);
+    }
     @Test public void theMixWorksForTheWallpaperModelToo() {
         // the MODEL patch rests at 0.77 (the keyguard's own dim) and ends at 0.77 * 0.79: the fade runs between those two
         float rest = 0.77f, open = 0.77f * 0.79f;
