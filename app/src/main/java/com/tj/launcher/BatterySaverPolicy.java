@@ -104,4 +104,115 @@ public final class BatterySaverPolicy {
     public static boolean unstickWanted(boolean done, boolean saverOn, String lastGuardNote) {
         return !done && saverOn && lastGuardNote != null && lastGuardNote.contains(FORCED_ON_MARK);
     }
+
+    // ================================================================================================================================================================================
+    // BA2 (Tj, 2026-11-07 00:07: "make the lock screen always have battery saver turned off permanently when the lock screen is up, no matter which launcher was on before the screen lock. If I go to the custom
+    // launcher, have the battery saver remain turned off, but if I unlock to quickstep, keep the same battery saver state as the last time I was in quickstep. Only implement these battery saver features if you are
+    // confident they can work and not break anything").
+    //
+    // WHY THIS CAN BE DONE WITHOUT BRINGING BACK THE AZ2 BUG (Android 10 source: research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md):
+    //  * Writing low_power = 0 is always consistent with Android's state machine (it is what the custom launcher has done since v0.7.3; the swallowed tap that can follow is completed by the AZ2b self-heal).
+    //    It leaves the machine in MANUAL_ON / AUTOMATIC_ON ("stale", the saver itself is off).
+    //  * Writing low_power = 1 is consistent ONLY while the machine is still in exactly that stale MANUAL_ON / AUTOMATIC_ON state (the setting then agrees with the state again and "Turn off now" works).
+    //    The machine leaves that state ONLY by being plugged in (-> OFF, or PENDING_STICKY_ON) or by a reboot (a boot always starts with the saver off). After either, a direct write of 1 is the AZ2 bug again
+    //    (the saver is on, the machine thinks OFF, "Turn off" does nothing). So the restore is done only when none of those can have happened, and in ANY doubt it is NOT done: the person taps the tile once
+    //    (that tap is safe: it is a proper request, or a swallowed one that the self-heal completes).
+    // The decisions are pure and JVM-tested here; {@link BatterySaverGuard} does the Android side.
+    // ================================================================================================================================================================================
+
+    /** Launcher control switches, both default ON: the lock screen keeps the saver off (any launcher); a gesture unlock into Quickstep brings Quickstep's own saver state back. */
+    public static final String LOCK_OFF_KEY = "profile_battery_saver_lock_off";
+    public static final String LOCK_RESTORE_KEY = "profile_battery_saver_lock_restore";
+    /** Quickstep's own saver state the last time it had the tablet: "1" on, "0" off, "" unknown. */
+    public static final String QS_ON_KEY = "bs_qs_on";
+    /** "1" while the saver is off BECAUSE of the guard (lock screen or custom launcher) and Quickstep's state is waiting to come back; the facts below describe that moment. */
+    public static final String HELD_KEY = "bs_held";
+    public static final String HELD_BOOT_KEY = "bs_held_boot";   // boot epoch (ms) when the guard switched it off
+    public static final String LEVEL_KEY = "bs_last_level";      // the battery level (percent) at the last lock / unlock event
+    public static final String PLUG_SEEN_KEY = "bs_plug_seen";   // "1": a plug-in (or a rise of the battery level) was seen while held
+    public static final String RESTORES_KEY = "bs_restores";     // how many times the restore acted (the tablet report)
+    public static final String NOTE_KEY = "bs_lock_note";        // what the lock rules did last, in plain words (Launcher control, report)
+    /** The keep-off while locked is a safety net, not a loop: at most this many writes per window (it is the observer's reaction to something turning the saver on again). */
+    public static final int MAX_LOCK_WRITES = 6;
+    public static final long LOCK_WINDOW_MS = 60_000;
+    /** After a restore the observer does not undo it for this long (the keyguard can report "locked" for a moment after the unlock broadcast). */
+    public static final long RESTORE_QUIET_MS = 6_000;
+    /** A boot epoch (now - elapsedRealtime) that differs by more than this = the tablet restarted (or the clock was set): the restore is skipped. */
+    public static final long BOOT_TOLERANCE_MS = 120_000;
+    /** A rise of the battery level by this many percent between two events = it was charged meanwhile. */
+    public static final int LEVEL_RISE_PCT = 3;
+    public static final int MAX_RESTORES = 3;
+    public static final long RESTORE_WINDOW_MS = 5 * 60_000;
+
+    /** Pure: switch the saver off at the lock moment (a DELIBERATE check, never capped)? Only while the lock screen is up, with the switch on, automation not paused and the saver really on. */
+    public static boolean lockOffWanted(boolean switchOn, boolean keyguardLocked, boolean automationOff, boolean saverOn) {
+        return switchOn && keyguardLocked && !automationOff && saverOn;
+    }
+
+    /**
+     * Pure: the saver was turned ON while the lock screen is up (Android's own low-battery trigger, a notification button): switch it off again? Same conditions, plus: not within
+     * {@link #RESTORE_QUIET_MS} of a restore (the unlock that is just finishing), and at most {@link #MAX_LOCK_WRITES} writes per {@link #LOCK_WINDOW_MS}. {@code lastRestoreMs} 0 = none.
+     */
+    public static boolean keepOffWanted(boolean switchOn, boolean keyguardLocked, boolean automationOff, boolean saverOn, long now, long lastRestoreMs, long[] recentWrites) {
+        if (!lockOffWanted(switchOn, keyguardLocked, automationOff, saverOn)) return false;
+        if (lastRestoreMs > 0 && now >= lastRestoreMs && now - lastRestoreMs < RESTORE_QUIET_MS) return false;
+        int n = 0;
+        if (recentWrites != null) for (long t : recentWrites) if (t > 0 && now >= t && now - t <= LOCK_WINDOW_MS) n++;
+        return n < MAX_LOCK_WRITES;
+    }
+
+    /**
+     * Pure: what to remember as Quickstep's saver state when the guard is about to switch the saver off (or finds it off) at a lock or at the end of a Quickstep session. Only the state of QUICKSTEP counts
+     * ({@code fromQuickstep}), and only the first time of a hold: once the guard holds the saver off, what is on or off meanwhile is the guard's doing, not Quickstep's.
+     */
+    public static String qsStateAtHold(boolean fromQuickstep, boolean alreadyHeld, boolean saverOn, String stored) {
+        if (!fromQuickstep || alreadyHeld) return stored == null ? "" : stored;
+        return saverOn ? "1" : "0";
+    }
+
+    /** Pure: the saver changed while Quickstep has the tablet (unlocked) and the change was not ours: that is Quickstep's state now. */
+    public static String qsStateLive(boolean quickstepActive, boolean keyguardLocked, boolean ourOwnWrite, boolean saverOn, String stored) {
+        if (!quickstepActive || keyguardLocked || ourOwnWrite) return stored == null ? "" : stored;
+        return saverOn ? "1" : "0";
+    }
+
+    /** Pure: did the battery level rise between two readings (it was charged)? -1 = unknown. */
+    public static boolean levelRose(int lastLevel, int nowLevel) { return lastLevel >= 0 && nowLevel >= 0 && nowLevel >= lastLevel + LEVEL_RISE_PCT; }
+
+    /** Pure: is it the same boot? Both are {@code System.currentTimeMillis() - SystemClock.elapsedRealtime()}; 0 = unknown (never the same). */
+    public static boolean sameBoot(long thenEpochMs, long nowEpochMs) { return thenEpochMs > 0 && nowEpochMs > 0 && Math.abs(nowEpochMs - thenEpochMs) <= BOOT_TOLERANCE_MS; }
+
+    /** Everything the restore decision depends on; the guard fills it in. */
+    public static final class Restore {
+        public boolean switchOn, restoreOn, automationOff, permitted, quickstepGesture, held, saverOnNow, keyguardLocked, chargingOrUnknown, plugSeen;
+        public String qsOn = "";
+        public long heldBootEpoch, nowBootEpoch, now;
+        public long[] recentRestores;
+    }
+
+    /** Pure: why NOT to bring Quickstep's saver back now, in plain words ("" = restore it). Every doubt is a refusal. */
+    public static String restoreRefusal(Restore s) {
+        if (!s.switchOn) return "the lock-screen battery saver rule is switched off";
+        if (!s.restoreOn) return "bringing Quickstep's battery saver back is switched off";
+        if (s.automationOff) return "automation is paused";
+        if (!s.permitted) return "the adb permission (WRITE_SECURE_SETTINGS) is missing";
+        if (!s.quickstepGesture) return "this was not a gesture unlock into Quickstep";
+        if (!s.held) return "the launcher had not switched the saver off";
+        if (!"1".equals(s.qsOn)) return "Quickstep did not have it on last time";
+        if (s.saverOnNow) return "it is already on";
+        if (s.keyguardLocked) return "the lock screen is still up";
+        if (s.chargingOrUnknown) return "the tablet is charging (or its power state is unknown): Android switches the saver off on charge";
+        if (s.plugSeen) return "the tablet was plugged in or charged meanwhile: that resets Android's own saver state, so switching it on from outside would leave 'Turn off now' dead";
+        if (!sameBoot(s.heldBootEpoch, s.nowBootEpoch)) return "the tablet restarted meanwhile (a restart always starts with the saver off and Android's state reset)";
+        int n = 0;
+        if (s.recentRestores != null) for (long t : s.recentRestores) if (t > 0 && s.now >= t && s.now - t <= RESTORE_WINDOW_MS) n++;
+        if (n >= MAX_RESTORES) return "restored a moment ago";
+        return "";
+    }
+
+    /** Pure: one line for Launcher control and the tablet report. */
+    public static String describe(String qsOn, boolean held, boolean plugSeen) {
+        String qs = "1".equals(qsOn) ? "ON" : "0".equals(qsOn) ? "off" : "unknown";
+        return "Quickstep's saver the last time: " + qs + "; the launcher is holding it off: " + (held ? "yes" : "no") + (held && plugSeen ? " (plugged in meanwhile: it will not be switched on again)" : "");
+    }
 }
