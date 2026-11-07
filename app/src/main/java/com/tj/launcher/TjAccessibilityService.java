@@ -1781,10 +1781,10 @@ public class TjAccessibilityService extends AccessibilityService {
     @Override public void onConfigurationChanged(android.content.res.Configuration c) {
         super.onConfigurationChanged(c);
         try {   // BB2: battery saver / the dark theme flipped: use (or look for) the measurement of the NEW theme at once, never measure again just because the other theme was measured
-            int nightNow = isNightNow() ? 1 : 0;
-            if (lastNightSeen != nightNow) {
-                boolean first = lastNightSeen == -1; lastNightSeen = nightNow;
-                if (!first) { reloadScrim(); if (patchView != null) patchView.invalidate(); handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000); }
+            int nightNow = (c != null ? (c.uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES : isNightNow()) ? 1 : 0;
+            if (lastNightSeen != nightNow) {   // also the first callback: the measurement loaded at start may belong to the other theme
+                lastNightSeen = nightNow;
+                reloadScrim(); if (patchView != null) patchView.invalidate(); handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000);
             }
         } catch (Throwable t) { Log.e(TAG, "theme change failed", t); }
         try {
