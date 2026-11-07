@@ -1083,6 +1083,7 @@ public class TjAccessibilityService extends AccessibilityService {
             }
             qsApp = null; resumedPkg = null;   // AD5: a plain unlock ends the session: no app to come back to
             LockQuiet.onUnlockAsync(app, false);   // AK1: a plain unlock (custom launcher): the radios stay off; forget the memory of this lock
+            BatterySaverGuard.onUnlockAsync(app, false);   // BA2: the custom launcher keeps the saver off; Quickstep's memory waits for a later gesture unlock
             boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
             if (ends) {
                 Mode.set(app, Mode.CUSTOM);
