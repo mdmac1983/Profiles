@@ -2604,6 +2604,7 @@ public class TjAccessibilityService extends AccessibilityService {
             PatchShot.Loaded l = PatchShot.load(this, rotation(), shotSig());
             if (l != null) { patchShotBmp = l.bmp; patchShotLeft = l.left; patchShotTop = l.top; }
         } catch (Throwable t) { Log.e(TAG, "stored patch shot failed", t); }
+        reloadScrim();   // BA1: the scrim measured for this very lock screen (null = none yet)
     }
 
     /** What a stored crop is valid for: this wallpaper picture, this rotation, this display size. */
