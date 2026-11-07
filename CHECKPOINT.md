@@ -1,13 +1,13 @@
-# CHECKPOINT 572 — read me first, then TASKS.md
+# CHECKPOINT 573 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T02:29:19Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `42382a3` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T02:29:53Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `24831a0` (this checkpoint is the commit after it)
 
 ## Just done
-final gate #277 read: uf = emulator went offline (infra), pt FAIL = test assumed scrim 0.80 (emulator scrim 0.75 after v+pa; phase C measured it right); fix = pt_analyze open_shape + scenario
+dispatched on 24831a0: #281 id 42329499381 and #282 id 42329501526 (v,pa,pt and base,v,uf,last: check which is which in the INFO sections line)
 
 ## Do this next
-dispatch emulator.yml on branch ccr-823c5a56-yg8voe: sections v,pa,pt and base,v,uf,last (two runs side by side); both green -> bash ship.sh then android.yml full_build
+read both (list_workflow_jobs latest then get_job_logs tail ~100; 404 = still running, expect done ~02:45Z): both success -> bash ship.sh 'v0.8.2: ...' then android.yml full_build=true on branch ccr-823c5a56-yg8voe -> get_release_by_tag v0.8.2 -> tools/record-release.sh; a FAIL -> diagnose first, do not just rerun
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ dispatch emulator.yml on branch ccr-823c5a56-yg8voe: sections v,pa,pt and base,v
 
 ## Last ten checkpoints
 ```
+  24831a0 ckpt 572: final gate #277 read: uf = emulator went offline (infra), pt FAIL = test assum
   cd7a0a6 ckpt 571: tools/patch_photo_step.py written + selftest OK (v0.8.1 photos: patch 5-7 unit
   0cac1e7 ckpt 570: BA4 photos measured (patch 4-6 units darker, additive scrim part, TASKS BA4a);
   2675d47 ckpt 569: AZ4 root cause found (stale tj_restore.xml snapshot restores lock-screen notif
@@ -25,8 +26,4 @@ dispatch emulator.yml on branch ccr-823c5a56-yg8voe: sections v,pa,pt and base,v
   9281c6d ckpt 565: gate #271: ps phase B 4 FAIL (bright layer over the slot, after x1,e1,bl); dia
   3056094 ckpt 564: BA1 proven: pt #272 15 PASS (MEASURED 0.7997/0.7999/0.7999 off 0.03/0.0035/0.0
   27728f8 ckpt 563: BA4 written: Tj will send a photo of the patch later (his words in TASKS)
-  102771e ckpt 562: waiting: pt #272 job 128248073003, gates 128247261992 + 128247271172, code rev
 ```
-
-(6 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
