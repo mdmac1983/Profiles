@@ -846,3 +846,9 @@
 > - **Pull-up for the PIN on the plain lock screen:** the patch hid 22 ms after the keyguard first reacted. Normally the patch is invisible there, but it still exists as a window.
 > - **PIN pad with the power menu open:** the emulator can't show a PIN pad while the menu is open, so that case is untested. The code for it is the same as the plain case.
 <!-- sha:fb032369fc7d -->
+
+## 2026-11-07T17:49:32Z
+> The `v` re-run passed, so every patch test is now green on the final code. The last step before release is the lock-safety core sections on this exact code. They cover PIN unlock, the crash breaker, restart, and the handshakes.
+>
+> Two parallel runs started at 17:49 UTC and should finish at about 18:02 UTC. If both are clean I'll start the GitHub build and send you the link.
+<!-- sha:0a47289275f7 -->
