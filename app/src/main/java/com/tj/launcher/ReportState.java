@@ -123,6 +123,10 @@ public final class ReportState {
                     .append(", one-time unstick ").append(Features.get(c, BatterySaverPolicy.UNSTICK_DONE_KEY, false) ? "done" : "not run yet").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
                     .append(", plugged in now: ").append(BatterySaverGuard.powerSource(c)).append(" (Android 10 greys the battery tile while the tablet is charging)")
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
+            b.append("menu dimming measurement (BA1): switch ").append(Features.get(c, ScrimMeasure.KEY, ScrimMeasure.defaultOn((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)) ? "on" : "off")
+                    .append(" | last: ").append(Features.getString(c, ScrimMeasure.NOTE_KEY, "(nothing yet)"));
+            for (int rot = 0; rot < 4; rot++) { String v = Features.getString(c, ScrimMeasure.valueKey(rot), ""); if (!v.isEmpty()) b.append(" | rotation ").append(rot).append(": ").append(ScrimFit.describeStored(v)); }
+            b.append('\n');
             b.append("battery saver on the lock screen (BA2): switch ").append(BatterySaverGuard.lockOffEnabled(c) ? "on" : "off").append(", restore for Quickstep ").append(BatterySaverGuard.lockRestoreEnabled(c) ? "on" : "off")
                     .append(" | ").append(BatterySaverGuard.lockStatus(c)).append('\n');
         } catch (Throwable t) { /* not available */ }
