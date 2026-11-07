@@ -852,3 +852,9 @@
 >
 > Two parallel runs started at 17:49 UTC and should finish at about 18:02 UTC. If both are clean I'll start the GitHub build and send you the link.
 <!-- sha:0a47289275f7 -->
+
+## 2026-11-07T18:02:47Z
+> The core run found two failures in section `e1`: the "Delete twice on the PIN pad before the PIN" secret handshake that unlocks into the stock launcher. The other core sections all passed, including the PIN unlock and restart ones.
+>
+> That section passed on the code before the PIN-pad hide change, so I'm re-running it alone to see whether it's a timing flake or something the new code caused. I'll read it at about 18:09 UTC, and nothing ships until I know.
+<!-- sha:a1706aaf57ce -->
