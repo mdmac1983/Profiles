@@ -2890,7 +2890,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (id == scrimLastShotId) return;
                 if (!AutoCalibration.ownerOk(row.owner) && !isSystemPackage(row.owner)) { postFinish("stopped: the screenshot was written by another app (" + row.owner + ")"); return; }
                 android.graphics.Bitmap full = PatchShot.decode(app, row.uri);
-                if (full == null) { postFinish("stopped: the screenshot could not be read"); return; }
+                if (full == null) { Log.i(TAG, "SCRIM the screenshot is not readable yet (still being written?): the next poll looks again"); return; }   // the stage has its own time limit; one unreadable look must not waste the try
                 scrimLastShotId = id;
                 final int W = full.getWidth(), H = full.getHeight();
                 if (W != dm.widthPixels || H != dm.heightPixels) { full.recycle(); postFinish("stopped: the screenshot is " + W + "x" + H + " but the screen is " + dm.widthPixels + "x" + dm.heightPixels); return; }
