@@ -2351,7 +2351,10 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void resetRecents(final long t0, final Runnable done, final java.util.Set<String> closeLabels) {
         performGlobalAction(GLOBAL_ACTION_RECENTS);
-        if (closeLabels == null || closeLabels.isEmpty()) { recentsClearAll(t0, done); return; }
+        if (closeLabels == null || closeLabels.isEmpty()) {
+            if (ReturnReset.cleanStart(this)) recentsEmpty(t0, done); else recentsClearAll(t0, done);   // BE2/BE3: a clean start empties the list whichever way this Recents screen allows
+            return;
+        }
         // D5: dismiss only the cards of apps opened from Quickstep (each Quickstep card carries a "Close" accessibility action); anything unexpected falls back to Clear all.
         final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
         final int[] closed = {0}, idle = {0};
@@ -2429,6 +2432,48 @@ public class TjAccessibilityService extends AccessibilityService {
             if (a.getLabel() != null && "close".equalsIgnoreCase(a.getLabel().toString().trim())) { out.add(n); return; }
         }
         for (int i = 0; i < n.getChildCount(); i++) collectCards(n.getChild(i), depth + 1, out);
+    }
+
+    /**
+     * BE2/BE3 (clean start, no helper): empties the Recents screen COMPLETELY, whichever way this Recents screen allows. The first CI run of the clean start (emulator run #307) found "Clear all" not reachable in 1.8 s on
+     * the AOSP Quickstep screen (the button sits at the far end of the carousel), so nothing was cleared. Every 40 ms: "Clear all" pressable = press it; "No recent items" = done; else EVERY card that offers a "Close" action is
+     * closed in one pass; a nudge scrolls the carousel every 5th look (a "Clear all" at the end); three looks in a row without a card after some were seen = done. Gives up after 2.5 s and says what it saw.
+     */
+    private void recentsEmpty(final long t0, final Runnable done) {
+        final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
+        final int[] tick = {0}, closed = {0}, idle = {0};
+        final boolean[] saw = {false};
+        final String[] pk = {"com.android.launcher3", "com.android.systemui"};
+        handler.post(new Runnable() { @Override public void run() {
+            try {
+                if (pressInSystemUi("clear all", pk)) { finishRecentsEmpty(t0, done, "Clear all pressed", true, closed[0]); return; }
+                if (anyTextPresent(new String[] {"no recent items"}, pk)) { finishRecentsEmpty(t0, done, "the list was empty", true, closed[0]); return; }
+                List<AccessibilityNodeInfo> cards = findTaskCards();
+                if (!cards.isEmpty()) {
+                    saw[0] = true; idle[0] = 0;
+                    for (AccessibilityNodeInfo card : cards) {
+                        for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
+                            if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) { closed[0]++; break; }
+                        }
+                    }
+                    handler.postDelayed(this, 40);
+                    return;
+                }
+                tick[0]++;
+                if (tick[0] % 5 == 0) scrollSomething(pk);
+                if (saw[0] && ++idle[0] >= 3) { finishRecentsEmpty(t0, done, "closed " + closed[0] + " card(s), none left", true, closed[0]); return; }
+            } catch (Throwable t) { Log.e(TAG, "empty recents failed", t); }
+            if (android.os.SystemClock.uptimeMillis() >= deadline) { finishRecentsEmpty(t0, done, saw[0] ? "stopped after " + closed[0] + " card(s)" : "no Clear all button and no card with a Close action found: nothing was cleared", saw[0], closed[0]); return; }
+            handler.postDelayed(this, 40);
+        } });
+    }
+
+    private void finishRecentsEmpty(long t0, Runnable done, String what, boolean ok, int closed) {
+        if (ok) { RecentsDirty.clear(this); AppOrigin.clearQuickstep(this); AppOrigin.setTracked(this); }   // Recents is clean again
+        resetReport.append("recents: ").append(what).append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
+        Log.i(TAG, "RESET recents (complete) " + what + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
+        LockLog.add(getApplicationContext(), "RESET", "recents (complete clear): " + what + ", " + closed + " card(s) closed one by one");
+        finishReset(t0, done);
     }
 
     private void recentsClearAll(final long t0, final Runnable done) {
