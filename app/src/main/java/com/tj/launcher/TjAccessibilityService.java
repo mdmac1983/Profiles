@@ -1469,7 +1469,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean locked = km != null && km.isKeyguardLocked();
             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
             if (bouncer) lastPadSeenMs = android.os.SystemClock.uptimeMillis();   // AU2: a screenshot taken around a PIN pad is refused
-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); if (bouncer && overlayShown) pinPadCameUp("the PIN pad scan found it"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
+            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); if (bouncer) pinPadCameUp("the PIN pad scan found it"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
     }
@@ -2600,32 +2600,38 @@ public class TjAccessibilityService extends AccessibilityService {
      * call); the removal of the dialog's window ends it. Both are window-id checks on the event itself: no binder call, nothing that can block the thread that draws the fade.
      */
     /**
-     * BC5: the PIN pad came up while the stock menu is open (a pull up from the bottom): the patch goes at once (alpha 0 in the next frame, untouchable so it can never swallow a PIN key) and stays away until the menu is
-     * gone. Called from the fastest sign (an event of the keyguard's own PIN / password / pattern view, no scan) and from the slower PIN-pad scan.
+     * BC5 (Tj, 2026-11-07, twice: "For the pull up for the pin, the patch should disappear immediately, as fast as possible" / "the power menu doesn't need to be opened. Any time I pull up to type the pin number
+     * the wallpaper patch should disappear immediately"): the PIN pad came up. A patch that is visible - open (the stock menu is up) or RESTING (invisible over the lock screen, but a window) - goes at once: alpha 0 in the
+     * next frame, untouchable so it can never swallow a PIN key. Over an open menu it stays away until that menu is gone; a resting patch stays away for 2.5 s, then the PIN-pad scan (lastBouncer) decides.
+     * Called from the fastest sign (an event of the keyguard's own PIN / password / pattern view, no scan) and from the slower PIN-pad scan.
      */
     private void pinPadCameUp(String why) {
         try {
-            if (!overlayShown || !patchLockMode || patchView == null || pinHide) return;
-            pinHide = true; pinHiddenUntilMs = android.os.SystemClock.uptimeMillis() + 2500;
-            closing = false; handler.removeCallbacks(closeFinishRun);
-            Log.i(TAG, "PATCH pin hide (" + why + ") t=" + android.os.SystemClock.uptimeMillis());
+            if (patchView == null || !patchLockMode || pinHide || (!overlayShown && !patchResting)) return;   // nothing visible to hide
+            long now = android.os.SystemClock.uptimeMillis();
+            pinHiddenUntilMs = now + 2500;
+            Log.i(TAG, "PATCH pin hide (" + why + ") t=" + now + (overlayShown ? " menu open" : " resting"));
             patchView.setAlpha(0f);                                   // gone in the next frame, before anything else
-            patchShow(true);                                          // keeps it gone (pinHide) and leaves the rest of the state as it is
-            applyPatchTouchable(false);                               // a hidden but touchable window would swallow the PIN keys under it
+            if (overlayShown) {
+                pinHide = true; closing = false; handler.removeCallbacks(closeFinishRun);
+                patchShow(true);                                      // keeps it gone (pinHide) and leaves the rest of the state as it is
+                applyPatchTouchable(false);                           // a hidden but touchable window would swallow the PIN keys under it
+            } else patchShow(false);                                  // the resting patch: not visible for the next 2.5 s (pinHiddenUntilMs)
             handler.postDelayed(new Runnable() { @Override public void run() { try { patchShow(overlayShown); } catch (Throwable ignored) { } } }, 2600);
         } catch (Throwable t) { Log.e(TAG, "pin hide failed", t); }
     }
 
     private void fastMenuClose(AccessibilityEvent event) {
-        if (!overlayShown || !patchLockMode || patchView == null) return;
+        if (!patchLockMode || patchView == null) return;
         int type = event.getEventType();
-        if (!pinHide && !lastBouncer && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself
+        if (!pinHide && !lastBouncer && (overlayShown || patchResting) && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself
             CharSequence cn = event.getClassName(), pk = event.getPackageName();
             if (cn != null && pk != null && "com.android.systemui".contentEquals(pk)) {
                 String c = cn.toString();
                 if (c.startsWith("com.android.keyguard.") && (c.contains("PINView") || c.contains("PasswordView") || c.contains("PatternView") || c.contains("SecurityContainer") || c.contains("HostView"))) { pinPadCameUp("event " + c.substring(c.lastIndexOf('.') + 1)); return; }
             }
         }
+        if (!overlayShown) return;   // a click in the stock dialog / the removal of its window only matter while the menu is open
         if (type == AccessibilityEvent.TYPE_VIEW_CLICKED) {
             CharSequence pk = event.getPackageName();
             int wid = dialogWindowId;
