@@ -1419,7 +1419,7 @@ ensurehome
 #      it in), the tablet is locked with the power key and unlocked with the real PIN pad (the handshake gesture = Quickstep, a plain PIN = the custom launcher). The proof that nothing was corrupted is the last step of
 #      each round: the real Settings button "Turn off now" must really turn the saver off (the AZ2 bug was exactly that it did not).
 #        BL1 locked from Quickstep with the saver on: off on the lock screen, kept off, back after the gesture.   BL2 locked from the custom launcher: off, and a plain unlock keeps it off.
-#        BL3 the memory survives a detour in the custom launcher.   BL4 a plug-in while locked: nothing is switched on from outside afterwards.   BL5 / BL6 the two switches.   The PIN is ALWAYS cleared again at the end.
+#        BL3 the memory survives a detour in the custom launcher.   BL4 a plug-in while locked: nothing is switched on from outside afterwards.   BL5 the lock-screen switch (the restore switch is JVM-tested).   The PIN is ALWAYS cleared again at the end.
 beat "before BL"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
@@ -1500,22 +1500,13 @@ check "BL4a: after a plug-in while locked the gesture unlock does NOT switch bat
 bstap on; BL4D="$(lowpower)"; bstap off; BL4E="$(lowpower)"
 check "BL4b: and Android's own state is sound: the Settings button turns the saver on and off again" bash -c "[ \"$BL4D\" = 1 ] && [ \"$BL4E\" = 0 ]"
 home; sleep 1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
-# ---------------- BL5 / BL6: the two switches
+# ---------------- BL5: the lock-screen switch
 blround false true quickstep
 adb shell settings put global low_power 1; sleep 2
 adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
 BL5A="$(lowpower)"
 check "BL5: with the lock-screen switch OFF the saver is left alone on the lock screen (control)" bash -c "[ \"$BL5A\" = 1 ]"
 adb shell settings put global low_power 0; sleep 1
-blround true false quickstep
-bstap on; home; sleep 1
-adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
-BL6A="$(lowpower)"
-adb shell input swipe 300 900 300 300 300; sleep 4
-pad d d 1 2 3 4 e; sleep 9
-BL6B="$(lowpower)"
-info "BL6: 'bring back' switch off: low_power=$BL6A on the lock screen, $BL6B after the gesture unlock; $(bllog 4)"
-check "BL6: with 'bring Quickstep's saver back' OFF the lock screen still has it off and the gesture unlock leaves it off" bash -c "[ \"$BL6A\" = 0 ] && [ \"$BL6B\" = 0 ]"
 adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
 adb shell locksettings clear --old 1234 > "$OUT/bl-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
