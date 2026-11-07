@@ -1,22 +1,22 @@
-# CHECKPOINT 606 — read me first, then TASKS.md
+# CHECKPOINT 607 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T17:01:46Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `75f8170` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T17:02:18Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `5e32b9d` (this checkpoint is the commit after it)
 
 ## Just done
-emulator #296 read: the tap close is followed along the stock fade-out (close_max 0.038, was 0.20), BACK unchanged, Home key / swipe cannot be filmed on a locked emulator; phase F now closes by the close-system-dialogs broadcast and has two hard BC2 checks; BC1 edge covered (+0.13 level)
+gate dispatched 17:02 UTC on a8f76b6 (the v0.8.4 candidate: BC1 edge fix + BC2 fade-out following): #297 id 42394250639 (probably base,x1,e1,v,ac,ps), #298 id 42394253079 (n,o,ae,pa,rb), #299 id 42394255486 (pt,last): each prints 'INFO sections:' so the first INFO line says which is which
 
 ## Do this next
-dispatch the gate: 3 parallel emulator.yml runs on ccr-823c5a56-yg8voe: {base,x1,e1,v,ac,ps} {n,o,ae,pa,rb} {pt,last} (about 16 min each); read each (list_workflow_jobs latest, get_job_logs tail ~70; pt tail ~125); then bump app/build.gradle.kts to 0.8.4 / code 29, bash ship.sh, android.yml full_build on main, get_release_by_tag v0.8.4, tools/record-release.sh v0.8.4, HANDOFF 0g, tell Tj (also ask how the pull-up-for-PIN close looks)
+read the three runs at ~17:19 UTC (list_workflow_jobs latest on each id, then get_job_logs: tail 70 for the two core runs, 125 for the pt run); success = 0 FAIL (the step exit code = FAILS); a FAIL: diagnose first (AN1 is the known timing-race check, now epoch-filtered); then bump 0.8.4 / code 29 in app/build.gradle.kts, bash ship.sh, android.yml full_build on main, get_release_by_tag, record-release, HANDOFF 0g, tell Tj
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  a8f76b6 ckpt 606: emulator #296 read: the tap close is followed along the stock fade-out (close_
   daf4f15 ckpt 605: emulator #295 read (BC1 edge covered to 0.1 level; BC2: click + dialog-removal
   e079c40 ckpt 604: merged Tj's 16:13 message (a browser question, captured on main only) into the
   a502af8 ckpt 603: BC2/BC1 emulator proof coded: pt phase F (the menu closed by BACK / a tap in t
@@ -26,8 +26,7 @@ dispatch the gate: 3 parallel emulator.yml runs on ccr-823c5a56-yg8voe: {base,x1
   ee295be ckpt 599: v0.8.3 SHIPPED: android.yml run 30 id 42350762180 on bf6a931 green (handoff ga
   4f584eb ckpt 598: android.yml full build RUNNING: run 30 id 42350762180 on main bf6a931 (v0.8.3 
   95ccfd5 ckpt 597: Tj said 'Build it now' (07:19 UTC): dispatched android.yml full_build=true on 
-  7faba16 ckpt 596: run #293 id 42349158289 (base,x1,v,ac on 8309cc6) AN1 FAILED AGAIN (67 PASS 1 
 ```
 
-(3 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
