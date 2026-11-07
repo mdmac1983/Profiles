@@ -2441,7 +2441,7 @@ check "CS-A1 (BE2): a hidden app that has left the screen is NOT in Recents (rem
 check "CS-A2: ... and the drawer app stays (Contacts is still in Recents)" bash -c "[ \"${CSA_CON:-0}\" -ge 1 ]"
 # the lock-time trigger: Calendar is a DRAWER app while it is opened, then it leaves the drawer set (the app restarts to read it) and the tablet locks
 csapps "com.android.calendar"; csfeat false true; setmode custom; rebind; home; sleep 2
-csopen com.android.calendar
+csopen com.android.calendar; csopen com.android.contacts       # Contacts LAST: when our process is stopped below, the app that comes to the front is a DRAWER app (a hidden app on screen would be swept when the home comes back: that is the other trigger, and correct)
 CSA_CAL1="$(cscount com.android.calendar)"
 csapps ""; adb shell am force-stop "$PKG"; sleep 1; rebind; home; sleep 3
 CSA_CAL2="$(cscount com.android.calendar)"
@@ -2466,6 +2466,8 @@ csev > "$OUT/cs-b-resumed.txt"; getmode > "$OUT/cs-b-mode.txt"; cslog 60 > "$OUT
 CSB_CON="$(cscount com.android.contacts)"; CSB_CAL="$(cscount com.android.calendar)"
 info "CS-B: after the plain PIN: mode $(cat $OUT/cs-b-mode.txt); resumed in order: $(csnames $OUT/cs-b-resumed.txt); Recents contacts=$CSB_CON calendar=$CSB_CAL; stand-in process: [$(adb shell pidof com.android.calendar | tr -d '\r\n')]"
 info "CS-B: the visible-path log lines: $(grep -E 'RESET|HOME' $OUT/cs-b-log.txt | cut -c14-230 | tail -4 | tr '\n' '|')"
+info "CS-B: the reset report (Launcher control 'Last reset'): $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr -d '\n' | grep -o 'reset_last">[^<]*' | sed 's/reset_last">//' | tr '\n' '|' | cut -c1-420)"
+sleep 8; info "CS-B: 8 s later: Recents contacts=$(cscount com.android.contacts) calendar=$(cscount com.android.calendar); focus: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-110)"
 check "CS-B0: the shell helper is NOT running here (so this is the on-screen path)" bash -c "[ -z \"\$(adb shell pgrep -f com.tj.launcher.ShellServer | tr -d '\\r\\n')\" ]"
 check "CS-B8: the on-screen clean-up ran ('RESET plan' in the lock log)" grep -q 'RESET plan' "$OUT/cs-b-log.txt"
 check "CS-B1 (BE3): after a Quickstep session a plain PIN ends in the custom world (mode custom)" grep -q custom "$OUT/cs-b-mode.txt"
@@ -2519,6 +2521,7 @@ lockpad; adb logcat -c; pad 1 2 3 4 e; sleep 9
 cslog 60 > "$OUT/cs-d-log.txt"
 CSD_CON="$(cscount com.android.contacts)"
 info "CS-D: after the first unlock: Recents contacts=$CSD_CON; flag now: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'clean_pending_boot[^/]*' | head -1); helper process: [$(adb shell pgrep -f com.tj.launcher.ShellServer | tr -d '\r\n')]"
+info "CS-D: the reset report: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr -d '\n' | grep -o 'reset_last">[^<]*' | sed 's/reset_last">//' | tr '\n' '|' | cut -c1-420)"
 info "CS-D: lock log (RESET / HOME / UNLOCK): $(grep -E 'RESET|HOME|UNLOCK' $OUT/cs-d-log.txt | cut -c14-200 | tail -5 | tr '\n' '|')"
 info "CS-D: logcat (RESET / cover / reset): $(adb logcat -d -s TjA11y:I TjReset:I 2>/dev/null | grep -E 'RESET|cover|INVISIBLE|AT LOCK' | cut -c20-190 | tail -7 | tr '\n' '|')"
 check "CS-D1 (BE2): the first unlock after a boot cleared the old Recents (Contacts is gone)" bash -c "[ \"${CSD_CON:-9}\" = 0 ]"
