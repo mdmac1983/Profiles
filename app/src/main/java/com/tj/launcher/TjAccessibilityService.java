@@ -2525,13 +2525,68 @@ public class TjAccessibilityService extends AccessibilityService {
      * progress (no bitmap to draw) can never leave a redraw loop running: the frame after the last one is drawn with the final brightness and asks for nothing more.
      */
     private void fadeFrameDone(View v) {
+        if (closing) { v.postInvalidateOnAnimation(); return; }   // BC2: the fade-OUT is ended by the dialog window's removal or by its own timer (finishClose), never by the painter
         if (!fading) return;
         v.postInvalidateOnAnimation();
         if (!PatchFade.fading(android.os.SystemClock.uptimeMillis(), fadeStartMs, fadeLeadMs)) fading = false;
     }
 
+    /**
+     * BC2: the stock dialog began to fade OUT at {@code startMs} (uptime ms): follow its curve ({@link PatchFade#closeProgress}) until its window is removed. Lock-screen patch, open menu, fade switch on, no card of ours
+     * (the cardless patch of v0.8.x) - anything else keeps the old behaviour (the node scan ends the open look).
+     */
+    private void startClose(long startMs, String why) {
+        try {
+            if (closing || !overlayShown || patchView == null || !patchLockMode || !patchFadeOn() || cardWanted()) return;
+            long now = android.os.SystemClock.uptimeMillis();
+            closing = true; closeStartMs = startMs; fading = false;
+            Log.i(TAG, "PATCH close start (" + why + ") t=" + now + " began=" + (startMs - now) + " ms from now lead=" + fadeLeadMs);
+            handler.removeCallbacks(closeFinishRun);
+            handler.postDelayed(closeFinishRun, Math.max(0, startMs + PatchFade.CLOSE_MS + CLOSE_SAFETY_MS - now));
+            patchView.invalidate();   // the first frame now; fadeFrameDone asks for every following one
+        } catch (Throwable t) { closing = false; Log.e(TAG, "close start failed", t); }
+    }
+
+    /** BC2: the fade-out time is over and no removal event came (or a sign of a dismissal was wrong): the normal scan decides, the open look returns if the menu is still there. */
+    private void finishClose(String why) {
+        handler.removeCallbacks(closeFinishRun);
+        if (!closing) return;
+        closing = false;
+        Log.i(TAG, "PATCH close end (" + why + ") t=" + android.os.SystemClock.uptimeMillis());
+        try { if (patchView != null) patchView.invalidate(); evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+    }
+
+    /** BC2: the stock dialog's window was removed (its removal event, no node scan): the patch goes back to rest in the same frame the stock scrim is gone. */
+    private void dialogGone() {
+        long since = android.os.SystemClock.uptimeMillis() - cardShownMs;
+        if (!overlayShown || since < 800) return;   // not open for us, or the first 0.8 s: the emulator's injected long press shows the dialog twice (the scan path has its own hold for that)
+        boolean was = closing;
+        closing = false; handler.removeCallbacks(closeFinishRun);
+        dialogWindowId = -1;
+        Log.i(TAG, "PATCH close end (the dialog window was removed" + (was ? "" : "; no earlier sign of the dismissal") + ") t=" + android.os.SystemClock.uptimeMillis());
+        hideOverlay();
+    }
+
+    /**
+     * BC2: the signs of the stock dismissal. A click in the stock dialog's window (the empty area's click listener, an entry) starts the fade-out at the click's own time (the stock calls dismiss() in the same
+     * call); the removal of the dialog's window ends it. Both are window-id checks on the event itself: no binder call, nothing that can block the thread that draws the fade.
+     */
+    private void fastMenuClose(AccessibilityEvent event) {
+        if (!overlayShown || !patchLockMode || patchView == null) return;
+        int type = event.getEventType();
+        if (type == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+            CharSequence pk = event.getPackageName();
+            int wid = dialogWindowId;
+            if (wid != -1 && pk != null && "com.android.systemui".contentEquals(pk) && event.getWindowId() == wid) startClose(event.getEventTime(), "a click in the stock dialog");
+        } else if (type == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            int wid = dialogWindowId;
+            if (wid != -1 && (event.getWindowChanges() & AccessibilityEvent.WINDOWS_CHANGE_REMOVED) != 0 && event.getWindowId() == wid) dialogGone();
+        }
+    }
+
     /** AZ1: how far the stock scrim will be when the frame drawn now is SEEN: 0..1 (1 = complete, also when no fade is running). Main thread (onDraw) only. */
     private float fadeProgress() {
+        if (closing) return PatchFade.closeProgressAt(android.os.SystemClock.uptimeMillis(), closeStartMs, fadeLeadMs);   // BC2: the open look runs back to the resting look along the stock fade-OUT
         if (!fading) return 1f;
         long now = android.os.SystemClock.uptimeMillis();
         float p = PatchFade.progressAt(now, fadeStartMs, fadeLeadMs);
