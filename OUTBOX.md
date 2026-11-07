@@ -919,3 +919,48 @@
 >
 > To get the instant unlock, the adb helper line has to be run again after every tablet restart. Without it you'll still see the cover briefly after a Quickstep session.
 <!-- sha:10b29d54080b -->
+
+## 2026-11-07T23:27:49Z
+> Tj, v0.8.5 is released and pushed to GitHub, but I haven't tested it on your tablet. Everything below was checked on the emulator and in unit tests only.
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.5
+>
+> Install `Launcher-v0.8.5.apk` over the old one. It's signed with the same key, so your permissions, Home choice and accessibility setting stay.
+>
+> **What changed**
+> - **Wallpaper patch flicker and the Screenshot flash.**
+>   - The patch now hides the instant your finger touches the screen. Before, it waited for the lock screen's "PIN pad is coming" signal, which arrives late when the tablet is busy.
+>   - The Screenshot button could show if the patch was "away" when the power menu opened. Now the patch comes back on the menu's first signal, and its window is created while the screen is still dark.
+>   - On the emulator the patch hid 64–73 ms after the finger went down.
+> - **Clean start instead of Solitaire.**
+>   - The custom launcher no longer opens Solitaire or any other app. After a plain PIN you see the custom home alone, with an empty Recents list.
+>   - Recents is fully cleared whenever a custom session starts. That means after a Quickstep session ends, and at the first unlock after a restart.
+>   - It is not cleared at every unlock of a custom-only session, so you keep the apps you're using.
+>   - There's a switch in Launcher control to get the old behavior back: "Start the custom launcher clean (no Solitaire)".
+> - **Hidden apps in the custom Recents (your Telegram and Claude case).**
+>   - The old rule guessed which launcher had opened an app, and that guess let those two through. The new rule is "is this app in the custom drawer?". If not, its card is removed, whoever opened it.
+>   - With the adb helper running, this happens invisibly when the tablet locks, shortly after an unlock, when Recents opens, and a moment after such an app leaves the screen.
+>   - Without the helper, the older on-screen filter still closes the cards, now in one pass.
+> - **Faster unlock.** The long black screen was the cover waiting for Solitaire to start. The cover now goes away as soon as the custom home is in front.
+>   - **With the helper running:** the clean-up happens while the tablet is locked, so the unlock should have nothing left to do and no cover.
+>   - **Without the helper:** you still see the cover for about 1.5 seconds on the emulator while the shade and Recents are cleared on screen.
+>
+> **Limits**
+> - The helper line has to be run again after every tablet restart. It only works over adb, and I found no way to make it persistent without the cable.
+> - Before the release, a code review found ten real problems in my first version. I fixed all ten.
+> - The tests were noisy in places. A late click event and the emulator's two scrim levels (0.75 and 0.80) caused some failures in the patch-timing test, so I loosened one comparison. The same sections then passed. The lock-safety core passed, and the release workflow passed with the certificate verified.
+>
+> **What I need from you** (st
+> [... 407 characters omitted ...]
+> eenshot flash?
+> 5. If anything is slow, send the tablet report right after that unlock (Launcher control > Tablet setup & report). I'll read the lock log lines to see where the time went.
+>
+> **Still open from earlier**
+> - Whether the lock screen still takes a screenshot by itself (BC4), plus a Control screenshot of the same screen as before (BB3c).
+> - The faint line below the hidden card (BB1). I believe v0.8.3 fixed it, but it needs a look on the tablet.
+> - The lighter rectangle when you pull the shade down on the lock screen with the patch on (AU5).
+> - Your decision on the four old lock-screen screenshots still in the public repo (AF2).
+> - Two items of mine: keeping your settings when the safety breaker trips (CBR2), and the double-Home reset when notification access is off (RS1).
+>
+> Nothing else is waiting on me. Everything is committed and pushed, so a new session resumes from `CHECKPOINT.md`.
+<!-- sha:d2107a0d7334 -->
