@@ -1837,6 +1837,8 @@ psmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&
 psnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
 psstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="patch_shot_status">[^<]*' | sed 's/.*>//'; }
 adb shell settings put secure lock_screen_show_notifications 0           # a "Screenshot saved" notification must not sit on the lock screen next to the slot
+# # AZ4 ROOT CAUSE (found 2026-11-07 with the ps diagnostics): an earlier section ends with setfeat (lock_quiet back to its default ON), the app then snapshots the ORIGINAL lock_screen_show_notifications (1) and sets it to 0; this section turns lock_quiet OFF and the app RESTORES that stale snapshot: notifications are visible on the lock screen again and their white cards (a battery-saver suggestion, "Screenshot saved", USB debugging) sit over the patch slot. Dropping the snapshot first makes the section independent of what ran before it.
+adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: no helper photo, the stored real pixels are the only source
 psfeat 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
@@ -1951,6 +1953,8 @@ ensurehome
 beat "before PA"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/pa-grant.txt" 2>&1
 adb shell settings put secure lock_screen_show_notifications 0           # a "Screenshot saved" notification must not sit on the lock screen next to the slot
+# # AZ4 ROOT CAUSE (found 2026-11-07 with the ps diagnostics): an earlier section ends with setfeat (lock_quiet back to its default ON), the app then snapshots the ORIGINAL lock_screen_show_notifications (1) and sets it to 0; this section turns lock_quiet OFF and the app RESTORES that stale snapshot: notifications are visible on the lock screen again and their white cards (a battery-saver suggestion, "Screenshot saved", USB debugging) sit over the patch slot. Dropping the snapshot first makes the section independent of what ran before it.
+adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: the stored real pixels are the only source
 pafeat false 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
@@ -2044,6 +2048,8 @@ ensurehome
 beat "before PT"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/pt-grant.txt" 2>&1
 adb shell settings put secure lock_screen_show_notifications 0
+# # AZ4 ROOT CAUSE (found 2026-11-07 with the ps diagnostics): an earlier section ends with setfeat (lock_quiet back to its default ON), the app then snapshots the ORIGINAL lock_screen_show_notifications (1) and sets it to 0; this section turns lock_quiet OFF and the app RESTORES that stale snapshot: notifications are visible on the lock screen again and their white cards (a battery-saver suggestion, "Screenshot saved", USB debugging) sit over the patch slot. Dropping the snapshot first makes the section independent of what ran before it.
+adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
 ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's preferences (the helper is restarted afterwards)
   printf 's#<boolean name="patch_fade" value="[a-z]*" />##\ns#<int name="patch_fade_lead" value="[-0-9]*" />##\ns#</map>#<boolean name="patch_fade" value="%s" /><int name="patch_fade_lead" value="%s" /></map>#\n' "$1" "$2" > "$OUT/ptset.sed"
