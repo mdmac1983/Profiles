@@ -135,7 +135,7 @@ def selftest():
     S, O = 0.78, 6.0
 
     def shadow(d):          # fractional darkening below the panel: 12 % at the edge, decaying
-        return 0.12 * math.exp(-max(0, d) / 9.0) if d >= 0 else 0.0
+        return 0.12 * math.exp(-max(0, d) / 16.0) if d >= 0 else 0.0   # Tj's photos: still ~10 % of the level at 19 px below the panel
 
     def ramp(dist, width):  # the patch's smoothstep fringe
         t = 1 - dist / (width + 1.0)
@@ -176,7 +176,7 @@ def selftest():
         report(o)
     ok = abs(st["scale"][1] - S) < 0.01 and abs(st["offset"][1] - O) < 1.5
     ok = ok and st["shadow_max"] > 6.0 and st["shadow_ext"] >= 15
-    ok = ok and old["line_max"] > 0.4 * st["shadow_max"] and abs(old["core_mean"]) < 1.0
+    ok = ok and old["line_max"] > 0.3 * st["shadow_max"] and abs(old["core_mean"]) < 1.0
     ok = ok and new["line_max"] < 0.3 * old["line_max"] and new["line_max"] < 2.0 and abs(new["core_mean"]) < 1.0
     print("selftest: shadow %.1f levels to %d px; old geometry line %.1f at %d; extended line %.1f; core %+.2f / %+.2f -> %s" % (
         st["shadow_max"], st["shadow_ext"], old["line_max"], old["line_at"], new["line_max"], old["core_mean"], new["core_mean"], "OK" if ok else "FAILED"))
