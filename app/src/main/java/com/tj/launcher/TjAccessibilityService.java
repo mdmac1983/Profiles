@@ -2716,7 +2716,7 @@ public class TjAccessibilityService extends AccessibilityService {
     // ---------------------------------------------------------------- the measurement stage: bare frame -> the stock menu opened by the helper -> second frame -> menu closed
     private int scrimStage = 0;     // 0 idle, 1 waiting for the bare frame, 2 the gap after it, 3 the menu is opening, 4 waiting for the menu frame, 5 closing the menu
     private long scrimBeganAt = 0, scrimStageAt = 0, scrimLastStartMs = 0, scrimAskedAt = 0, scrimMenuAt = 0, scrimPollAt = 0, scrimLastShotId = -1;
-    private int scrimThisLock = 0, scrimCloseTries = 0;
+    private int scrimThisLock = 0, scrimCloseTries = 0, scrimGoneTicks = 0;
     private boolean scrimOpenedMenu = false, scrimIngesting = false;
     private int[] scrimPoints, scrimRef;   // the sample points of the bare frame ((y << 16) | x) and its pixels there
     private String lastScrimNote = "", scrimOutcome = "";
