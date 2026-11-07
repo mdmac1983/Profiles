@@ -280,3 +280,7 @@
 >
 > I'm still waiting on the patch-measurement proof run, the two final-gate runs and the independent code review.
 <!-- sha:53301d6257fe -->
+
+## 2026-11-07T01:08:46Z
+> Still waiting: the `pt` proof run should finish in a few minutes, and the two gate runs about ten minutes after that. I'll read each result as it lands.
+<!-- sha:a70d92d99bda -->
