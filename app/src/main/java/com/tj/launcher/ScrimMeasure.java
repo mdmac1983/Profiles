@@ -142,7 +142,7 @@ public final class ScrimMeasure {
             int n = 0;
             for (int v : g) {
                 int x = v & 0xFFFF, y = v >>> 16, i = y * w + x;
-                if (flat(lum(px[i - 1]), lum(px[i + 1]), lum(px[i - w]), lum(px[i + w]))) kept[n++] = v;
+                if (flat(lum(px[i]), lum(px[i - 1]), lum(px[i + 1]), lum(px[i - w]), lum(px[i + w]))) kept[n++] = v;
             }
             kept = java.util.Arrays.copyOf(kept, n);
             if (n >= 2 * ScrimFit.MIN_SAMPLES) break;
