@@ -868,3 +868,25 @@
 ## 2026-11-07T18:19:18Z
 > The confirmation run passed, so the earlier `e1` failure was a timing flake. Every test is now green on the v0.8.4 code, and the GitHub build for v0.8.4 started at about 18:19 UTC. It takes about 3 minutes. I'll check it at about 18:25 UTC, confirm the Release, and send you the link.
 <!-- sha:fe8cb3cb035f -->
+
+## 2026-11-07T18:25:53Z
+> v0.8.4 is built, signed by GitHub, and the signature was checked. It installs over v0.8.3 as an update. Download `Launcher-v0.8.4.apk` from this page:
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.4
+>
+> **What's new:**
+> 1. **Right edge:** the patch now covers the Screenshot slot all the way to the screen's right edge. The stock menu has a thin line in the 4 px gap beside its card, and the patch used to let part of it show through.
+> 2. **Tap in the middle to close:** the patch now fades out along with the stock menu instead of staying dark and then snapping. On the emulator the biggest brightness mismatch while closing dropped from 20% to about 5%.
+> 3. **Pull up for the PIN:** the patch now disappears the moment the PIN pad comes up. This works with or without the power menu open, and it can't block the PIN keys.
+>
+> **What to tell me after trying it:**
+> - How the sliver, the tap-close fade and the pull-up look.
+> - The pull-up with the power menu open couldn't be tested on the emulator. The code for it is the same as the plain case, but I haven't seen it work.
+> - Closing the menu with the BACK key behaves as before.
+>
+> **Still waiting on you:**
+> - **Screenshots (BC4):** a screenshot of Launcher control's "Power menu (side key)" section, and when the screenshots happen.
+> - **Hidden apps in Recents and the slow unlock (BD1, BD2):** the tablet report right after one of them happens.
+>
+> This conversation is very long. Please start a new session for those two items: "Handoff ready: start a new session, it resumes from CHECKPOINT.md". The notes and plan for both are already saved.
+<!-- sha:488a3ac886c4 -->
