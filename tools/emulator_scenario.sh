@@ -2201,7 +2201,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     grep -E "PBPROFILE" "$OUT/pb-metrics.txt" | sed 's/PBPROFILE //' | while IFS= read -r L; do info "PB profile $(echo "$L" | cut -c1-330)"; done
     grep -E "PBGRID" "$OUT/pb-metrics.txt" | sed 's/PBGRID //' | while IFS= read -r L; do info "PB grid $L"; done
     info "PB windows while the stock menu is open: $(tr '\n' '|' < "$OUT/pb-windows.txt" | cut -c1-700)"
-    grep -E "PBSHADOW|PBSIM" "$OUT/pb-metrics.txt" | while IFS= read -r L; do info "PB $(echo "$L" | cut -c1-430)"; done
+    grep -E "PBSHADOW|PBSIM|PBFAR" "$OUT/pb-metrics.txt" | while IFS= read -r L; do info "PB $(echo "$L" | cut -c1-430)"; done
     info "PB menu entries (text [bounds]): $(python3 -I tools/pb_ui.py "$OUT/pb-ui.xml" 2>&1 | cut -c1-520)"
     check "PB: the probe measured the stock panel and the four geometries without an error" bash -c "! grep -q 'error=' $OUT/pb-metrics.txt && [ \"\$(grep -c PBMETRIC $OUT/pb-metrics.txt)\" -ge 5 ]"
     pbval(){ grep PBMETRIC "$OUT/pb-metrics.txt" | grep "label=$1 " | grep -o "$2=[-+0-9.]*" | head -1 | cut -d= -f2; }
@@ -2211,23 +2211,34 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     check "PB: the slot interior of the default geometry still matches (mean deviation within 1.5 levels)" awk -v c="${PBC_NEW:-9}" 'BEGIN{exit !((c<0?-c:c) < 1.5)}'
     PBP0="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra0/fringe9=[0-9.]*' | head -1 | cut -d= -f2)"; PBP1="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra26/fringe4=[0-9.]*' | head -1 | cut -d= -f2)"
     info "PB: the line a geometry would leave on a menu WITHOUT the second card, predicted from the stock shadow measured under it (levels): v0.8.2 geometry ${PBP0:-?}, default ${PBP1:-?}"
-    check "PB: from the stock shadow the default geometry leaves a line of at most 2 levels, and no more than the v0.8.2 geometry" awk -v n="${PBP1:-99}" -v o="${PBP0:-0}" 'BEGIN{exit !(n+0 <= 2.0 && n+0 <= o+0)}'
+    PBED="$(grep PBSHADOW "$OUT/pb-metrics.txt" | grep -o 'edge_d=[-0-9]*' | head -1 | cut -d= -f2)"
+    # the emulator's menu has a 4th card (Emergency) under the panel; the prediction needs a clean white edge with the screen below it. Without one (the white reaches too far down) it is information only, never a failure.
+    if [ "${PBED:--1}" -ge 20 ]; then
+      check "PB: from the stock shadow the default geometry leaves a line of at most 2 levels, and no more than the v0.8.2 geometry" awk -v n="${PBP1:-99}" -v o="${PBP0:-0}" 'BEGIN{exit !(n+0 <= 2.0 && n+0 <= o+0)}'
+    else info "PB: no clean second white edge under the panel (edge at ${PBED:-?}): the shadow line cannot be predicted on this emulator menu (see PBFAR); the reach and interior checks above stand"; fi
     # ---- E (BB2, Tj, 2026-11-07, while testing the battery saver: "the lock screen screenshot itself again, not sure why"): the stored measurement was valid for ONE theme only and there was ONE slot, so every flip of the
     #      theme (battery saver switches the dark theme on and off) made the helper measure again (two camera flashes, the stock menu opening by itself) and overwrite the other theme's value. One slot per theme: the
     #      first time in the dark theme it is measured ONCE (slot patch_scrim_r0n, the light slot untouched); flipping back to the light theme must not start another measurement.
+    #      How to get the emulator into the dark theme: `cmd uimode night yes` did nothing on this image (run #288: 'Night mode: no'), so the REAL trigger is used too: battery saver (a direct low_power write forces the dark
+    #      theme), with the guard's lock / custom-launcher switch-off rules out of the way for the duration. Whether it worked is read from the helper's own note ('the dark theme'); if the emulator cannot flip, the dark checks are
+    #      skipped with an INFO line (never a false failure), the light-theme checks still run.
     scrimslot(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o "name=\"$1\">[^<]*" | sed 's/.*>//'; }
-    adb shell cmd uimode night yes >/dev/null 2>&1; sleep 2
-    info "PT/BB2: uimode after 'night yes': $(adb shell cmd uimode night 2>&1 | tr -d '\r' | head -1)"
+    ptkey profile_battery_saver_lock_off false; ptkey profile_battery_saver_off false
+    adb shell cmd uimode night yes > "$OUT/bb2-uimode.txt" 2>&1; adb shell settings put global low_power 1; sleep 4
+    info "PT/BB2: after 'night yes' + saver on: uimode: $(adb shell cmd uimode night 2>&1 | tr -d '\r' | head -1); the command said: $(head -c 80 "$OUT/bb2-uimode.txt" | tr '\n' ' '); config: $(adb shell dumpsys uimode 2>&1 | grep -iE 'night' | head -3 | cut -c1-90 | tr '\n' '|')"
     adb logcat -c
-    pbrestart                                                                   # the helper starts in the dark theme: nothing is stored for it yet, so ONE measurement
-    for i in $(seq 1 50); do scrimslot patch_scrim_r0n | grep -q '#n#' && break; sleep 2; done
+    pbrestart                                                                   # the helper starts in the dark theme (if the emulator is in it): nothing is stored for it yet, so ONE measurement
+    for i in $(seq 1 45); do scrimslot patch_scrim_r0n | grep -q '#n#' && break; scrimslot scrim_why | grep -q 'dark theme' || { [ "$i" -ge 14 ] && break; }; sleep 2; done
     NIGHT_SLOT="$(scrimslot patch_scrim_r0n)"; DAY_SLOT="$(scrimslot patch_scrim_r0)"; WHYN="$(scrimslot scrim_why)"
     STARTS_N="$(adb logcat -d -s TjA11y:I 2>/dev/null | grep -c 'SCRIM measurement started')"
-    info "PT/BB2: in the dark theme: dark slot = ${NIGHT_SLOT:-none}; light slot = ${DAY_SLOT:-none}; measurements started $STARTS_N; why: ${WHYN:-?}"
-    check "BB2: the dark theme got its OWN measurement (slot patch_scrim_r0n)" bash -c "echo \"$NIGHT_SLOT\" | grep -q '#n#'"
-    check "BB2: ... and the light theme's measurement was not overwritten (slot patch_scrim_r0 is still the light one)" bash -c "echo \"$DAY_SLOT\" | grep -q '#d#'"
-    check "BB2: the reason of the dark-theme measurement is written in plain words" bash -c "echo \"$WHYN\" | grep -q 'started because'"
-    adb shell cmd uimode night no >/dev/null 2>&1; sleep 2
+    info "PT/BB2: dark attempt: dark slot = ${NIGHT_SLOT:-none}; light slot = ${DAY_SLOT:-none}; measurements started $STARTS_N; why: ${WHYN:-?}"
+    check "BB2: the light theme's measurement is still there (slot patch_scrim_r0 is the light one)" bash -c "echo \"$DAY_SLOT\" | grep -q '#d#'"
+    check "BB2: the reason of the last measurement is written in plain words" bash -c "echo \"$WHYN\" | grep -q 'started because'"
+    if echo "$WHYN" | grep -q 'dark theme'; then
+      check "BB2: the dark theme got its OWN measurement, stored in its own slot (patch_scrim_r0n)" bash -c "echo \"$NIGHT_SLOT\" | grep -q '#n#'"
+    else info "PT/BB2: the emulator could not be put into the dark theme (the helper still saw the light theme): the dark-theme checks are skipped here; the unit tests cover the slots"; fi
+    adb shell settings put global low_power 0; adb shell cmd uimode night no >/dev/null 2>&1; sleep 4
+    ptkey profile_battery_saver_lock_off true; ptkey profile_battery_saver_off true
     adb logcat -c
     pbrestart; sleep 25                                                          # back in the light theme: it was measured already, no second measurement may start
     STARTS_D="$(adb logcat -d -s TjA11y:I 2>/dev/null | grep -c 'SCRIM measurement started')"

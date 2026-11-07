@@ -118,11 +118,12 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
         # white block has the same elevation. edge = the last row (d) of that block; j = rows below it (j = 0 is the first row under the edge, like d = 0 under the panel).
         edge = None
         for d in sorted((d for d, v in pr.items() if v[0] >= 40.0), reverse=True):
-            if all(pr.get(d + k, (0.0,))[0] < 40.0 for k in (1, 2, 3)) and (d + 70) in pr:
+            if all(pr.get(d + k, (0.0,))[0] < 40.0 for k in (1, 2, 3)) and (d + 30) in pr:   # a white block that ENDS with at least 30 rows of the screen below it
                 edge = d
                 break
         if edge is None:
             edge = -1
+        out["far"] = {d: pr[d][0] for d in range(60, 185, 8) if d in pr}      # where does the white under the panel end? (diagnostic)
         out["edge_d"] = edge
         sh = {j: -pr[edge + 1 + j][0] for j in range(0, 70) if (edge + 1 + j) in pr}      # positive = darker than the dimmed wallpaper
         out["shadow_prof"] = sh
@@ -182,6 +183,7 @@ def report(o):
     if o["kind"] == "stock":
         print("PBSHADOW label=%s edge_d=%d near_panel=%.1f (the first card's shadow 0-3 px under the panel); shadow below the last white block, j px below its edge (levels darker): %s" % (
             o["label"], o["edge_d"], o["shadow_near"], " ".join("%d:%.1f" % (j, o["shadow_prof"][j]) for j in (0, 1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 27, 30, 35, 40, 50, 60) if j in o["shadow_prof"])))
+        print("PBFAR label=%s deviation far below the panel (d : levels): %s" % (o["label"], " ".join("%d:%+.0f" % (d, v) for d, v in sorted(o["far"].items()))))
         print("PBSIM label=%s predicted line (levels) a geometry would leave on a menu with NO second card, from that shadow: %s" % (
             o["label"], "  ".join("extra%d/fringe%d=%.1f@%d" % (x, f, abs(predict(o["shadow_prof"], x, f)[0]), predict(o["shadow_prof"], x, f)[1]) for x, f in SIM_GEOMETRIES)))
     for ln in o.get("grid", []):
