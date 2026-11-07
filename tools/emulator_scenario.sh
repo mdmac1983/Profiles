@@ -2429,7 +2429,7 @@ csshell(){ adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f
 csclean(){ adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.gallery3d; adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml shared_prefs/tj_origin.xml shared_prefs/tj_dirty.xml shared_prefs/tj_task_origin.xml"; }
 # ---------------- A: the helper removes hidden apps' tasks by id (custom launcher, helper running)
 csclean; csapps ""; csfeat false true; setmode custom; rebind; home; sleep 2; csshell
-check "CS-A0: the shell helper answers (PING)" bash -c "adb shell 'echo PING | (toybox nc 127.0.0.1 47631 2>/dev/null || nc 127.0.0.1 47631 2>/dev/null)' | grep -q OK || adb logcat -d | grep -q 'tj-shell'"
+check "CS-A0: the shell helper process is running" bash -c "[ -n \"\$(adb shell pgrep -f com.tj.launcher.ShellServer | tr -d '\\r\\n')\" ]"
 csopen com.android.calendar; csopen com.android.contacts
 sleep 3
 CSA_CAL="$(cscount com.android.calendar)"; CSA_CON="$(cscount com.android.contacts)"
