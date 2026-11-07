@@ -1521,6 +1521,11 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.BroadcastReceiver lockReceiver = new android.content.BroadcastReceiver() {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
             kgAt = -10_000;   // AB2: screen on/off and unlock change the keyguard: never answer these from the 250 ms memo
+            try {   // BF1 (Tj: animations back on "immediately" on the lock screen): before anything else of this broadcast, so the lock screen never shows with them off; a wake with no lock screen simply continues the session
+                String a0 = i == null ? null : i.getAction();
+                if (android.content.Intent.ACTION_SCREEN_OFF.equals(a0)) AnimationSpeedup.onScreenOff(getApplicationContext());
+                else if (android.content.Intent.ACTION_SCREEN_ON.equals(a0)) AnimationSpeedup.onScreenOn(getApplicationContext(), keyguardLocked());
+            } catch (Throwable t) { Log.e(TAG, "animation sync failed", t); }
             handler.post(layerRefresh);   // BE1: the patch window first (a no-op when it was prepared while the screen was dark); the PIN-pad scan of lockEval comes after it
             handler.post(lockEval); handler.postDelayed(lockEval, 400);
             String act = i == null ? null : i.getAction();
