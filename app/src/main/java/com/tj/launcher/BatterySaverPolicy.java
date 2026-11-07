@@ -171,6 +171,15 @@ public final class BatterySaverPolicy {
         return saverOn ? "1" : "0";
     }
 
+    /**
+     * Pure: is a hold that began at {@code heldAtMs} still the one Quickstep's memory belongs to? NOT when a Quickstep session began AFTER the hold ({@code qsStartMs}, {@link Mode#qsStartAt}) and Quickstep
+     * has the tablet now: the tablet came back to Quickstep by another way than a gesture unlock (a secret entrance, a return method), and what is on or off now is that session's own state.
+     */
+    public static boolean holdStillValid(boolean held, long heldAtMs, long qsStartMs, boolean quickstepNow) {
+        if (!held) return false;
+        return !(quickstepNow && qsStartMs > heldAtMs);
+    }
+
     /** Pure: the saver changed while Quickstep has the tablet (unlocked) and the change was not ours: that is Quickstep's state now. */
     public static String qsStateLive(boolean quickstepActive, boolean keyguardLocked, boolean ourOwnWrite, boolean saverOn, String stored) {
         if (!quickstepActive || keyguardLocked || ourOwnWrite) return stored == null ? "" : stored;
