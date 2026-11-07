@@ -1151,3 +1151,8 @@ Audit how recent apps show in the list for the custom launcher. At no time shoul
 ```
 What is the status 
 ```
+
+## 2026-11-07T23:36:52Z
+```
+Since this app already has adb permissions and accessibility access, is it possible for the Quickstep launcher to automatically turn off all animations (this is an accessibility setting). When I turn off animations it makes the tablet seem faster. But the animations must be turned back on automatically and immediately on both the lock screen and in the custom launcher. Animations should only ever be turned off inside quickstep launcher 
+```
