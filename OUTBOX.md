@@ -745,3 +745,7 @@
 ## 2026-11-07T16:41:17Z
 > The emulator run (#295) that films the three ways of closing the menu and probes the right-edge columns is still going. It should finish by about 16:42 UTC, and I'll read it at 16:43.
 <!-- sha:237572c535a9 -->
+
+## 2026-11-07T16:46:18Z
+> The first run showed the right-edge fix works. The re-run with the close tests corrected is going now and should finish by about 16:58 UTC. I'm also planning which test sections the release will need.
+<!-- sha:114074b6bac4 -->
