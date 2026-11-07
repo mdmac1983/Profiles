@@ -2102,24 +2102,31 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     local B64; B64="$(base64 -w0 "$OUT/ptkey.sed")"
     adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/ptkey.sed; sed -i -f files/ptkey.sed shared_prefs/tj_features.xml'"; }
   ptkey scrim_measure true; ptset true 10
-  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; adb logcat -c
+  # The helper restarts ON the plain lock screen (screen on, locked, a valid crop): it starts measuring at once, with nothing to wake or lock. (The first version of this phase pressed the power key again and interrupted the
+  # measurement it had just started: "stopped: the screen went off" in run #269 - the stage's own abort rule working as designed.)
+  adb logcat -c
+  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind
   for i in $(seq 1 50); do scrimnote | grep -qE 'MEASURED|not measured|stopped|no screenshot|did not|refused|too little' && break; sleep 2; done
   SCN="$(scrimnote)"; SCV="$(scrimvalue)"
   adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'SCRIM' | sed 's/^.*TjA11y *: //' > "$OUT/pt-scrim-log.txt"
-  info "PT/BA1: the helper's note: $SCN"; info "PT/BA1: stored: $SCV"; info "PT/BA1: log: $(tr '\n' '|' < $OUT/pt-scrim-log.txt | cut -c1-420)"
+  info "PT/BA1: the helper's note: $SCN"; info "PT/BA1: stored: $SCV"; info "PT/BA1: log: $(tr '\n' '|' < $OUT/pt-scrim-log.txt | cut -c1-520)"
   check "BA1: the helper measured the stock menu's scrim by itself (frame, menu, frame, close)" bash -c "echo \"$SCN\" | grep -q MEASURED"
   IFS='#' read -r _ _ SCS SCO SCNN SCRMS _ <<< "$SCV"; IFS=',' read -r SR SG SB <<< "$SCS"; IFS=',' read -r OR OG OB <<< "$SCO"
   info "PT/BA1: scale $SR / $SG / $SB, offset $OR / $OG / $OB, samples ${SCNN:-?}, rms ${SCRMS:-?} (the AOSP scrim is expected near 0.80 / 0; INFO: a different offset would show that the scrim colour depends on the wallpaper)"
   check "BA1: the measured scale is a plausible scrim in all three channels (0.74 - 0.86)" awk -v a="${SR:-0}" -v b="${SG:-0}" -v c="${SB:-0}" 'BEGIN{exit !(a>=0.74&&a<=0.86&&b>=0.74&&b<=0.86&&c>=0.74&&c<=0.86)}'
   check "BA1: it rests on plenty of samples and a tight fit (3000+ points, rms 3 or less)" awk -v n="${SCNN:-0}" -v r="${SCRMS:-99}" 'BEGIN{exit !(n+0>=3000&&r+0<=3.0)}'
-  sleep 3
+  sleep 4
   adb shell dumpsys window windows 2>/dev/null | grep -c ActionsDialog > "$OUT/pt-dialog-count.txt"
   check "BA1: the stock power menu is closed again after the measurement" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pt-dialog-count.txt)\" = 0 ]"
-  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun measured
-  MFIN="$(ptget measured open_final)"; GFIN="$(ptget fade0 open_final)"; MMAX="$(ptget measured open_max)"
-  info "PT/BA1: end level (patch / surround - 1, 0 = invisible): measured look ${MFIN:-?}; generic 0.80 look ${GFIN:-?}; worst while opening: measured ${MMAX:-?}"
-  check "BA1: with the measured look the patch ends within 1.2 % of its surround" awk -v m="${MFIN:-9}" 'BEGIN{exit !((m<0?-m:m) < 0.012)}'
-  check "BA1: ... and not further from it than the generic look (plus 0.5 %)" awk -v m="${MFIN:-9}" -v g="${GFIN:-0}" 'BEGIN{am=(m<0?-m:m); ag=(g<0?-g:g); exit !(am <= ag + 0.005)}'
+  if echo "$SCN" | grep -q MEASURED; then
+    adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2; ptrun measured
+    MFIN="$(ptget measured open_final)"; GFIN="$(ptget fade0 open_final)"; MMAX="$(ptget measured open_max)"
+    info "PT/BA1: end level (patch / surround - 1, 0 = invisible): measured look ${MFIN:-?}; generic 0.80 look ${GFIN:-?}; worst while opening: measured ${MMAX:-?}"
+    check "BA1: with the measured look the patch ends within 1.2 % of its surround" awk -v m="${MFIN:-9}" 'BEGIN{exit !((m<0?-m:m) < 0.012)}'
+    check "BA1: ... and not further from it than the generic look (plus 0.5 %)" awk -v m="${MFIN:-9}" -v g="${GFIN:-0}" 'BEGIN{am=(m<0?-m:m); ag=(g<0?-g:g); exit !(am <= ag + 0.005)}'
+  else
+    info "PT/BA1: no measurement, so the measured look is not filmed"
+  fi
   ptanim 0
   for LB in jump fade25 fade0 fade50 fadem25 fade80; do
     info "PT $LB metric: $(grep "PTMETRIC label=$LB " "$OUT/pt-metrics.txt" | tail -1 | sed 's/PTMETRIC //' | cut -c1-360)"
