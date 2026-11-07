@@ -51,6 +51,37 @@ public class PatchRestTest {
         int[] z = PatchRest.slotWindow(4, 3, 100, 200, 2, 8, 600, 1024);        // close to the top left corner: never negative
         assertEquals(0, z[0]); assertEquals(0, z[1]);
     }
+    // ---- BB1 (v0.8.3): the opaque core reaches further DOWN (the stock panel's shadow), within what the stored crop covers
+    @Test public void theExtendedWindowIsTallerAtTheBottomOnly() {
+        int[] old = PatchRest.slotWindow(480, 700, 585, 830, 2, 8, 600, 1024);
+        int[] ext = PatchRest.slotWindow(480, 700, 585, 830, 2, 8, 20, 8, 600, 1024);
+        assertEquals(old[0], ext[0]); assertEquals(old[1], ext[1]); assertEquals(old[2], ext[2]);   // left, top, right: untouched
+        assertEquals(old[3] + 20, ext[3]);                                                                // 830 + 2 + 20 + 8
+        assertEquals(860, ext[3]);
+    }
+    @Test public void theOldSignatureIsTheNoExtensionGeometry() {
+        for (int[] a : new int[][] { { 480, 700, 585, 830 }, { 495, 700, 600, 1020 }, { 4, 3, 100, 200 } })
+            assertArrayEquals(PatchRest.slotWindow(a[0], a[1], a[2], a[3], 2, 8, 600, 1024), PatchRest.slotWindow(a[0], a[1], a[2], a[3], 2, 8, 0, 8, 600, 1024));
+    }
+    @Test public void theExtendedWindowIsStillClampedToTheDisplay() {
+        assertEquals(1024, PatchRest.slotWindow(495, 700, 600, 1015, 2, 8, 20, 8, 600, 1024)[3]);
+        assertEquals(1024, PatchRest.slotWindow(495, 700, 600, 1015, 2, 8, 20, 8, 600, 1024)[3] - 0);
+    }
+    @Test public void theExtensionNeverLeavesTheStoredCrop() {
+        // the crop was cut for the OLD window + margin; whatever the wish (and the bottom fringe), the new window's bottom stays inside it with the slack to spare
+        int margin = 24, e = 2, f = 9;
+        for (int wish = -5; wish <= 60; wish++) for (int bf = 0; bf <= 24; bf++) {
+            int x = PatchRest.clampExtra(wish, bf, f, margin);
+            assertTrue("never negative", x >= 0);
+            int oldBottom = 830 + e + f, crop = oldBottom + margin, newBottom = 830 + e + x + bf;
+            if (x > 0) assertTrue("wish " + wish + " bf " + bf + " -> " + x, newBottom <= crop - PatchRest.CROP_SLACK_PX);
+        }
+    }
+    @Test public void theDefaultExtensionFitsTheDefaultFringeAtTheTabletsDensity() {
+        int px = Math.round(PatchRest.EXTRA_BOTTOM_DP * 1.0625f), f = Math.round(PatchRest.FEATHER_DP * 1.0625f);
+        assertEquals(px, PatchRest.clampExtra(px, f, f, 24));   // 21 px: not clamped at 170 dpi
+        assertEquals(0, PatchRest.clampExtra(px, f, f, 2));     // a tiny crop margin: no extension
+    }
     @Test public void insideTheCoreThePatchIsFullyOpaque() { assertEquals(255, PatchRest.alphaAt(50, 50, 10, 10, 90, 90, 8, 8, 8, 8)); assertEquals(255, PatchRest.alphaAt(10, 10, 10, 10, 90, 90, 8, 8, 8, 8)); assertEquals(255, PatchRest.alphaAt(89, 89, 10, 10, 90, 90, 8, 8, 8, 8)); }
     @Test public void aHardEdgeShowsNothingOutsideTheCore() {
         assertEquals(0, PatchRest.alphaAt(9, 50, 10, 10, 90, 90, 0, 0, 0, 0));
