@@ -214,3 +214,49 @@
 >
 > Handoff ready: start a new session, it resumes from `CHECKPOINT.md`.
 <!-- sha:c1f4bf25d572 -->
+
+## 2026-11-07T01:06:13Z
+> **Status (v0.8.2 is not finished yet):**
+>
+> - **Battery saver on the lock screen is done and proven.** It passed 21 of 21 emulator checks on a real Android 10 image. The saver is switched off whenever the lock screen is up, from either launcher, and the custom launcher keeps it off. A gesture unlock into Quickstep puts it back as it was the last time you were in Quickstep, but only when Android can't have lost track. That means not charging, not plugged in since the lock, and no restart. The restore is safe because the real Settings "Turn off now" still works afterwards.
+> - **Patch brightness is coded and unit-tested, but not yet proven on the emulator.** Instead of assuming 0.80, the tablet measures the real dimming of the stock menu once. You will see two camera flashes and the power menu open by itself for about two seconds, then close. The first proof run showed that my test sequence interrupted its own measurement. I fixed the test and re-ran it.
+> - **Still running:** that proof run, two halves of the final release gate, and an independent code review. Next I fix whatever they find, finish the gate, bump to v0.8.2, build it on GitHub, and give you the link and tablet checklist.
+> - **Saved:** everything is on branch `claude/power-menu-wallpaper-brightness-g7588s`, and `CHECKPOINT.md` lists the exact next steps.
+>
+> 📌 **Chat checkpoint: 🟡 Yellow**
+>
+> **Goal:** Launcher (Android 10 Go tablet, `com.tj.launcher`): make the open power-menu patch match the darkened lock screen 100 %. Keep battery saver off while the lock screen is up, and restore Quickstep's state after a gesture unlock only when safe.
+>
+> **Decisions made:**
+> - The tablet measures the stock scrim itself (bare frame, helper opens the menu, second frame, BACK; scale and offset per channel). It is on by default in the app and off in debug builds.
+> - Lock sets `low_power` to 0. Restore sets it to 1 only after a gesture unlock into Quickstep with no doubt.
+> - Ship as v0.8.2 (code 27) via `ship.sh`, then `android.yml` full_build, then `record-release`.
+>
+> **Changed / rejected:** guessing `DIM_OPEN` (0.79 then 0.80) is replaced by the measured transform. A default bump as a hedge was rejected.
+>
+> **Key details:**
+> - `bl` run #265: 21 PASS.
+> - `bs` run #268: 13 PASS.
+> - `pt` run #272, job 128248073003.
+> - Gate jobs 128247261992 {n,o,t,x,ac,bs,lq} and 128247271172 {x1,e1,bl,ps,rb}.
+> - Gate base commit is 7d85b50. Last release was v0.8.1 (code 26).
+>
+> **Done so far:**
+> - Battery saver rules coded and proven.
+> - Patch measurement coded and unit-tested.
+> - Emulator section `bl` and `pt` phase C added.
+> - `TASKS.md` (BA0–BA3), `HANDOFF.md` 0g, `CLAUDE.md` lessons, the v0.8.2 tablet checklist and a scrim research note written.
+>
+> **Open / next steps:**
+> 1. Read the `pt` run and the two gate jobs.
+> 2. Fix real findings from the code review.
+> 3. Run `{base,v,pa,uf,last}`.
+> 4. Tick BA1b–d and AZ1c, bump the version, ship, record the release, tell Tj.
+>
+> **Rules to remember:** write Tj's request into `TASKS.md` first; run `ckpt` after every step with short messages; GitHub MCP only; one Gradle at a time; never commit photos or keys; refer to Tj by name with no gendered pronouns; foreground `sleep` is blocked.
+>
+> ⚠️ **Health:** Yellow. This is a long session, but nothing is lost: all state is in `CHECKPOINT.md` and `TASKS.md`.
+>
+> 💡 This chat is getting long. Consider `/amhandoff` at the next good stopping point.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:834874473ddd -->
