@@ -494,3 +494,66 @@
 >
 > I'm still waiting on the emulator run for the faint line under the card, and I'll report that as soon as the numbers are in.
 <!-- sha:65c0917bf4f8 -->
+
+## 2026-11-07T06:11:10Z
+> The line under the card is understood and the fix is in the code, but it is not built or tested on your tablet yet. The last three emulator runs are still going, about 15 minutes. I'll build v0.8.3 only after they pass.
+>
+> **What the line was**
+> - Your two new photos showed that the square itself is now right.
+> - The stock card casts a soft shadow below its real bottom edge, which is hidden under the patch.
+> - The patch used to stop just past that edge and then fade out, so the shadow showed through as the faint tint. Your photos put it at about 6–10 levels darker, fading over roughly 15–30 pixels.
+>
+> **What I changed**
+> - The patch's solid area now reaches about 28 pixels below the card, with a short fade at the bottom. The patch's solid area ends 28 px below the card, and the whole patch window ends 32 px below it.
+> - It stays inside the stored picture of your lock screen, so you won't get another round of camera flashes. This is covered by 24 unit tests.
+>
+> **What the emulator showed**
+> - The emulator's power menu has an extra white card under the real one (a fourth entry). Your tablet's photos show nothing there.
+> - Because of that, I measure the shadow under that extra card and calculate what each patch size would leave behind.
+> - The probe also confirms that the patch covers and matches the lock screen down to the new depth.
+>
+> Still open:
+> - **Faint line:** I'll send the Release link when v0.8.3 is built, for you to look at again.
+> - **Battery saver checks:** the steps are in my last message; waiting on your results.
+> - **No hurry:** AF2, CBR2, AE6.
+>
+> 📌 **Chat checkpoint: 🔴 Red**
+>
+> **Goal:** Tj's custom Android 10 Go launcher `com.tj.launcher` (Java, sideloaded, GitHub Actions builds it). v0.8.2 made the lock-screen power-menu patch invisible; now removing the faint line under the hidden card.
+>
+> **Decisions made:**
+> - v0.8.2 released 2026-11-07 02:44 UTC (code 27). The tablet measured its scrim as 0.800×L + (6, 7, 7) levels.
+> - The line is the stock card's shadow. The fix extends the opaque core 24 dp downward, with a 4 dp bottom fringe, inside the stored crop's 24 px margin. The hidden prefs are `patch_extra_dp` and `patch_bfeather_dp`.
+> - Ship as v0.8.3 only after the gate sections that `tools/gate.sh` names pass.
+>
+> **Changed / rejected:**
+> - The three old photos Tj re-attached are the v0.8.1 ones and are ignored.
+> - My first guess of 20 dp core / 8 dp fringe became 24 dp / 4 dp.
+> - The single-film "fade within 8 %" check became "at least 3 of 5 films".
+>
+> **Key details:**
+> - Branch `ccr-823c5a56-yg8voe` (main mirrors it), head 84b3dd1.
+> - Gate runs #285 id 42345818982, #286 id 42345820757, #287 id 42345823103, sections `n,pt` / `e1,o,ae,pa,rb,last` / `base,x1,v,ac,ps`.
+> - Tools: `tools/pb_probe.py`, `tools/pb_ui.py`, `tools/patch_photo_step.py`. Notes: TASKS BB1, `research/PATCH_SHADOW_2026-11-07.md`.
+>
+> **Done so far:**
+> - Photo analysis, geometry code, 24 unit tests, probe runs #283 and #284, and the battery-saver steps sent to Tj.
+>
+> **Open / next steps:**
+> 1. Read the three gate runs at about 06:27Z.
+> 2. If green: bump to 0.8.3 / code 28, run `ship.sh`, `android.yml` full_build, `record-release.sh`, and tell Tj.
+> 3. Waiting on Tj: the line check, the battery-saver results, AF2, CBR2, AE6.
+>
+> **Rules to remember:**
+> - Install hooks first and run `ckpt` after every step.
+> - New Tj requests go into TASKS first.
+> - Photos never go in the repo.
+> - Use GitHub MCP tools only, and one Gradle at a time.
+> - Use Tj's name with no gendered pronouns.
+> - Plain language, with the Release link on its own line.
+>
+> ⚠️ **Health:** This chat is very long and has many large logs and images, though nothing is lost: `CHECKPOINT.md` and `TASKS.md` hold the exact state.
+>
+> 🔴 I'd move to a fresh chat now. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:7d92250e9c5f -->
