@@ -1,4 +1,4 @@
-# Tablet checklist for v0.8.5 (written 2026-11-07, DRAFT until the release is out)
+# Tablet checklist for v0.8.5 (written 2026-11-07, released 23:16 UTC)
 
 What changed since v0.8.4, what to try on the tablet (about 10 minutes), what to send back.
 Install: open the Release page, download `Launcher-v0.8.5.apk`, install it over the old one (same key: permissions, Home choice and accessibility stay).
