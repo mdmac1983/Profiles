@@ -128,6 +128,9 @@ public final class AppOrigin {
         } }, "tj-usage-cache").start();
     }
 
+    /** A Quickstep session begins (or any other change that makes a cached answer stale): the next answer is asked live. */
+    public static void invalidateUsedCache() { usedCache = null; }
+
     public static java.util.Set<String> usedSinceClearCached(Context c) {
         java.util.Set<String> cached = usedCache;
         if (cached != null && usedCacheFrom == p(c).getLong("usageFrom", 0) && System.currentTimeMillis() - usedCacheAt < 30 * 60_000L) return cached;

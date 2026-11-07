@@ -131,7 +131,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (menuSeenMs == 0) menuSeenMs = now;
         menuUpAtMs = now;
         if (!patchResting) logPatch("menu opened while the patch was away (touch " + (touchAwayUntilMs > now) + ", PIN guard " + (pinHiddenUntilMs > now) + "): shown at the dialog's own event");   // BE1: the lock log shows the case behind a Screenshot flash
-        touchAwayUntilMs = 0; pinHiddenUntilMs = 0;
+        touchAwayUntilMs = 0; if (!padSignFresh()) pinHiddenUntilMs = 0;   // a sign of the PIN pad a moment ago is NOT forgotten (code review 2026-11-07: the scan is ~120 ms slower than the first sign)
         Log.i(TAG, "PATCH fast open: the dialog's window event is " + Math.max(0, now - event.getEventTime()) + " ms old, " + Math.max(0, event.getEventTime() - winBurstStartMs) + " ms after the first window event of the burst");
         showOverlay(cached);
         if (fading) deferScan(now); else deferWork(now, 60);   // the patch is drawn (and, while it fades, redrawn every frame) before any heavy work of this burst runs
@@ -141,7 +141,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private String fastDecline() {
         if (patchView == null) return "no patch window yet";
         if (!patchLockMode) return "not the lock screen";
-        if (!patchResting && (!patchRestable || lastBouncer)) return "the patch is not resting (PIN pad up, or no valid crop)";   // BE1: a patch that is merely AWAY (touch / PIN guard) comes back at the dialog's own event
+        if (!patchResting && (!patchRestable || lastBouncer || padSignFresh())) return "the patch is not resting (PIN pad up, or no valid crop)";   // BE1: a patch that is merely AWAY (touch / PIN guard) comes back at the dialog's own event
         if (overlayShown) return "already open";
         if (!Features.isCover(Features.powerMode(this)) || !coverWorld()) return "power menu mode " + Features.powerMode(this);
         if (cachedCard() == null) return "the menu geometry is not learned yet";
@@ -1065,6 +1065,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (locked && !paused && !armed && !cleanedNow && !Mode.isCustom(app) && !ReturnReset.invisibleReady(app)) LockLog.add(app, "LOCKPREP", "no shell helper: Quickstep's apps stay until the unlock, which then cleans on screen behind the cover (start the helper with the adb line to make the unlock instant)");   // BE3: the report says WHY an unlock was slow
             // BE2 (Tj: "at no time ... an app that is hidden from the app drawer inside the recent apps"): while locked, in the custom launcher, every task of a non-drawer app is removed by id (helper running, invisible)
             if (locked && !paused && !cleanedNow && !armed && Mode.isCustom(app)) RecentsSweep.requestAsync(app, "lock", RecentsSweep.HIDDEN_ONLY, null, 4000);
+            if (locked && !paused && ReturnReset.cleanStart(app) && (!Mode.isCustom(app) || ReturnReset.bootCleanPending(app))) AppOrigin.refreshUsedCacheAsync(app);   // BE3: what the unlock needs to know about Recents is read now, not on the unlock path
             if (locked) { try { refreshLayers(); } catch (Throwable t) { Log.e(TAG, "patch pre-creation failed", t); } }   // BE1: the lock-screen patch window is created NOW, while the screen is dark, not in the wake-up burst
             if (ProfileSession.prearmCustomStackOnLockedWake(ProfileSession.prearm(app), locked, armed, preArmedThisLock, paused)) prearmCustom(why);
         } catch (Throwable t) { Log.e(TAG, "lock prepare failed", t); }
@@ -1336,17 +1337,26 @@ public class TjAccessibilityService extends AccessibilityService {
         } }, delayMs);
     }
 
-    /** BE2: the app that was in front is an app of no drawer and has just left the screen: its card must be gone before the Recents screen could list it. */
-    private void sweepIfHiddenLeft(String prev, String now) {
+    private boolean hiddenSeen = false;   // BE2: an app of no drawer has been on screen since the last time the custom home / the Recents screen was shown
+
+    /**
+     * BE2: a window of {@code pk} is now in front. A hidden app (not in the drawer, not system-like) on screen is remembered; the moment the CUSTOM HOME or the Recents screen comes up after it, its task is swept (400 ms
+     * later, by id, helper running), before a Recents card could be drawn. Never in the middle of its own flow: a share sheet, a file picker or a permission prompt that the hidden app opened does NOT trigger anything
+     * (the first version swept at any change of the front window and would have closed the app under such a dialog: code review 2026-11-07).
+     */
+    private void noteHiddenForSweep(String pk) {
         try {
-            if (prev == null || prev.isEmpty() || prev.equals(now) || prev.equals(getPackageName())) return;
             android.content.Context app = getApplicationContext();
-            if (!Mode.isCustom(app) || !RecentsSweep.enabled(app) || keyguardLockedFast() || HiddenApps.isPackageShown(app, prev)) return;   // the common case ends here: a drawer app
-            if (!RecentsSweep.hiddenAppLeft(true, true, prev, now, ReturnReset.guardFor(app).mayClose(prev), false)) return;
-            final String keep = now;
-            handler.postDelayed(new Runnable() { @Override public void run() {
-                try { RecentsSweep.requestAsync(getApplicationContext(), "a hidden app left the screen", RecentsSweep.HIDDEN_ONLY, keep == null || keep.isEmpty() ? null : java.util.Collections.singleton(keep), 1500); } catch (Throwable ignored) { }
-            } }, 400);
+            if (!Mode.isCustom(app) || !RecentsSweep.enabled(app) || keyguardLockedFast()) { hiddenSeen = false; return; }
+            if (pk.equals(getPackageName()) || pk.equals(stockPkg())) {   // home or Recents
+                if (!hiddenSeen) return;
+                hiddenSeen = false;
+                handler.postDelayed(new Runnable() { @Override public void run() {
+                    try { RecentsSweep.requestAsync(getApplicationContext(), "a hidden app was on screen and the home came back", RecentsSweep.HIDDEN_ONLY, null, 1500); } catch (Throwable ignored) { }
+                } }, 400);
+                return;
+            }
+            if (!hiddenSeen && !HiddenApps.isPackageShown(app, pk) && ReturnReset.guardFor(app).mayClose(pk) && !RecentsSweep.systemLike(pk)) hiddenSeen = true;   // cheap first test: a drawer app ends here
         } catch (Throwable t) { Log.e(TAG, "hidden app check failed", t); }
     }
 
@@ -1730,9 +1740,8 @@ public class TjAccessibilityService extends AccessibilityService {
         if ("com.android.systemui".equals(pk) || pk.startsWith("com.google.android.inputmethod") || pk.contains("inputmethod") || pk.contains("keyboard") || pk.contains("swiftkey")) return;
         noteUnlockSpeed(pk);
         if (pk.equals(fgPkg)) return;
-        String prevFg = fgPkg;
         fgPkg = pk;
-        sweepIfHiddenLeft(prevFg, pk);   // BE2
+        noteHiddenForSweep(pk);   // BE2
         try { rememberQuickstepApp(pk); } catch (Throwable t) { Log.e(TAG, "remember app failed", t); }
         updateHotspot();
     }
@@ -2463,13 +2472,13 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (tick[0] % 5 == 0) scrollSomething(pk);
                 if (saw[0] && ++idle[0] >= 3) { finishRecentsEmpty(t0, done, "closed " + closed[0] + " card(s), none left", true, closed[0]); return; }
             } catch (Throwable t) { Log.e(TAG, "empty recents failed", t); }
-            if (android.os.SystemClock.uptimeMillis() >= deadline) { finishRecentsEmpty(t0, done, saw[0] ? "stopped after " + closed[0] + " card(s)" : "no Clear all button and no card with a Close action found: nothing was cleared", saw[0], closed[0]); return; }
+            if (android.os.SystemClock.uptimeMillis() >= deadline) { finishRecentsEmpty(t0, done, saw[0] ? "STOPPED after " + closed[0] + " card(s), time ran out: Recents is NOT verified empty" : "no Clear all button and no card with a Close action found: nothing was cleared", false, closed[0]); return; }   // a partial clear never marks Recents clean (code review 2026-11-07): the next return tries again
             handler.postDelayed(this, 40);
         } });
     }
 
     private void finishRecentsEmpty(long t0, Runnable done, String what, boolean ok, int closed) {
-        if (ok) { RecentsDirty.clear(this); AppOrigin.clearQuickstep(this); AppOrigin.setTracked(this); }   // Recents is clean again
+        if (ok) { RecentsDirty.clear(this); AppOrigin.clearQuickstep(this); AppOrigin.setTracked(this); ReturnReset.clearBootClean(this); }   // Recents is clean again (and the boot flag is used up)
         resetReport.append("recents: ").append(what).append(" (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
         Log.i(TAG, "RESET recents (complete) " + what + " +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms");
         LockLog.add(getApplicationContext(), "RESET", "recents (complete clear): " + what + ", " + closed + " card(s) closed one by one");
@@ -2789,6 +2798,9 @@ public class TjAccessibilityService extends AccessibilityService {
     }
     private long lastTouchLogMs = 0;
 
+    /** A keyguard PIN-pad view announced itself less than 1.5 s ago: the pad is (about to be) up even if the scan has not confirmed it yet. */
+    private boolean padSignFresh() { return lastPadSignMs > 0 && android.os.SystemClock.uptimeMillis() - lastPadSignMs < 1500; }
+
     private boolean isScreenOn() {
         try { android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE); return pm != null && pm.isInteractive(); } catch (Throwable t) { return true; }
     }
@@ -2887,7 +2899,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void showStock(Rect full) {
         ensurePatch();
         final boolean first = !overlayShown;
-        if (first) { touchAwayUntilMs = 0; pinHiddenUntilMs = 0; }   // BE1: a menu that opens through the scan path also ends every away guard (the PIN pad, if it comes up over the menu, sets its own latch)
+        if (first) { touchAwayUntilMs = 0; if (!padSignFresh()) pinHiddenUntilMs = 0; }   // BE1: a menu that opens through the scan path also ends every away guard (the PIN pad, if it comes up over the menu, sets its own latch)
         overlayShown = true;
         patchShow(true);   // AZ1: the patch is the time-critical part: it is drawn at the next frame, so nothing slower (a log line, a preferences write) may come before it in this message
         if (first) {

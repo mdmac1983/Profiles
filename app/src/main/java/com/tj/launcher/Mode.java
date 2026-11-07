@@ -70,6 +70,7 @@ public final class Mode {
         if (quickstepEnds) ed.putLong("qsEndAt", nowMs);
         ed.commit();
         if (quickstepBegins) BatterySaverGuard.noteQuickstepBegins(c);   // review of BA2: only a session that begins while the tablet is UNLOCKED counts for the saver memory
+        if (quickstepBegins) AppOrigin.invalidateUsedCache();   // BE3: apps used in this session are not in a cache made before it
         if (quickstepBegins) TaskOrigin.sessionStart(c);   // AA3: remember which tasks are the custom account's BEFORE Quickstep opens anything (needs the shell helper; otherwise a no-op)
         KeyboardSwitch.apply(c, m);
         TileProfile.apply(c, m);
