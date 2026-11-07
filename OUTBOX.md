@@ -625,3 +625,20 @@
 ## 2026-11-07T07:16:07Z
 > Still not released. The AN1 re-run found the cause: the one counted log line was the launcher switch's own switch-off, stamped about 7 seconds before the test's log clear and before the tap. It's a race in the test, not in the app. The battery saver stayed on after the tap in all three runs. I changed the test to count only lines stamped after the tap and started it again at 07:16 UTC. I'll read the result at about 07:29. If it passes, I start the GitHub build.
 <!-- sha:996eb47bfd7d -->
+
+## 2026-11-07T07:17:59Z
+> Not very important for your tablet's safety.
+>
+> **What it protects:** your Nov 6 complaint that the battery saver tile was unresponsive. It checks that the battery-saver guard doesn't undo a battery-saver tap you make in the custom launcher.
+>
+> **Why the failure isn't the app:**
+> - The check that matters is that the saver is still on 3 seconds after your tap. That passed in all three runs.
+> - The part that failed counts a log line. The line it counted was stamped about 7 seconds before the tap. It was the launcher switch's own switch-off, which the emulator delivered late because it runs slowly at that point in the test.
+> - The guard code hasn't changed since v0.8.2, which you tested ("the battery saver tests work").
+>
+> **The lockout protections:** PIN unlock, the crash breaker and Restart/Restore everything all passed on the same app code. Only the version number has changed since then.
+>
+> **Why I'm still waiting:** I don't ship with a red check I haven't proven harmless. The fixed test is running now and should finish around 07:29 UTC, about 10 minutes from now.
+>
+> My recommendation is to wait for it. If you'd rather have v0.8.3 right now, say so and I'll start the build immediately. The risk is low either way.
+<!-- sha:28e56959724a -->
