@@ -784,3 +784,15 @@
 >
 > The three gate runs finish at about 17:19 UTC.
 <!-- sha:6e47345adce8 -->
+
+## 2026-11-07T17:09:31Z
+> Got it, and it's coded. When the PIN pad comes up while the power menu is open, the patch now disappears immediately instead of following the fade.
+>
+> - **Speed:** it hides on the first sign of the PIN pad, then stays hidden until the menu is gone. I can't test the first sign on the emulator, so the PIN-pad check has to catch it. That check is a bit slower, around a tenth of a second.
+> - **Touch:** the patch also stops taking touches at that moment, so it can't block the PIN keys.
+> - **Tap in the middle:** unchanged. The patch still follows the stock fade-out there.
+> - **Side effect:** since the patch is gone at once, the stock card's Screenshot slot may show for the rest of the card's 0.3 s fade-out. That is the trade-off you chose.
+> - **Testing:** there's a new emulator check for this. I can't reproduce your exact pull-up on the emulator. The test brings up the PIN pad over the open menu instead.
+>
+> The three test runs for v0.8.4 finish at about 17:19 UTC. Because this change touches the patch, I'll re-run the patch tests on the final code before releasing, then send you the link.
+<!-- sha:cf591697c7f3 -->
