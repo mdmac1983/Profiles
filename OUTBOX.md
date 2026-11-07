@@ -608,3 +608,12 @@
 > - **If both are green:** I'll start the GitHub build and send you the Release link.
 > - **If either fails:** I'll fix the cause before anything ships.
 <!-- sha:b514b130332f -->
+
+## 2026-11-07T06:57:38Z
+> v0.8.3 is not released yet: one check in the last test run failed, and I'm re-running it to find out why.
+>
+> - **What passed:** the run that checks the faint-line fix and the once-per-theme measurement had no failures. That run also showed the patch matching the lock screen for 28 rows below the card, up from 3 in v0.8.2. The battery-saver guard check is the only failure in the second run.
+> - **The failing check:** it checks that the battery-saver guard doesn't write to the saver right after you turn it on. The saver stayed on, so it didn't fight the tap. A log line from a launcher switch still landed after the test cleared its log. No code in this release touches that area.
+> - **What I changed:** the test now lets the previous launcher switch finish before it counts. If a line still shows up, the test prints a timeline of what switched the launcher.
+> - **Next:** I re-ran the same sections at 06:57 UTC and will read them at about 07:10. If it passes, I start the GitHub build and send you the Release link. If it fails, I fix the cause first.
+<!-- sha:e2c6ef3411b4 -->
