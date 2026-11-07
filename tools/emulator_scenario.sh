@@ -2070,6 +2070,8 @@ ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's pr
   printf 's#<boolean name="patch_fade" value="[a-z]*" />##\ns#<int name="patch_fade_lead" value="[-0-9]*" />##\ns#</map>#<boolean name="patch_fade" value="%s" /><int name="patch_fade_lead" value="%s" /></map>#\n' "$1" "$2" > "$OUT/ptset.sed"
   local B64; B64="$(base64 -w0 "$OUT/ptset.sed")"
   adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/ptset.sed; sed -i -f files/ptset.sed shared_prefs/tj_features.xml'"; }
+ptinput(){ # ptinput <name> <device command>: the command, preceded in the SAME shell call by a log line with the device uptime in ms (the same clock as the helper's PATCH lines), so the timeline shows when the input happened
+  adb shell "log -t TjA11y \"PATCH input $1 t=\$(( \$(cut -d' ' -f1 /proc/uptime | tr -d .) * 10 ))\"; $2"; }
 # ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
 ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), swipe (a swipe up from the bottom edge for the PIN pad) (BC2)
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.2; adb shell input keyevent KEYCODE_BACK; sleep 2.2; adb logcat -c   # one unfilmed opening first: the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured; the real use is the second one on
@@ -2078,15 +2080,18 @@ ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back
   sleep 1.6
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   case "$M" in
-    tap) adb shell input tap 150 700;;
-    swipe) adb shell input swipe 300 1010 300 300 220;;
-    *) adb shell input keyevent KEYCODE_BACK;;
+    tap) ptinput tap "input tap 150 700";;
+    swipe) ptinput swipe "input swipe 300 1010 300 300 220";;
+    *) ptinput back "input keyevent KEYCODE_BACK";;
   esac; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/pt-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/pt-metrics.txt"
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|input|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-$L.txt"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-$L.txt" 2>&1)"
-  if [ "$L" = fade25 ] || [ "$L" = jump ] || [ "$M" != back ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
+  if [ "$M" != back ]; then   # BC2: the CLOSE is at the END of the timeline (the opening alone fills the first 1000 characters)
+    local EVT; EVT="$(echo "$EVS" | tail -c 1000)"
+    info "PT $L close events 1: ${EVT:0:330}"; info "PT $L close events 2: ${EVT:330:330}"; info "PT $L close events 3: ${EVT:660:340}"
+  elif [ "$L" = fade25 ] || [ "$L" = jump ]; then   # the whole timeline for the two main runs (relative to the stock dialog's own window event), the helper's own decisions for the others
     info "PT $L events 1: $(echo "$EVS" | cut -c1-330)"; info "PT $L events 2: $(echo "$EVS" | cut -c331-660)"; info "PT $L events 3: $(echo "$EVS" | cut -c661-990)"
   else
     info "PT $L decisions: $(grep -E 'PATCH (fast|fade|close|menu closed|scan|hold)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
