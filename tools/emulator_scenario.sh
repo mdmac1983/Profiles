@@ -2073,7 +2073,7 @@ ptset(){ # ptset <fade true|false> <lead ms>: edits the two keys in the app's pr
 ptinput(){ # ptinput <name> <device command>: the command, preceded in the SAME shell call by a log line with the device uptime in ms (the same clock as the helper's PATCH lines), so the timeline shows when the input happened
   adb shell "log -t TjA11y \"PATCH input $1 t=\$(( \$(cut -d' ' -f1 /proc/uptime | tr -d .) * 10 ))\"; $2"; }
 # ptrun <label>: film 6 s: the lock screen, the stock menu opens (long press of the side key), closes (BACK); measure
-ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), home (the Home key) (BC2)
+ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back (the BACK key), tap (a tap in the empty middle of the screen), dlg (the close-system-dialogs broadcast) (BC2)
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.2; adb shell input keyevent KEYCODE_BACK; sleep 2.2; adb logcat -c   # one unfilmed opening first: the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured; the real use is the second one on
   adb shell rm -f /sdcard/pt.mp4 >/dev/null 2>&1
   ( adb shell screenrecord --time-limit 6 /sdcard/pt.mp4 >/dev/null 2>&1 & )
@@ -2081,7 +2081,7 @@ ptrun(){ local L="$1" M="${2:-back}"   # M = how the filmed menu is CLOSED: back
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
   case "$M" in
     tap) ptinput tap "input tap 150 700";;
-    home) ptinput home "input keyevent KEYCODE_HOME";;   # the Home key: ACTION_CLOSE_SYSTEM_DIALOGS ("homekey"), which the stock dialog obeys with its fade-out (the swipe up from the bottom did NOTHING on the emulator's modal dialog: run #295)
+    dlg) ptinput dlg "am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS --es reason homekey";;   # what the Home key / a gesture sends: the stock dialog obeys it with its fade-out (run #295: a swipe up did nothing on the emulator's modal dialog, run #296: the Home key does nothing on a locked screen)
     *) ptinput back "input keyevent KEYCODE_BACK";;
   esac; sleep 3.4
   adb pull /sdcard/pt.mp4 "$OUT/pt-$L.mp4" >/dev/null 2>&1
@@ -2199,12 +2199,16 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   ptanim 1.0   # run #295: after phase C the films showed an INSTANT dismissal (the dialog's window was removed 13 ms after the click): the animation scales are asserted again here and printed
   info "PT/BC2: animation scales (window / transition / animator): $(for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings get global $n | tr -d '\r\n'; echo -n ' '; done)"
   ptset true 10; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2
-  ptrun closeback back; ptrun closetap tap; ptrun closehome home
-  for L in closeback closetap closehome; do
+  ptrun closeback back; ptrun closetap tap; ptrun closedlg dlg
+  for L in closeback closetap closedlg; do
     info "PT/BC2 $L: close_max $(ptget $L close_max) at $(ptget $L close_at) s from the half-recovery of the surround, close_final $(ptget $L close_final), hold_max $(ptget $L hold_max)"
     info "PT/BC2 $L: the helper: $(grep -E 'PATCH (close|menu closed)' "$OUT/pt-all-$L.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-300)"
   done
-  grep -E "PTCLOSE label=(closeback|closetap|closehome) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
+  grep -E "PTCLOSE label=(closeback|closetap|closedlg) " "$OUT/pt-metrics.txt" | while IFS= read -r L; do info "$(echo "$L" | cut -c1-420)"; done
+  # BC2's claim: a menu closed by a TAP (a click in the stock dialog) is followed along the stock fade-out: the helper noticed the click, ended with the window's removal, and the patch never differed from its surround by
+  # more than 10 % (v0.8.3: 20 %; run #296: 3.8 %). The BACK key has no sign the helper can see (INFO: it stays at the v0.8.3 level), the broadcast is INFO (the emulator's dialog may ignore an adb-sent one).
+  check "BC2: a tap in the middle closes the menu with the patch following the stock fade-out (the helper logged the click and the window's removal)" bash -c "grep -q 'close start (a click in the stock dialog)' $OUT/pt-all-closetap.txt && grep -q 'close end (the dialog window was removed)' $OUT/pt-all-closetap.txt"
+  check "BC2: the largest patch-versus-surround mismatch around that close is within 10 % (it was 20 % when the patch held its dark look until a scan noticed)" awk -v m="$(ptget closetap close_max)" 'BEGIN{exit !(m != "" && m+0 >= 0 && m+0 <= 0.10)}'
   # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom
   #      edge; the patch's opaque core used to stop 2 px past it and then faded out. tools/pb_probe.py compares screenshots of the SAME lock screen: the menu closed (bare), the menu open with the lock patch OFF (the stock panel's
   #      shadow) and with it ON in several geometries (patch_extra_dp = how far the opaque core reaches further down, patch_bfeather_dp = the bottom fringe). The measured scrim look is on (phase C), so the slot itself matches.
