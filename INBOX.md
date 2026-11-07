@@ -1083,3 +1083,8 @@ This session's worker process was restarted. If your previous turn was already c
 ```
 The battery saver tests work. But the lock screen screenshot itself again, not sure why 
 ```
+
+## 2026-11-07T06:42:31Z
+```
+It was the camera flashes. Your context window is 90% used 
+```
