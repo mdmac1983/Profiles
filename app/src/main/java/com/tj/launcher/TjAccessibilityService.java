@@ -2702,7 +2702,8 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     private void setOpenLook(android.graphics.Paint p, float progress) {
         ScrimFit.Transform t = scrimT;
-        if (t == null) { setDim(p, PatchFade.mix(restDim(true), lockPatchDim(true), progress)); return; }
+        // the Control switch is also the way back: OFF = the generic brightness again, even when a measurement is stored (it stays stored and applies again when the switch is turned back on)
+        if (t == null || !Features.get(this, ScrimMeasure.KEY, ScrimMeasure.defaultOn(debuggable()))) { setDim(p, PatchFade.mix(restDim(true), lockPatchDim(true), progress)); return; }
         float nudge = (1f + Features.getInt(this, PATCH_SCRIM_KEY, 0) / 100f) * (1f + Features.getInt(this, PATCH_DIM_KEY, 0) / 100f);
         float q = Math.round(Math.max(0f, Math.min(1f, progress)) * 255f) / 255f;
         if (openLookFilter == null || q != openLookQ || t != openLookT || nudge != openLookNudge) {   // one filter per step of the fade, not one per draw
