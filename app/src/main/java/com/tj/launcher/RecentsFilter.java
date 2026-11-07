@@ -119,8 +119,8 @@ final class RecentsFilter {
             java.util.List<String> closedNow = svc.closeRecentsCards(blocked);
             if (!closedNow.isEmpty()) {
                 closedTotal += closedNow.size();
-                String closed = closedNow.size() == 1 ? closedNow.get(0) : closedNow.get(0) + "' and " + (closedNow.size() - 1) + " more";
-                String line = stamp() + "  closed a Recents card of '" + closed + "' (not in the drawer); " + closedTotal + " card(s) closed since the helper connected";
+                String what = closedNow.size() == 1 ? "closed a Recents card of '" + closedNow.get(0) + "'" : "closed " + closedNow.size() + " Recents cards, '" + closedNow.get(0) + "' and " + (closedNow.size() - 1) + " more";
+                String line = stamp() + "  " + what + " (not in the drawer); " + closedTotal + " card(s) closed since the helper connected";
                 Features.setString(svc, STATUS_KEY, line);
                 LockLog.add(svc.getApplicationContext(), "RECENTS", "closed " + closedNow.size() + " card(s), '" + closedNow.get(0) + "'" + (closedNow.size() > 1 ? " and " + (closedNow.size() - 1) + " more" : "") + ": not an app of the custom drawer");
                 if (++rounds < 12) schedule(70);          // the cards animate away; look again for late ones
