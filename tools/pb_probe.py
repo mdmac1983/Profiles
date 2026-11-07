@@ -157,7 +157,7 @@ def selftest():
                         k = 1.0 - shadow(y - B) * (1.0 if inx else math.exp(-((L - x) if x < L else (x - R + 1)) / 5.0))
                         v = [c * k for c in v]                    # the shadow, a little narrower sideways
                     if kind in ("old", "new") and L - 11 <= x < R + 11 and B - 95 <= y:
-                        a = ramp(core_bottom - y, 9) if y >= core_bottom else 1.0
+                        a = ramp(y - core_bottom + 1, 9) if y >= core_bottom else 1.0     # as PatchRest.alphaAt: dist = y - cb + 1 below the core
                         a *= ramp(L - 2 - x, 9) if x < L - 2 else (ramp(x - (R + 2) + 1, 9) if x >= R + 2 else 1.0)
                         patchv = [S * c + O for c in base]        # an exact patch: the dimmed wallpaper
                         v = [a * p + (1 - a) * q for p, q in zip(patchv, v)]
