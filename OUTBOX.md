@@ -453,3 +453,7 @@
 ## 2026-11-07T05:18:56Z
 > Tj says it is "almost perfect" now, with one remaining flaw: a faint tinted line about where the bottom of the hidden card would be. First, the three attached images look like the same v0.8.1 photos from before (clock 8:48 and "Nov 6", while the tablet says it measured after midnight). I'll check by comparing file hashes before treating them as new evidence, and record Tj's words first.
 <!-- sha:28f4b8477dfe -->
+
+## 2026-11-07T05:33:55Z
+> Waiting on emulator run #283 (about 8 minutes). It will give me the stock card's shadow depth and length on the emulator, and the line each patch geometry leaves.
+<!-- sha:b2df729803c0 -->
