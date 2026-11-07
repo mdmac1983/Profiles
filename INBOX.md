@@ -1122,3 +1122,8 @@ On my armv7 android 10 go mt8168 tablet, when I use brave browser, sometimes it 
 ```
 Also the lock screen still takes screenshots sometimes 
 ```
+
+## 2026-11-07T17:05:41Z
+```
+For the pull up for the pin, the patch should disappear immediately, as fast as possible after the pull up from the bottom 
+```
