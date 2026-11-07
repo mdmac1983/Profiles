@@ -837,3 +837,12 @@
 ## 2026-11-07T17:42:02Z
 > The version is bumped to 0.8.4. I've started the local release checks and a re-run of the one test that failed. That test was a brightness tolerance too tight for a nearly white random test wallpaper, not an app problem. When both are green I'll start the GitHub build.
 <!-- sha:1e85764895cd -->
+
+## 2026-11-07T17:43:28Z
+> The patch tests on the final code passed, and the local release checks passed too. Only the re-run of the `v` test is still going. It should finish at about 17:49 UTC, and then I start the build.
+>
+> From the emulator results so far:
+> - **Tap to close:** the patch now fades with the stock fade-out. The largest brightness mismatch is 5%, down from 20%.
+> - **Pull-up for the PIN on the plain lock screen:** the patch hid 22 ms after the keyguard first reacted. Normally the patch is invisible there, but it still exists as a window.
+> - **PIN pad with the power menu open:** the emulator can't show a PIN pad while the menu is open, so that case is untested. The code for it is the same as the plain case.
+<!-- sha:fb032369fc7d -->
