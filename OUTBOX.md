@@ -764,3 +764,23 @@
 > - **Flicker when closing:** fixed for the tap-in-the-middle case. The largest brightness mismatch dropped from 20% to 3.8%.
 > - **Pull-up for the PIN:** I can't reproduce it on the emulator, so I don't yet know how it behaves.
 <!-- sha:35745429e4f4 -->
+
+## 2026-11-07T17:05:37Z
+> The lock screen takes a screenshot by itself in two situations. I don't yet know which one you're seeing, and I'm not changing anything until I do. The v0.8.4 test gate is still running and the fix for the sliver and the flicker isn't released yet.
+>
+> **What takes them:**
+> - **Patch calibration (one screenshot):** it runs the first time the lock screen is seen with a new wallpaper, screen size or orientation.
+> - **Dimming measurement (two screenshots, and the stock menu opens by itself):** it runs once per orientation and per theme. The first time battery saver is on at a plain lock screen counts as a new theme.
+>
+> Each combination only happens once. After v0.8.3 you can still see a few at first: the first time sideways, the first time with battery saver on, and so on. They shouldn't repeat after that.
+>
+> **What I need from you:**
+> 1. **When it happens.** Just after turning battery saver on, after turning the tablet sideways, after a restart, or after changing the wallpaper?
+> 2. **A screenshot of Launcher control.** Open "Power menu (side key)" and capture the lines "Menu dimming measurement … last started because …", "Automatic calibration: …" and "Patch from a real screenshot: …". The first one now says why the last measurement started.
+>
+> **To stop them right away:** in the same section, switch off "Measure the menu's real dimming on this tablet" and "Calibrate the patch by itself". The patch keeps what it has stored. It may be slightly off the first time in a new orientation.
+>
+> If it turns out to be the orientation case, I can make the measurement reuse across orientations, because the stock dimming doesn't depend on rotation. That would remove most repeats. I'll do that once I know it's the cause.
+>
+> The three gate runs finish at about 17:19 UTC.
+<!-- sha:6e47345adce8 -->
