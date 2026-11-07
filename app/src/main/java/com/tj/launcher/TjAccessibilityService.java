@@ -312,6 +312,13 @@ public class TjAccessibilityService extends AccessibilityService {
     }
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
+    // BC2 (Tj, 2026-11-07: "when the power menu is open, and I press in the middle of the screen to close it, or pull up from the bottom to type the pin, the wallpaper patch flickers for a split second"): the stock
+    // dialog's dismissal fades its card and scrim OUT over 300 ms (LogAccelerate: slow start, fast end) and removes its window at the end; the v0.8.3 patch held its dark look until a node scan noticed that = a dark block.
+    private boolean closing = false;                   // the patch's open look is following the stock fade-OUT (main thread only)
+    private long closeStartMs = 0;                     // uptime ms at which the stock dismissal began (a sign of it we saw, or our own BACK); may lie a few ms ahead
+    private volatile int dialogWindowId = -1;          // the accessibility window id of the newest stock dialog (from its window-state event): the event that removes that window ends the fade-out at once
+    static final long CLOSE_SLACK_MS = 60, CLOSE_SAFETY_MS = 150;   // a scan may end the fade-out this long after its predicted end; the clock ends it (and verifies with a scan) this long after, whatever else happens
+    private final Runnable closeFinishRun = new Runnable() { @Override public void run() { finishClose("the fade-out time is over"); } };
     private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
     private long scanNotBeforeMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade
     private boolean patchFadeOn() { return Features.get(this, PATCH_FADE_KEY, true); }
