@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pb_probe.py - the faint line under the hidden card: the stock panel's SHADOW against the patch's bottom edge (BB1, emulator section pt phase D).
 
-    python3 -I tools/pb_probe.py <label> <bare.png> <shot.png> --panel L,T,R,B [--stock]
+    python3 -I tools/pb_probe.py <label> <bare.png> <shot.png> --panel L,T,R,B [--stock] [--grid]
     python3 -I tools/pb_probe.py --selftest
 
 WHY (Tj, 2026-11-07, v0.8.2, after the square itself became invisible: "a very slight tinted line about where the bottom of the card would be. Like a faded tint"; TASKS BB1a). The lock-screen patch hides the stock
@@ -83,7 +83,25 @@ def profile(bare, shot, model, xa, xb, y0, y1):
     return rows
 
 
-def analyse(label, bare, shot, panel, stock, disp=(600, 1024)):
+def grid(label, bare, shot, model, panel, disp=(600, 1024)):
+    """a coarse picture of (shot - expected) in levels: columns from 45 px left of the panel to 45 px right of it (step 15), rows from 30 px above its bottom edge to 90 px below (step 10)"""
+    L, T, R, B = panel
+    x0, x1, y0, y1 = max(0, L - 45), min(disp[0], R + 46), max(0, B - 30), min(disp[1], B + 91)
+    w, h = x1 - x0, y1 - y0
+    A, S = region(bare, x0, y0, w, h), region(shot, x0, y0, w, h)
+    xs = list(range(0, w, 15))
+    lines = ["PBGRID label=%s columns x=%s (values: shot minus expected, levels, luminance; rows y = panel bottom %+d ...)" % (label, ",".join(str(x0 + x) for x in xs), y0 - B)]
+    for j in range(0, h, 10):
+        row = []
+        for i in xs:
+            k = (j * w + i) * 3
+            d = [S[k + c] - (model[c][0] * A[k + c] + model[c][1]) for c in range(3)]
+            row.append("%+4d" % round(lumv(*d)))
+        lines.append("PBGRID label=%s y=%d: %s" % (label, y0 + j, " ".join(row)))
+    return lines
+
+
+def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
     L, T, R, B = panel
     # the clean region: left of the menu, well away from its shadow, below the clock / date text, above the lock number
     cx0, cx1 = 60, max(120, min(L - 90, 400))
@@ -108,6 +126,7 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024)):
         out["core_mean"] = sum(core) / len(core) if core else 0.0
     out["label"] = label
     out["kind"] = "stock" if stock else "patch"
+    out["grid"] = grid(label, bare, shot, model, panel, disp) if want_grid else []
     return out
 
 
@@ -117,6 +136,8 @@ def report(o):
     print("PBMETRIC label=%s kind=%s scale=%.3f/%.3f/%.3f offset=%.1f/%.1f/%.1f %s" % (o["label"], o["kind"], *o["scale"], *o["offset"], vals))
     print("PBPROFILE label=%s (d = px below the panel's bottom edge : deviation in levels, luminance; negative = darker than the dimmed wallpaper) %s" % (
         o["label"], " ".join("%d:%+.1f" % (d, o["profile"][d][0]) for d in PROBE_D if d in o["profile"])))
+    for ln in o.get("grid", []):
+        print(ln)
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -196,7 +217,7 @@ def main(argv):
         return 2
     label, bare, shot = args[0], args[1], args[2]
     try:
-        report(analyse(label, bare, shot, tuple(opt["panel"]), "--stock" in argv))
+        report(analyse(label, bare, shot, tuple(opt["panel"]), "--stock" in argv, want_grid="--grid" in argv))
     except Exception as e:   # never take the scenario down: say what went wrong
         print("PBMETRIC label=%s error=%s" % (label, str(e).replace(" ", "_")[:120]))
         return 1
