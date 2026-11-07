@@ -139,12 +139,13 @@ public final class BatterySaverGuard {
     /** BA2: starts a hold (the saver is off BECAUSE of the guard) unless one is running: the facts the restore will check are recorded now. */
     private static synchronized void markHeld(Context c, long now) {
         if (Features.get(c, BatterySaverPolicy.HELD_KEY, false)) return;
-        Features.set(c, BatterySaverPolicy.HELD_KEY, true);
-        Features.setString(c, BatterySaverPolicy.HELD_AT_KEY, String.valueOf(now));
-        Features.setString(c, BatterySaverPolicy.HELD_BOOT_KEY, String.valueOf(bootEpoch()));
-        Features.setString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0");
+        // asynchronous writes: this can run on the main thread (Mode.set at a plain unlock); the in-memory values are visible at once
+        Features.setAsync(c, BatterySaverPolicy.HELD_KEY, true);
+        Features.setStringAsync(c, BatterySaverPolicy.HELD_AT_KEY, String.valueOf(now));
+        Features.setStringAsync(c, BatterySaverPolicy.HELD_BOOT_KEY, String.valueOf(bootEpoch()));
+        Features.setStringAsync(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0");
         int lv = batteryLevel(c);
-        if (lv >= 0) Features.setString(c, BatterySaverPolicy.LEVEL_KEY, String.valueOf(lv));
+        if (lv >= 0) Features.setStringAsync(c, BatterySaverPolicy.LEVEL_KEY, String.valueOf(lv));
     }
 
     private static long heldAt(Context c) { try { return Long.parseLong(Features.getString(c, BatterySaverPolicy.HELD_AT_KEY, "0")); } catch (NumberFormatException e) { return 0; } }
@@ -156,10 +157,10 @@ public final class BatterySaverGuard {
     private static synchronized void rememberQuickstep(Context c, boolean on) {
         // both callers (a lock from Quickstep, the end of a Quickstep session) are about a Quickstep session, so the session question is always "yes": did THAT session begin after the hold?
         boolean held = BatterySaverPolicy.holdStillValid(Features.get(c, BatterySaverPolicy.HELD_KEY, false), heldAt(c), Mode.qsStartAt(c), true);
-        if (!held && Features.get(c, BatterySaverPolicy.HELD_KEY, false)) Features.set(c, BatterySaverPolicy.HELD_KEY, false);   // a Quickstep session began after that hold: start over
+        if (!held && Features.get(c, BatterySaverPolicy.HELD_KEY, false)) Features.setAsync(c, BatterySaverPolicy.HELD_KEY, false);   // a Quickstep session began after that hold: start over
         String stored = Features.getString(c, BatterySaverPolicy.QS_ON_KEY, "");
         String next = BatterySaverPolicy.qsStateAtHold(true, held, on, stored);
-        if (!next.equals(stored)) Features.setString(c, BatterySaverPolicy.QS_ON_KEY, next);
+        if (!next.equals(stored)) Features.setStringAsync(c, BatterySaverPolicy.QS_ON_KEY, next);
     }
 
     /**
