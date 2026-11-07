@@ -321,6 +321,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private volatile int dialogWindowId = -1;          // the accessibility window id of the newest stock dialog (from its window-state event): the event that removes that window ends the fade-out at once
     static final long CLOSE_SLACK_MS = 60, CLOSE_SAFETY_MS = 150;   // a scan may end the fade-out this long after its predicted end; the clock ends it (and verifies with a scan) this long after, whatever else happens
     private final Runnable closeFinishRun = new Runnable() { @Override public void run() { finishClose("the fade-out time is over"); } };
+    // BC5 (Tj, 2026-11-07: "For the pull up for the pin, the patch should disappear immediately, as fast as possible after the pull up from the bottom"): the PIN pad came up while the stock menu was open: the patch is
+    // hidden AT ONCE and stays hidden until that menu is gone (no fade-follow here; the stock card's Screenshot slot may show for the rest of its fade-out: Tj chose that over any flicker).
+    private boolean pinHide = false;
+    private long pinHiddenUntilMs = 0;                 // the resting patch stays away this long after such a hide: the PIN-pad scan (lastBouncer) is ~120 ms slower than the first sign
     private boolean patchOpenFlag = false;             // AZ1: the last patchShow() call said "menu open"
     private long scanNotBeforeMs = 0;   // AZ1: the node scan of a freshly opened menu waits for the fade
     private boolean patchFadeOn() { return Features.get(this, PATCH_FADE_KEY, true); }
@@ -1465,7 +1469,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean locked = km != null && km.isKeyguardLocked();
             boolean bouncer = (enabled || locked) && on && locked && bouncerShown();   // also needed by the handshakes (a fresh pad, the peek count), not just the number
             if (bouncer) lastPadSeenMs = android.os.SystemClock.uptimeMillis();   // AU2: a screenshot taken around a PIN pad is refused
-            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
+            if (bouncer != lastBouncer) { lastBouncer = bouncer; ensureUnlockListener(); unlock.onPad(bouncer, System.currentTimeMillis()); LockLog.add(getApplicationContext(), "PAD", bouncer ? "shown" : "hidden"); if (bouncer && overlayShown) pinPadCameUp("the PIN pad scan found it"); patchShow(overlayShown); }   // AE3: the resting patch hides while the PIN pad is up and comes back after
             if (LockNumber.shouldShow(enabled, on, locked, bouncer)) showLockNumber(); else removeLockNumber();
         } catch (Throwable t) { Log.e(TAG, "lock number update failed", t); removeLockNumber(); }
     }
@@ -2595,9 +2599,33 @@ public class TjAccessibilityService extends AccessibilityService {
      * BC2: the signs of the stock dismissal. A click in the stock dialog's window (the empty area's click listener, an entry) starts the fade-out at the click's own time (the stock calls dismiss() in the same
      * call); the removal of the dialog's window ends it. Both are window-id checks on the event itself: no binder call, nothing that can block the thread that draws the fade.
      */
+    /**
+     * BC5: the PIN pad came up while the stock menu is open (a pull up from the bottom): the patch goes at once (alpha 0 in the next frame, untouchable so it can never swallow a PIN key) and stays away until the menu is
+     * gone. Called from the fastest sign (an event of the keyguard's own PIN / password / pattern view, no scan) and from the slower PIN-pad scan.
+     */
+    private void pinPadCameUp(String why) {
+        try {
+            if (!overlayShown || !patchLockMode || patchView == null || pinHide) return;
+            pinHide = true; pinHiddenUntilMs = android.os.SystemClock.uptimeMillis() + 2500;
+            closing = false; handler.removeCallbacks(closeFinishRun);
+            Log.i(TAG, "PATCH pin hide (" + why + ") t=" + android.os.SystemClock.uptimeMillis());
+            patchView.setAlpha(0f);                                   // gone in the next frame, before anything else
+            patchShow(true);                                          // keeps it gone (pinHide) and leaves the rest of the state as it is
+            applyPatchTouchable(false);                               // a hidden but touchable window would swallow the PIN keys under it
+            handler.postDelayed(new Runnable() { @Override public void run() { try { patchShow(overlayShown); } catch (Throwable ignored) { } } }, 2600);
+        } catch (Throwable t) { Log.e(TAG, "pin hide failed", t); }
+    }
+
     private void fastMenuClose(AccessibilityEvent event) {
         if (!overlayShown || !patchLockMode || patchView == null) return;
         int type = event.getEventType();
+        if (!pinHide && !lastBouncer && (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)) {   // BC5: the keyguard's own PIN pad view announcing itself
+            CharSequence cn = event.getClassName(), pk = event.getPackageName();
+            if (cn != null && pk != null && "com.android.systemui".contentEquals(pk)) {
+                String c = cn.toString();
+                if (c.startsWith("com.android.keyguard.") && (c.contains("PINView") || c.contains("PasswordView") || c.contains("PatternView") || c.contains("SecurityContainer") || c.contains("HostView"))) { pinPadCameUp("event " + c.substring(c.lastIndexOf('.') + 1)); return; }
+            }
+        }
         if (type == AccessibilityEvent.TYPE_VIEW_CLICKED) {
             CharSequence pk = event.getPackageName();
             int wid = dialogWindowId;
@@ -2622,11 +2650,12 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!on && patchOpenFlag) Log.i(TAG, "PATCH menu closed t=" + android.os.SystemClock.uptimeMillis());
         boolean opening = on && !patchOpenFlag;   // AZ1: only the closed -> open transition starts a fade (repeated "still open" calls must not restart it); decided even while the patch window does not exist yet
         patchOpenFlag = on;
+        if (opening || !on) pinHide = false;   // BC5: a new menu, or no menu: the PIN-pad hide is over
         if (opening) startFade(); else if (!on) { fading = false; if (closing) { closing = false; handler.removeCallbacks(closeFinishRun); } }   // BC2: the patch goes back to rest: the fade-out (if any) is over
         if (patchView == null) return;
         if (!patchLockMode) { boolean ch = patchOpenHome != on; patchOpenHome = on; if (ch || opening) patchView.invalidate(); return; }   // AH1: the home patch dims like the stock dialog's scrim while the menu is open
         // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
-        boolean vis = on || PatchRest.visible(false, lockPatchAlways(), true, lastBouncer);   // review of v0.8.1: an open menu always gets its patch (PatchRest.visible says so); lockPatchAlways() asks the keyguard over binder, which has no place on the path that must be fastest
+        boolean vis = on ? !pinHide : PatchRest.visible(false, lockPatchAlways(), true, lastBouncer) && android.os.SystemClock.uptimeMillis() >= pinHiddenUntilMs;   // BC5: an open menu gets its patch unless the PIN pad came up over it   // review of v0.8.1: an open menu always gets its patch (PatchRest.visible says so); lockPatchAlways() asks the keyguard over binder, which has no place on the path that must be fastest
         boolean rest = vis && !on;
         boolean changed = rest != patchResting;
         patchResting = rest;
@@ -2688,10 +2717,11 @@ public class TjAccessibilityService extends AccessibilityService {
      * and the same call at the close delayed the un-dim. The flag is only needed for a tap on the hidden Screenshot spot, so it follows the draw: ON after the stock fade is over, OFF 40 ms after the patch went back to rest.
      */
     private boolean touchableOnPending = false;
-    private final Runnable touchableOn = new Runnable() { @Override public void run() { touchableOnPending = false; if (overlayShown) applyPatchTouchable(true); } };
+    private final Runnable touchableOn = new Runnable() { @Override public void run() { touchableOnPending = false; if (overlayShown && !pinHide) applyPatchTouchable(true); } };
     private final Runnable touchableOff = new Runnable() { @Override public void run() { if (!overlayShown) applyPatchTouchable(false); } };
     private void setPatchTouchable(boolean t) {
         if (patchView == null || !patchLockMode) return;   // the home patch never swallows a touch
+        if (t && pinHide) return;                           // BC5: hidden for the PIN pad: never touchable
         if (t) {
             handler.removeCallbacks(touchableOff);
             if (patchTouchable || touchableOnPending) return;   // review of v0.8.1: a repeated call (every scan of the open menu) must not restart the wait
