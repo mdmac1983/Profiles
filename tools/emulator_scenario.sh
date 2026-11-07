@@ -2155,11 +2155,12 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   done
   FRAMES="$(ptget jump frames)"
   check "PT: the film worked (the old-behaviour run has more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
-  JMAX="$(ptget jump open_max)"; F25="$(ptget fade25 open_max)"
+  JMAX="$(ptget jump open_max)"; F25="$(ptget fade25 open_max)"; JSH="$(ptget jump open_shape)"; F25S="$(ptget fade25 open_shape)"
   check "PT: the menu opening was seen in the film (an onset of the dimming was found, both runs)" bash -c "grep -q 'label=jump .*onset=' $OUT/pt-metrics.txt && grep -q 'label=fade25 .*onset=' $OUT/pt-metrics.txt"
-  info "PT: worst mismatch while the menu opens: old one-step dim ${JMAX:-?}; fade (lead 25 ms) ${F25:-?}"
-  check "PT: the fade is closer to the stock scrim than the one-step dim (worst mismatch while the menu opens)" awk -v j="${JMAX:-9}" -v f="${F25:-9}" 'BEGIN{exit !(f+0 < j+0)}'
-  check "PT: the fade keeps the patch within 8 % of its surround while the menu opens" awk -v f="${F25:-9}" 'BEGIN{exit !(f+0 < 0.08)}'
+  info "PT: worst mismatch while the menu opens: old one-step dim ${JMAX:-?}; fade (lead 25 ms) ${F25:-?}. TIMING ONLY (both dimming curves normalised, so the scrim's end level does not count; BA1's phase C checks the end level): one-step dim ${JSH:-?}; fade ${F25S:-?}"
+  # 2026-11-07 (run #277): these two checks used open_max, which includes the END level: after sections v and pa the emulator's open-menu scrim settled at 0.75 instead of 0.80 and a patch with perfect timing still read 0.13. open_shape compares the two normalised curves.
+  check "PT: the fade is closer to the stock scrim than the one-step dim (timing of the opening, end level excluded)" awk -v j="${JSH:-9}" -v f="${F25S:-9}" 'BEGIN{exit !(f+0 < j+0)}'
+  check "PT: the fade keeps the patch within 8 % of its surround while the menu opens (timing of the opening, end level excluded)" awk -v f="${F25S:-9}" 'BEGIN{exit !(f+0 < 0.08)}'
   HOLD="$(ptget fade25 hold_max)"; HOLDS="$(ptget fade25 hold_s)"
   info "PT: while the menu STAYS open (the part of the film after the opening ramp, ${HOLDS:-?} s): worst mismatch ${HOLD:-?}. INFO only: the emulator's injected long press shows the dialog TWICE ~0.5 s apart and the two scrims stack for a moment (the surround dips to ~0.70), which no patch can follow; see the 'hold' lines of the timeline for the service's own decisions"
 
