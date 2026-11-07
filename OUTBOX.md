@@ -660,3 +660,15 @@
 >
 > The build is still running. I'll check it at about 07:26 UTC.
 <!-- sha:51c4a156a1ab -->
+
+## 2026-11-07T07:27:28Z
+> v0.8.3 is built and signed by GitHub, and the signature was checked. It installs over v0.8.2 as an update. Download `Launcher-v0.8.3.apk` from this page:
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.3
+>
+> **What to look at:**
+> 1. **The faint line:** open the power menu on the lock screen and look under the Restart button. It should be gone. A straight photo of the open menu would let me check it with the photo tool.
+> 2. **The camera flashes:** test the battery saver again. The first plain lock screen with battery saver on will measure the dark theme once, with two flashes and the menu opening by itself. It shouldn't repeat after that. Then a screenshot of the Launcher control screen would help: it now shows both themes and why the last measurement started.
+>
+> **Tests:** the lockout protections and the new patch checks passed on this code. I built at your word while the re-run of the one battery-saver log check (AN1) was still going. That test-timing problem doesn't affect the app. I'll read the re-run at about 07:30 UTC and tell you only if it shows something real.
+<!-- sha:e17ec0b4e3e3 -->
