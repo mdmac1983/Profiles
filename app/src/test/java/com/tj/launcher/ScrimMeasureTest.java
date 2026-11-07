@@ -79,6 +79,28 @@ public class ScrimMeasureTest {
         assertEquals(a[0] * 2, b[0], 1); assertEquals(a[3] * 2, b[3], 1);
         assertTrue(a[0] < 205 && a[2] > 396 && a[1] < 907 && a[3] > 924);   // it contains the measured bbox
     }
+    @Test public void theBareFramePicksFlatPixelsOutsideTheExclusions() {
+        int w = 200, h = 300;
+        int[] px = new int[w * h];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[y * w + x] = 0xFF000000 | ((x * 255 / w) << 16) | ((y * 255 / h) << 8) | 90;   // a smooth gradient: every pixel is flat
+        int[][] ex = { { 0, 0, w, 10 }, { 100, 100, 150, 150 } };
+        int[] pts = ScrimMeasure.pickPoints(px, w, h, ex);
+        assertTrue(pts.length > 1000);
+        for (int v : pts) { int x = v & 0xFFFF, y = v >>> 16; assertTrue(y >= 10); assertFalse(x >= 100 && x < 150 && y >= 100 && y < 150); }
+        // a chessboard of 1-pixel squares has no flat pixel at all
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[y * w + x] = ((x + y) & 1) == 0 ? 0xFFFFFFFF : 0xFF000000;
+        assertEquals(0, ScrimMeasure.pickPoints(px, w, h, null).length);
+        assertEquals(0, ScrimMeasure.pickPoints(null, w, h, null).length);
+    }
+    @Test public void aChannelIsReadAtThePoints() {
+        int w = 10;
+        int[] px = new int[w * 10];
+        px[3 * w + 4] = 0xFF112233;
+        int[] pts = { (3 << 16) | 4 };
+        assertEquals(0x11, ScrimMeasure.channel(px, w, pts, 16)[0]);
+        assertEquals(0x22, ScrimMeasure.channel(px, w, pts, 8)[0]);
+        assertEquals(0x33, ScrimMeasure.channel(px, w, pts, 0)[0]);
+    }
     @Test public void aFlatPixelHasSmallNeighbourDifferences() {
         assertTrue(ScrimMeasure.flat(100, 104, 98, 101));
         assertFalse(ScrimMeasure.flat(20, 200, 100, 100));      // a text edge
