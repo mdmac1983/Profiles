@@ -752,6 +752,8 @@ public class TjAccessibilityService extends AccessibilityService {
             int extra = patchExtraPx(dm), bf = patchBottomFeatherPx(dm);   // BB1: the core reaches further down (the stock panel's shadow), the sides keep their margin
             int cl = panel.left - e - r.left, cr = panel.right + e - r.left, cbot = panel.bottom + e + extra - r.top;
             int fl = Math.min(f, Math.max(0, cl)), fr = Math.min(f, Math.max(0, w - cr)), fb = Math.min(bf, Math.max(0, h - cbot));
+            int[] ce = PatchRest.coverDisplayEdges(r.left, r.right, r.bottom, dm.widthPixels, dm.heightPixels, w, h, cl, cr, cbot, fl, fr, fb);   // BC1: a side that lies on the display edge has nothing to blend into: its core runs to the edge (the stock card's edge line showed through the 2 px fringe)
+            cl = ce[0]; cr = ce[1]; cbot = ce[2]; fl = ce[3]; fr = ce[4]; fb = ce[5];
             patchMaskOpen = alphaBitmap(PatchRest.mask(w, h, cl, cb - ov - r.top, cr, cbot, fl, 0, fr, fb), w, h);
             patchMaskRest = alphaBitmap(PatchRest.mask(w, h, cl, cb - r.top, cr, cbot, fl, Math.min(f, Math.max(0, cb - r.top)), fr, fb), w, h);
         } catch (Throwable t) { patchMaskOpen = null; patchMaskRest = null; Log.e(TAG, "patch masks failed", t); }
