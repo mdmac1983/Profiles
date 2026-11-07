@@ -22,32 +22,50 @@ public final class AnimationPolicy {
     /** The default of {@link #KEY}. */
     public static boolean defaultOn(boolean debuggable) { return !debuggable; }
 
+    /** Everything the decision reads, by name (eight booleans in a row are an invitation to swap two). All false = nothing is wanted. */
+    public static final class Facts {
+        /** the switch in Launcher control */
+        public boolean switchOn;
+        /** WRITE_SECURE_SETTINGS (the one-time adb grant) */
+        public boolean grant;
+        /** the accessibility helper is connected: it is what hears the screen go off and the unlock; without it nothing could end the hold in time */
+        public boolean helperUp;
+        /** the stored mode says Quickstep */
+        public boolean quickstepMode;
+        /** crash breaker tripped, or "Restore everything" paused the launcher while in Quickstep ({@link CrashGuard#automationOff(boolean, boolean, boolean)}) */
+        public boolean automationOff;
+        /** the display is on (interactive); a dark screen is about to show the lock screen */
+        public boolean screenOn;
+        /** the lock screen is up (keyguard locked) */
+        public boolean lockUp;
+        /** the lock screen was up and the unlock choice (plain PIN = custom, gesture = Quickstep) has not been applied yet: the stored mode can still be the OLD session's */
+        public boolean unlockUndecided;
+
+        /** The facts of an ordinary unlocked Quickstep session with everything granted: the baseline the tests change one field of. */
+        public static Facts session() {
+            Facts f = new Facts();
+            f.switchOn = true; f.grant = true; f.helperUp = true; f.quickstepMode = true; f.screenOn = true;
+            return f;
+        }
+    }
+
     /**
      * Why the Quickstep hold is NOT wanted right now: the FIRST failing condition in plain words, or "" when it is wanted. One function for the decision and for the words (log, Launcher control), so they
      * can never disagree. Order = most informative first.
-     *
-     * @param switchOn        the switch in Launcher control
-     * @param grant           WRITE_SECURE_SETTINGS (the one-time adb grant)
-     * @param quickstepMode   the stored mode says Quickstep
-     * @param automationOff   crash breaker tripped, or "Restore everything" paused the launcher while in Quickstep
-     * @param screenOn        the display is on (interactive); a dark screen is about to show the lock screen
-     * @param lockUp          the lock screen is up (keyguard locked)
-     * @param unlockUndecided the lock screen was up and the unlock choice (plain PIN = custom, gesture = Quickstep) has not been applied yet: the stored mode can still be the OLD session's
      */
-    public static String why(boolean switchOn, boolean grant, boolean quickstepMode, boolean automationOff, boolean screenOn, boolean lockUp, boolean unlockUndecided) {
-        if (!switchOn) return "switch off";
-        if (!grant) return "no adb permission";
-        if (automationOff) return "automation paused";
-        if (!quickstepMode) return "custom launcher";
-        if (!screenOn) return "screen off";
-        if (lockUp) return "lock screen";
-        if (unlockUndecided) return "unlock not decided yet";
+    public static String why(Facts f) {
+        if (!f.switchOn) return "switch off";
+        if (!f.grant) return "no adb permission";
+        if (!f.helperUp) return "accessibility helper not running";
+        if (f.automationOff) return "automation paused";
+        if (!f.quickstepMode) return "custom launcher";
+        if (!f.screenOn) return "screen off";
+        if (f.lockUp) return "lock screen";
+        if (f.unlockUndecided) return "unlock not decided yet";
         return "";
     }
 
-    public static boolean wanted(boolean switchOn, boolean grant, boolean quickstepMode, boolean automationOff, boolean screenOn, boolean lockUp, boolean unlockUndecided) {
-        return why(switchOn, grant, quickstepMode, automationOff, screenOn, lockUp, unlockUndecided).isEmpty();
-    }
+    public static boolean wanted(Facts f) { return why(f).isEmpty(); }
 
     /** How long a lock cycle may stay "undecided" after the lock screen is gone before the heartbeat stops waiting for the unlock handler (it normally answers in well under a second). */
     public static final long UNDECIDED_MAX_MS = 5000;
