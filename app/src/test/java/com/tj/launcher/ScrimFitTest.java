@@ -170,6 +170,15 @@ public class ScrimFitTest {
         assertNull(ScrimFit.decode(sig + "#d#1.2,1.2,1.2#1,2,3#10#0.5#1", sig, false));            // a brightening
         assertNull(ScrimFit.decode(sig + "#d#0.8,0.8,0.8#90,2,3#10#0.5#1", sig, false));           // an offset no scrim has
     }
+    @Test public void aStoredLineIsDescribedWithoutCheckingItsValidity() {
+        assertEquals("none", ScrimFit.describeStored(null));
+        assertEquals("none", ScrimFit.describeStored(""));
+        assertEquals("unreadable", ScrimFit.describeStored("x#y"));
+        assertEquals("unreadable", ScrimFit.describeStored("a#d#0.8,0.8,0.8#1,2,3#10#0.5#notatime"));
+        ScrimFit.Transform t = new ScrimFit.Transform(new float[] { 0.8f, 0.79f, 0.81f }, new float[] { 5f, 11f, 2f }, 22000, 0.6);
+        String d = ScrimFit.describeStored(ScrimFit.encode(t, PatchShot.sig(7, 0, 600, 1024), true, 1_700_000_000_000L));
+        assertTrue(d, d.contains("0.8000") && d.contains("11.0000") && d.contains("7|r0|600x1024") && d.contains("dark theme") && d.contains("22000"));
+    }
     @Test public void theDescriptionSaysWhatWasMeasured() {
         assertTrue(ScrimFit.describe(null).contains("not measured"));
         ScrimFit.Transform t = new ScrimFit.Transform(new float[] { 0.8f, 0.8f, 0.8f }, new float[] { 5f, 11f, 2f }, 22000, 0.6);
