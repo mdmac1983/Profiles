@@ -31,7 +31,9 @@ final class RecentsFilter {
     private long blockedAt = -LABELS_TTL_MS;
     private boolean pending = false;
     private int rounds = 0, looks = 0;
-    private static final long[] LOOK_DELAYS_MS = { 450, 700, 1200, 1500 };   // after the first look at 150 ms: looks at about 0.6 s, 1.3 s, 2.5 s and 4 s
+    /** BE2: the first look comes 60 ms after the Recents window opened (it was 150 ms); the cards are closed in ONE pass (it was one card per 70 ms), so a hidden app's card is on screen for as short a time as the tree allows. */
+    static final long FIRST_LOOK_MS = 60;
+    private static final long[] LOOK_DELAYS_MS = { 450, 700, 1200, 1500 };   // after the first look: looks at about 0.5 s, 1.2 s, 2.4 s and 3.9 s
     private long closedTotal = 0;
 
     RecentsFilter(TjAccessibilityService svc, android.os.Handler handler) { this.svc = svc; this.handler = handler; }
@@ -94,8 +96,10 @@ final class RecentsFilter {
             if (e == null || pending) return;
             CharSequence pkg = e.getPackageName();
             if (pkg == null || !mayOpenRecents(e.getEventType(), pkg.toString(), svc.stockPackageOrNull(), e.getClassName())) return;
+            // BE2: with the shell helper the cards of non-drawer apps are removed by id (no animation, no card to see); the label-based closing below is the fallback when no helper answers
+            if (Mode.isCustom(svc) && !svc.keyguardLockedNow() && !svc.resetDrivesRecents()) RecentsSweep.requestAsync(svc.getApplicationContext(), "the Recents screen opened", RecentsSweep.HIDDEN_ONLY, null, 2500);
             if (!wanted(Mode.isCustom(svc), Features.get(svc, KEY, true), svc.keyguardLockedNow(), CrashGuard.automationOff(svc), svc.resetDrivesRecents())) return;
-            schedule(150);
+            schedule(FIRST_LOOK_MS);
             rounds = 0; looks = 0;
         } catch (Throwable t) { Log.e(TAG, "recents guard event failed", t); }
     }
@@ -112,13 +116,14 @@ final class RecentsFilter {
             long now = android.os.SystemClock.uptimeMillis();
             if (now - blockedAt > LABELS_TTL_MS) { blocked = blockedNow(svc); blockedAt = now; }
             if (blocked.isEmpty()) return;
-            String closed = svc.closeOneRecentsCard(blocked);
-            if (closed != null) {
-                closedTotal++;
+            java.util.List<String> closedNow = svc.closeRecentsCards(blocked);
+            if (!closedNow.isEmpty()) {
+                closedTotal += closedNow.size();
+                String closed = closedNow.size() == 1 ? closedNow.get(0) : closedNow.get(0) + "' and " + (closedNow.size() - 1) + " more";
                 String line = stamp() + "  closed a Recents card of '" + closed + "' (not in the drawer); " + closedTotal + " card(s) closed since the helper connected";
                 Features.setString(svc, STATUS_KEY, line);
-                LockLog.add(svc.getApplicationContext(), "RECENTS", "closed a card of '" + closed + "': not an app of the custom drawer");
-                if (++rounds < 12) schedule(70);          // the card animates away; look again for the next one
+                LockLog.add(svc.getApplicationContext(), "RECENTS", "closed " + closedNow.size() + " card(s), '" + closedNow.get(0) + "'" + (closedNow.size() > 1 ? " and " + (closedNow.size() - 1) + " more" : "") + ": not an app of the custom drawer");
+                if (++rounds < 12) schedule(70);          // the cards animate away; look again for late ones
             } else if (looks < LOOK_DELAYS_MS.length) {
                 schedule(LOOK_DELAYS_MS[looks++]);        // the cards of a freshly opened Recents screen can arrive late (a busy tablet / emulator): a few more looks over about 4 s, then stop
             }

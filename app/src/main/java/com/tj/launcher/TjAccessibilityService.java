@@ -218,6 +218,20 @@ public class TjAccessibilityService extends AccessibilityService {
         return null;
     }
 
+    /** BE2: presses "Close" on EVERY Recents card whose description starts with one of {@code blockedLower} (lower-case app labels), all found in ONE pass over the tree; returns the labels closed. Main thread. */
+    java.util.List<String> closeRecentsCards(java.util.Set<String> blockedLower) {
+        java.util.List<String> done = new java.util.ArrayList<>();
+        for (AccessibilityNodeInfo card : findTaskCards()) {
+            CharSequence d = card.getContentDescription();
+            String hit = RecentsFilter.matchingLabel(d == null ? null : d.toString(), blockedLower);
+            if (hit == null) continue;
+            for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
+                if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) { done.add(hit); break; }
+            }
+        }
+        return done;
+    }
+
     /** AB2: is the Solitaire probe running? Read from the preferences at most once a second instead of on every event. */
     private long probeUntilCache = 0, probeCacheAt = -10_000;
     private boolean probeWanted() {
