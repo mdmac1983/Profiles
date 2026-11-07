@@ -125,7 +125,8 @@ public final class ReportState {
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
             b.append("menu dimming measurement (BA1): switch ").append(Features.get(c, ScrimMeasure.KEY, ScrimMeasure.defaultOn((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)) ? "on" : "off")
                     .append(" | last: ").append(Features.getString(c, ScrimMeasure.NOTE_KEY, "(nothing yet)"));
-            for (int rot = 0; rot < 4; rot++) { String v = Features.getString(c, ScrimMeasure.valueKey(rot), ""); if (!v.isEmpty()) b.append(" | rotation ").append(rot).append(": ").append(ScrimFit.describeStored(v)); }
+            for (int rot = 0; rot < 4; rot++) for (boolean n : new boolean[] { false, true }) { String v = Features.getString(c, ScrimMeasure.valueKey(rot, n), ""); if (!v.isEmpty()) b.append(" | rotation ").append(rot).append(n ? " (dark theme)" : " (light theme)").append(": ").append(ScrimFit.describeStored(v)); }
+            b.append(" | last started: ").append(Features.getString(c, ScrimMeasure.WHY_KEY, "(never)"));
             b.append('\n');
             b.append("battery saver on the lock screen (BA2): switch ").append(BatterySaverGuard.lockOffEnabled(c) ? "on" : "off").append(", restore for Quickstep ").append(BatterySaverGuard.lockRestoreEnabled(c) ? "on" : "off")
                     .append(" | ").append(BatterySaverGuard.lockStatus(c)).append('\n');
