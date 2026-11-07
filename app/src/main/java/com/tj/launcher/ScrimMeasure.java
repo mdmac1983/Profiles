@@ -124,4 +124,32 @@ public final class ScrimMeasure {
 
     /** Pure: the luminance (0..255) of a packed RGB value. */
     public static int lum(int rgb) { return (((rgb >> 16) & 255) * 77 + ((rgb >> 8) & 255) * 150 + (rgb & 255) * 29) >> 8; }
+
+    /**
+     * Pure: the sample points of the BARE frame: the grid (every 4th pixel, every 2nd when that leaves too few), minus the excluded rectangles, keeping only flat pixels. {@code px} = the frame's pixels
+     * ({@code Bitmap.getPixels}, row-major, w * h). The same points are then read from the menu frame.
+     */
+    public static int[] pickPoints(int[] px, int w, int h, int[][] exclude) {
+        if (px == null || px.length < w * h || w < 4 || h < 4) return new int[0];
+        int[] kept = new int[0];
+        for (int step : new int[] { 4, 2 }) {
+            int[] g = grid(w, h, step, exclude);
+            kept = new int[g.length];
+            int n = 0;
+            for (int v : g) {
+                int x = v & 0xFFFF, y = v >>> 16, i = y * w + x;
+                if (flat(lum(px[i - 1]), lum(px[i + 1]), lum(px[i - w]), lum(px[i + w]))) kept[n++] = v;
+            }
+            kept = java.util.Arrays.copyOf(kept, n);
+            if (n >= 2 * ScrimFit.MIN_SAMPLES) break;
+        }
+        return kept;
+    }
+
+    /** Pure: one colour channel (0..255) of the frame at the points; {@code shift} 16 = red, 8 = green, 0 = blue. */
+    public static int[] channel(int[] px, int w, int[] points, int shift) {
+        int[] out = new int[points.length];
+        for (int k = 0; k < points.length; k++) out[k] = (px[(points[k] >>> 16) * w + (points[k] & 0xFFFF)] >> shift) & 255;
+        return out;
+    }
 }
