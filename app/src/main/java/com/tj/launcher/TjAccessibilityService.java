@@ -1139,7 +1139,9 @@ public class TjAccessibilityService extends AccessibilityService {
     /** The unlock succeeded (USER_PRESENT). Handshake given = Quickstep (already in front); plain = the custom account (a Quickstep session ends here). */
     private void applyUnlockChoice() {
         lastUnlockUptime = android.os.SystemClock.uptimeMillis();   // AU2: a screenshot taken just before an unlock is refused
-        try { applyUnlockChoiceBody(); } finally { lqLastWrite = 0; lqWrites = 0; autoCalThisLock = 0; scrimThisLock = 0; restoreUnlockTiles(); }   // AW2 / AW3: whichever way the unlock went, the mode's own tile list is back and the lock-screen radio count starts afresh
+        try { applyUnlockChoiceBody(); } finally {
+            try { AnimationSpeedup.onUnlockDecided(getApplicationContext()); } catch (Throwable t) { Log.e(TAG, "animation sync failed", t); }   // BF1: from here the stored mode is the truth: a gesture unlock = the Quickstep session starts (animations off), a plain PIN = custom (they never went off)
+            lqLastWrite = 0; lqWrites = 0; autoCalThisLock = 0; scrimThisLock = 0; restoreUnlockTiles(); }   // AW2 / AW3: whichever way the unlock went, the mode's own tile list is back and the lock-screen radio count starts afresh
     }
 
     private void applyUnlockChoiceBody() {
