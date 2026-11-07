@@ -1,13 +1,13 @@
-# CHECKPOINT 587 — read me first, then TASKS.md
+# CHECKPOINT 588 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T06:17:22Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `ec26173` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T06:29:31Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `79bee29` (this checkpoint is the commit after it)
 
 ## Just done
-six gate runs in flight: ON 84b3dd1 (06:10Z) #285 id 42345818982, #286 id 42345820757, #287 id 42345823103 (n,pt / e1,o,ae,pa,rb,last / base,x1,v,ac,ps, order unknown); ON 6900074 = final head (06:17Z) #288 id 42346297361, #289 id 42346299293, #290 id 42346301196 (pt / n,x,ac,rb / base,x1,e1,o,last, order unknown)
+gate runs on 84b3dd1: #286 (e1,o,ae,pa,rb,last) 37 PASS + emulator went offline in rb (infra; e1 o ae pa passed, PA 2 MAE 9e-7 with the new geometry); #287 (base,x1,v,ac,ps) 77 PASS 2 FAIL = V5 (scrim read 0.750 after x1: same hard-coded-0.80 assumption, now tolerance grows with the gap) + AN1 (a 'BATSAVER off' line in the 3 s window; app code since v0.8.2 touches only PatchRest/TjAccessibilityService geometry, so not the guard; now prints the line); #285 (n,pt) still running
 
 ## Do this next
-read the first three ~06:28Z, the last three ~06:34Z (list_workflow_jobs latest; get_job_logs tail 60-95; 404 = running); pt on 6900074 must show the PB checks (reach, interior, predicted line) and BB2 checks (dark slot, light slot kept, why text, no second measurement); all green -> bump 0.8.3/code 28, ship.sh, android.yml full_build, record-release, tell Tj; Tj has not yet said which he saw (flashes or the Screenshot button)
+read #285 id 42345818982 (n,pt on 84b3dd1: PB lines) and #288 id 42346297361 / #289 id 42346299293 / #290 id 42346301196 (final head 6900074) around 06:33Z; then re-run on the head: rb,last (infra) and ac with x1,v before it (AN1 line); the rest per gate.sh
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read the first three ~06:28Z, the last three ~06:34Z (list_workflow_jobs latest;
 
 ## Last ten checkpoints
 ```
+  aaf3b24 ckpt 587: six gate runs in flight: ON 84b3dd1 (06:10Z) #285 id 42345818982, #286 id 4234
   6900074 ckpt 586: BB2 (Tj: 'the lock screen screenshot itself again, not sure why'): the helper 
   35f1518 ckpt 585: dispatched the 3 gate runs on 84b3dd1 at 06:10Z: #285 id 42345818982, #286 id 
   84b3dd1 ckpt 584: BB1b: defaults chosen (core +24 dp, bottom fringe 4 dp), PatchRestTest 24 gree
@@ -25,7 +26,6 @@ read the first three ~06:28Z, the last three ~06:34Z (list_workflow_jobs latest;
   aef44d4 ckpt 580: BB1b step 1: patch core extension coded (PatchRest.slotWindow extra + clampExt
   9b150a1 ckpt 579: BB1 diagnosed from Tj's 2 new v0.8.2 photos: patch interior now right (left ed
   03502f8 ckpt 578: Tj tried v0.8.2: 'almost perfect but a very slight tinted line about where the
-  564522c ckpt 577: Tj's screenshot: v0.8.2 measured ON THE TABLET scale 0.800 + offset 6/7/7 (tin
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
