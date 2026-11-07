@@ -2383,7 +2383,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     }
                     if (did) break;   // the list changed: look again
                 }
-                if (did) { idle[0] = 0; handler.postDelayed(this, 30); return; }
+                if (did && android.os.SystemClock.uptimeMillis() < deadline + 2000) { idle[0] = 0; handler.postDelayed(this, 30); return; }   // never past the deadline (a card that does not go away must not keep this loop alive)
                 if (sawCards[0] && ++idle[0] >= 3) {   // cards are there and none of ours is left
                     AppOrigin.clearQuickstep(TjAccessibilityService.this); AppOrigin.setTracked(TjAccessibilityService.this);
                     resetReport.append("recents: closed ").append(closed[0]).append(" card(s) of apps opened from Quickstep, others kept (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
@@ -2454,27 +2454,38 @@ public class TjAccessibilityService extends AccessibilityService {
         final long deadline = android.os.SystemClock.uptimeMillis() + 2500;
         final int[] tick = {0}, closed = {0}, idle = {0};
         final boolean[] saw = {false};
+        final java.util.HashMap<String, Integer> pressed = new java.util.HashMap<>();   // card description -> how often "Close" was pressed on it
         final String[] pk = {"com.android.launcher3", "com.android.systemui"};
         handler.post(new Runnable() { @Override public void run() {
+            // The deadline is checked FIRST, in every branch: the first version returned early after pressing "Close" and could press a card that never went away for ever, starving the main thread
+            // (emulator runs #313 / #314: no result line at all, a hung reset). A card is pressed at most three times; only nodes with a description (a card carries its app's name) count as cards.
+            final boolean over = android.os.SystemClock.uptimeMillis() >= deadline;
             try {
-                if (pressInSystemUi("clear all", pk)) { finishRecentsEmpty(t0, done, "Clear all pressed", true, closed[0]); return; }
-                if (anyTextPresent(new String[] {"no recent items"}, pk)) { finishRecentsEmpty(t0, done, "the list was empty", true, closed[0]); return; }
-                List<AccessibilityNodeInfo> cards = findTaskCards();
-                if (!cards.isEmpty()) {
-                    saw[0] = true; idle[0] = 0;
-                    for (AccessibilityNodeInfo card : cards) {
+                if (!over) {
+                    if (pressInSystemUi("clear all", pk)) { finishRecentsEmpty(t0, done, "Clear all pressed", true, closed[0]); return; }
+                    if (anyTextPresent(new String[] {"no recent items"}, pk)) { finishRecentsEmpty(t0, done, "the list was empty", true, closed[0]); return; }
+                    boolean pressedOne = false, leftover = false;
+                    for (AccessibilityNodeInfo card : findTaskCards()) {
+                        CharSequence d = card.getContentDescription();
+                        String key = d == null ? "" : d.toString().trim();
+                        if (key.isEmpty()) continue;
+                        saw[0] = true;
+                        int n = pressed.containsKey(key) ? pressed.get(key) : 0;
+                        if (n >= 3) { leftover = true; continue; }                          // it does not go away: left alone, reported at the end
                         for (AccessibilityNodeInfo.AccessibilityAction act : card.getActionList()) {
-                            if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) { closed[0]++; break; }
+                            if (act.getLabel() != null && "close".equalsIgnoreCase(act.getLabel().toString().trim()) && card.performAction(act.getId())) { pressed.put(key, n + 1); closed[0]++; pressedOne = true; break; }
                         }
                     }
-                    handler.postDelayed(this, 40);
-                    return;
+                    if (pressedOne) { idle[0] = 0; handler.postDelayed(this, 40); return; }
+                    tick[0]++;
+                    if (tick[0] % 5 == 0) scrollSomething(pk);
+                    if (saw[0] && ++idle[0] >= 3) {
+                        finishRecentsEmpty(t0, done, leftover ? "closed " + closed[0] + " card(s), but some cards would not go away: Recents is NOT verified empty" : "closed " + closed[0] + " card(s), none left", !leftover, closed[0]);
+                        return;
+                    }
                 }
-                tick[0]++;
-                if (tick[0] % 5 == 0) scrollSomething(pk);
-                if (saw[0] && ++idle[0] >= 3) { finishRecentsEmpty(t0, done, "closed " + closed[0] + " card(s), none left", true, closed[0]); return; }
             } catch (Throwable t) { Log.e(TAG, "empty recents failed", t); }
-            if (android.os.SystemClock.uptimeMillis() >= deadline) { finishRecentsEmpty(t0, done, saw[0] ? "STOPPED after " + closed[0] + " card(s), time ran out: Recents is NOT verified empty" : "no Clear all button and no card with a Close action found: nothing was cleared", false, closed[0]); return; }   // a partial clear never marks Recents clean (code review 2026-11-07): the next return tries again
+            if (over) { finishRecentsEmpty(t0, done, saw[0] ? "STOPPED after " + closed[0] + " card(s), time ran out: Recents is NOT verified empty" : "no Clear all button and no card with a Close action found: nothing was cleared", false, closed[0]); return; }   // a partial clear never marks Recents clean (code review 2026-11-07): the next return tries again
             handler.postDelayed(this, 40);
         } });
     }
