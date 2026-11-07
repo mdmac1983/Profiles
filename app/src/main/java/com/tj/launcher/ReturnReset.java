@@ -28,6 +28,33 @@ public final class ReturnReset {
     public static final String CLEAR_RECENTS_KEY = "reset_clear_recents";       // default ON
     public static final String COVER_KEY = "reset_black_cover";                  // default ON: black cover while the reset drives the shade / Recents
 
+    /**
+     * BE2 / BE3 (Tj, 2026-11-07: "If it is better, do not start the custom launcher with solitaire, but start it with no apps at all and completely clear the recent apps list every time the custom launcher starts" /
+     * "the custom launcher must be immediate or as close as possible"). CLEAN START: a custom session begins with the custom home alone on screen and an EMPTY Recents list; no stand-in app is started (a cold
+     * Solitaire start on this 2 GB tablet was what kept the black cover up for seconds, and its task was one more card). "Begins" = a Quickstep session ends (plain PIN, double Home, the return methods) or the
+     * tablet booted; NOT every unlock of a custom-only session and NOT every restart of our process (the system kills it under memory pressure: clearing then would close what Tj is using).
+     * Shipped default ON; debug builds default OFF so the older emulator sections (written for the Solitaire behaviour) keep testing it; the new section sets it explicitly. OFF = the old Solitaire behaviour exactly.
+     */
+    public static final String CLEAN_START_KEY = "clean_start";
+    /** Set at a new boot (clean start only): the persisted Recents list of the last boot is cleared at the first unlock. */
+    public static final String BOOT_CLEAN_KEY = "clean_pending_boot";
+
+    /** Pure: the default of the clean-start switch. */
+    static boolean cleanStartDefault(boolean debuggable) { return !debuggable; }
+    static boolean isDebuggable(Context c) { return (c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
+    public static boolean cleanStart(Context c) { return Features.get(c, CLEAN_START_KEY, cleanStartDefault(isDebuggable(c))); }
+    public static boolean bootCleanPending(Context c) { return Features.get(c, BOOT_CLEAN_KEY, false); }
+    public static void markBootClean(Context c) { if (cleanStart(c)) Features.set(c, BOOT_CLEAN_KEY, true); }
+    public static void clearBootClean(Context c) { if (bootCleanPending(c)) Features.set(c, BOOT_CLEAN_KEY, false); }
+
+    /**
+     * BE3: does the complete clear of Recents have anything to do? Not when nothing was used since the last clear: the dirty flag, the tracker, Android's own usage log (any app resumed since, whoever opened it) and
+     * a fresh boot all say "yes"; the first run after an install and any doubt count as "yes" too.
+     */
+    static boolean recentsNeeded(Context c) {
+        return !AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty() || RecentsDirty.isDirty(c) || bootCleanPending(c) || !AppOrigin.usedSinceClear(c).isEmpty();
+    }
+
     public static boolean clearNotifications(Context c) { return Features.get(c, CLEAR_NOTIF_KEY, true); }
     public static boolean clearRecents(Context c) { return Features.get(c, CLEAR_RECENTS_KEY, true); }
 
