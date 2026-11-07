@@ -2086,6 +2086,10 @@ public class TjAccessibilityService extends AccessibilityService {
             if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
+            if (closing) {   // BC2: the stock fade-OUT is being followed: the scan stops finding the menu text when the card gets transparent, BEFORE the scrim is gone; the patch ends its fade with the window's removal or the timer, not with this scan
+                long left = closeStartMs + PatchFade.CLOSE_MS + CLOSE_SLACK_MS - android.os.SystemClock.uptimeMillis();
+                if (left > 0) return;
+            }
             // AZ1 (runs 249 / 253, emulator): ~0.5 s after the stock dialog opens, a scan sometimes finds no "Power off" / "Screenshot" text (the emulator's injected long press shows the dialog twice; a busy SystemUI also answers a
             // node search with NOTHING when it is too slow). The patch then fell back to its bright resting state for 20-170 ms = a light block on the darkened menu screen. (The window list cannot confirm the dialog:
             // its title is not "ActionsDialog" there, dialogUp stays false even while the menu is open.) So within 2 s of the opening one "not open" answer is not believed: look again 250 ms later, hide only if that agrees.
