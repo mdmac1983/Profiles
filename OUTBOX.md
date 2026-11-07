@@ -648,3 +648,15 @@
 >
 > The AN1 re-run is still going and should finish around 07:29. It only decides whether the test fix holds. It doesn't change this build.
 <!-- sha:858f180463d6 -->
+
+## 2026-11-07T07:21:32Z
+> No, I worded that badly. v0.8.3 is different from v0.8.2, the one on your tablet now. I meant that this build has the same app code as the one my tests ran on. Only the version number changed after those tests.
+>
+> **What's new in v0.8.3:**
+> 1. **The faint tinted line under the hidden card:** the patch now reaches further down and covers the stock card's shadow. On the emulator it keeps matching the lock screen 28 rows below the card, up from 3. It still needs your eyes on the real tablet.
+> 2. **The repeated camera flashes:** the tablet now keeps one measurement per theme, light and dark. Battery saver switching the theme no longer triggers a new measurement each time. Launcher control now also says why the last measurement started.
+>
+> Your current calibration and light-theme measurement stay valid. There's one catch. The first time you're on a plain lock screen with battery saver on, it will measure the dark theme once, with two flashes and the menu opening by itself. After that it won't repeat for that wallpaper and rotation. I couldn't get the emulator into the dark theme, so unit tests cover that part and your tablet will be its first real test.
+>
+> The build is still running. I'll check it at about 07:26 UTC.
+<!-- sha:51c4a156a1ab -->
