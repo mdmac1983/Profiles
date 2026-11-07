@@ -575,3 +575,9 @@
 > - If it was the flashes, the fix above covers it, and Launcher control will now say why a measurement started.
 > - If it was the button, tell me and I'll look at that instead.
 <!-- sha:75f2759823a1 -->
+
+## 2026-11-07T06:37:01Z
+> Documentation is current. The two runs finish around 06:51; I'll read them then.
+>
+> Nothing new for Tj yet. Still waiting on his answer about what he saw, and I'll send v0.8.3 only after both runs are green.
+<!-- sha:e477049a3327 -->
