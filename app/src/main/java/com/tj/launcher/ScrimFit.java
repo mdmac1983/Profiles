@@ -174,6 +174,22 @@ public final class ScrimFit {
         } catch (Throwable t) { return null; }
     }
 
+    /**
+     * Pure: why a measurement is needed now, in plain words: {@code stored} is the slot of the CURRENT theme. Shown in Launcher control, so that "why did the tablet take a screenshot of the lock screen again?" has
+     * an answer on the tablet itself.
+     */
+    public static String reasonMissing(String stored, String sig, boolean night) {
+        String theme = night ? "the dark theme" : "the light theme";
+        if (stored == null || stored.isEmpty()) return "nothing is stored yet for this lock screen in " + theme;
+        try {
+            String[] p = stored.split("#");
+            if (p.length != 7) return "the stored measurement for " + theme + " could not be read";
+            if (!p[0].equals(sig)) return "the lock screen changed since it was measured (wallpaper, rotation or screen size)";
+            if (!p[1].equals(night ? "n" : "d")) return "the stored measurement belongs to the other theme (an older version kept one slot for both)";
+        } catch (Throwable t) { return "the stored measurement for " + theme + " could not be read"; }
+        return "the stored measurement for " + theme + " is not valid any more";
+    }
+
     /** A line for Launcher control / the tablet report. */
     public static String describe(Transform t) {
         if (t == null) return "not measured for this lock screen (the patch uses the generic 0.80)";

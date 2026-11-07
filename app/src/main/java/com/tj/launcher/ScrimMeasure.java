@@ -53,7 +53,9 @@ public final class ScrimMeasure {
     public static final String FAIL_PREFIX = "scrim_fail_r";
     /** After this many fitted-but-refused measurements of the same lock screen the helper stops until the wallpaper, rotation, size or theme changes (or "Measure again" is tapped): a flat wallpaper or a scrim that is not a flat layer would otherwise open the menu by itself every day. */
     public static final int MAX_FAILURES = 2;
-    public static String failKey(int rotation) { return FAIL_PREFIX + rotation; }
+    public static String failKey(int rotation) { return failKey(rotation, false); }
+    /** The failure record of one rotation in one theme (light = the v0.8.2 key, dark = the same with an "n"): see {@link #valueKey(int, boolean)}. */
+    public static String failKey(int rotation, boolean night) { return FAIL_PREFIX + rotation + (night ? "n" : ""); }
 
     /** Pure: did the frames get taken but could not be fitted (as opposed to an interruption such as the screen going off, which is worth another try)? */
     public static boolean measurementFailure(String outcome) {
@@ -101,8 +103,18 @@ public final class ScrimMeasure {
     /** Pure: start now? Only when there is no measurement yet for this lock screen AND {@link #decision} says go. */
     public static boolean shouldStart(State s) { return !s.haveMeasurement && decision(s).isEmpty(); }
 
-    /** Pure: the preference key of the measurement of one rotation. */
-    public static String valueKey(int rotation) { return VALUE_PREFIX + rotation; }
+    /** Pure: the preference key of the measurement of one rotation in the LIGHT theme (the v0.8.2 key: an existing measurement stays valid). */
+    public static String valueKey(int rotation) { return valueKey(rotation, false); }
+
+    /**
+     * Pure: the key of the measurement of one rotation in one theme. v0.8.2 had ONE slot for both themes: every flip of the theme (battery saver switches the dark theme on and off) made the stored value invalid, the helper
+     * measured again (two camera flashes, the stock menu opening by itself) and overwrote the other theme's value, so it flip-flopped up to 4 times a day (Tj, 2026-11-07, while testing the battery saver: "the lock screen
+     * screenshot itself again, not sure why"). Each theme now has its own slot: light = the old key, dark = the same key with an "n". Each is measured once.
+     */
+    public static String valueKey(int rotation, boolean night) { return VALUE_PREFIX + rotation + (night ? "n" : ""); }
+
+    /** Why the helper last started a measurement, in plain words (written when it starts; shown in Launcher control and in the tablet report). */
+    public static final String WHY_KEY = "scrim_why";
 
     // ---------------------------------------------------------------- the sampling grid
 
