@@ -421,3 +421,7 @@
 >   - keeping your settings after a crash-breaker trip (CBR2)
 >   - the mailbox-vs-batch question (AE6)
 <!-- sha:658ea0ae6974 -->
+
+## 2026-11-07T05:08:47Z
+> Tj sent a screenshot of the Launcher control screen on the tablet: the first real measurement from v0.8.2. Before reading anything else, the standing first action: hooks (this looks like a fresh session start), then the state.
+<!-- sha:3362389d623d -->
