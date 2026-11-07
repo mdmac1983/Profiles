@@ -142,4 +142,29 @@ public class PatchRestTest {
         assertEquals(PatchRest.alphaAt(7, 40, 10, 10, 90, 90, 8, 8, 8, 8), m[40 * 100 + 7] & 0xff);
         assertEquals(255, m[50 * 100 + 50] & 0xff);
     }
+
+    // ---- BC1 (Tj, 2026-11-07, v0.8.3, with a video): "a very small vertical sliver all the way to the right ... cover all the way to the right edge of the screen"
+    @Test public void aWindowOnTheDisplayEdgeRunsItsCoreToTheEdgeWithoutAFringe() {
+        // the 600 x 1024 tablet: window x 474..600 (w 126, h 115): core right 124, fringe right 2 = 74 % / 26 % of the stock card's edge line showed in the last two columns (the mask test above)
+        int[] c = PatchRest.coverDisplayEdges(474, 600, 653, 600, 1024, 126, 115, 9, 124, 106, 9, 2, 9);
+        assertEquals(126, c[1]);                    // right: the core reaches the display edge
+        assertEquals(0, c[4]);                      // and has no fringe
+        assertEquals(9, c[0]); assertEquals(106, c[2]); assertEquals(9, c[3]); assertEquals(9, c[5]);   // the left and bottom sides do not touch the display edge: unchanged
+        byte[] m = PatchRest.mask(126, 115, c[0], 6, c[1], c[2], c[3], 0, c[4], c[5]);
+        assertEquals(255, m[60 * 126 + 123] & 0xff);
+        assertEquals(255, m[60 * 126 + 124] & 0xff);   // was 189
+        assertEquals(255, m[60 * 126 + 125] & 0xff);   // the screen's last column: was 66
+        assertEquals(255, m[100 * 126 + 125] & 0xff);  // down the whole slot, not only at one row
+    }
+    @Test public void aWindowThatDoesNotTouchTheDisplayEdgeKeepsItsFringes() {
+        assertArrayEquals(new int[] { 9, 100, 140, 9, 9, 9 }, PatchRest.coverDisplayEdges(400, 520, 700, 600, 1024, 120, 160, 9, 100, 140, 9, 9, 9));
+    }
+    @Test public void everySideThatLiesOnTheDisplayEdgeIsSnapped() {
+        assertArrayEquals(new int[] { 0, 600, 80, 0, 0, 0 }, PatchRest.coverDisplayEdges(0, 600, 1024, 600, 1024, 600, 80, 9, 590, 70, 9, 9, 9));
+    }
+    @Test public void theWindowOfTheRealTabletReachesTheDisplayEdgeAtTheDefaultGeometry() {
+        // panel [485,339][596,642] on the 600 x 1024 tablet at density 1.0625 (EDGE 2, FEATHER 9): the window is clamped at 600, so the rule above applies to the real window
+        int[] w = PatchRest.slotWindow(485, 547, 596, 642, 2, 9, 26, 4, 600, 1024);
+        assertEquals(600, w[2]);
+    }
 }
