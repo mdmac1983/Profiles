@@ -2222,11 +2222,14 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   adb logcat -c; PAD0="$(padcount)"
   ptinput pinrest "input swipe 300 900 300 300 250"; sleep 2.5
   PAD1="$(padcount)"
-  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (pin hide|rest|input)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-pinrest.txt"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (pin hide|pin sign|touch hide|rest|input)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-pinrest.txt"
   EVH="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-pinrest.txt" 2>&1 | tail -c 660)"
   info "PT/BC5b: plain lock screen, swipe up for the PIN pad (timeline end 1): ${EVH:0:330}"; info "PT/BC5b: (timeline end 2): ${EVH:330:330}"
   if [ "$(( ${PAD1:-0} - ${PAD0:-0} ))" -ge 1 ]; then check "BC5b: with no power menu open the resting patch is hidden at once when the PIN pad comes up (the helper logged 'pin hide ... resting')" grep -q 'PATCH pin hide.*resting' "$OUT/pt-all-pinrest.txt"
   else info "PT/BC5b: no PIN pad appeared on the emulator: nothing to judge"; fi
+  # ---- BE1 (Tj, 2026-11-07 20:17: "a very quick flicker of the wallpaper patch when I pull up to enter pin"): the resting patch must go at the finger's DOWN (ACTION_OUTSIDE), BEFORE the keyguard's PIN-pad sign
+  check "BE1: the resting patch was hidden at the finger's DOWN ('PATCH touch hide' logged: ACTION_OUTSIDE reaches the patch window)" grep -q 'PATCH touch hide' "$OUT/pt-all-pinrest.txt"
+  if [ "$(( ${PAD1:-0} - ${PAD0:-0} ))" -ge 1 ]; then check "BE1: ... and BEFORE the first sign of the PIN pad ('touch hide' comes first in the log)" bash -c "awk '/PATCH touch hide/{if(!t)t=NR} /PATCH pin (hide|sign)/{if(!p)p=NR} END{exit !(t && (!p || t<p))}' $OUT/pt-all-pinrest.txt"; fi
   palock; sleep 2
   check "BC2: a tap in the middle closes the menu with the patch following the stock fade-out (the helper logged the click, then the end of the menu)" bash -c "grep -q 'close start (a click in the stock dialog)' $OUT/pt-all-closetap.txt && grep -q 'menu closed' $OUT/pt-all-closetap.txt"
   check "BC2: the largest patch-versus-surround mismatch around that close is within 15 % (20 % when the patch held its dark look until a scan noticed; runs #296 / #299 read 3.8 / 10.3 %: SystemUI's animator starts 40-100 ms after the click)" awk -v m="$(ptget closetap close_max)" 'BEGIN{exit !(m != "" && m+0 >= 0 && m+0 <= 0.15)}'

@@ -2712,7 +2712,7 @@ public class TjAccessibilityService extends AccessibilityService {
             long now = android.os.SystemClock.uptimeMillis();
             lastPadSignMs = now;
             pinHiddenUntilMs = Math.max(pinHiddenUntilMs, now + 2500);   // BE1: every sign of the pad pushes the return out (an away patch must not come back over the pad)
-            if (pinHide || (!overlayShown && !patchResting)) { handler.removeCallbacks(padBack); handler.postDelayed(padBack, 2600); return; }   // nothing visible to hide (already away for a finger / the pad)
+            if (pinHide || (!overlayShown && !patchResting)) { Log.i(TAG, "PATCH pin sign (" + why + ") t=" + now + ": the patch is already away"); handler.removeCallbacks(padBack); handler.postDelayed(padBack, 2600); return; }   // nothing visible to hide (already away for the pad)
             Log.i(TAG, "PATCH pin hide (" + why + ") t=" + now + (overlayShown ? " menu open" : " resting") + (lastTouchDownMs > 0 && now - lastTouchDownMs < 3000 ? " " + (now - lastTouchDownMs) + " ms after the finger went down" : ""));
             logPatch("PIN pad sign (" + why + ")" + (lastTouchDownMs > 0 && now - lastTouchDownMs < 3000 ? ", " + (now - lastTouchDownMs) + " ms after the finger went down" : ", no finger-down seen first") + (overlayShown ? ", menu open" : ", resting patch hidden"));
             patchView.setAlpha(0f);                                   // gone in the next frame, before anything else
@@ -2735,8 +2735,7 @@ public class TjAccessibilityService extends AccessibilityService {
             long now = android.os.SystemClock.uptimeMillis();
             lastTouchDownMs = now;
             touchAwayUntilMs = now + TOUCH_AWAY_MS;
-            patchView.setAlpha(0f);                          // first: gone in the next frame
-            patchResting = false;
+            patchView.setAlpha(0f);                          // first: gone in the next frame (patchResting is left alone: the patch is still restable, so the stock dialog's own event brings it back at once, and the PIN-pad logic keeps its log lines)
             handler.removeCallbacks(touchBack); handler.postDelayed(touchBack, TOUCH_AWAY_MS + 20);
             if (now - lastTouchLogMs > 3000) { lastTouchLogMs = now; Log.i(TAG, "PATCH touch hide (a finger went down) t=" + now); logPatch("resting patch hidden at the finger's DOWN"); }
         } catch (Throwable t) { Log.e(TAG, "touch hide failed", t); }
