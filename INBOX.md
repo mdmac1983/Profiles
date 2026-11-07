@@ -1073,3 +1073,8 @@ This is the correct image. Ignore the last ones
 ```
 Tell me the steps to get the battery saver
 ```
+
+## 2026-11-07T06:04:17Z
+```
+This session's worker process was restarted. If your previous turn was already complete, take no action and wait for the next event. Otherwise, continue from where you left off.
+```
