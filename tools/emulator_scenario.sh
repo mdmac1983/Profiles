@@ -2164,6 +2164,32 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   HOLD="$(ptget fade25 hold_max)"; HOLDS="$(ptget fade25 hold_s)"
   info "PT: while the menu STAYS open (the part of the film after the opening ramp, ${HOLDS:-?} s): worst mismatch ${HOLD:-?}. INFO only: the emulator's injected long press shows the dialog TWICE ~0.5 s apart and the two scrims stack for a moment (the surround dips to ~0.70), which no patch can follow; see the 'hold' lines of the timeline for the service's own decisions"
 
+  # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom
+  #      edge; the patch's opaque core used to stop 2 px past it and then faded out. tools/pb_probe.py compares screenshots of the SAME lock screen: the menu closed (bare), the menu open with the lock patch OFF (the stock panel's
+  #      shadow) and with it ON in several geometries (patch_extra_dp = how far the opaque core reaches further down, patch_bfeather_dp = the bottom fringe). The measured scrim look is on (phase C), so the slot itself matches.
+  if echo "$SCN" | grep -q MEASURED; then
+    pbint(){ # pbint <int key> <value>: sets ONE int in the app's preferences (the app is restarted afterwards)
+      printf 's#<int name="%s" value="[-0-9]*" />##\ns#</map>#<int name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/pbint.sed"
+      local B64; B64="$(base64 -w0 "$OUT/pbint.sed")"
+      adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/pbint.sed; sed -i -f files/pbint.sed shared_prefs/tj_features.xml'"; }
+    pbrestart(){ adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 3; }
+    pbopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.6; }
+    pbclose(){ adb shell input keyevent KEYCODE_BACK; sleep 2.2; }
+    PBPANEL="$FL,$FT,$FR,$FB"; : > "$OUT/pb-metrics.txt"
+    pbrestart; shot pb-bare                                                   # the menu closed (the resting patch is invisible)
+    ptkey lock_patch false; pbrestart; pbopen; shot pb-stock; pbclose; ptkey lock_patch true   # the stock panel alone: its shadow
+    python3 -I tools/pb_probe.py stock "$OUT/pb-bare.png" "$OUT/pb-stock.png" --panel "$PBPANEL" --stock 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
+    for V in "0 8" "10 8" "20 8" "20 4"; do
+      set -- $V; XE=$1; XB=$2
+      pbint patch_extra_dp "$XE"; pbint patch_bfeather_dp "$XB"; pbrestart; pbopen; shot "pb-x${XE}b${XB}"; pbclose
+      python3 -I tools/pb_probe.py "x${XE}b${XB}" "$OUT/pb-bare.png" "$OUT/pb-x${XE}b${XB}.png" --panel "$PBPANEL" 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
+    done
+    pbint patch_extra_dp 20; pbint patch_bfeather_dp 8; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2   # back to the defaults for the clean-up below
+    info "PB panel $PBPANEL (scale / offset are the scrim the probe fitted per run)"
+    grep -E "PBMETRIC" "$OUT/pb-metrics.txt" | sed 's/PBMETRIC //' | while IFS= read -r L; do info "PB $L"; done
+    grep -E "PBPROFILE" "$OUT/pb-metrics.txt" | sed 's/PBPROFILE //' | while IFS= read -r L; do info "PB profile $(echo "$L" | cut -c1-330)"; done
+    check "PB: the probe measured the stock panel and the four geometries without an error" bash -c "! grep -q 'error=' $OUT/pb-metrics.txt && [ \"\$(grep -c PBMETRIC $OUT/pb-metrics.txt)\" -ge 5 ]"
+  else info "PB: no measurement, so phase D (the shadow line) is skipped"; fi
 else info "PT: no menu geometry (no CARD area line)"; check "PT: the menu rectangle was learned" false; fi
 
 # ---------------- clean up
