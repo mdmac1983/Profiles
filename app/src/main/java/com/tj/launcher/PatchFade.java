@@ -69,4 +69,38 @@ public final class PatchFade {
 
     /** The brightness between the resting value and the open value: {@code progress} 0 = resting, 1 = open (the stock scrim complete). */
     public static float mix(float kRest, float kOpen, float progress) { return kRest + (kOpen - kRest) * progress; }
+
+    // ---------------------------------------------------------------- BC2: the fade-OUT
+    // Tj, 2026-11-07 (v0.8.3): "the fading is perfect when I press the side key, but when the power menu is open, and I press in the middle of the screen to close the power menu, or pull up from the bottom to type the
+    // pin, the wallpaper patch flickers for a split second, because the screen fades for a short time during these events."
+    // Android 10 GlobalActionsDialog.ActionsDialog.dismiss(): the layout fades out over 300 ms with LogAccelerateInterpolator(100, 0) and the scrim alpha is (1 - interpolated) * 0.2; the window is removed at the
+    // end (research/AOSP10_BATTERYSAVER_AND_POWERMENU_2026-11-06.md). The v0.8.3 patch held its dark open look until a node scan noticed the window was gone: on the `pt` film the surround was back to 1.000
+    // while the patch stayed at 0.799 for another ~100 ms (close_max 0.16 - 0.20). The cure is the one of the fade-in: follow the same curve from the same start.
+
+    /** The stock dismissal: ViewPropertyAnimator.setDuration(300). */
+    public static final long CLOSE_MS = 300;
+
+    /**
+     * {@code LogAccelerateInterpolator(100, 0)} (SystemUI): slow start, fast end. {@code computeLog(t) = -100^-t + 1}; {@code getInterpolation(t) = 1 - computeLog(1 - t) / computeLog(1)}.
+     * 0 at t = 0; 9 % at half time; 39 % at 0.8; 63 % at 0.9; 1 at t = 1.
+     */
+    public static float logAccelerate(float t) {
+        if (t <= 0f) return 0f;
+        if (t >= 1f) return 1f;
+        double scale = 1.0 / (1.0 - Math.pow(100.0, -1.0));
+        return (float) (1.0 - (1.0 - Math.pow(100.0, -(1.0 - t))) * scale);
+    }
+
+    /** How much of the stock scrim is still there {@code elapsedMs} after the dialog began to fade OUT: 1 = complete (nothing has happened yet), 0 = gone. */
+    public static float closeProgress(long elapsedMs) {
+        if (elapsedMs <= 0) return 1f;
+        if (elapsedMs >= CLOSE_MS) return 0f;
+        return 1f - logAccelerate(elapsedMs / (float) CLOSE_MS);
+    }
+
+    /** The progress to draw at {@code nowMs} for a fade-out that began at {@code startMs} (uptime ms; may lie in the past or a few ms ahead): the lead is added so the frame is right when it is SEEN. */
+    public static float closeProgressAt(long nowMs, long startMs, long leadMs) { return closeProgress(nowMs + leadMs - startMs); }
+
+    /** True while a frame drawn at {@code nowMs} still has something to follow (the fade-out is not over). */
+    public static boolean closing(long nowMs, long startMs, long leadMs) { return nowMs + leadMs - startMs < CLOSE_MS; }
 }
