@@ -1,22 +1,23 @@
-# CHECKPOINT 622 — read me first, then TASKS.md
+# CHECKPOINT 623 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T18:25:40Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `bceb9aa` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T20:19:55Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-fafa2908-h7bsez` · **builds on:** `65f51f2` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.4 SHIPPED: android.yml run 31 id 42400691090 on c6cb66b green, Release v0.8.4 published 18:21 UTC (Launcher-v0.8.4.apk 9178206 bytes, code 29, signed), recorded in BUILDLOG, HANDOFF 0g updated
+BE1-BE3 written into TASKS (Tj 20:17 UTC: patch flicker/screenshot flash, hidden apps in custom Recents, immediate unlock into custom)
 
 ## Do this next
-NOTHING is waiting on Claude except new requests. Waiting on Tj: (1) install v0.8.4 and say how the right-edge sliver, the tap-close fade and the PIN pull-up hide look (the open-menu PIN case is untested on the emulator); (2) BC4 the screenshots: his Launcher control screenshot (Power menu section) + when it happens; (3) BD1 hidden apps in Recents + BD2 slow unlock: the tablet report right after one (tools/tablet-intake.sh); then do BD1/BD2 in a FRESH session (this one is very long): read TASKS BD1a/BD2a leads; plus BB1/BB3c (v0.8.3 questions)
+read ReturnReset/ResetPolicy/RouterActivity/TaskOrigin/RecentsFilter/TjAccessibilityService.pinPadCameUp; write research/RECENTS_AND_UNLOCK_AUDIT_2026-11-07.md; then code BE2 first
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M HANDOFF.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  bd37f17 ckpt 622: v0.8.4 SHIPPED: android.yml run 31 id 42400691090 on c6cb66b green, Release v0
   36b0efb ckpt 621: confirmation {base,x1,e1} #306 id 42399859690 = success: the #303 e1 failure w
   c6cb66b ckpt 620: HANDOFF 0g refreshed for v0.8.4 (contents, evidence pointers, test lessons, wh
   1231dd8 ckpt 619: core on the final code: #304 {n,o,rb} green; #303 {base,x1,e1,ac} 2 FAIL in e1
@@ -26,5 +27,7 @@ NOTHING is waiting on Claude except new requests. Waiting on Tj: (1) install v0.
   253981c ckpt 615: final-head runs dispatched 17:22 UTC on d530023: #300 id 42396001116 (pt,last)
   d530023 ckpt 614: gate read: #297 and #298 green on a8f76b6, #299 (pt,last) 3 FAIL = the noisy o
   986ddfa ckpt 613: Tj corrected BC5 (17:17 UTC): the PIN-pad hide must work with NO power menu op
-  4a16127 ckpt 612: BD1/BD2 leads written to TASKS (ReturnReset black cover, TaskOrigin/RMTASKS by
 ```
+
+(3 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
