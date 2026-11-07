@@ -749,3 +749,7 @@
 ## 2026-11-07T16:46:18Z
 > The first run showed the right-edge fix works. The re-run with the close tests corrected is going now and should finish by about 16:58 UTC. I'm also planning which test sections the release will need.
 <!-- sha:114074b6bac4 -->
+
+## 2026-11-07T16:58:29Z
+> The second emulator run with animations back on is almost finished, so I'll read it at 17:00 UTC. It shows whether the patch now follows the stock fade-out when the menu is closed by a tap or the Home key.
+<!-- sha:b6e9f558ca36 -->
