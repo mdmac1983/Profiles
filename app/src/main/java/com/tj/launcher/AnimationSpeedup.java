@@ -136,7 +136,14 @@ public final class AnimationSpeedup {
     public static void onScreenOn(Context c, boolean lockUp) { if (!lockUp) { lockCycle = false; unlockSeenAt = 0; } syncNow(c, lockUp ? "screen on (lock screen)" : "screen on", Boolean.TRUE); }
 
     /** The unlock choice was applied (plain PIN = custom, gesture = Quickstep): from here the stored mode is the truth. */
-    public static void onUnlockDecided(Context c) { lockCycle = false; unlockSeenAt = 0; syncNow(c, "unlock decided", null); }
+    public static void onUnlockDecided(Context c) {
+        lockCycle = false; unlockSeenAt = 0;
+        syncNow(c, "unlock decided", null);
+        // Android reports the keyguard gone a moment after the unlock handler can run: two cheap follow-up looks (the window heartbeat is the third) so a gesture unlock never waits for the next window change
+        final Context app = c.getApplicationContext();
+        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 400);
+        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 1500);
+    }
 
     /** Like {@link #syncNow} but on a background thread (coalesced: the run that follows reads the newest facts). For triggers on the app's start path. */
     public static void syncSoon(final Context c, final String trigger) {
