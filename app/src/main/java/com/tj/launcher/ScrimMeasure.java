@@ -116,9 +116,13 @@ public final class ScrimMeasure {
         return java.util.Arrays.copyOf(out, n);
     }
 
-    /** Pure: is a pixel flat enough to sample? The brightness differences to its four neighbours (0..255 each) stay small, so a one-pixel shift or a text edge cannot spoil the pair. */
-    public static boolean flat(int lumLeft, int lumRight, int lumUp, int lumDown) {
-        return Math.abs(lumRight - lumLeft) + Math.abs(lumDown - lumUp) <= FLAT_MAX;
+    /**
+     * Pure: is a pixel flat enough to sample? Neither an edge through it (the opposite neighbours differ) nor a one-pixel line or dot on it (it differs from the average of its four neighbours: a central
+     * difference alone is blind to a thin stroke, whose two sides are equal), so a text stroke or a one-pixel shift cannot spoil the pair.
+     */
+    public static boolean flat(int lumCenter, int lumLeft, int lumRight, int lumUp, int lumDown) {
+        return Math.abs(lumRight - lumLeft) + Math.abs(lumDown - lumUp) <= FLAT_MAX
+                && Math.abs(4 * lumCenter - (lumLeft + lumRight + lumUp + lumDown)) <= FLAT_MAX;
     }
     public static final int FLAT_MAX = 60;
 
