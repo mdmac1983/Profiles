@@ -296,3 +296,9 @@
 ## 2026-11-07T01:09:41Z
 > Waiting on the `pt` run, which should end around 01:12 UTC. The next wake-up is a wall-clock timer set for 01:13.
 <!-- sha:49231aeead5c -->
+
+## 2026-11-07T01:14:14Z
+> The patch-measurement proof passed (15 of 15). On the emulator the helper measured the stock menu's dimming at scale 0.7997 / 0.7999 / 0.7999 and offset ≈ 0, closed the menu again, and the measured patch ends level with its surround. That matches the AOSP values, so the fit is accurate. It cannot show what your tablet's value is: only the tablet's own measurement will.
+>
+> Now running the final gate: two halves are about 10 minutes from done and the third was just started. The independent code review is still pending. I'll read all of them when they land.
+<!-- sha:a842b0081b83 -->
