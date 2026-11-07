@@ -92,7 +92,7 @@ public final class ReturnReset {
         String ime = null;
         String cur = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
         if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
-        String target = targetPackage(c);
+        String target = cleanStart(c) ? null : targetPackage(c);   // BE3: a clean start has no stand-in: Solitaire is an app like any other
         java.util.Set<String> pkgs = new java.util.LinkedHashSet<>();
         if (AppOrigin.tracked(c)) pkgs.addAll(AppOrigin.pending(c));
         else {
@@ -107,6 +107,9 @@ public final class ReturnReset {
         }
         return out;
     }
+
+    /** BE2: the same guard for the Recents sweep. */
+    static TaskOrigin.Guard guardFor(Context c) { return guard(c); }
 
     /** AA3: what may be closed at all (never this app, the stock launcher, the keyboard, the system). */
     private static TaskOrigin.Guard guard(final Context c) {
