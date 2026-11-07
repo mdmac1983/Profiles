@@ -1397,6 +1397,7 @@ check "BS3d: and 'Turn off now' switches it off again (the state machine agrees 
 home
 
 # ---- BS4 a saver that v0.7.5 - v0.8.0 forced on (its last note says so) is cleared ONCE when the new version starts; Settings then works from a consistent state
+adb shell am force-stop "$PKG"; sleep 1   # BA2: the app must NOT be running while the test writes its preferences file behind its back (a live process saves its own copy on the next change of low_power and would erase the injected state)
 bsfeat true "12:00:00  switched battery saver ON in Quickstep (the process start)" false
 adb shell settings put global low_power 1; sleep 1
 setmode quickstep; rebind; sleep 4
