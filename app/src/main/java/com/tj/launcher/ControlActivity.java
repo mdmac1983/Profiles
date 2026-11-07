@@ -127,6 +127,7 @@ public class ControlActivity extends Activity {
         action("Choose the apps shown in the custom launcher", "Everything else stays hidden there (new installs start hidden).", new Runnable() { public void run() {
             startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
         }});
+        toggle("Start the custom launcher clean (no Solitaire)", "ON (recommended): when the custom launcher starts (after a Quickstep session, after the tablet was restarted) the home screen is alone on screen and the Recents list is completely emptied; nothing is opened for you, so the unlock is as fast as it can be. OFF: the old behaviour (Solitaire in front, only the apps opened in Quickstep closed); the two Solitaire settings below only matter then.", ReturnReset.cleanStart(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAN_START_KEY, v); rebuild(); } });
         toggle("Open Solitaire automatically", "ON: Solitaire is put in front after boot / a launcher restart AND behind the lock screen when the tablet wakes. OFF: it is never opened for you (it then also stays out of Quickstep's Recents). The return from Quickstep has its own group: \"Plain (no app)\".", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
         final EditText appBox = new EditText(this);
         appBox.setSingleLine(true);
@@ -243,6 +244,9 @@ public class ControlActivity extends Activity {
 
         group("recents", "Recents & wallpaper", false);
         toggle("Recents of the custom launcher: only apps of its drawer", "Whenever the Recents screen opens in the custom launcher, the cards of apps that are NOT in the custom app drawer (hidden apps, apps you opened in Quickstep that have no drawer entry) are closed at once. A card that matches no known app is never touched.", Features.get(this, RecentsFilter.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsFilter.KEY, v); } });
+        toggle("Keep hidden apps out of Recents (invisible helper)", "With the adb helper running, the Recents tasks of every app that is NOT in the custom drawer are removed in the background: when the tablet locks, after a plain unlock, when the Recents screen opens and when such an app leaves the screen. They are gone before any card could be drawn.", RecentsSweep.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsSweep.KEY, v); } });
+        String sweepLast = RecentsSweep.lastResult();
+        note("Hidden-app sweep (needs the adb helper: " + (ShellHelper.enabled(this) ? "switch on" : "its switch is off") + "), last: " + (sweepLast.isEmpty() ? "(none since this app started)" : sweepLast));
         String recentsStatus = Features.getString(this, RecentsFilter.STATUS_KEY, "");
         if (!recentsStatus.isEmpty()) note("Recents filter, last: " + recentsStatus);
         toggle("Keep apps from the custom launcher OUT of Recents", "Off = they appear in Recents like normal apps. On = only Solitaire is listed.", RecentsPolicy.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RecentsPolicy.KEY, v); } });
