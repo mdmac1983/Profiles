@@ -1250,7 +1250,7 @@ check "AN1: in the custom launcher a battery saver turned on by the user (the ti
 adb logcat -d -v epoch -s TjBatSaver:I > "$OUT/an1-log.txt" 2>&1
 awk -v t="${AN1_E0:-0}" '/BATSAVER off/ && ($1+0) >= t' "$OUT/an1-log.txt" | wc -l | tr -d ' \r\n' > "$OUT/an1-offs.txt"
 AN1_STALE="$(awk -v t="${AN1_E0:-0}" '/BATSAVER off/ && ($1+0) < t' "$OUT/an1-log.txt" | wc -l | tr -d ' \r\n')"
-AN1_PARSED="$(grep -c '^[0-9]\{9,\}\.[0-9]' "$OUT/an1-log.txt" | tr -d ' \r\n')"; AN1_ALL="$(grep -c 'BATSAVER off' "$OUT/an1-log.txt" | tr -d ' \r\n')"
+AN1_PARSED="$(grep -c '^ *[0-9]\{9,\}\.[0-9]' "$OUT/an1-log.txt" | tr -d ' \r\n')"     # logcat may pad the epoch column with blanks (awk does not mind, a bare ^[0-9] would); AN1_ALL="$(grep -c 'BATSAVER off' "$OUT/an1-log.txt" | tr -d ' \r\n')"
 if [ "${AN1_ALL:-0}" != 0 ] && [ "${AN1_PARSED:-0}" = 0 ]; then echo "$AN1_ALL" > "$OUT/an1-offs.txt"; info "AN1: the epoch time stamps were not recognised, so EVERY 'BATSAVER off' line counts"; fi   # never a vacuous pass
 info "AN1: tap after device epoch ${AN1_E0:-?} (log cleared at $AN1_T0, count taken at $AN1_T1): 'BATSAVER off' lines after the tap: $(tr -d ' \r\n' < "$OUT/an1-offs.txt"); older ones still in the log after the clear (ignored: the double-Home change's own switch-off): ${AN1_STALE:-?}; log lines parsed: ${AN1_PARSED:-?}"
 [ "$(tr -d ' \r\n' < "$OUT/an1-offs.txt")" != 0 ] && info "AN1: the guard's 'BATSAVER off' line(s) after the tap: $(grep 'BATSAVER off' "$OUT/an1-log.txt" | head -3 | cut -c1-110 | tr '\n' '|') (what was running: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-110))"
