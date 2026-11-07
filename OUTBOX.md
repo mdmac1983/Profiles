@@ -621,3 +621,7 @@
 ## 2026-11-07T07:09:29Z
 > The re-run (#293, sections `base,x1,v,ac`) is still going and should finish around 07:11 UTC. I'll read its result then. Nothing ships until the guard check passes.
 <!-- sha:2c0e431353ac -->
+
+## 2026-11-07T07:16:07Z
+> Still not released. The AN1 re-run found the cause: the one counted log line was the launcher switch's own switch-off, stamped about 7 seconds before the test's log clear and before the tap. It's a race in the test, not in the app. The battery saver stayed on after the tap in all three runs. I changed the test to count only lines stamped after the tap and started it again at 07:16 UTC. I'll read the result at about 07:29. If it passes, I start the GitHub build.
+<!-- sha:996eb47bfd7d -->
