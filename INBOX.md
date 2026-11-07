@@ -1127,3 +1127,8 @@ Also the lock screen still takes screenshots sometimes
 ```
 For the pull up for the pin, the patch should disappear immediately, as fast as possible after the pull up from the bottom 
 ```
+
+## 2026-11-07T17:14:42Z
+```
+I just unlocked from the lock screen to the custom launcher, and telegram and Claude were in the recent apps list. They were not opened from the custom launcher, they are hidden from the custom launcher. No apps should appear at any time in the recents list in the custom launcher unless they are already unhidden in the custom launcher app drawer. Also unlocking to the custom launcher from the lock screen is slow, and keeps up the black screen for a long time. Speed it up as much as possible. If everything can be done behind solitaire then that is good 
+```
