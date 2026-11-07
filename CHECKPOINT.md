@@ -1,25 +1,23 @@
-# CHECKPOINT 634 — read me first, then TASKS.md
+# CHECKPOINT 635 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T23:14:44Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-fafa2908-h7bsez` · **builds on:** `016f5e9` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T23:15:22Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-fafa2908-h7bsez` · **builds on:** `239af0c` (this checkpoint is the commit after it)
 
 ## Just done
-gated v0.8.5 (code 30) and pushed it: the handoff self-test, the full unit suite + lint
-and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
+RELEASE v0.8.5 triggered: android.yml run 32 id 42424362269 on 239af0c; all gate groups green
 
 ## Do this next
-TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
-android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
-confirm the Release is published (get_release_by_tag is enough) and then run:
-  bash tools/record-release.sh v0.8.5 "the custom launcher starts clean (no Solitaire, Recents emptied when a custom session starts); apps hidden from the drawer are removed from the custom Recents; the unlock no longer waits for Solitaire and with the helper is cleaned up while locked; the wallpaper patch hides when a finger touches the lock screen and no longer lets the Screenshot slot show after a PIN pull-up"
+when run 32 is green: get_release_by_tag v0.8.5, then bash tools/record-release.sh v0.8.5 with the note from CHECKPOINT.md; then update TASKS boxes BE1-BE3/BD1/BD2 and tell Tj (plain text link)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
 
 ## Last ten checkpoints
 ```
+  239af0c ckpt 634: gated v0.8.5 (code 30) and pushed it: the handoff self-test, the full unit sui
   016f5e9 ckpt 633: final gate re-run on c4456a9 (app code = 2999c35): #322 id 42422768769 {base,e
   8f46940 ckpt 632: final gate read: G3 green; G1 4 FAIL all in pt (0.75/0.80 scrim state + a late
   1028360 ckpt 631: FINAL GATE dispatched 22:00 UTC on 2999c35: #318 id 42418473647 {x1,y2,b4,pt,u
@@ -29,5 +27,4 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
   4e85854 ckpt 627: BE1-BE3 built; emulator runs #307 id 42412739934 {cs,rg,uf}, #308 id 424127423
   713f3b2 ckpt 626: BE1 patch (ACTION_OUTSIDE hide, fast-open fix, precreate at lock, diag), BE2/B
   da2f279 ckpt 625: BE2/BE3 core: RecentsSweep (+11 JVM tests), ReturnReset clean-start (no stand-
-  81c5a62 ckpt 624: audit written: research/RECENTS_AND_UNLOCK_AUDIT_2026-11-07.md (routes R1-R5, 
 ```
