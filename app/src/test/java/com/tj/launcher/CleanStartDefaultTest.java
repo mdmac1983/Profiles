@@ -18,6 +18,16 @@ public class CleanStartDefaultTest {
         assertFalse(RecentsSweep.enabledDefault(true));
     }
 
+    @Test public void theBootFlagExpiresAfterADay() {
+        int now = 2_000_000_000;
+        assertTrue(ReturnReset.bootCleanValid(true, now - 60, now));
+        assertTrue(ReturnReset.bootCleanValid(true, now - ReturnReset.BOOT_CLEAN_MAX_AGE_S, now));
+        assertFalse("older than a day: a flag that outlived its boot must not clear a later session", ReturnReset.bootCleanValid(true, now - ReturnReset.BOOT_CLEAN_MAX_AGE_S - 1, now));
+        assertFalse("not set", ReturnReset.bootCleanValid(false, now - 60, now));
+        assertFalse("no time recorded", ReturnReset.bootCleanValid(true, 0, now));
+        assertFalse("clock went backwards", ReturnReset.bootCleanValid(true, now + 100, now));
+    }
+
     @Test public void theKeysAreStable() {
         // the emulator section `cs` writes these names into tj_features.xml; a rename would silently turn the tests into no-ops
         assertEquals("clean_start", ReturnReset.CLEAN_START_KEY);

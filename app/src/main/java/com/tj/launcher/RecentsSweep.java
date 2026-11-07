@@ -91,13 +91,17 @@ public final class RecentsSweep {
         return p;
     }
 
+    public static final int STEP_NOTHING = 0, STEP_REMEMBER = 1, STEP_SWEEP = 2;
+
     /**
-     * Pure: a window of {@code now} just replaced {@code prev} in front. True when {@code prev} was an app of NO drawer (not ours, not the system) that has just left the screen: its task is a card the Recents screen
-     * would list, so it goes now (custom launcher, tablet unlocked only).
+     * Pure: the memory "an app of no drawer has been on screen". {@code atHome} = the window in front is the custom home or the Recents screen. At home with a hidden app remembered = sweep now (its card could be drawn
+     * next); otherwise a hidden app (not in the drawer, may be closed at all, not system-like) in front is remembered; everything else changes nothing. A hidden app's own child windows (a share sheet, a picker, a
+     * permission prompt) are "everything else": nothing is swept in the middle of its flow.
      */
-    public static boolean hiddenAppLeft(boolean customMode, boolean unlocked, String prev, String now, boolean prevMayClose, boolean prevInDrawer) {
-        if (!customMode || !unlocked || prev == null || prev.isEmpty() || prev.equals(now)) return false;
-        return prevMayClose && !prevInDrawer;
+    public static int hiddenSeenStep(boolean seen, boolean atHome, boolean pkgInDrawer, boolean pkgMayClose, boolean pkgSystemLike) {
+        if (atHome) return seen ? STEP_SWEEP : STEP_NOTHING;
+        if (!seen && !pkgInDrawer && pkgMayClose && !pkgSystemLike) return STEP_REMEMBER;
+        return STEP_NOTHING;
     }
 
     /** Pure: the line for the lock log / the tablet report ("SWEEP lock: removed 2 task(s) ..."). Package names only. */

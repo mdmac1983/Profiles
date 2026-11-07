@@ -1348,15 +1348,17 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             android.content.Context app = getApplicationContext();
             if (!Mode.isCustom(app) || !RecentsSweep.enabled(app) || keyguardLockedFast()) { hiddenSeen = false; return; }
-            if (pk.equals(getPackageName()) || pk.equals(stockPkg())) {   // home or Recents
-                if (!hiddenSeen) return;
+            boolean atHome = pk.equals(getPackageName()) || pk.equals(stockPkg());   // the custom home, or the Recents screen
+            boolean inDrawer = atHome || hiddenSeen || HiddenApps.isPackageShown(app, pk);   // cheap first tests: a drawer app (the common case) ends here
+            boolean mayClose = !atHome && !hiddenSeen && !inDrawer && ReturnReset.guardFor(app).mayClose(pk);
+            int step = RecentsSweep.hiddenSeenStep(hiddenSeen, atHome, inDrawer, mayClose, RecentsSweep.systemLike(pk));
+            if (step == RecentsSweep.STEP_REMEMBER) hiddenSeen = true;
+            else if (step == RecentsSweep.STEP_SWEEP) {
                 hiddenSeen = false;
                 handler.postDelayed(new Runnable() { @Override public void run() {
                     try { RecentsSweep.requestAsync(getApplicationContext(), "a hidden app was on screen and the home came back", RecentsSweep.HIDDEN_ONLY, null, 1500); } catch (Throwable ignored) { }
                 } }, 400);
-                return;
             }
-            if (!hiddenSeen && !HiddenApps.isPackageShown(app, pk) && ReturnReset.guardFor(app).mayClose(pk) && !RecentsSweep.systemLike(pk)) hiddenSeen = true;   // cheap first test: a drawer app ends here
         } catch (Throwable t) { Log.e(TAG, "hidden app check failed", t); }
     }
 

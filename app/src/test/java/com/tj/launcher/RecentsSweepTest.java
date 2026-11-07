@@ -80,12 +80,31 @@ public class RecentsSweepTest {
         assertEquals(4, p.protectedTasks);
     }
 
-    @Test public void oneSweepRemovesAtMostWhatTheHelperTakes() {
+    @Test public void aLongListIsNotCappedAtWhatOneHelperLineTakes() {
+        // code review 2026-11-07: the complete clear has no "next sweep", so one plan holds every task (the helper client sends them in chunks)
         LinkedHashMap<Integer, String> t = new LinkedHashMap<>();
-        for (int i = 1; i <= 50; i++) t.put(i, "org.hidden.app" + i);
-        RecentsSweep.Plan p = RecentsSweep.plan(t, RecentsSweep.HIDDEN_ONLY, drawer(), GUARD, null);
-        assertEquals(ShellProtocol.MAX_PACKAGES, p.removeIds.size());
-        assertEquals(50 - ShellProtocol.MAX_PACKAGES, p.deferred);
+        for (int i = 1; i <= 120; i++) t.put(i, "org.hidden.app" + i);
+        RecentsSweep.Plan p = RecentsSweep.plan(t, RecentsSweep.ALL, null, GUARD, null);
+        assertEquals(120, p.removeIds.size());
+        assertEquals(0, p.deferred);
+        LinkedHashMap<Integer, String> big = new LinkedHashMap<>();
+        for (int i = 1; i <= RecentsSweep.MAX_TASKS + 5; i++) big.put(i, "org.hidden.app" + i);
+        RecentsSweep.Plan q = RecentsSweep.plan(big, RecentsSweep.ALL, null, GUARD, null);
+        assertEquals(RecentsSweep.MAX_TASKS, q.removeIds.size());
+        assertEquals(5, q.deferred);      // only the absurd case: the caller must not call that complete
+    }
+
+    @Test public void transientSystemScreensAreNeverRemoved() {
+        // an active call, an install / permission prompt, a file picker: not in the drawer, but not "apps" either (code review 2026-11-07)
+        LinkedHashMap<Integer, String> t = tasks(1, "com.google.android.dialer", 2, "com.android.incallui", 3, "com.android.packageinstaller", 4, "com.google.android.permissioncontroller", 5, "com.android.documentsui", 6, "org.telegram.messenger");
+        for (int policy : new int[] { RecentsSweep.HIDDEN_ONLY, RecentsSweep.ALL }) {
+            RecentsSweep.Plan p = RecentsSweep.plan(t, policy, drawer(), GUARD, null);
+            assertEquals("policy " + policy, Collections.singletonList(6), p.removeIds);
+            assertEquals(5, p.protectedTasks);
+        }
+        assertTrue(RecentsSweep.systemLike("com.android.packageinstaller"));
+        assertFalse(RecentsSweep.systemLike("org.telegram.messenger"));
+        assertFalse(RecentsSweep.systemLike(null));
     }
 
     @Test public void nullTaskListIsNothing() {
@@ -94,15 +113,24 @@ public class RecentsSweepTest {
         assertEquals(0, p.tasks);
     }
 
-    @Test public void aHiddenAppThatLeftTheScreenInTheCustomLauncherIsSwept() {
-        assertTrue(RecentsSweep.hiddenAppLeft(true, true, "org.telegram.messenger", "com.tj.launcher", true, false));
-        assertFalse("Quickstep may use any app", RecentsSweep.hiddenAppLeft(false, true, "org.telegram.messenger", "com.tj.launcher", true, false));
-        assertFalse("locked: the lock path handles it", RecentsSweep.hiddenAppLeft(true, false, "org.telegram.messenger", "com.tj.launcher", true, false));
-        assertFalse("a drawer app stays", RecentsSweep.hiddenAppLeft(true, true, "com.android.chrome", "com.tj.launcher", true, true));
-        assertFalse("system / protected packages are never closed", RecentsSweep.hiddenAppLeft(true, true, "com.android.systemui", "com.tj.launcher", false, false));
-        assertFalse("still the same app", RecentsSweep.hiddenAppLeft(true, true, "org.telegram.messenger", "org.telegram.messenger", true, false));
-        assertFalse("nothing before", RecentsSweep.hiddenAppLeft(true, true, null, "com.tj.launcher", true, false));
-        assertFalse("nothing before (empty)", RecentsSweep.hiddenAppLeft(true, true, "", "com.tj.launcher", true, false));
+    @Test public void aHiddenAppOnScreenIsRememberedAndSweptWhenTheHomeComesBack() {
+        // (seen, atHome, inDrawer, mayClose, systemLike)
+        assertEquals(RecentsSweep.STEP_REMEMBER, RecentsSweep.hiddenSeenStep(false, false, false, true, false));
+        assertEquals("home after a hidden app: sweep", RecentsSweep.STEP_SWEEP, RecentsSweep.hiddenSeenStep(true, true, true, false, false));
+        assertEquals("home with nothing remembered: nothing", RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(false, true, true, false, false));
+    }
+
+    @Test public void aHiddenAppsOwnChildWindowSweepsNothing() {
+        // the hidden app is remembered; a share sheet / picker / prompt comes to the front (not home, not a new hidden app): nothing happens until the HOME is back
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(true, false, false, false, false));   // the chooser is package 'android': mayClose is false
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(true, false, false, true, true));    // a permission prompt: system-like
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(true, false, true, false, false));   // a drawer app opened from it
+    }
+
+    @Test public void drawerAppsSystemAppsAndLikeAreNeverRemembered() {
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(false, false, true, true, false));    // in the drawer
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(false, false, false, false, false));  // may not be closed at all (system, keyboard, us)
+        assertEquals(RecentsSweep.STEP_NOTHING, RecentsSweep.hiddenSeenStep(false, false, false, true, true));    // system-like (call, installer, picker)
     }
 
     @Test public void theSwitchShipsOnAndDebugBuildsKeepTheOlderBehaviour() {
