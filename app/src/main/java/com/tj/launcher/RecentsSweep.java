@@ -1,0 +1,138 @@
+package com.tj.launcher;
+
+import android.content.Context;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+/**
+ * BE2 (Tj, 2026-11-07, twice: "No apps should appear at any time in the recents list in the custom launcher unless they are already unhidden in the custom launcher app drawer" / "At no time should there
+ * ever be an app that is hidden from the app drawer for the custom launcher inside the recent apps for the custom launcher"; audit: research/RECENTS_AND_UNLOCK_AUDIT_2026-11-07.md).
+ *
+ * The old clean-up decided by ORIGIN (which launcher opened the app, from accessibility events and a task snapshot). Origin is a heuristic: an app whose window event was missed, or whose task already existed
+ * when a Quickstep session began, was "the custom account's" for ever (BD1: Telegram and Claude). This class decides by MEMBERSHIP, the one fact that matters: in the custom launcher every Recents task whose
+ * package is not in the custom drawer ({@link HiddenApps#isPackageShown}) goes, whatever its origin. With the shell helper the tasks are removed by id (the same call as swiping a card away: the app's
+ * notification channel stays intact, nothing is force-stopped), invisibly, so there is no card to see, no animation and no flicker.
+ *
+ * Two policies: {@link #HIDDEN_ONLY} (the guarantee, any time in the custom launcher) and {@link #ALL} (a custom session STARTS clean: Tj, "completely clear the recent apps list every time the custom launcher
+ * starts"). Never touched, in both: this app, the stock launcher, the keyboard, the system ({@link ResetPolicy#shouldKill}) and, when the caller names it, the app that is on screen right now.
+ * Pure rules here (JVM-tested); the Android side is a bounded background job that never throws.
+ */
+public final class RecentsSweep {
+    private static final String TAG = "TjSweep";
+    /** Launcher control switch. Shipped default ON; debug builds default OFF (the older emulator sections count tasks of apps they never put in the drawer and set what they test explicitly). */
+    public static final String KEY = "recents_sweep";
+    public static final int HIDDEN_ONLY = 0, ALL = 1;
+
+    private RecentsSweep() {}
+
+    /** Pure: the default of the switch. */
+    static boolean enabledDefault(boolean debuggable) { return !debuggable; }
+
+    public static boolean enabled(Context c) {
+        return Features.get(c, KEY, enabledDefault((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0));
+    }
+
+    /** Is this package an app of the custom drawer? */
+    public interface Membership { boolean inDrawer(String pkg); }
+
+    /** What a sweep decided. */
+    public static final class Plan {
+        /** Recents tasks to remove, by id (at most {@link ShellProtocol#MAX_PACKAGES}; the next sweep takes the rest). */
+        public final List<Integer> removeIds = new ArrayList<>();
+        /** The apps those tasks belong to (for the log). */
+        public final Set<String> packages = new LinkedHashSet<>();
+        public int tasks, protectedTasks, kept, deferred;
+    }
+
+    /**
+     * Pure. {@code tasks} = id -> package of every Recents task ({@code dumpsys activity recents}, newest first). A task is removed when its app may be closed at all ({@code guard}), is not in {@code skip}
+     * (the app on screen) and, for {@link #HIDDEN_ONLY}, is not in the drawer. {@code drawer} may be null for {@link #ALL}.
+     */
+    public static Plan plan(Map<Integer, String> tasks, int policy, Membership drawer, TaskOrigin.Guard guard, Set<String> skip) {
+        Plan p = new Plan();
+        if (tasks == null) return p;
+        for (Map.Entry<Integer, String> e : tasks.entrySet()) {
+            p.tasks++;
+            String pkg = e.getValue();
+            if (pkg == null || pkg.isEmpty() || e.getKey() == null || e.getKey() <= 0 || !guard.mayClose(pkg)) { p.protectedTasks++; continue; }
+            if (skip != null && skip.contains(pkg)) { p.kept++; continue; }
+            boolean remove = policy == ALL || drawer == null || !drawer.inDrawer(pkg);
+            if (!remove) { p.kept++; continue; }
+            if (p.removeIds.size() >= ShellProtocol.MAX_PACKAGES) { p.deferred++; continue; }
+            p.removeIds.add(e.getKey());
+            p.packages.add(pkg);
+        }
+        return p;
+    }
+
+    /**
+     * Pure: a window of {@code now} just replaced {@code prev} in front. True when {@code prev} was an app of NO drawer (not ours, not the system) that has just left the screen: its task is a card the Recents screen
+     * would list, so it goes now (custom launcher, tablet unlocked only).
+     */
+    public static boolean hiddenAppLeft(boolean customMode, boolean unlocked, String prev, String now, boolean prevMayClose, boolean prevInDrawer) {
+        if (!customMode || !unlocked || prev == null || prev.isEmpty() || prev.equals(now)) return false;
+        return prevMayClose && !prevInDrawer;
+    }
+
+    /** Pure: the line for the lock log / the tablet report ("SWEEP lock: removed 2 task(s) ..."). Package names only. */
+    static String describe(String why, int policy, Plan p, int removed) {
+        StringBuilder b = new StringBuilder(why).append(policy == ALL ? " (complete)" : "").append(": ");
+        if (removed < 0) return b.append("the helper stopped answering, ").append(p.removeIds.size()).append(" task(s) NOT removed").toString();
+        b.append("removed ").append(removed).append(" of ").append(p.removeIds.size()).append(" task(s) ").append(policy == ALL ? "" : "of non-drawer apps ").append(p.packages);
+        b.append("; ").append(p.kept).append(" kept, ").append(p.protectedTasks).append(" protected");
+        if (p.deferred > 0) b.append(", ").append(p.deferred).append(" left for the next sweep");
+        return b.toString();
+    }
+
+    // ------------------------------------------------------------------ Android side
+
+    private static final AtomicBoolean BUSY = new AtomicBoolean(false);
+    private static volatile long lastStartMs = 0;
+    private static volatile String lastResult = "";
+
+    /** What the last sweep did (Launcher control / the tablet report). */
+    public static String lastResult() { return lastResult; }
+
+    /**
+     * Starts a sweep on its own thread (the helper answers in 100-400 ms; never wait for it on the main thread). Coalesced: nothing starts while one runs or {@code minGapMs} after the last start.
+     * Needs the shell helper and the switch; otherwise it returns at once and changes nothing.
+     */
+    public static void requestAsync(final Context c, final String why, final int policy, final Set<String> skip, long minGapMs) {
+        try {
+            final Context app = c.getApplicationContext();
+            if (!enabled(app) || !ShellHelper.enabled(app) || CrashGuard.automationOff(app)) return;
+            if (policy == HIDDEN_ONLY && !Mode.isCustom(app)) return;       // Quickstep may use every app
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastStartMs < minGapMs) return;
+            if (!BUSY.compareAndSet(false, true)) return;
+            lastStartMs = now;
+            new Thread(new Runnable() { @Override public void run() {
+                try { sweepNow(app, why, policy, skip); }
+                catch (Throwable t) { android.util.Log.e(TAG, "sweep failed", t); }
+                finally { BUSY.set(false); }
+            } }, "tj-sweep").start();
+        } catch (Throwable t) { android.util.Log.e(TAG, "sweep request failed", t); }
+    }
+
+    /** Blocking: call off the main thread. Returns what it did, or null when the helper is not there / nothing had to go. */
+    static String sweepNow(final Context app, String why, int policy, Set<String> skip) {
+        if (!ReturnReset.invisibleReady(app)) return null;                   // no helper: AP1 (RecentsFilter) is the fallback; cached 4 s, a refused connection fails at once
+        if (policy == HIDDEN_ONLY && !Mode.isCustom(app)) return null;       // re-checked here: the mode may have changed while the job waited
+        LinkedHashMap<Integer, String> tasks = ShellHelper.listTasks();
+        if (tasks == null) return null;
+        Membership drawer = new Membership() { @Override public boolean inDrawer(String pkg) { return HiddenApps.isPackageShown(app, pkg); } };
+        Plan p = plan(tasks, policy, drawer, ReturnReset.guardFor(app), skip);
+        if (p.removeIds.isEmpty()) return null;
+        int n = ShellHelper.removeTasks(p.removeIds);
+        String line = describe(why, policy, p, n);
+        lastResult = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + line;
+        LockLog.add(app, "SWEEP", line);
+        android.util.Log.i(TAG, "SWEEP " + line);
+        return line;
+    }
+}
