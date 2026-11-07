@@ -449,3 +449,7 @@
 > - **Battery saver check:** waiting on you.
 > - **No hurry:** AF2 (old photos in the public repo), CBR2 (keeping your settings after a crash-breaker trip), AE6 (mailbox vs batch).
 <!-- sha:c052e15b9098 -->
+
+## 2026-11-07T05:18:56Z
+> Tj says it is "almost perfect" now, with one remaining flaw: a faint tinted line about where the bottom of the hidden card would be. First, the three attached images look like the same v0.8.1 photos from before (clock 8:48 and "Nov 6", while the tablet says it measured after midnight). I'll check by comparing file hashes before treating them as new evidence, and record Tj's words first.
+<!-- sha:28f4b8477dfe -->
