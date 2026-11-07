@@ -123,6 +123,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (cn == null || !cn.toString().contains("ActionsDialog")) return;
         long now = android.os.SystemClock.uptimeMillis();
         dialogEventMs = event.getEventTime();
+        dialogWindowId = event.getWindowId();   // BC2: the removal of THIS window ends the fade-out (dialogGone)
         String why = fastDecline();
         if (why != null) { Log.i(TAG, "PATCH fast skip: " + why + " (the normal path follows)"); return; }
         Rect cached = cachedCard();
