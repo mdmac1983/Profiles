@@ -94,6 +94,7 @@ public final class RestoreStore {
         KeepAliveService.stop(c);
         Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off
         Features.set(c, DemoModeProfile.KEY, false);   // (the retired retail-demo option: the flag, if it was ever ours, was put back above)   // O4: restore = nothing of ours closes apps for you
+        Features.set(c, AnimationPolicy.KEY, false);   // BF1: the Quickstep animation switch is ON by default in the shipped app, so restore = off (the scales themselves were put back above)
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
 }
