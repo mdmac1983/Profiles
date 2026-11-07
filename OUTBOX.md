@@ -858,3 +858,9 @@
 >
 > That section passed on the code before the PIN-pad hide change, so I'm re-running it alone to see whether it's a timing flake or something the new code caused. I'll read it at about 18:09 UTC, and nothing ships until I know.
 <!-- sha:a1706aaf57ce -->
+
+## 2026-11-07T18:10:25Z
+> The re-run of `e1` alone passed on the same code. That points to a timing flake in the PIN-pad handshake test. I'm now running the exact failing order, `base,x1,e1`, to confirm. It should finish at about 18:19 UTC. The core run found no other failures, and the PIN-pad hide code never touches the handshake.
+>
+> If the confirmation passes, I start the GitHub build. If it fails again, I treat it as a real problem in my change and diagnose before anything ships.
+<!-- sha:66465ccdf8ba -->
