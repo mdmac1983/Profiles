@@ -110,6 +110,30 @@ public final class AppOrigin {
         return out;
     }
 
+    private static volatile java.util.Set<String> usedCache = null;
+    private static volatile long usedCacheFrom = -1, usedCacheAt = 0;
+
+    /**
+     * BE3 (code review 2026-11-07: the usage query ran on the main thread during the unlock): the answer is worked out at the LOCK, on its own thread, and the unlock reads it from memory. It is only used while the
+     * "dealt with up to" mark ({@code usageFrom}) is the one it was computed for and it is younger than 30 minutes; otherwise {@link #usedSinceClear} asks Android live, as before.
+     */
+    public static void refreshUsedCacheAsync(final Context c) {
+        final Context app = c.getApplicationContext();
+        new Thread(new Runnable() { @Override public void run() {
+            try {
+                long from = p(app).getLong("usageFrom", 0);
+                java.util.Set<String> r = usedSinceClear(app);
+                usedCache = r; usedCacheFrom = from; usedCacheAt = System.currentTimeMillis();
+            } catch (Throwable t) { android.util.Log.e("TjOrigin", "usage cache failed", t); }
+        } }, "tj-usage-cache").start();
+    }
+
+    public static java.util.Set<String> usedSinceClearCached(Context c) {
+        java.util.Set<String> cached = usedCache;
+        if (cached != null && usedCacheFrom == p(c).getLong("usageFrom", 0) && System.currentTimeMillis() - usedCacheAt < 30 * 60_000L) return cached;
+        return usedSinceClear(c);
+    }
+
     /** False until the first successful Recents clear after install: older Quickstep apps are unknown, so the first reset clears everything. */
     public static boolean tracked(Context c) { return p(c).getBoolean("tracked", false); }
     public static void setTracked(Context c) { p(c).edit().putBoolean("tracked", true).apply(); }

@@ -43,15 +43,21 @@ public final class ReturnReset {
     static boolean cleanStartDefault(boolean debuggable) { return !debuggable; }
     static boolean isDebuggable(Context c) { return (c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0; }
     public static boolean cleanStart(Context c) { return Features.get(c, CLEAN_START_KEY, cleanStartDefault(isDebuggable(c))); }
-    public static boolean bootCleanPending(Context c) { return Features.get(c, BOOT_CLEAN_KEY, false); }
-    public static void markBootClean(Context c) { if (cleanStart(c)) Features.set(c, BOOT_CLEAN_KEY, true); }
-    public static void clearBootClean(Context c) { if (bootCleanPending(c)) Features.set(c, BOOT_CLEAN_KEY, false); }
+    /** Seconds since the epoch when the boot flag was set (it expires after a day: code review 2026-11-07, a flag that outlived its boot would have cleared a later custom-only session). */
+    public static final String BOOT_CLEAN_AT_KEY = "clean_pending_boot_at";
+    static final int BOOT_CLEAN_MAX_AGE_S = 24 * 3600;
+    /** Pure: is a boot flag set at {@code atS} still valid at {@code nowS}? */
+    static boolean bootCleanValid(boolean flag, int atS, int nowS) { return flag && atS > 0 && nowS >= atS && nowS - atS <= BOOT_CLEAN_MAX_AGE_S; }
+    private static int nowS() { return (int) (System.currentTimeMillis() / 1000L); }
+    public static boolean bootCleanPending(Context c) { return bootCleanValid(Features.get(c, BOOT_CLEAN_KEY, false), Features.getInt(c, BOOT_CLEAN_AT_KEY, 0), nowS()); }
+    public static void markBootClean(Context c) { if (cleanStart(c)) { Features.setInt(c, BOOT_CLEAN_AT_KEY, nowS()); Features.set(c, BOOT_CLEAN_KEY, true); } }
+    public static void clearBootClean(Context c) { if (Features.get(c, BOOT_CLEAN_KEY, false)) Features.set(c, BOOT_CLEAN_KEY, false); }
 
     /**
      * BE3: does the complete clear of Recents have anything to do? Not when nothing was used since the last clear: the dirty flag, the tracker, Android's own usage log (any app resumed since, whoever opened it) and
      * a fresh boot all say "yes"; the first run after an install and any doubt count as "yes" too.
      */
-    static boolean recentsNeeded(Context c) { return recentsNeededCheap(c) || !AppOrigin.usedSinceClear(c).isEmpty(); }
+    static boolean recentsNeeded(Context c) { return recentsNeededCheap(c) || !AppOrigin.usedSinceClearCached(c).isEmpty(); }   // the usage log is read at the LOCK (AppOrigin.refreshUsedCacheAsync), not on the unlock path
 
     /** The same without the usage-log query (a few preference reads): for the Enter tap, which runs on the main thread while the cover must go up at once. */
     static boolean recentsNeededCheap(Context c) {
@@ -140,7 +146,7 @@ public final class ReturnReset {
             int n = ShellHelper.forceStop(oc.stop);
             int m = (n >= 0 && !oc.removeIds.isEmpty()) ? ShellHelper.removeTasks(oc.removeIds) : 0;
             if (n >= 0) { AppOrigin.clearQuickstep(app); AppOrigin.setTracked(app); }
-            if (clean && n >= 0 && oc.listed && m >= 0) { RecentsDirty.clear(app); clearBootClean(app); }   // BE3: the list was read and every task removed: the next return has nothing to redo
+            if (clean && n >= 0 && oc.listed && m >= 0) { RecentsDirty.clear(app); clearBootClean(app); }   // BE3: the list was read and every task removed (no cap: the helper client sends them in chunks): the next return has nothing to redo
             invisAt = 0;
             String line = "INVISIBLE: " + (n < 0 ? "the shell helper stopped answering, " + oc.stop.size() + " apps NOT stopped (next return uses the cover method)" : "force-stopped " + n + " of " + oc.stop.size() + " apps"
                     + (first ? " (first run: every non-custom app)" : "") + " in " + (android.os.SystemClock.uptimeMillis() - t0) + " ms; no cover, no shade, no Recents screen; " + oc.note + (m != 0 ? " [task removal answered " + m + "]" : ""));
@@ -214,7 +220,7 @@ public final class ReturnReset {
             if (Features.get(app, COVER_KEY, true)) svc.showResetCover();   // the shade / Recents are driven behind a black cover: you never see them flicker
             // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app (BE3: then show the home).
             try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() {
-                try { if (clean) { if (doRecents) { RecentsDirty.clear(app); clearBootClean(app); } settleHome(app); } else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }
+                try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }   // the flags (dirty, boot) are cleared by the Recents step ITSELF, and only when it really finished (code review 2026-11-07)
                 AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
         } else if (svc == null && (notif || recents)) {
@@ -233,7 +239,11 @@ public final class ReturnReset {
      */
     static void settleHome(Context c) {
         TjAccessibilityService svc = TjAccessibilityService.get();
-        if (svc != null) svc.settleHome();
+        if (svc != null) { svc.settleHome(); return; }
+        try {   // no accessibility helper: nothing to press and nothing to watch, so start the custom home itself (quiet: the router's pre-arm start, no Home press, no stand-in app)
+            Context app = c.getApplicationContext();
+            app.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(app.getPackageName()).putExtra(RouterActivity.EXTRA_PREARM, "custom").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (Throwable t) { Log.e(TAG, "settle home without the helper failed", t); }
     }
 
     /** True while this reset runs with the animations off: the waits can be shorter. */
