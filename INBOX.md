@@ -1046,3 +1046,8 @@ I will send a photo of the wallpaper patch later if it helps
 ```
 /active-memory:amhandoff 
 ```
+
+## 2026-11-07T02:01:13Z
+```
+This session's worker process was restarted. If your previous turn was already complete, take no action and wait for the next event. Otherwise, continue from where you left off.
+```
