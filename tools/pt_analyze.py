@@ -115,17 +115,20 @@ def events(text):
     Kinds: S = window state changed, C = content changed, W = windows changed; a = age of the event when the helper saw it; r1o0 = patch resting / menu open flags at that moment."""
     rows, last_t, t0 = [], None, None
     for ln in text.splitlines():
-        m = re.search(r"PATCHEV t=(\d+) type=0x([0-9a-f]+) pkg=(\S+) cls=(\S+) age=(-?\d+) rest=(\d) open=(\d)", ln)
+        m = re.search(r"PATCHEV t=(\d+) type=0x([0-9a-f]+) pkg=(\S+) cls=(\S+) age=(-?\d+) rest=(\d) open=(\d)(?: wid=(-?\d+) dlg=(-?\d+) wc=(\d+))?", ln)
         if m:
             t, ty, cls = int(m.group(1)), int(m.group(2), 16), m.group(4)
             if t0 is None and "ActionsDialog" in cls:
                 t0 = t
-            kind = {0x20: "S", 0x800: "C", 0x400000: "W"}.get(ty, hex(ty))
+            kind = {0x1: "K", 0x20: "S", 0x800: "C", 0x400000: "W"}.get(ty, hex(ty))   # K = view clicked (BC2: the stock dismissal on a tap)
             short = "" if cls == "null" else "/" + cls.replace("android.widget.", "").replace("com.android.systemui.", "").replace("globalactions.GlobalActionsDialog$", "").split(".")[-1]
-            rows.append([t, "%s%s a%s r%so%s" % (kind, short, m.group(5), m.group(6), m.group(7))])
+            ids = ""
+            if m.group(8) is not None:   # BC2: which window the event is about ('*' = the stock dialog's) and what changed (wc 2 = removed)
+                ids = " w%s%s%s" % (m.group(8), "*" if m.group(8) == m.group(9) else "", " c%s" % m.group(10) if m.group(10) != "0" else "")
+            rows.append([t, "%s%s a%s r%so%s%s" % (kind, short, m.group(5), m.group(6), m.group(7), ids)])
             last_t = t
             continue
-        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off|scan|hold)(.*)", ln)
+        m = re.search(r"PATCH (fast open|fast skip|fade start|fade none|menu closed|rest on|rest off|scan|hold|close start|close end)(.*)", ln)
         if m:
             tm = re.search(r" t=(\d+)", m.group(2))
             t = int(tm.group(1)) if tm else last_t
