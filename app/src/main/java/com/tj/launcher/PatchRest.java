@@ -97,6 +97,22 @@ public final class PatchRest {
         return Math.round(255f * ax * ay);
     }
 
+    /**
+     * BC1 (Tj, 2026-11-07, v0.8.3: "a very small vertical sliver all the way to the right ... Can the wallpaper patch be made to cover all the way to the right edge of the screen?"). The stock card sits 4 px from the
+     * display edge (596 of 600) and the stock menu draws a thin light line in that gap along the card's whole height. The patch core ended 2 px past the card (598) and the window is clamped at the display edge (600),
+     * so the fringe was {@code min(FEATHER, 600 - 598)} = 2 px wide: 74 % / 26 % of the stock line showed through the last two columns of the hidden slot's rows (the sliver in Tj's video). A fringe exists to blend into
+     * the REAL lock screen next to the patch; on a side that IS the display edge there is nothing next to the patch, so that side's core runs to the edge and has no fringe.
+     * Returns {cl, cr, cb, fl, fr, fb} (window coordinates): the left, right and bottom sides of the window that lie on the display edge are snapped; the others are returned unchanged. (The top side belongs to the card.)
+     *
+     * @param winLeft / winRight / winBottom the window's edges in screen px; {@code w}, {@code h} its size
+     */
+    public static int[] coverDisplayEdges(int winLeft, int winRight, int winBottom, int dispW, int dispH, int w, int h, int cl, int cr, int cb, int fl, int fr, int fb) {
+        if (winLeft <= 0) { cl = 0; fl = 0; }
+        if (winRight >= dispW) { cr = w; fr = 0; }
+        if (winBottom >= dispH) { cb = h; fb = 0; }
+        return new int[] { cl, cr, cb, fl, fr, fb };
+    }
+
     private static float ramp(int dist, int width) {
         if (width <= 0) return 0f;
         float t = 1f - dist / (float) (width + 1);
