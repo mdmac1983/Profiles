@@ -65,7 +65,6 @@ public class PatchRestTest {
     }
     @Test public void theExtendedWindowIsStillClampedToTheDisplay() {
         assertEquals(1024, PatchRest.slotWindow(495, 700, 600, 1015, 2, 8, 20, 8, 600, 1024)[3]);
-        assertEquals(1024, PatchRest.slotWindow(495, 700, 600, 1015, 2, 8, 20, 8, 600, 1024)[3] - 0);
     }
     @Test public void theExtensionNeverLeavesTheStoredCrop() {
         // the crop was cut for the OLD window + margin; whatever the wish (and the bottom fringe), the new window's bottom stays inside it with the slack to spare
