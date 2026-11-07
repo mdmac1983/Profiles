@@ -833,3 +833,7 @@
 > - **BC4, screenshots:** the Launcher control screenshot, plus when it happens.
 > - **BD1 and BD2, recents and slow unlock:** the tablet report right after a slow or wrong unlock.
 <!-- sha:c5234301a788 -->
+
+## 2026-11-07T17:42:02Z
+> The version is bumped to 0.8.4. I've started the local release checks and a re-run of the one test that failed. That test was a brightness tolerance too tight for a nearly white random test wallpaper, not an app problem. When both are green I'll start the GitHub build.
+<!-- sha:1e85764895cd -->
