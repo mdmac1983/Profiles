@@ -118,4 +118,138 @@ public class BatterySaverPolicyTest {
         assertEquals("low_power_sticky", BatterySaverPolicy.STICKY_SETTING);
         assertEquals("profile_battery_saver_off", BatterySaverPolicy.KEY);
     }
+
+    // ================================================================ BA2 (Tj, 2026-11-07): the lock screen keeps the saver off, Quickstep's state comes back after a gesture unlock
+
+    // ---- off at the lock moment, kept off while locked
+    @Test public void theLockMomentSwitchesItOffFromAnyLauncher() {
+        assertTrue(BatterySaverPolicy.lockOffWanted(true, true, false, true));
+        assertFalse(BatterySaverPolicy.lockOffWanted(false, true, false, true));   // switch off
+        assertFalse(BatterySaverPolicy.lockOffWanted(true, false, false, true));   // not locked: a plain wake must keep Quickstep's saver
+        assertFalse(BatterySaverPolicy.lockOffWanted(true, true, true, true));     // automation paused (breaker / Restore everything)
+        assertFalse(BatterySaverPolicy.lockOffWanted(true, true, false, false));   // nothing to switch off
+    }
+    @Test public void aSaverTurnedOnWhileLockedIsSwitchedOffAgain() {
+        assertTrue(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, 0, null));
+        assertTrue(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, 0, new long[] {0, 0, 0, 0, 0, 0}));
+    }
+    @Test public void keepOffNeverActsOutsideTheLockScreenOrWhenSwitchedOff() {
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, false, false, true, NOW, 0, null));
+        assertFalse(BatterySaverPolicy.keepOffWanted(false, true, false, true, NOW, 0, null));
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, true, true, true, NOW, 0, null));
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, true, false, false, NOW, 0, null));
+    }
+    @Test public void keepOffIsASafetyNetNotALoop() {
+        long[] six = {NOW - 1000, NOW - 2000, NOW - 3000, NOW - 4000, NOW - 5000, NOW - 6000};
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, 0, six));
+        long[] five = {NOW - 1000, NOW - 2000, NOW - 3000, NOW - 4000, NOW - 5000, 0};
+        assertTrue(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, 0, five));
+        long[] old = {NOW - 61_000, NOW - 70_000, NOW - 80_000, NOW - 90_000, NOW - 100_000, NOW - 110_000};
+        assertTrue(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, 0, old));
+    }
+    @Test public void aRestoreIsNeverUndoneByTheObserverWhileTheKeyguardCatchesUp() {
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, NOW - 1000, null));                                          // 1 s after our own restore: the keyguard may still say 'locked'
+        assertFalse(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, NOW - (BatterySaverPolicy.RESTORE_QUIET_MS - 1), null));
+        assertTrue(BatterySaverPolicy.keepOffWanted(true, true, false, true, NOW, NOW - BatterySaverPolicy.RESTORE_QUIET_MS, null));            // a real new lock a few seconds later is looked after again
+    }
+
+    // ---- what is remembered as Quickstep's state
+    @Test public void onlyQuickstepsOwnStateIsRemembered() {
+        assertEquals("1", BatterySaverPolicy.qsStateAtHold(true, false, true, ""));      // locked from Quickstep with the saver on
+        assertEquals("0", BatterySaverPolicy.qsStateAtHold(true, false, false, "1"));    // locked from Quickstep with it off: a stale "1" is cleared
+        assertEquals("1", BatterySaverPolicy.qsStateAtHold(false, false, false, "1"));   // locked from the custom launcher: Quickstep's memory is not touched
+        assertEquals("0", BatterySaverPolicy.qsStateAtHold(false, false, true, "0"));    // a saver somebody turned on in custom is not Quickstep's
+    }
+    @Test public void onceHeldTheGuardsOwnDoingIsNotRemembered() {
+        assertEquals("1", BatterySaverPolicy.qsStateAtHold(true, true, false, "1"));     // second lock of the same hold: the saver is off because WE switched it off
+        assertEquals("", BatterySaverPolicy.qsStateAtHold(true, true, true, null));
+    }
+    @Test public void whileQuickstepHasTheTabletTheLiveStateIsRemembered() {
+        assertEquals("1", BatterySaverPolicy.qsStateLive(true, false, false, true, "0"));
+        assertEquals("0", BatterySaverPolicy.qsStateLive(true, false, false, false, "1"));
+        assertEquals("1", BatterySaverPolicy.qsStateLive(false, false, false, false, "1"));   // custom launcher: not Quickstep's
+        assertEquals("1", BatterySaverPolicy.qsStateLive(true, true, false, false, "1"));     // on the lock screen: not Quickstep's
+        assertEquals("1", BatterySaverPolicy.qsStateLive(true, false, true, false, "1"));     // our own write is not a choice of the person
+    }
+
+    // ---- the evidence that Android's state machine was not reset
+    @Test public void aRiseOfTheBatteryLevelMeansItWasCharged() {
+        assertTrue(BatterySaverPolicy.levelRose(40, 43));
+        assertTrue(BatterySaverPolicy.levelRose(40, 90));
+        assertFalse(BatterySaverPolicy.levelRose(40, 42));    // measurement jitter
+        assertFalse(BatterySaverPolicy.levelRose(40, 35));    // discharging
+        assertFalse(BatterySaverPolicy.levelRose(-1, 90));    // unknown
+        assertFalse(BatterySaverPolicy.levelRose(40, -1));
+    }
+    @Test public void aRestartIsRecognisedByTheBootEpoch() {
+        long boot = 1_700_000_000_000L;
+        assertTrue(BatterySaverPolicy.sameBoot(boot, boot + 1500));                                     // clock rounding / a small NTP step
+        assertTrue(BatterySaverPolicy.sameBoot(boot, boot - BatterySaverPolicy.BOOT_TOLERANCE_MS));
+        assertFalse(BatterySaverPolicy.sameBoot(boot, boot + 3_600_000L));                              // a restart an hour later
+        assertFalse(BatterySaverPolicy.sameBoot(0, boot));                                              // nothing recorded: not the same
+        assertFalse(BatterySaverPolicy.sameBoot(boot, 0));
+    }
+
+    // ---- the restore decision: every doubt is a refusal
+    private static BatterySaverPolicy.Restore go() {
+        BatterySaverPolicy.Restore s = new BatterySaverPolicy.Restore();
+        s.switchOn = true; s.restoreOn = true; s.automationOff = false; s.permitted = true; s.quickstepGesture = true;
+        s.held = true; s.qsOn = "1"; s.saverOnNow = false; s.keyguardLocked = false; s.chargingOrUnknown = false; s.plugSeen = false;
+        s.heldBootEpoch = 1_700_000_000_000L; s.nowBootEpoch = 1_700_000_000_500L; s.now = NOW; s.recentRestores = null;
+        return s;
+    }
+    @Test public void aGestureUnlockIntoQuicksteptBringsItsSaverBack() { assertEquals("", BatterySaverPolicy.restoreRefusal(go())); }
+    @Test public void aPlainUnlockNeverRestores() { BatterySaverPolicy.Restore s = go(); s.quickstepGesture = false; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty()); }
+    @Test public void bothSwitchesMustBeOn() {
+        BatterySaverPolicy.Restore s = go(); s.switchOn = false; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s = go(); s.restoreOn = false; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+    }
+    @Test public void pausedOrWithoutPermissionNothingHappens() {
+        BatterySaverPolicy.Restore s = go(); s.automationOff = true; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s = go(); s.permitted = false; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+    }
+    @Test public void nothingIsRestoredThatQuickstepDidNotHave() {
+        BatterySaverPolicy.Restore s = go(); s.qsOn = "0"; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s = go(); s.qsOn = ""; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s = go(); s.qsOn = null; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s = go(); s.held = false; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());          // the launcher switched nothing off: nothing to bring back
+        s = go(); s.saverOnNow = true; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());     // somebody already turned it on
+    }
+    @Test public void nothingIsWrittenWhileTheLockScreenIsStillUp() { BatterySaverPolicy.Restore s = go(); s.keyguardLocked = true; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty()); }
+    @Test public void chargingOrAnUnknownPowerStateIsARefusal() { BatterySaverPolicy.Restore s = go(); s.chargingOrUnknown = true; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty()); }
+    @Test public void aPlugInSinceTheSwitchOffIsARefusalBecauseAndroidsStateWasReset() {
+        BatterySaverPolicy.Restore s = go(); s.plugSeen = true;
+        String why = BatterySaverPolicy.restoreRefusal(s);
+        assertFalse(why.isEmpty()); assertTrue(why.contains("plugged in"));
+    }
+    @Test public void aRestartSinceTheSwitchOffIsARefusal() {
+        BatterySaverPolicy.Restore s = go(); s.nowBootEpoch = s.heldBootEpoch + 7_200_000L;
+        String why = BatterySaverPolicy.restoreRefusal(s);
+        assertFalse(why.isEmpty()); assertTrue(why.contains("restarted"));
+        s = go(); s.heldBootEpoch = 0; assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());     // no boot recorded: unknown = no
+    }
+    @Test public void restoresAreRateLimited() {
+        BatterySaverPolicy.Restore s = go(); s.recentRestores = new long[] {NOW - 1000, NOW - 2000, NOW - 3000};
+        assertFalse(BatterySaverPolicy.restoreRefusal(s).isEmpty());
+        s.recentRestores = new long[] {NOW - 1000, NOW - 2000, 0};
+        assertEquals("", BatterySaverPolicy.restoreRefusal(s));
+        s.recentRestores = new long[] {NOW - 400_000, NOW - 500_000, NOW - 600_000};
+        assertEquals("", BatterySaverPolicy.restoreRefusal(s));
+    }
+    @Test public void theFirstDoubtDecidesAndTheSwitchWinsOverEverything() {
+        BatterySaverPolicy.Restore s = go(); s.switchOn = false; s.plugSeen = true; s.chargingOrUnknown = true;
+        assertTrue(BatterySaverPolicy.restoreRefusal(s).contains("switched off"));
+    }
+    @Test public void theMemoryKeysAreStable() {
+        assertEquals("profile_battery_saver_lock_off", BatterySaverPolicy.LOCK_OFF_KEY);
+        assertEquals("profile_battery_saver_lock_restore", BatterySaverPolicy.LOCK_RESTORE_KEY);
+        assertEquals("bs_qs_on", BatterySaverPolicy.QS_ON_KEY);
+        assertEquals("bs_held", BatterySaverPolicy.HELD_KEY);
+    }
+    @Test public void theDescriptionSaysWhatIsRemembered() {
+        assertTrue(BatterySaverPolicy.describe("1", true, false).contains("ON"));
+        assertTrue(BatterySaverPolicy.describe("0", false, false).contains("off"));
+        assertTrue(BatterySaverPolicy.describe("", false, false).contains("unknown"));
+        assertTrue(BatterySaverPolicy.describe("1", true, true).contains("plugged in"));
+    }
 }
