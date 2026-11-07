@@ -1,13 +1,13 @@
-# CHECKPOINT 588 — read me first, then TASKS.md
+# CHECKPOINT 589 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T06:29:31Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `79bee29` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T06:35:51Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `55e6a82` (this checkpoint is the commit after it)
 
 ## Just done
-gate runs on 84b3dd1: #286 (e1,o,ae,pa,rb,last) 37 PASS + emulator went offline in rb (infra; e1 o ae pa passed, PA 2 MAE 9e-7 with the new geometry); #287 (base,x1,v,ac,ps) 77 PASS 2 FAIL = V5 (scrim read 0.750 after x1: same hard-coded-0.80 assumption, now tolerance grows with the gap) + AN1 (a 'BATSAVER off' line in the 3 s window; app code since v0.8.2 touches only PatchRest/TjAccessibilityService geometry, so not the guard; now prints the line); #285 (n,pt) still running
+final-head runs: #289/#290 green (n,x,ac,rb + base,x1,e1,o,last: AN1 did not recur = flake, rb offline in #286 = infra); #288 pt FAILED only in MY new checks: PBSIM confused by the emulator's Emergency card (4th entry, bounds [502,713][579,731]; reach 3 -> 28 rows, interior +0.02 = geometry proven), dark flip via 'cmd uimode night yes' does nothing on this emulator; now: prediction check only with a clean edge, flip via battery saver too, detection through the helper's note; V5 tolerance grows with the scrim gap
 
 ## Do this next
-read #285 id 42345818982 (n,pt on 84b3dd1: PB lines) and #288 id 42346297361 / #289 id 42346299293 / #290 id 42346301196 (final head 6900074) around 06:33Z; then re-run on the head: rb,last (infra) and ac with x1,v before it (AN1 line); the rest per gate.sh
+dispatch on the new head: pt alone and base,x1,v,ac,ps; read PB / BB2 lines + V5/AN1; #285 (n,pt on 84b3dd1) is obsolete: cancel it if still running; all green -> bump 0.8.3 code 28, ship.sh, android.yml full_build, record-release, tell Tj; Tj still has not said which he saw (flashes or the Screenshot button)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read #285 id 42345818982 (n,pt on 84b3dd1: PB lines) and #288 id 42346297361 / #
 
 ## Last ten checkpoints
 ```
+  89fbc42 ckpt 588: gate runs on 84b3dd1: #286 (e1,o,ae,pa,rb,last) 37 PASS + emulator went offlin
   aaf3b24 ckpt 587: six gate runs in flight: ON 84b3dd1 (06:10Z) #285 id 42345818982, #286 id 4234
   6900074 ckpt 586: BB2 (Tj: 'the lock screen screenshot itself again, not sure why'): the helper 
   35f1518 ckpt 585: dispatched the 3 gate runs on 84b3dd1 at 06:10Z: #285 id 42345818982, #286 id 
@@ -25,7 +26,6 @@ read #285 id 42345818982 (n,pt on 84b3dd1: PB lines) and #288 id 42346297361 / #
   31f893d ckpt 581: dispatched emulator.yml pt alone: run #283 id 42343234753 on aef44d4 (05:33Z),
   aef44d4 ckpt 580: BB1b step 1: patch core extension coded (PatchRest.slotWindow extra + clampExt
   9b150a1 ckpt 579: BB1 diagnosed from Tj's 2 new v0.8.2 photos: patch interior now right (left ed
-  03502f8 ckpt 578: Tj tried v0.8.2: 'almost perfect but a very slight tinted line about where the
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
