@@ -2175,13 +2175,14 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     pbrestart(){ adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 3; }
     pbopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.6; }
     pbclose(){ adb shell input keyevent KEYCODE_BACK; sleep 2.2; }
+    pbwarm(){ pbopen; pbclose; }   # one unmeasured opening first: the first after a helper restart is cold (as in ptrun)
     PBPANEL="$FL,$FT,$FR,$FB"; : > "$OUT/pb-metrics.txt"
     pbrestart; shot pb-bare                                                   # the menu closed (the resting patch is invisible)
-    ptkey lock_patch false; pbrestart; pbopen; shot pb-stock; pbclose; ptkey lock_patch true   # the stock panel alone: its shadow
+    ptkey lock_patch false; pbrestart; pbwarm; pbopen; shot pb-stock; pbclose; ptkey lock_patch true   # the stock panel alone: its shadow
     python3 -I tools/pb_probe.py stock "$OUT/pb-bare.png" "$OUT/pb-stock.png" --panel "$PBPANEL" --stock 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
     for V in "0 8" "10 8" "20 8" "20 4"; do
       set -- $V; XE=$1; XB=$2
-      pbint patch_extra_dp "$XE"; pbint patch_bfeather_dp "$XB"; pbrestart; pbopen; shot "pb-x${XE}b${XB}"; pbclose
+      pbint patch_extra_dp "$XE"; pbint patch_bfeather_dp "$XB"; pbrestart; pbwarm; pbopen; shot "pb-x${XE}b${XB}"; pbclose
       python3 -I tools/pb_probe.py "x${XE}b${XB}" "$OUT/pb-bare.png" "$OUT/pb-x${XE}b${XB}.png" --panel "$PBPANEL" 2>&1 | tee -a "$OUT/pb-metrics.txt" > /dev/null
     done
     pbint patch_extra_dp 20; pbint patch_bfeather_dp 8; adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind; palock; sleep 2   # back to the defaults for the clean-up below
