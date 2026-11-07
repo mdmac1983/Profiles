@@ -123,6 +123,8 @@ public final class ReportState {
                     .append(", one-time unstick ").append(Features.get(c, BatterySaverPolicy.UNSTICK_DONE_KEY, false) ? "done" : "not run yet").append(", strict ").append(BatterySaverGuard.strict(c) ? "on" : "off")
                     .append(", plugged in now: ").append(BatterySaverGuard.powerSource(c)).append(" (Android 10 greys the battery tile while the tablet is charging)")
                     .append(", WRITE_SECURE_SETTINGS ").append(BatterySaverGuard.permitted(c) ? "granted" : "MISSING").append('\n');
+            b.append("battery saver on the lock screen (BA2): switch ").append(BatterySaverGuard.lockOffEnabled(c) ? "on" : "off").append(", restore for Quickstep ").append(BatterySaverGuard.lockRestoreEnabled(c) ? "on" : "off")
+                    .append(" | ").append(BatterySaverGuard.lockStatus(c)).append('\n');
         } catch (Throwable t) { /* not available */ }
         try { b.append("wallpaper picker (AO1): ").append(WallpaperPickerChoice.summary(c)).append('\n'); } catch (Throwable t) { /* not available */ }
         b.append("\n----- the launcher's switches and last results (an allow-list: nothing secret is read)\n");
