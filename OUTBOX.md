@@ -375,3 +375,14 @@
 > - The patch photos: answered above. This closes once v0.8.2 is on the tablet and a new photo looks right.
 > - Resume from the checkpoint: in progress, shipping v0.8.2.
 <!-- sha:d48990274bbe -->
+
+## 2026-11-07T02:43:20Z
+> v0.8.2 is built and signed by GitHub right now (started 02:42Z, usually about 10–12 minutes); nothing to do on your side yet.
+>
+> - **Safety runs:** every group of the final check is green on code identical to the release. The earlier test mistake and the emulator crash are both resolved.
+> - **Release:** `ship.sh` passed its own checks (version, unit tests, lint) and pushed. I'll send the Release link as soon as the build is published and recorded.
+>
+> **Still open from your messages**
+> - Patch photos: answered earlier. This closes once v0.8.2 is on the tablet and a new photo looks right.
+> - Resume from the checkpoint: shipping v0.8.2, in progress.
+<!-- sha:4df3fea2ff29 -->
