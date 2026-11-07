@@ -128,6 +128,8 @@ public final class BatterySaverPolicy {
     /** "1" while the saver is off BECAUSE of the guard (lock screen or custom launcher) and Quickstep's state is waiting to come back; the facts below describe that moment. */
     public static final String HELD_KEY = "bs_held";
     public static final String HELD_AT_KEY = "bs_held_at";       // wall-clock ms when the hold began
+    /** Wall-clock ms of the last Quickstep session that began while the tablet was UNLOCKED (a flip made while the lock screen is up is only the handshake's preparation and does not count). Review of BA2. */
+    public static final String QS_REAL_START_KEY = "bs_qs_real_start";
     public static final String HELD_BOOT_KEY = "bs_held_boot";   // boot epoch (ms) when the guard switched it off
     public static final String LEVEL_KEY = "bs_last_level";      // the battery level (percent) at the last lock / unlock event
     public static final String PLUG_SEEN_KEY = "bs_plug_seen";   // "1": a plug-in (or a rise of the battery level) was seen while held
@@ -172,8 +174,8 @@ public final class BatterySaverPolicy {
     }
 
     /**
-     * Pure: is a hold that began at {@code heldAtMs} still the one Quickstep's memory belongs to? NOT when a Quickstep session began AFTER the hold ({@code qsStartMs}, {@link Mode#qsStartAt}) and Quickstep
-     * has the tablet now: the tablet came back to Quickstep by another way than a gesture unlock (a secret entrance, a return method), and what is on or off now is that session's own state.
+     * Pure: is a hold that began at {@code heldAtMs} still the one Quickstep's memory belongs to? NOT when a Quickstep session began AFTER the hold while the tablet was UNLOCKED ({@code qsStartMs} =
+     * {@link #QS_REAL_START_KEY}): the tablet came back to Quickstep by another way than a gesture unlock (a secret entrance, a return method), and what is on or off now is that session's own state.
      */
     public static boolean holdStillValid(boolean held, long heldAtMs, long qsStartMs, boolean quickstepNow) {
         if (!held) return false;
