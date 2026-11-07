@@ -825,3 +825,11 @@
 >
 > The earlier test runs finish about now. Then I re-run the patch tests with this change and send you v0.8.4.
 <!-- sha:f6c17cc3a152 -->
+
+## 2026-11-07T17:22:49Z
+> The final patch tests are running on the latest code, which includes the PIN-pad hide and the tuned close fade. Both runs should finish at about 17:40 UTC. I'll read them then, and if they pass I'll bump the version, build and release v0.8.4.
+>
+> Open items waiting on you:
+> - **BC4, screenshots:** the Launcher control screenshot, plus when it happens.
+> - **BD1 and BD2, recents and slow unlock:** the tablet report right after a slow or wrong unlock.
+<!-- sha:c5234301a788 -->
