@@ -815,3 +815,13 @@
 > - v0.8.4 comes first. It has the sliver fix, the flicker fix and the instant hide for the pull-up PIN. The gate's last runs finish in a few minutes.
 > - These two items are bigger changes, so I'll start them in a fresh session after v0.8.4 is out, since this one is very long. I'll tell you when it's time.
 <!-- sha:fbe49d94ba81 -->
+
+## 2026-11-07T17:18:14Z
+> You're right, I misread that. It's fixed in the code now: the patch hides the moment the PIN pad comes up, whether the power menu is open or not.
+>
+> - **Normal lock screen:** the patch is normally invisible there, but it still exists as a window over the Screenshot slot. It now disappears at once, and stops taking touches so it can't block a PIN key. The PIN pad itself is then checked about a tenth of a second later. If that check somehow misses the pad, the patch comes back after 2.5 seconds.
+> - **Menu open:** same instant hide, and it stays hidden until the menu is gone.
+> - **Speed:** it reacts to the PIN pad's own screen events, with no scan, so it should be about as fast as possible. I can only test the emulator's version of the pull-up, so please tell me how it looks on your tablet.
+>
+> The earlier test runs finish about now. Then I re-run the patch tests with this change and send you v0.8.4.
+<!-- sha:f6c17cc3a152 -->
