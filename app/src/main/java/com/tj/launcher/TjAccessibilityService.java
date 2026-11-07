@@ -2841,6 +2841,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void showStock(Rect full) {
         ensurePatch();
         final boolean first = !overlayShown;
+        if (first) { touchAwayUntilMs = 0; pinHiddenUntilMs = 0; }   // BE1: a menu that opens through the scan path also ends every away guard (the PIN pad, if it comes up over the menu, sets its own latch)
         overlayShown = true;
         patchShow(true);   // AZ1: the patch is the time-critical part: it is drawn at the next frame, so nothing slower (a log line, a preferences write) may come before it in this message
         if (first) {
