@@ -2217,6 +2217,17 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   if [ "$(( ${PAD1:-0} - ${PAD0:-0} ))" -ge 1 ]; then check "BC5: the PIN pad came up over the open menu and the patch was hidden at once (the helper logged 'pin hide')" grep -q 'PATCH pin hide' "$OUT/pt-all-closepin.txt"
   else info "PT/BC5: no PIN pad appeared on the emulator: nothing to judge"; fi
   palock; sleep 2
+  # ---- H (BC5b, Tj, 2026-11-07: "the power menu doesn't need to be opened. Any time I pull up to type the pin number the wallpaper patch should disappear immediately, as fast as possible"): the PLAIN lock screen (the patch only
+  #      RESTS over the Screenshot slot), a swipe up shows the PIN pad: 'PATCH pin hide (...) resting' must be logged. The timeline (INFO) shows the order of the keyguard's events and the hide.
+  adb logcat -c; PAD0="$(padcount)"
+  ptinput pinrest "input swipe 300 900 300 300 250"; sleep 2.5
+  PAD1="$(padcount)"
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (pin hide|rest|input)' | sed 's/^.*TjA11y *: //' > "$OUT/pt-all-pinrest.txt"
+  EVH="$(python3 -I tools/pt_analyze.py --events "$OUT/pt-all-pinrest.txt" 2>&1 | tail -c 660)"
+  info "PT/BC5b: plain lock screen, swipe up for the PIN pad (timeline end 1): ${EVH:0:330}"; info "PT/BC5b: (timeline end 2): ${EVH:330:330}"
+  if [ "$(( ${PAD1:-0} - ${PAD0:-0} ))" -ge 1 ]; then check "BC5b: with no power menu open the resting patch is hidden at once when the PIN pad comes up (the helper logged 'pin hide ... resting')" grep -q 'PATCH pin hide.*resting' "$OUT/pt-all-pinrest.txt"
+  else info "PT/BC5b: no PIN pad appeared on the emulator: nothing to judge"; fi
+  palock; sleep 2
   check "BC2: a tap in the middle closes the menu with the patch following the stock fade-out (the helper logged the click and the window's removal)" bash -c "grep -q 'close start (a click in the stock dialog)' $OUT/pt-all-closetap.txt && grep -q 'close end (the dialog window was removed)' $OUT/pt-all-closetap.txt"
   check "BC2: the largest patch-versus-surround mismatch around that close is within 10 % (it was 20 % when the patch held its dark look until a scan noticed)" awk -v m="$(ptget closetap close_max)" 'BEGIN{exit !(m != "" && m+0 >= 0 && m+0 <= 0.10)}'
   # ---- D (BB1, Tj, 2026-11-07, v0.8.2: "almost perfect but there is still a very slight tinted line about where the bottom of the card would be. Like a faded tint"): the stock panel casts a SHADOW downward from its real (hidden) bottom

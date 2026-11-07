@@ -1,21 +1,24 @@
-# CHECKPOINT 612 — read me first, then TASKS.md
+# CHECKPOINT 613 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T17:16:20Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `8330b00` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T17:18:03Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `92a28dd` (this checkpoint is the commit after it)
 
 ## Just done
-BD1/BD2 leads written to TASKS (ReturnReset black cover, TaskOrigin/RMTASKS by id, RecentsFilter AP1 shows then closes, Solitaire cover, UNLOCKSPEED); needs Tj's tablet report; v0.8.4 gate runs still due 17:19
+Tj corrected BC5 (17:17 UTC): the PIN-pad hide must work with NO power menu open (the resting patch too): pinPadCameUp now hides the resting patch (alpha 0 at once, away 2.5 s) as well as the open one; fastMenuClose's bouncer sign no longer needs the menu; scenario pt phase H (swipe up on the plain lock screen, 'pin hide ... resting' check); TASKS BC5b
 
 ## Do this next
-read the 3 gate runs (#297 id 42394250639, #298 id 42394253079, #299 id 42394255486) at ~17:19; then pt,ae,ps,x1 for BC5; ship v0.8.4; then BD1/BD2 in a fresh session (this one is long: tell Tj 'Handoff ready: start a new session, it resumes from CHECKPOINT.md')
+read the 3 gate runs (#297 id 42394250639, #298 id 42394253079, #299 id 42394255486, due ~17:19); then dispatch pt,ae,ps,x1 on this head (BC5 + BC5b), read PT/BC5 and PT/BC5b lines; ship v0.8.4
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
+     M TASKS.md
+     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  4a16127 ckpt 612: BD1/BD2 leads written to TASKS (ReturnReset black cover, TaskOrigin/RMTASKS by
   6bf1bcb ckpt 611: Tj's new message (17:12 UTC): BD1 hidden apps (Telegram, Claude) were in the R
   9c8439b ckpt 610: BC5 coded: TjAccessibilityService pinPadCameUp (patch alpha 0 at once + untouc
   35fa162 ckpt 609: Tj's answer (17:15 UTC): for the pull up for the PIN the patch must disappear 
@@ -25,8 +28,7 @@ read the 3 gate runs (#297 id 42394250639, #298 id 42394253079, #299 id 42394255
   daf4f15 ckpt 605: emulator #295 read (BC1 edge covered to 0.1 level; BC2: click + dialog-removal
   e079c40 ckpt 604: merged Tj's 16:13 message (a browser question, captured on main only) into the
   a502af8 ckpt 603: BC2/BC1 emulator proof coded: pt phase F (the menu closed by BACK / a tap in t
-  1c33d22 ckpt 602: BC1b + BC2b step 1 coded: PatchRest.coverDisplayEdges (core to the display edg
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
