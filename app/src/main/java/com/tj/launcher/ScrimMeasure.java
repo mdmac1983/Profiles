@@ -26,8 +26,11 @@ public final class ScrimMeasure {
     public static final int CLOSE_TRIES = 5;
     /** Between the bare frame and the menu: the screenshot's own animation (flash, shrink, thumbnail in the corner) must be over before the next frame. */
     public static final long SHOT_GAP_MS = 2_400;
-    /** After the menu opened: the stock fade (300 ms) is complete, plus a margin for a slow tablet. */
-    public static final long OPEN_SETTLE_MS = PatchFade.SETTLE_MS + 270;
+    /**
+     * After the menu opened: the stock fade (300 ms) is complete, plus a LARGE margin: the helper's detection fires on the dialog's window event, but a slow tablet may draw the dialog's first frame (= the start
+     * of the fade) a few hundred ms later, and the screenshot service adds its own latency. A frame taken in the middle of the fade would be stored for good (review of BA1, finding 6), so wait longer rather than less.
+     */
+    public static final long OPEN_SETTLE_MS = PatchFade.SETTLE_MS + 870;
     /** The whole sequence gives up after this. */
     public static final long STAGE_LIMIT_MS = 45_000;
 
@@ -41,7 +44,35 @@ public final class ScrimMeasure {
         public boolean switchOn, coverOn, lockPatchOn, paused, permitted, geometryKnown, validCrop, haveMeasurement, calibrating, stageRunning;
         public boolean interactive, keyguardLocked, pinPadUp, menuOpen, handshakeArmed;
         public long now, screenOnMs, lastStartMs;
-        public int startsThisLock, startsToday;
+        public int startsThisLock, startsToday, failures;
+    }
+
+    // ---------------------------------------------------------------- failures that will not go away by trying again (review of BA1, finding 5)
+
+    /** Per rotation: how many measurements of THIS lock screen (wallpaper | rotation | size | theme) were taken but could not be fitted: {@code sig#d|n#count}. */
+    public static final String FAIL_PREFIX = "scrim_fail_r";
+    /** After this many fitted-but-refused measurements of the same lock screen the helper stops until the wallpaper, rotation, size or theme changes (or "Measure again" is tapped): a flat wallpaper or a scrim that is not a flat layer would otherwise open the menu by itself every day. */
+    public static final int MAX_FAILURES = 2;
+    public static String failKey(int rotation) { return FAIL_PREFIX + rotation; }
+
+    /** Pure: did the frames get taken but could not be fitted (as opposed to an interruption such as the screen going off, which is worth another try)? */
+    public static boolean measurementFailure(String outcome) {
+        return outcome != null && (outcome.startsWith("not measured:") || outcome.contains("too little plain wallpaper"));
+    }
+
+    /** Pure: the number of recorded failures for this lock screen (0 for another lock screen or an unreadable record). */
+    public static int failures(String stored, String sig, boolean night) {
+        try {
+            if (stored == null || stored.isEmpty()) return 0;
+            String[] p = stored.split("#");
+            if (p.length != 3 || !p[0].equals(sig) || !p[1].equals(night ? "n" : "d")) return 0;
+            return Math.max(0, Integer.parseInt(p[2]));
+        } catch (Throwable t) { return 0; }
+    }
+
+    /** Pure: the record with one more failure for this lock screen (a record of another lock screen starts again at 1). */
+    public static String addFailure(String stored, String sig, boolean night) {
+        return sig + "#" + (night ? "n" : "d") + "#" + (failures(stored, sig, night) + 1);
     }
 
     /** Pure: why NOT to start now ("" = go). The reasons are shown in Launcher control, so they are plain words. */
@@ -51,6 +82,7 @@ public final class ScrimMeasure {
         if (!s.coverOn || !s.lockPatchOn) return "the lock-screen patch is switched off";
         if (!s.permitted) return "needs permission: Launcher control > Allow wallpaper access";
         if (s.haveMeasurement) return "";   // nothing to do; callers treat haveMeasurement separately
+        if (s.failures >= MAX_FAILURES) return "gave up for this lock screen after " + s.failures + " measurements that could not be fitted (see the last note); a new wallpaper, rotation or theme, or 'Measure again' in Launcher control, tries again";
         if (s.calibrating || s.stageRunning) return "a calibration or a measurement is already running";
         if (!s.validCrop) return "waiting: the patch has no real-pixel picture yet (the automatic calibration comes first)";
         if (!s.geometryKnown) return "waiting: hold the side key once on the lock screen so the menu's place is known";

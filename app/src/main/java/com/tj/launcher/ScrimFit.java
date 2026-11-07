@@ -40,7 +40,7 @@ public final class ScrimFit {
     /** Gates on one channel: the line must fit the inliers closely and the wallpaper must cover enough brightness levels to tell scale from offset. */
     public static final double MAX_RMS = 3.0, MIN_SPREAD = 12.0, MIN_INLIER_FRACTION = 0.55;
     /** Gates on the transform: a scrim darkens (s below 1) but not to black; an offset beyond +-45 levels is not a scrim. */
-    public static final double MIN_S = 0.55, MAX_S = 0.98, MAX_ABS_O = 45.0;
+    public static final double MIN_S = 0.55, MAX_S = 0.95, MAX_ABS_O = 45.0;   // review of BA1: 0.98 let a frame from the middle of the fade (s 0.90) through; the stock scrim is 0.80, anything above 0.95 is "nothing was darkened" or "the fade had barely begun"
     /** The three channels of one scrim share the same s (1 - alpha): they may differ only by measurement noise. */
     public static final double MAX_S_DISAGREE = 0.05;
 
