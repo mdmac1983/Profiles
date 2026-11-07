@@ -11,7 +11,7 @@ no second photo (two photos of the tablet have different exposure and white bala
 INPUT: a photo of the tablet with the stock power menu OPEN on the lock screen (the two-item card: Power off + Restart), after the 300 ms fade, with the card and the area below it in the frame. Phone EXIF
 orientation is honoured. The photo is Tj's PRIVATE data: this tool only READS it and prints numbers (never copy a photo into the repo; the repo is public).
 
-METHOD: find the card (the biggest bright block), its item pitch = height / 2. Take the mean row profile of the columns under the card (12 % margin) and of a control strip left of the card. For each candidate edge row
+METHOD: find the card (the biggest bright block), its item pitch = height / 2. Take the median row profile of the columns under the card (12 % margin; also of each half, for repeatability) and of a control strip left of the card. For each candidate edge row
 between 0.97 and 1.15 item pitches below the card, fit a line on each side (0.05-0.40 pitch away), extrapolate both to the edge and subtract. Net step = inside - control (luminance; per channel too). Positive = the
 patch is DARKER than the wallpaper under it, in camera units 0-255 (auto exposure and tone curve apply: the card's white reads ~247, so the gain is near 1; direction and rough size only, the helper's own screenshot
 measurement is the exact one). The left edge (rows of the patch) is printed as a second opinion (raw: the wallpaper's own horizontal gradient is not removed).
