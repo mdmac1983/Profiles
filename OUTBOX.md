@@ -425,3 +425,27 @@
 ## 2026-11-07T05:08:47Z
 > Tj sent a screenshot of the Launcher control screen on the tablet: the first real measurement from v0.8.2. Before reading anything else, the standing first action: hooks (this looks like a fresh session start), then the state.
 <!-- sha:3362389d623d -->
+
+## 2026-11-07T05:10:32Z
+> The drawing code is correct for a tinted scrim. The translate column indices (4, 9, 14) are in levels 0-255, the same unit as the stored offsets, and the diagonal indices (0, 6, 12) carry the scale. Both are interpolated along the stock fade, so on your tablet the open patch is drawn as `0.80 × crop + (6, 7, 7)`, the same maths as the stock scrim. No change needed.
+>
+> Your screenshot shows the tablet measured its own dimming successfully, and the numbers match what your photos predicted.
+>
+> **What the tablet reported**
+> - The stock power menu dims the lock screen to exactly 80 % brightness and also lifts every colour by a fixed 6 (red), 7 (green) and 7 (blue) levels out of 255.
+> - That lift is a faint grey-teal tint, and the fit is nearly perfect (30,782 points, error 0.3 of a level).
+> - Your photos had already shown the square darker by about 5–7 levels, the same in dark and bright places. That is why it never disappeared in v0.8.0 or v0.8.1: both only darkened the square and never added the lift.
+> - v0.8.2 now draws the square with the tablet's own numbers, so the end of the open should match the lock screen to within about half a level.
+>
+> **Please check**
+> 1. Lock the tablet and press the side key. Does the square under Restart look gone once the menu has finished opening?
+> 2. If you can, send one straight photo of the open menu (flash off, area under Restart in frame). I'll measure it; it should show no step.
+> 3. When convenient, try the battery saver cases (lock from Quickstep with saver on, gesture unlock, plain PIN unlock, charger plug-in while locked). I can paste the steps if you want.
+>
+> If the square is still visible, tell me where (whole square or just an edge) and I'll look at what else could differ, such as an out-of-date calibration.
+>
+> **Still open**
+> - **Square check and photo:** waiting on you.
+> - **Battery saver check:** waiting on you.
+> - **No hurry:** AF2 (old photos in the public repo), CBR2 (keeping your settings after a crash-breaker trip), AE6 (mailbox vs batch).
+<!-- sha:c052e15b9098 -->
