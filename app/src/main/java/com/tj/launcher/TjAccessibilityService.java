@@ -2855,7 +2855,8 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void scrimCloseStep() {
-        if (!scrimOpenedMenu || !overlayShown) { scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); try { layerRefresh.run(); } catch (Throwable ignored) { } return; }   // done: the menu is gone (or was never ours)
+        // done when the menu was never ours, or (after the first BACK, which is sent even if the menu was not detected: a stray BACK on a plain lock screen does nothing) when it is gone
+        if (!scrimOpenedMenu || (scrimCloseTries > 0 && !overlayShown)) { scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); try { layerRefresh.run(); } catch (Throwable ignored) { } return; }
         if (scrimCloseTries >= ScrimMeasure.CLOSE_TRIES) { scrimNote(scrimOutcome + "; the power menu would not close by itself: tap outside it"); scrimStage = 0; scrimOpenedMenu = false; return; }
         scrimCloseTries++;
         try { performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { }
