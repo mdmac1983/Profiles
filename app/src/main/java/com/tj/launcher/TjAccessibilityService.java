@@ -68,6 +68,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { if (event != null && EventNoise.windowsJustChanged(event.getEventType())) { noteWindowEvent(event.getEventTime()); fastMenuOpen(event); } } catch (Throwable t) { Log.e(TAG, "fast menu check failed", t); }   // AZ1: FIRST, before any other work of this event
         try { if (event != null) fastMenuClose(event); } catch (Throwable t) { Log.e(TAG, "fast menu close check failed", t); }   // BC2: a click in the stock dialog starts the fade-out, the removal of its window ends it
         try { trackForeground(event); } catch (Throwable t) { Log.e(TAG, "foreground tracking failed", t); }
+        try { AnimationSpeedup.tick(this); } catch (Throwable t) { Log.e(TAG, "animation heartbeat failed", t); }   // BF1: self-heal (a lock screen that came up after the wake, a missed broadcast); a volatile read and a time compare in all but two events a second, nothing at all in the custom launcher
         try { picker().onEvent(event); } catch (Throwable t) { Log.e(TAG, "picker guard failed", t); }
         try { recents().onEvent(event); } catch (Throwable t) { Log.e(TAG, "recents guard failed", t); }   // AP1: whenever Recents opens in the custom launcher, the cards of apps that are not in the drawer are closed   // AO1: no "My photos" tile in the system wallpaper picker (one string compare for every other app's event)
         // Never react to our own overlay (adding it fires events: that would be a feedback loop), and coalesce bursts of events into one check.
