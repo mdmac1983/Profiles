@@ -137,11 +137,22 @@ public final class ShellHelper {
     /** AA3: removes exactly these Recents tasks (the helper re-checks the deny-list per id). @return how many were removed, or -1 if the helper could not be reached. Blocking. */
     public static int removeTasks(Collection<Integer> ids) {
         if (ids == null || ids.isEmpty()) return 0;
+        int total = 0;
         StringBuilder sb = new StringBuilder("RMTASKS");
-        for (Integer i : ids) sb.append(' ').append(i);
-        String r = ask(sb.toString(), 25_000);
-        if (r == null || !r.startsWith("OK")) return -1;
-        try { return Integer.parseInt(r.substring(2).trim().split("\\s+")[0]); } catch (NumberFormatException e) { return 0; }
+        int inLine = 0;
+        java.util.Iterator<Integer> it = ids.iterator();
+        while (true) {
+            boolean more = it.hasNext();
+            if (more) { sb.append(' ').append(it.next()); inLine++; }
+            if (inLine >= ShellProtocol.MAX_PACKAGES || (!more && inLine > 0)) {   // the helper takes at most MAX_PACKAGES ids per line (BE2: a complete clear can have more tasks than that)
+                String r = ask(sb.toString(), 25_000);
+                if (r == null || !r.startsWith("OK")) return -1;
+                try { total += Integer.parseInt(r.substring(2).trim().split("\\s+")[0]); } catch (NumberFormatException e) { /* counted as 0 */ }
+                sb.setLength(0); sb.append("RMTASKS"); inLine = 0;
+            }
+            if (!more) break;
+        }
+        return total;
     }
 
     /** Force-stops the packages (the helper re-checks its deny-list). @return how many it stopped, or -1 if the helper could not be reached. Blocking: call off the main thread. */
