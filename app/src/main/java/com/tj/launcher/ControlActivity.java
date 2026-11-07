@@ -140,6 +140,9 @@ public class ControlActivity extends Activity {
         box.addView(abtn);
         action("Accessibility helper settings", "Turn the helper on or off (the power menu patch, the lock screen, the reset and the Recents filter need it).", new Runnable() { public void run() { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); } });
 
+        toggle("Animations off in Quickstep (faster)", AnimationSpeedup.permitted(this) ? "ON: while you use Quickstep (its home screen and the apps you open there) every animation is off, so the tablet feels faster. They come back the moment the tablet locks (the lock screen and its power menu need real animations) and the moment the custom launcher takes over, put back exactly as they were; a value you set yourself in Developer options in the meantime is left alone. Nothing is ever switched off in the custom launcher or on the lock screen. Needs the accessibility helper to be running." : "Needs the adb permission (not granted yet).", AnimationSpeedup.quickstepSwitch(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AnimationPolicy.KEY, v); AnimationSpeedup.syncNow(ControlActivity.this, "switched in Launcher control"); rebuild(); } });   // BF1
+        note("Animations: " + AnimationSpeedup.describe(this));
+
         group("lock", "Lock screen", false);
         toggle("Show my number at the bottom", "Disappears when you pull up the PIN pad.", LockNumber.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, LockNumber.KEY, v); } });
         final EditText numberBox = new EditText(this);
