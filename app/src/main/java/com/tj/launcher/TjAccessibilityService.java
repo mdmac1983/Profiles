@@ -2768,6 +2768,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     shotStatus(now() + "  PATCH CALIBRATED (" + dims + "): the patch now shows your real lock screen at the Screenshot spot" + (deleted ? " (the screenshot was removed from the gallery again)" : " (the screenshot itself stays in the gallery)"));
                     autoCalNote("calibrated" + (deleted ? "" : "; the screenshot stays in the gallery"));
                     Log.i(TAG, "PATCHSHOT stored a " + dims + " crop for rotation " + rot);
+                    handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000);   // BA1: the scrim of this lock screen is measured next (its own frames; the first flash has passed by then)
                 } catch (Throwable t) { Log.e(TAG, "patch shot apply failed", t); } } });
             } catch (Throwable t) { Log.e(TAG, "patch shot ingest failed", t); shotStatus(now() + "  failed: " + t); }
         } }, "tj-patchshot").start();
