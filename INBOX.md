@@ -1068,3 +1068,8 @@ It is almost perfect but there is still a very slight tinted line about where th
 ```
 This is the correct image. Ignore the last ones
 ```
+
+## 2026-11-07T05:33:59Z
+```
+Tell me the steps to get the battery saver
+```
