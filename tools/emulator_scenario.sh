@@ -1410,6 +1410,118 @@ check "BS4c: and off again" bash -c "[ \"$BS4C\" = 0 ]"
 adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
 setmode custom; rebind; home
 fi # section bs
+
+if want bl; then # section bl
+ensurehome
+# ---- BA2 (Tj, 2026-11-07 00:07: "make the lock screen always have battery saver turned off permanently when the lock screen is up, no matter which launcher was on before the screen lock. If I go to the custom launcher,
+#      have the battery saver remain turned off, but if I unlock to quickstep, keep the same battery saver state as the last time I was in quickstep. Only implement these battery saver features if you are confident they
+#      can work and not break anything"). Driven like a person, on the real Android 10 image: the saver is turned on and off through the REAL Settings screen (so Android's state machine is in the state a person leaves
+#      it in), the tablet is locked with the power key and unlocked with the real PIN pad (the handshake gesture = Quickstep, a plain PIN = the custom launcher). The proof that nothing was corrupted is the last step of
+#      each round: the real Settings button "Turn off now" must really turn the saver off (the AZ2 bug was exactly that it did not).
+#        BL1 locked from Quickstep with the saver on: off on the lock screen, kept off, back after the gesture.   BL2 locked from the custom launcher: off, and a plain unlock keeps it off.
+#        BL3 the memory survives a detour in the custom launcher.   BL4 a plug-in while locked: nothing is switched on from outside afterwards.   BL5 / BL6 the two switches.   The PIN is ALWAYS cleared again at the end.
+beat "before BL"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell dumpsys battery unplug >/dev/null 2>&1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
+blfeat(){ # blfeat <lock-screen rule true|false> <bring Quickstep's saver back true|false>: the usual test features (no radios / helper clean-up in the way); a FRESH file, so the memory of an earlier round is gone
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_strict\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_off\\\" value=\\\"true\\\" /><boolean name=\\\"bs_unstick_done\\\" value=\\\"true\\\" /><boolean name=\\\"lock_quiet\\\" value=\\\"false\\\" /><boolean name=\\\"profile_radios_off\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_lock_off\\\" value=\\\"$1\\\" /><boolean name=\\\"profile_battery_saver_lock_restore\\\" value=\\\"$2\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+bllog(){ adb logcat -d -s TjBatSaver:I | grep BATSAVER | tail -${1:-5} | cut -c1-190 | tr '\n' '|'; }
+blround(){ # blround <lock rule> <restore> <quickstep|custom>: a fresh round in the given mode, saver off, nothing plugged in
+  blfeat "$1" "$2"; adb shell am force-stop "$PKG"; sleep 1
+  setmode "$3"; rebind; home; sleep 3
+  adb shell settings put global low_power 0; sleep 1; adb logcat -c; }
+adb shell locksettings set-pin 1234 > "$OUT/bl-setpin.txt" 2>&1
+# ---------------- BL1: locked from Quickstep with the saver on (turned on through the real Settings screen = Android's state machine says MANUAL_ON)
+blround true true quickstep
+bstap on; BL1A="$(lowpower)"
+check "BL1a (setup): in Quickstep the real Settings button switched battery saver on" bash -c "[ \"$BL1A\" = 1 ]"
+home; sleep 2; adb logcat -c
+adb shell input keyevent KEYCODE_POWER; sleep 3                      # the lock moment: the screen is off (the helper switches the saver off about 0.7 s later, while the display is dark)
+BL1B="$(lowpower)"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 4                     # the plain lock screen
+BL1C="$(lowpower)"
+info "BL1: locked from Quickstep with the saver on: low_power=$BL1B (screen off) / $BL1C (lock screen); $(bllog 4)"
+check "BL1b: the lock screen has battery saver OFF (locked from Quickstep with the saver on)" bash -c "[ \"$BL1B\" = 0 ] && [ \"$BL1C\" = 0 ]"
+adb shell settings put global low_power 1; sleep 3                   # something turns it on while the lock screen is up (Android's low-battery trigger, a notification button)
+BL1D="$(lowpower)"
+check "BL1c: a saver that is turned on while the lock screen is up is switched off again within moments" bash -c "[ \"$BL1D\" = 0 ]"
+adb shell input swipe 300 900 300 300 300; sleep 4                   # the PIN pad
+pad d d 1 2 3 4 e; sleep 9                                           # the gesture: Quickstep again
+BL1E="$(lowpower)"
+info "BL1: after the gesture unlock into Quickstep: low_power=$BL1E; state machine: $(bsstate); $(bllog 5)"
+check "BL1d: a gesture unlock into Quickstep brings battery saver back (it was on the last time in Quickstep)" bash -c "[ \"$BL1E\" = 1 ]"
+bstap off; BL1F="$(lowpower)"
+info "BL1: the real Settings 'Turn off now' -> low_power=$BL1F; state machine: $(bsstate)"
+check "BL1e: Android's own state agrees: the real Settings button 'Turn off now' really switches it off" bash -c "[ \"$BL1F\" = 0 ]"
+bstap on; BL1G="$(lowpower)"; bstap off
+check "BL1f: and 'Turn on now' works again too" bash -c "[ \"$BL1G\" = 1 ]"
+home; sleep 1; adb shell settings put global low_power 0; sleep 1
+# ---------------- BL2: locked from the custom launcher (a saver somebody turned on there: AN1 leaves it until the lock)
+blround true true custom
+adb shell settings put global low_power 1; sleep 3
+BL2A="$(lowpower)"
+check "BL2a (setup): in the custom launcher a saver turned on by the person stays on until the tablet is locked" bash -c "[ \"$BL2A\" = 1 ]"
+adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
+BL2B="$(lowpower)"
+check "BL2b: locked from the custom launcher the lock screen has battery saver OFF too" bash -c "[ \"$BL2B\" = 0 ]"
+adb shell input swipe 300 900 300 300 300; sleep 4
+pad 1 2 3 4 e; sleep 8                                               # a plain PIN: the custom launcher
+BL2C="$(lowpower)"
+info "BL2: after a plain PIN (custom launcher): low_power=$BL2C; $(bllog 4)"
+check "BL2c: a plain unlock into the custom launcher leaves battery saver off" bash -c "[ \"$BL2C\" = 0 ]"
+# ---------------- BL3: the memory survives a detour in the custom launcher (Quickstep with the saver on -> custom -> lock + plain PIN -> lock + gesture)
+blround true true quickstep
+bstap on; BL3A="$(lowpower)"; home; sleep 1
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 5     # the real way back to custom (double Home): the end of a Quickstep session
+BL3B="$(lowpower)"
+check "BL3a: the custom launcher has the saver off when a Quickstep session that had it on ends" bash -c "[ \"$BL3A\" = 1 ] && [ \"$BL3B\" = 0 ]"
+lockpad; sleep 4; pad 1 2 3 4 e; sleep 8                              # lock + a plain PIN: still the custom launcher
+BL3C="$(lowpower)"
+check "BL3b: a lock and a plain unlock in between keep it off" bash -c "[ \"$BL3C\" = 0 ]"
+lockpad; sleep 4; pad d d 1 2 3 4 e; sleep 9                          # the gesture: Quickstep again
+BL3D="$(lowpower)"
+info "BL3: after the gesture unlock into Quickstep (last Quickstep session had it on): low_power=$BL3D; state machine: $(bsstate); $(bllog 5)"
+check "BL3c: the gesture unlock into Quickstep brings back the saver Quickstep had the last time" bash -c "[ \"$BL3D\" = 1 ]"
+bstap off; BL3E="$(lowpower)"
+check "BL3d: Android's own state agrees (the real Settings button turns it off)" bash -c "[ \"$BL3E\" = 0 ]"
+home; sleep 1
+# ---------------- BL4: plugged in while locked: Android's own state is reset by that, so nothing may be switched on from outside afterwards (a direct write would leave 'Turn off now' dead: the AZ2 bug)
+blround true true quickstep
+bstap on; BL4A="$(lowpower)"; home; sleep 1
+adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
+BL4B="$(lowpower)"
+adb shell dumpsys battery set ac 1 >/dev/null 2>&1; sleep 3          # plugged in while locked ...
+adb shell dumpsys battery unplug >/dev/null 2>&1; sleep 3            # ... and back on battery
+adb shell input swipe 300 900 300 300 300; sleep 4
+pad d d 1 2 3 4 e; sleep 9
+BL4C="$(lowpower)"
+info "BL4: plugged in while locked, then the gesture unlock: low_power=$BL4C; $(bllog 5)"
+check "BL4a: after a plug-in while locked the gesture unlock does NOT switch battery saver back on from outside" bash -c "[ \"$BL4A\" = 1 ] && [ \"$BL4B\" = 0 ] && [ \"$BL4C\" = 0 ]"
+bstap on; BL4D="$(lowpower)"; bstap off; BL4E="$(lowpower)"
+check "BL4b: and Android's own state is sound: the Settings button turns the saver on and off again" bash -c "[ \"$BL4D\" = 1 ] && [ \"$BL4E\" = 0 ]"
+home; sleep 1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
+# ---------------- BL5 / BL6: the two switches
+blround false true quickstep
+adb shell settings put global low_power 1; sleep 2
+adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
+BL5A="$(lowpower)"
+check "BL5: with the lock-screen switch OFF the saver is left alone on the lock screen (control)" bash -c "[ \"$BL5A\" = 1 ]"
+adb shell settings put global low_power 0; sleep 1
+blround true false quickstep
+bstap on; home; sleep 1
+adb shell input keyevent KEYCODE_POWER; sleep 3; adb shell input keyevent KEYCODE_WAKEUP; sleep 4
+BL6A="$(lowpower)"
+adb shell input swipe 300 900 300 300 300; sleep 4
+pad d d 1 2 3 4 e; sleep 9
+BL6B="$(lowpower)"
+info "BL6: 'bring back' switch off: low_power=$BL6A on the lock screen, $BL6B after the gesture unlock; $(bllog 4)"
+check "BL6: with 'bring Quickstep's saver back' OFF the lock screen still has it off and the gesture unlock leaves it off" bash -c "[ \"$BL6A\" = 0 ] && [ \"$BL6B\" = 0 ]"
+adb shell settings put global low_power 0; adb shell dumpsys battery reset >/dev/null 2>&1
+adb shell locksettings clear --old 1234 > "$OUT/bl-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "BL: the PIN used for the test was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/bl-clearpin.txt"
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section bl
 if want ad; then # section ad
 ensurehome
 # ---- AD5 + AD7a (Tj, 2026-11-06). AD5: "when I unlock to quickstep, it minimizes my open apps and goes to the home screen. Is this necessary?" -> a gesture unlock brings back the Quickstep app that was open at the lock (switch
