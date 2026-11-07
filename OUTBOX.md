@@ -353,3 +353,25 @@
 > 🔴 I'd move to a fresh chat now. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
 <!-- sha:7941617836d0 -->
+
+## 2026-11-07T02:30:30Z
+> The photos show the square under Restart is a little darker than the lock screen around it, in all four. v0.8.2 is not released yet: its last safety runs finish in about 10 minutes, and I'll publish it once they're green.
+>
+> **What the photos show**
+> - The square is about 5 to 7 levels darker (out of 255, roughly 2 to 3 %). That is about the same in dark and bright parts of the wallpaper, which is the useful clue.
+> - A same-size difference at every brightness means the tablet's own dimming adds a little tint on top of "80 % brightness". No single brightness number, whether 0.79 or 0.80, can remove that. That is why each of those steps only made the square fainter.
+> - v0.8.2 measures the tablet's real dimming once and paints the square the same way.
+> - The fourth photo was too blurry to measure but looks the same. I saved a small tool so your next photo can be measured in seconds. After v0.8.2 it should report no step.
+>
+> **Where v0.8.2 is**
+> - The code is finished. The battery saver and the dimming measurement both passed on the emulator, and the local tests and lint pass.
+> - In the last big safety run, one test wrongly assumed the emulator's dimming is always exactly 80 %. In that run it was 75 %, and the app measured that correctly, so the mistake was in the test.
+> - The same run also lost its emulator mid-way, so some sections never ran.
+> - I fixed the test and re-ran both groups. If a group fails, I'll find out why before publishing.
+>
+> You don't need to do anything yet. After the release link, the one-time measurement on the tablet makes two camera flashes and opens the power menu by itself for about 2 seconds.
+>
+> **Still open from your messages**
+> - The patch photos: answered above. This closes once v0.8.2 is on the tablet and a new photo looks right.
+> - Resume from the checkpoint: in progress, shipping v0.8.2.
+<!-- sha:d48990274bbe -->
