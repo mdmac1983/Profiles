@@ -64,7 +64,7 @@ public final class AnimationSpeedup {
                 } else if (next != holds) {
                     sp.edit().putInt("holds", next).commit();
                 }
-                if (holds == 0) {   // nobody held them before: make them zero (a scale that already is zero is left alone)
+                if (holds == 0 || !pending) {   // nobody held them before: make them zero (a scale that already is zero is left alone). A reason that JOINS one already holding rewrites nothing: a scale Tj changed by hand since stays his
                     for (String n : NAMES) if (AnimationPolicy.needsZero(Settings.Global.getString(cr, n))) Settings.Global.putString(cr, n, "0");
                 }
                 return next;
