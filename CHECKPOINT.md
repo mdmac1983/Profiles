@@ -1,13 +1,13 @@
-# CHECKPOINT 560 — read me first, then TASKS.md
+# CHECKPOINT 561 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T01:00:59Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `5e89113` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T01:03:34Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `b925d62` (this checkpoint is the commit after it)
 
 ## Just done
-gate runs dispatched on 5e89113: #270 id 42321616646 = {n,o,t,x,ac,bs,lq}, #271 id 42321619870 = {x1,e1,bl,ps,rb}; #269 pt id 42321050689 (phase C) still running
+pt phase C fixed (no extra lock); gate jobs: 128247261992 {n,o,t,x,ac,bs,lq}, 128247271172 {x1,e1,bl,ps,rb}
 
 ## Do this next
-Read #269 first (pt phase C: INFO PT/BA1 lines + the BA1 checks); then #270/#271 (get_job_logs tail 80 each); then dispatch {base,v,pa,pt,uf,last} on the final commit; bump version, ship
+probe get_job_logs on those two job ids (404 = running); re-dispatched pt (new run after #271); then dispatch {base,v,pa,uf,last}, bump version, ship
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Read #269 first (pt phase C: INFO PT/BA1 lines + the BA1 checks); then #270/#271
 
 ## Last ten checkpoints
 ```
+  0d6e1fe ckpt 560: gate runs dispatched on 5e89113: #270 id 42321616646 = {n,o,t,x,ac,bs,lq}, #27
   5e89113 ckpt 559: gate prep: decode retry, Control switch also stops using a stored measurement,
   35e87c1 ckpt 558: HANDOFF 0g + CLAUDE.md lessons written; scrim decision uses the stored measure
   11b1655 ckpt 557: BA2 boxes ticked with run #265 proof; BA1 status written; guard hold bookkeepi
@@ -25,5 +26,7 @@ Read #269 first (pt phase C: INFO PT/BA1 lines + the BA1 checks); then #270/#271
   b429293 ckpt 553: v0.8.1 SHIPPED and recorded (Release v0.8.1, Build APK run 28 green, BUILDLOG 
   1a81bd9 ckpt 552: v0.8.1 gated (ship.sh OK, commit 7d85b50 pushed, main = branch tip) and androi
   7d85b50 ckpt 551: gated v0.8.1 (code 26) and pushed it: the handoff self-test, the full unit sui
-  b23199b ckpt 550: TASKS: 21 boxes ticked with proof (tools/tick_v081.py), AZ FINAL + AZ4 written
 ```
+
+(2 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
