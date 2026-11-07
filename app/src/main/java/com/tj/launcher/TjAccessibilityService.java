@@ -2766,7 +2766,8 @@ public class TjAccessibilityService extends AccessibilityService {
         String reason = ScrimMeasure.decision(st);
         if (!reason.isEmpty()) {
             scrimNote(reason);
-            if (reason.startsWith("waiting") && st.switchOn && st.keyguardLocked) { handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000); }
+            // look again in a moment, but ONLY while the screen is on: a locked tablet with its screen off must not wake the CPU every few seconds (the next wake / lock re-triggers this by itself)
+            if (reason.startsWith("waiting") && st.switchOn && st.keyguardLocked && st.interactive) { handler.removeCallbacks(scrimTrigger); handler.postDelayed(scrimTrigger, 6000); }
             return;
         }
         scrimLastStartMs = st.now; scrimThisLock++;
