@@ -1117,3 +1117,8 @@ Attached is a video of the sliver
 ```
 On my armv7 android 10 go mt8168 tablet, when I use brave browser, sometimes it freezes on the website or if I'm typing in text and when I go to switch apps and come back to brave it fixes it. Is there a fix for this, or a better browser 
 ```
+
+## 2026-11-07T17:03:55Z
+```
+Also the lock screen still takes screenshots sometimes 
+```
