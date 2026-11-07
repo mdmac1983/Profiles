@@ -617,3 +617,7 @@
 > - **What I changed:** the test now lets the previous launcher switch finish before it counts. If a line still shows up, the test prints a timeline of what switched the launcher.
 > - **Next:** I re-ran the same sections at 06:57 UTC and will read them at about 07:10. If it passes, I start the GitHub build and send you the Release link. If it fails, I fix the cause first.
 <!-- sha:e2c6ef3411b4 -->
+
+## 2026-11-07T07:09:29Z
+> The re-run (#293, sections `base,x1,v,ac`) is still going and should finish around 07:11 UTC. I'll read its result then. Nothing ships until the guard check passes.
+<!-- sha:2c0e431353ac -->
