@@ -2409,8 +2409,8 @@ fi # section uf
 if want cs; then # section cs
 ensurehome
 # ---- BE2 / BE3 (Tj, 2026-11-07 ~17:12 and 20:17): CLEAN START + the drawer-only Recents guarantee + a fast unlock. (A) the helper removes the tasks of hidden apps by id: when such an app leaves the screen, and at the lock;
-#      (B) a plain PIN after a Quickstep session with NO helper: Recents is completely cleared, no stand-in app is started although "Open Solitaire" is ON, the custom home is what the screen shows, the cover goes at once;
-#      (C) with the helper the complete clear happens AT THE LOCK (nothing is left for the unlock); (D) the first unlock after a boot starts the custom session clean. Calendar is the HIDDEN app (not in the drawer set), Contacts a drawer app.
+#      (B) a plain PIN after a Quickstep session with NO helper: Recents is completely cleared, no stand-in app is started although "Open Solitaire" is ON, the custom home is what the screen shows, the cover goes at once.
+#      Part 2 (C, D) is section cs2. Calendar is the HIDDEN app (not in the drawer set), Contacts a drawer app.
 beat "before CS"
 adb shell locksettings set-pin 1234 > "$OUT/cs-setpin.txt" 2>&1
 pad(){ for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
@@ -2469,6 +2469,33 @@ check "CS-B4 (BE3): the last thing resumed is our launcher (the custom home is t
 check "CS-B5 (BE3): the stock launcher's HOME screen / a Quickstep app is never resumed after the Enter (the Recents screen may be, behind the cover)" bash -c "! grep -qE ' (com.android.launcher3/[.]Launcher|com.android.contacts/|com.android.calendar/)' $OUT/cs-b-resumed.txt"
 check "CS-B6 (BE3): the lock log shows the custom home in front after the clean-up ('HOME custom home in front')" grep -q 'HOME custom home in front' "$OUT/cs-b-log.txt"
 check "CS-B7: the black cover is gone (the window list has no TjResetCover)" bash -c "! adb shell dumpsys window windows | grep -q TjResetCover"
+adb shell locksettings clear --old 1234 > "$OUT/cs-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml shared_prefs/tj_apps.xml shared_prefs/tj_dirty.xml shared_prefs/tj_origin.xml shared_prefs/tj_task_origin.xml'" >/dev/null 2>&1
+setmode custom; home
+fi # section cs
+if want cs2; then # section cs2
+ensurehome
+# ---- BE2 / BE3 part 2 (split from `cs` after run #307 stalled for 9 minutes inside it): (C) clean start WITH the helper: the complete clear happens AT THE LOCK, nothing is left for the unlock; (D) the first unlock after a boot
+#      starts the custom session clean. Calendar is the HIDDEN app (not in the drawer set), Contacts a drawer app.
+beat "before CS2"
+adb shell locksettings set-pin 1234 > "$OUT/cs2-setpin.txt" 2>&1
+adb shell locksettings set-pin 1234 > "$OUT/cs2-setpin.txt" 2>&1
+pad(){ for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
+lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+CSALLOW="com.android.contacts com.android.camera2 com.android.deskclock com.android.documentsui com.android.messaging com.android.dialer com.android.quicksearchbox com.android.settings com.android.webview"
+csapps(){ local set=""; for a in $CSALLOW $1; do set="$set<string>$a</string>"; done
+  adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"baseline_done\\\" value=\\\"true\\\" /><set name=\\\"allowed\\\">$set</set></map>\" > shared_prefs/tj_apps.xml'"; }
+csfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"true\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"true\\\" /><boolean name=\\\"clean_start\\\" value=\\\"$1\\\" /><boolean name=\\\"recents_sweep\\\" value=\\\"$2\\\" /><boolean name=\\\"clean_pending_boot\\\" value=\\\"${3:-false}\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+cscount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|affinity=)$1"; }
+csshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-130 | head -${1:-8} | tr '\n' '|'; }
+csopen(){ adb shell monkey -p "$1" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; }
+csev(){ adb logcat -b events -d -v time 2>/dev/null | grep am_resume_activity | sed -E 's/^([0-9-]+ [0-9:.]+) .*,([^],]+)\].*$/\1 \2/'; }
+csnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#g'; }
+cslog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -${1:-40}; }
+csshell(){ adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5; }
+csclean(){ adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.gallery3d; adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml shared_prefs/tj_origin.xml shared_prefs/tj_dirty.xml shared_prefs/tj_task_origin.xml"; }
 # ---------------- C: clean start WITH the helper: the complete clear happens at the lock
 csclean; csapps ""; csfeat true true; setmode custom; rebind; home; sleep 2; csshell
 lockpad; pad d d 1 2 3 4 e; sleep 7                      # the default handshake: a Quickstep session begins
@@ -2504,7 +2531,7 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml shared_prefs/tj_apps.xml shared_prefs/tj_dirty.xml shared_prefs/tj_origin.xml shared_prefs/tj_task_origin.xml'" >/dev/null 2>&1
 setmode custom; home
-fi # section cs
+fi # section cs2
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
