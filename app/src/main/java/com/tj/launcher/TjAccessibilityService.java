@@ -1317,6 +1317,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 long dt = android.os.SystemClock.uptimeMillis() - t0;
                 if (isForeground(getPackageName())) {
                     hideResetCover();
+                    AnimationSpeedup.releaseReset(getApplicationContext(), "the custom home is in front");   // BF1 (Tj: animations back on "immediately ... in the custom launcher"): no 700 ms tail once the home is the screen
                     appendReport("clean start: the custom home is on screen (+" + dt + " ms)");
                     LockLog.add(getApplicationContext(), "HOME", "custom home in front +" + dt + " ms after the clean-up" + (pressed[0] ? " (one Home press)" : ""));
                     return;
