@@ -894,3 +894,28 @@
 ## 2026-11-07T20:17:40Z
 > I'll start with the repo's required first action (hooks), then read the notes for the open items that match your two requests: BC5 (pull-up hide), BC4 (screenshots), BD1 (hidden apps in Recents) and BD2 (slow unlock).
 <!-- sha:9bd34fd1196f -->
+
+## 2026-11-07T22:52:01Z
+> **Status: v0.8.5 is built and nearly through testing; it isn't released yet.** Everything is committed and pushed to GitHub, so nothing is lost if I get cut off.
+>
+> - **Patch flicker and the Screenshot flash.**
+>   - The wallpaper patch now hides the instant your finger touches the lock screen, before the PIN pad can darken the wallpaper under it. On the emulator it hid about 65 ms before the lock screen reported the PIN pad.
+>   - I found a likely cause of the one Screenshot flash. After a PIN pull-up the patch stayed "away" for a couple of seconds, and a power menu opened in that window took the slow path. It now comes back the moment the menu appears. The patch window is also built while the screen is still dark.
+> - **Hidden apps in Recents.**
+>   - The old clean-up guessed which launcher had opened an app, which is how Telegram and Claude slipped through. The new rule is: if an app isn't in the custom drawer, its Recents task is removed. This works invisibly when the adb helper is running.
+>   - It runs at lock, shortly after unlock, when Recents opens, and when the home screen returns after a hidden app was on screen.
+>   - Without the helper, the old filter that closes the cards after Recents opens is the fallback.
+> - **Clean start.**
+>   - The custom launcher no longer opens Solitaire. A custom session now starts with an empty Recents list: after a Quickstep session ends, and at the first unlock after a reboot.
+>   - It does not clear on every unlock, so you keep the apps you are using. There is a switch to bring the old behaviour back.
+> - **Unlock speed.**
+>   - The long black screen was waiting for Solitaire to start. The cover now goes away the moment the custom home is in front.
+>   - With the helper running, the whole clean-up happens while the tablet is locked, so the unlock has nothing left to do.
+>   - Without the helper, the on-screen clean-up took about 1.5 seconds on the emulator, against roughly 3 seconds before. I haven't measured it on your tablet.
+> - **Testing.**
+>   - A code review before the release found ten real problems in my first version, and I fixed all of them.
+>   - Three groups of emulator tests have passed. In the pattern/film test, one noisy timing comparison failed. It is unrelated to this change and I'm making it less fragile.
+>   - The last group (the lock-safety core, including the restart test) is still running. If it passes, I build and sign the release and send you the link.
+>
+> To get the instant unlock, the adb helper line has to be run again after every tablet restart. Without it you'll still see the cover briefly after a Quickstep session.
+<!-- sha:10b29d54080b -->
