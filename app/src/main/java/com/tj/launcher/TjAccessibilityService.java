@@ -2551,9 +2551,9 @@ public class TjAccessibilityService extends AccessibilityService {
     private void finishClose(String why) {
         handler.removeCallbacks(closeFinishRun);
         if (!closing) return;
-        closing = false;
         Log.i(TAG, "PATCH close end (" + why + ") t=" + android.os.SystemClock.uptimeMillis());
-        try { if (patchView != null) patchView.invalidate(); evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
+        try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }   // `closing` is still set here, so no frame is drawn at the open brightness in between: a menu that is gone ends it (patchShow(false))
+        if (closing) { closing = false; if (patchView != null) patchView.invalidate(); }   // the scan says the menu is still open (the sign was wrong): the open look returns
     }
 
     /** BC2: the stock dialog's window was removed (its removal event, no node scan): the patch goes back to rest in the same frame the stock scrim is gone. */
