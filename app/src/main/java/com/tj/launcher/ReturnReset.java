@@ -68,7 +68,7 @@ public final class ReturnReset {
      * app on every locked wake whatever the switch said, and every wake left a Solitaire task that Quickstep's Recents then listed. The preparation now asks this first.
      * (The RETURN reset keeps its own controls, the app-name box and "Plain (no app)": Tj asked for that behaviour on 2026-11-02.)
      */
-    public static boolean autoOpenWanted(Context c) { return Features.get(c, TjHooks.STARTUP_KEY, true); }
+    public static boolean autoOpenWanted(Context c) { return !cleanStart(c) && Features.get(c, TjHooks.STARTUP_KEY, true); }   // BE3: a clean start never opens a stand-in app
     public static String appLabel(Context c) { return Features.getString(c, APP_KEY, DEFAULT_APP); }
 
     /**
