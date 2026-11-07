@@ -749,8 +749,9 @@ public class TjAccessibilityService extends AccessibilityService {
             if (panel == null || w <= 0 || h <= 0 || (long) w * h > 500L * 500L) return;   // a slot window is about 130 x 130 px
             int e = Math.round(PatchRest.EDGE_DP * dm.density), f = Math.round(PatchRest.FEATHER_DP * dm.density), ov = Math.max(1, Math.round(PatchRest.OVERLAP_DP * dm.density));
             int cb = cardAreaGeom(panel).bottom;
-            int cl = panel.left - e - r.left, cr = panel.right + e - r.left, cbot = panel.bottom + e - r.top;
-            int fl = Math.min(f, Math.max(0, cl)), fr = Math.min(f, Math.max(0, w - cr)), fb = Math.min(f, Math.max(0, h - cbot));
+            int extra = patchExtraPx(dm), bf = patchBottomFeatherPx(dm);   // BB1: the core reaches further down (the stock panel's shadow), the sides keep their margin
+            int cl = panel.left - e - r.left, cr = panel.right + e - r.left, cbot = panel.bottom + e + extra - r.top;
+            int fl = Math.min(f, Math.max(0, cl)), fr = Math.min(f, Math.max(0, w - cr)), fb = Math.min(bf, Math.max(0, h - cbot));
             patchMaskOpen = alphaBitmap(PatchRest.mask(w, h, cl, cb - ov - r.top, cr, cbot, fl, 0, fr, fb), w, h);
             patchMaskRest = alphaBitmap(PatchRest.mask(w, h, cl, cb - r.top, cr, cbot, fl, Math.min(f, Math.max(0, cb - r.top)), fr, fb), w, h);
         } catch (Throwable t) { patchMaskOpen = null; patchMaskRest = null; Log.e(TAG, "patch masks failed", t); }
