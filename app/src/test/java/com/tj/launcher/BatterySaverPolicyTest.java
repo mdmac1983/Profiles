@@ -164,6 +164,13 @@ public class BatterySaverPolicyTest {
         assertEquals("1", BatterySaverPolicy.qsStateAtHold(true, true, false, "1"));     // second lock of the same hold: the saver is off because WE switched it off
         assertEquals("", BatterySaverPolicy.qsStateAtHold(true, true, true, null));
     }
+    @Test public void aHoldBelongsToTheSessionItBeganIn() {
+        assertTrue(BatterySaverPolicy.holdStillValid(true, 5_000, 1_000, true));      // Quickstep began BEFORE the hold (the usual lock from Quickstep)
+        assertTrue(BatterySaverPolicy.holdStillValid(true, 5_000, 9_000, false));     // custom launcher now: nothing to re-baseline
+        assertFalse(BatterySaverPolicy.holdStillValid(true, 5_000, 9_000, true));     // Quickstep began AFTER the hold (a secret entrance): that session's own state counts
+        assertFalse(BatterySaverPolicy.holdStillValid(false, 5_000, 1_000, true));    // no hold at all
+        assertTrue(BatterySaverPolicy.holdStillValid(true, 5_000, 0, true));          // unknown session start (0): keep the hold
+    }
     @Test public void whileQuickstepHasTheTabletTheLiveStateIsRemembered() {
         assertEquals("1", BatterySaverPolicy.qsStateLive(true, false, false, true, "0"));
         assertEquals("0", BatterySaverPolicy.qsStateLive(true, false, false, false, "1"));
