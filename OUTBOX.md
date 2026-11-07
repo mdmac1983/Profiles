@@ -672,3 +672,47 @@
 >
 > **Tests:** the lockout protections and the new patch checks passed on this code. I built at your word while the re-run of the one battery-saver log check (AN1) was still going. That test-timing problem doesn't affect the app. I'll read the re-run at about 07:30 UTC and tell you only if it shows something real.
 <!-- sha:e17ec0b4e3e3 -->
+
+## 2026-11-07T07:31:02Z
+> v0.8.3 is released and nothing is left for me to do on it. The Release is the link I sent above, and everything is saved to GitHub.
+>
+> The re-run of the battery-saver log check passed: 68 passed, 0 failed. The late log line didn't show up in that run, so it didn't prove the new counting method. That method can't hide a write made after your tap, and it fails safe if the log format surprises it. It only affects the test, not the app.
+>
+> Waiting on you:
+> 1. **Faint line:** is it gone on v0.8.3?
+> 2. **Flashes:** after the battery saver has been on at a lock screen, send a screenshot of the Launcher control screen.
+>
+> 📌 **Chat checkpoint: 🔴 Red**
+>
+> **Goal:** Tj's custom Android 10 Go launcher (`com.tj.launcher`). Remove the faint tinted line under the hidden power-menu card and stop the repeated measurement flashes.
+>
+> **Decisions made:**
+> - Ship v0.8.3 (code 28) at Tj's word "Build it now".
+> - One dimming measurement per theme (light and dark).
+> - Patch extended 24 dp down, plus a 4 dp bottom fringe.
+>
+> **Changed / rejected:**
+> - Counting the AN1 log lines by clearing the log and sleeping → counting by each line's own time stamp.
+> - "Same build as the last one" → v0.8.3 differs from v0.8.2; it is the same code the tests ran on.
+>
+> **Key details:**
+> - Release: https://github.com/tjshea90/Launcher/releases/tag/v0.8.3 (`android.yml` run 30, id 42350762180, on bf6a931).
+> - Emulator runs #291 `pt` and #294 `base,x1,v,ac` are green.
+> - BUILDLOG is recorded.
+> - Resume from `CHECKPOINT.md` and `HANDOFF.md` section 0g.
+>
+> **Done so far:** v0.8.3 built, signed, published and recorded. TASKS BB4 and BB5 are closed. Lessons are in `CLAUDE.md`.
+>
+> **Open / next steps:**
+> 1. Tj installs v0.8.3 and says whether the faint line is gone.
+> 2. Tj sends the Launcher control screenshot (BB3c).
+> 3. Tj's decisions AF2, CBR2 and AE6 are still open. No new work without his word.
+>
+> **Rules to remember:** photos never go in the repo. Checkpoint after every step. Tj's messages are answered, never dropped.
+>
+> ⚠️ **Health:** I mis-worded one answer ("no different from the last one") earlier in this long chat and had to correct it.
+>
+> 🔴 This chat is long. A fresh session resumes losslessly from `CHECKPOINT.md`, so start a new one after Tj's reply. The repo's own handoff replaces `/amhandoff`.
+>
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with "Yes Boss!", so you'll notice if I start losing track.
+<!-- sha:0e49132776e6 -->
