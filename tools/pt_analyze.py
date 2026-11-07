@@ -64,6 +64,17 @@ def analyse(P, S, fps, thr=0.006):
     tail = [d for (j, d) in open_devs if j >= o_end - int(0.10 * fps)]
     out = {"onset": onset / fps, "r0": r0, "rest_noise": noise, "open_max": abs(d_max), "open_at": (j_max - onset) / fps,
            "open_final": statistics.mean(tail) if tail else 0.0}
+    # TIMING ONLY, whatever the scrim's end level (2026-11-07, run #277: after sections v and pa the emulator's open-menu scrim settled at 0.75 instead of 0.80, and a patch that followed it in time still ended 6.5 % off, which open_max counts
+    # as a timing error). Both dimming curves are normalised (0 = resting level, 1 = settled end level = the median of 0.25 - 0.35 s after the onset) and compared; the difference is scaled back by the surround's dimming depth so it
+    # reads like the old brightness mismatch. A wrong END level is checked by its own number (open_final, and BA1's measured look); a patch that does not dim at all falls back to open_max.
+    a_, b_ = onset + int(0.25 * fps), min(n, onset + int(0.35 * fps))
+    p_rest = statistics.median(P[: max(3, int(0.4 * fps))])
+    out["open_shape"] = out["open_max"]
+    if b_ > a_ + 2:
+        s_end, p_end = statistics.median(S[a_:b_]), statistics.median(P[a_:b_])
+        d_s, d_p = base - s_end, p_rest - p_end
+        if d_s > 0.02 * base and d_p > 0.02 * p_rest:
+            out["open_shape"] = (1 - s_end / base) * max(abs((base - S[j]) / d_s - (p_rest - P[j]) / d_p) for j in range(max(0, onset - 2), b_))
     # closing: the surround climbs back to its resting brightness. Anchor = the frame where it has recovered HALF of the way from its plateau (the stock dismissal has a slow start, so the first small brightening is not a
     # reliable anchor: the film also shows short dips of the whole picture that would be mistaken for it). Window: 0.30 s before the anchor to 0.25 s after it; "final" = its last 0.10 s.
     plat_part = S[onset + int(0.40 * fps): onset + int(0.80 * fps)]
