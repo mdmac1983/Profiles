@@ -180,5 +180,20 @@ public final class ScrimFit {
         return "scale " + f3(t.s[0]) + " / " + f3(t.s[1]) + " / " + f3(t.s[2]) + ", offset " + String.format(Locale.US, "%.1f / %.1f / %.1f", t.o[0], t.o[1], t.o[2]) + " (R/G/B; " + t.n + " samples, rms " + String.format(Locale.US, "%.1f", t.rms) + ")";
     }
 
+    /**
+     * A line for the report / Launcher control from whatever is stored, WITHOUT checking that it is valid for the current lock screen (that is what {@link #decode} is for): what was measured, for which lock screen
+     * and when. "none" for an empty / unreadable record. Never throws.
+     */
+    public static String describeStored(String stored) {
+        try {
+            if (stored == null || stored.isEmpty()) return "none";
+            String[] p = stored.split("#");
+            if (p.length != 7) return "unreadable";
+            String[] ss = p[2].split(","), oo = p[3].split(",");
+            String when = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(new java.util.Date(Long.parseLong(p[6])));
+            return "scale " + ss[0] + " / " + ss[1] + " / " + ss[2] + ", offset " + oo[0] + " / " + oo[1] + " / " + oo[2] + " (R/G/B) for " + p[0] + (p[1].equals("n") ? " dark theme" : "") + ", " + p[4] + " samples, rms " + p[5] + ", measured " + when;
+        } catch (Throwable t) { return "unreadable"; }
+    }
+
     private static String f4(double v) { return String.format(Locale.US, "%.4f", v); }
 }
