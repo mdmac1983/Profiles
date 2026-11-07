@@ -101,6 +101,29 @@ def grid(label, bare, shot, model, panel, disp=(600, 1024)):
     return lines
 
 
+def edge_profile(bare, shot, model, panel, disp=(600, 1024)):
+    """BC1 (Tj's video, v0.8.3: a thin light sliver along the display's last pixels at the hidden slot's rows): the mean deviation (shot minus expected, levels, luminance) PER COLUMN over the hidden slot's rows
+    (the 90 rows above the panel's bottom edge), from 2 px inside the card's right edge to the display edge. Positive = lighter than the dimmed wallpaper: the stock card's edge line showing through."""
+    L, T, R, B = panel
+    xa, xb = max(0, R - 2), disp[0]
+    y0, y1 = max(0, B - 90), max(1, B - 3)
+    w, h = xb - xa, y1 - y0
+    if w <= 0 or h <= 0:
+        return {}
+    try:
+        A, S = region(bare, xa, y0, w, h), region(shot, xa, y0, w, h)
+    except (ValueError, subprocess.CalledProcessError):
+        return {}
+    out = {}
+    for i in range(w):
+        acc = 0.0
+        for j in range(h):
+            k = (j * w + i) * 3
+            acc += lumv(*[S[k + c] - (model[c][0] * A[k + c] + model[c][1]) for c in range(3)])
+        out[xa + i] = acc / h
+    return out
+
+
 def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
     L, T, R, B = panel
     # the clean region: left of the menu, well away from its shadow, below the clock / date text, above the lock number
@@ -145,6 +168,10 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
                 break
             reach = d + 1
         out["reach"] = reach
+    out["panel_right"] = R
+    out["edge"] = edge_profile(bare, shot, model, panel, disp)
+    gap = [v for x, v in out["edge"].items() if x >= R]
+    out["edge_max"] = max(gap, key=abs) if gap else 0.0     # the gap between the card's right edge and the display edge: the signed value of the largest deviation
     out["label"] = label
     out["kind"] = "stock" if stock else "patch"
     out["grid"] = grid(label, bare, shot, model, panel, disp) if want_grid else []
@@ -175,8 +202,8 @@ SIM_GEOMETRIES = ((0, 9), (10, 9), (21, 9), (21, 4), (26, 4), (30, 0))
 
 
 def report(o):
-    keys = ("shadow_max", "shadow_ext") if o["kind"] == "stock" else ("line_max", "line_at", "core_mean", "reach")
-    vals = " ".join(("%s=%d" % (k, o[k])) if k.endswith(("_ext", "_at", "reach")) else ("%s=%+.2f" % (k, o[k]) if k == "core_mean" else "%s=%.2f" % (k, o[k])) for k in keys)
+    keys = ("shadow_max", "shadow_ext", "edge_max") if o["kind"] == "stock" else ("line_max", "line_at", "core_mean", "reach", "edge_max")
+    vals = " ".join(("%s=%d" % (k, o[k])) if k.endswith(("_ext", "_at", "reach")) else ("%s=%+.2f" % (k, o[k]) if k in ("core_mean", "edge_max") else "%s=%.2f" % (k, o[k])) for k in keys)
     print("PBMETRIC label=%s kind=%s scale=%.3f/%.3f/%.3f offset=%.1f/%.1f/%.1f %s" % (o["label"], o["kind"], *o["scale"], *o["offset"], vals))
     print("PBPROFILE label=%s (d = px below the panel's bottom edge : deviation in levels, luminance; negative = darker than the dimmed wallpaper) %s" % (
         o["label"], " ".join("%d:%+.1f" % (d, o["profile"][d][0]) for d in PROBE_D if d in o["profile"])))
@@ -186,6 +213,9 @@ def report(o):
         print("PBFAR label=%s deviation far below the panel (d : levels): %s" % (o["label"], " ".join("%d:%+.0f" % (d, v) for d, v in sorted(o["far"].items()))))
         print("PBSIM label=%s predicted line (levels) a geometry would leave on a menu with NO second card, from that shadow: %s" % (
             o["label"], "  ".join("extra%d/fringe%d=%.1f@%d" % (x, f, abs(predict(o["shadow_prof"], x, f)[0]), predict(o["shadow_prof"], x, f)[1]) for x, f in SIM_GEOMETRIES)))
+    if o.get("edge"):
+        print("PBEDGE label=%s (x : mean deviation over the hidden slot's rows, levels; the card's right edge is at %s, the display edge after the last column; positive = lighter than the dimmed wallpaper) %s" % (
+            o["label"], o.get("panel_right", "?"), " ".join("%d:%+.1f" % (x, v) for x, v in sorted(o["edge"].items()))))
     for ln in o.get("grid", []):
         print(ln)
 
