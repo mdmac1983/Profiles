@@ -2656,7 +2656,7 @@ public class TjAccessibilityService extends AccessibilityService {
         st.startsThisLock = autoCalThisLock;
         String tries = Features.getString(app, AutoCalibration.TRIES_KEY, "");
         st.startsToday = AutoCalibration.startsWithinDay(tries, st.now);
-        if (st.validCrop) { autoCalNote("not needed: the patch is calibrated for this lock screen"); return; }
+        if (st.validCrop) { autoCalNote("not needed: the patch is calibrated for this lock screen"); maybeMeasureScrim("calibrated lock screen"); return; }   // BA1: the real scrim is measured once per lock screen, right after its picture exists
         String reason = AutoCalibration.decision(st);
         if (!reason.isEmpty()) {
             autoCalNote(reason);
