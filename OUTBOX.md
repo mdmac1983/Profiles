@@ -302,3 +302,7 @@
 >
 > Now running the final gate: two halves are about 10 minutes from done and the third was just started. The independent code review is still pending. I'll read all of them when they land.
 <!-- sha:a842b0081b83 -->
+
+## 2026-11-07T01:32:27Z
+> Final gate status: four runs are on the shipping commit (v0.8.2, code 27), plus one diagnostic run to understand the `ps` ordering flake. The independent review's three major findings are fixed and recorded. I'll read all results at about 01:43 UTC and then ship.
+<!-- sha:14452de44d35 -->
