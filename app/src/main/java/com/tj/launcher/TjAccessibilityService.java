@@ -1928,10 +1928,11 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.removeCallbacks(restRecheck); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoCalTrigger);
             handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork); handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
             quietUntilMs = 0;
+            scrimTeardown();   // BA1
         } catch (Throwable ignored) { }
     }
 
-    @Override public void onInterrupt() { removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); try { stopShotWatch(); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); Features.setString(this, PatchShot.CAL_UNTIL_KEY, "0"); } catch (Throwable ignored) { } }
+    @Override public void onInterrupt() { scrimTeardown(); removeHotspot(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); removeLockNumber(); picker().remove("interrupted"); try { stopShotWatch(); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); Features.setString(this, PatchShot.CAL_UNTIL_KEY, "0"); } catch (Throwable ignored) { } }
 
     @Override public boolean onUnbind(android.content.Intent i) { instance = null; LockLog.add(this, "SERVICE", "unbound"); cancelPatchWork(); removeOverlay(); removePatch(); removePencil(); hideResetCover(); picker().remove("unbound"); stopPatchWatch(); stopLockNumber(); stopRadioGuard(); stopTileGuard(); removeHotspot(); try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(sensorListener); motionOn = false; } catch (Throwable ignored) { } return super.onUnbind(i); }
 
@@ -2721,9 +2722,11 @@ public class TjAccessibilityService extends AccessibilityService {
 
     // ---------------------------------------------------------------- the measurement stage: bare frame -> the stock menu opened by the helper -> second frame -> menu closed
     private int scrimStage = 0;     // 0 idle, 1 waiting for the bare frame, 2 the gap after it, 3 the menu is opening, 4 waiting for the menu frame, 5 closing the menu
-    private long scrimBeganAt = 0, scrimStageAt = 0, scrimLastStartMs = 0, scrimAskedAt = 0, scrimMenuAt = 0, scrimPollAt = 0, scrimLastShotId = -1;
+    private long scrimBeganAt = 0, scrimStageAt = 0, scrimLastStartMs = 0, scrimAskedAt = 0, scrimMenuAt = 0, scrimPollAt = 0;
+    private volatile long scrimLastShotId = -1;   // shared with the worker thread (review nit)
     private int scrimThisLock = 0, scrimCloseTries = 0, scrimGoneTicks = 0;
-    private boolean scrimOpenedMenu = false, scrimIngesting = false;
+    private boolean scrimOpenedMenu = false;
+    private volatile boolean scrimIngesting = false;   // shared with the worker thread (review nit)
     private int[] scrimPoints, scrimRef;   // the sample points of the bare frame ((y << 16) | x) and its pixels there
     private String lastScrimNote = "", scrimOutcome = "";
 
@@ -2760,6 +2763,7 @@ public class TjAccessibilityService extends AccessibilityService {
         st.lastStartMs = scrimLastStartMs;
         st.startsThisLock = scrimThisLock;
         st.startsToday = AutoCalibration.startsWithinDay(Features.getString(app, ScrimMeasure.TRIES_KEY, ""), st.now);
+        st.failures = ScrimMeasure.failures(Features.getString(app, ScrimMeasure.failKey(rotation()), ""), shotSig(), isNightNow());   // review of BA1: a lock screen that cannot be fitted is not retried every day
         return st;
     }
 
@@ -2856,6 +2860,9 @@ public class TjAccessibilityService extends AccessibilityService {
     private void scrimFinish(String outcome) {
         scrimOutcome = outcome == null ? "" : outcome;
         scrimNote(scrimOutcome);
+        try {   // review of BA1 (finding 5): frames that were taken but could not be fitted are counted per lock screen; an interruption is not
+            if (ScrimMeasure.measurementFailure(scrimOutcome)) { android.content.Context app = getApplicationContext(); String k = ScrimMeasure.failKey(rotation()); Features.setString(app, k, ScrimMeasure.addFailure(Features.getString(app, k, ""), shotSig(), isNightNow())); }
+        } catch (Throwable ignored) { }
         Log.i(TAG, "SCRIM finished: " + scrimOutcome);
         scrimPoints = null; scrimRef = null;
         scrimStage = 5; scrimStageAt = android.os.SystemClock.uptimeMillis(); scrimCloseTries = 0;
@@ -2863,12 +2870,25 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private void scrimCloseStep() {
-        // done when the menu was never ours, or (after the first BACK, which is sent even if the menu was not detected: a stray BACK on a plain lock screen does nothing) when it is gone
-        if (!scrimOpenedMenu || (scrimCloseTries > 0 && !overlayShown)) { scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); try { layerRefresh.run(); } catch (Throwable ignored) { } return; }
+        // Review of BA1 (finding 3): BACK goes ONLY to a stock menu that is verifiably still there AND over a lock screen that is still plain. After the person swiped up (PIN pad) or unlocked, a BACK would close
+        // the PIN pad or reach the app that just came up (and the system dismisses the menu itself then); a menu that is already gone needs nothing.
+        boolean present = overlayShown;
+        if (!present) { try { present = dialogWindowPresent(getWindows()); } catch (Throwable ignored) { } }   // the window list is authoritative: the helper's own detection can lag or blink
+        if (!scrimOpenedMenu || !present) { scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); try { layerRefresh.run(); } catch (Throwable ignored) { } return; }
+        if (!keyguardLocked() || lastBouncer) { scrimNote(scrimOutcome + "; left the menu to the system (the lock screen is no longer plain)"); scrimStage = 0; scrimOpenedMenu = false; handler.removeCallbacks(scrimTick); return; }
         if (scrimCloseTries >= ScrimMeasure.CLOSE_TRIES) { scrimNote(scrimOutcome + "; the power menu would not close by itself: tap outside it"); scrimStage = 0; scrimOpenedMenu = false; return; }
         scrimCloseTries++;
         try { performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { }
         handler.postDelayed(scrimTick, ScrimMeasure.CLOSE_STEP_MS);
+    }
+
+    /** Review of BA1 (finding 7): the service is being interrupted / unbound / destroyed: stop the sequence and, if the helper opened the stock menu and it is still up over a plain lock screen, close it once. */
+    private void scrimTeardown() {
+        try {
+            handler.removeCallbacks(scrimTick); handler.removeCallbacks(scrimTrigger);
+            if (scrimOpenedMenu && scrimStage != 0 && overlayShown && keyguardLocked() && !lastBouncer) { try { performGlobalAction(GLOBAL_ACTION_BACK); } catch (Throwable ignored) { } }
+            scrimOpenedMenu = false; scrimStage = 0; scrimPoints = null; scrimRef = null;
+        } catch (Throwable ignored) { }
     }
 
     /** One look for the screenshot (worker thread): the bare frame fixes the sample points, the menu frame is fitted against them. Nothing here may throw into the lock screen. */
@@ -2883,7 +2903,7 @@ public class TjAccessibilityService extends AccessibilityService {
         ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
         final int shadow = Math.round(18 * dm.density);
         final int[] points = scrimPoints, ref = scrimRef;
-        new Thread(new Runnable() { @Override public void run() {
+        try { new Thread(new Runnable() { @Override public void run() {
             try {
                 PatchShot.Shot row = PatchShot.newestShot(app, asked);
                 if (row == null) return;   // not there yet: the next tick looks again
@@ -2928,7 +2948,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 }
             } catch (Throwable t) { Log.e(TAG, "scrim ingest failed", t); postFinish("stopped: " + t); }
             finally { scrimIngesting = false; }
-        } }, "tj-scrim").start();
+        } }, "tj-scrim").start(); } catch (Throwable t) { scrimIngesting = false; Log.e(TAG, "scrim worker could not start", t); postFinish("stopped: " + t); }   // a thread that cannot be started (out of memory) ends the try, it never throws into the lock path
     }
 
     private void postFinish(final String outcome) { handler.post(new Runnable() { @Override public void run() { if (scrimStage != 0 && scrimStage != 5) scrimFinish(outcome); } }); }
