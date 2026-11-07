@@ -2533,6 +2533,85 @@ adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml shared_prefs/tj_apps.xml shared_prefs/tj_dirty.xml shared_prefs/tj_origin.xml shared_prefs/tj_task_origin.xml'" >/dev/null 2>&1
 setmode custom; home
 fi # section cs2
+if want an; then # section an
+ensurehome
+# ---- AN (BF1; Tj, 2026-11-07 23:36 UTC: "turn off all animations ... turned back on automatically and immediately on both the lock screen and in the custom launcher. Animations should only ever be turned off inside quickstep launcher"):
+#      the three global scales are 0 ONLY while an unlocked Quickstep session is on screen, and exactly as they were everywhere else. The CI emulator normally runs with animations OFF, so this section sets its own start values.
+beat "before AN"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+anscales(){ adb shell "settings get global window_animation_scale; settings get global transition_animation_scale; settings get global animator_duration_scale" 2>/dev/null | tr -d '\r' | tr '\n' ' '; }
+anset(){ local n; for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }
+anwait(){ # anwait "<the three scales as anscales prints them>" <seconds>: polls twice a second; prints the milliseconds it took, or "never"
+  local want="$1" max="$2" t0 i; t0=$(date +%s%N)
+  for i in $(seq 1 $((max * 2))); do
+    if [ "$(anscales)" = "$want" ]; then echo $(( ( $(date +%s%N) - t0 ) / 1000000 )); return 0; fi
+    sleep 0.5
+  done; echo never; return 1; }
+anfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"quickstep_animations_off\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+anlog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r'; }
+anoffs(){ anlog | grep -c ' ANIM OFF' | tr -d ' \r\n'; }
+adb shell locksettings set-pin 1234 > "$OUT/an-setpin.txt" 2>&1
+# AN1: the custom launcher touches nothing
+anset 1.0; anfeat true; setmode custom; rebind; home; sleep 3
+AN_C="$(anscales)"
+check "AN1: in the custom launcher the animation scales are untouched (1.0 / 1.0 / 1.0)" bash -c "[ \"$AN_C\" = '1.0 1.0 1.0 ' ]"
+# AN2: an unlocked Quickstep session = off (Mode.set is bypassed by the test helper, so this is the helper-connect / process-start trigger)
+setmode quickstep; rebind; home
+AN_T2="$(anwait '0 0 0 ' 12)"
+info "AN2: Quickstep session on screen: scales $(anscales)(first seen $AN_T2 ms after the poll began)"
+check "AN2: in an unlocked Quickstep session all three animation scales are 0" bash -c "[ \"$AN_T2\" != never ]"
+check "AN2: the lock log names it (ANIM OFF in the Quickstep session)" bash -c "[ \"$(anoffs)\" -ge 1 ]"
+# AN3 / AN4: the lock screen. Screen off = the animations are back before the lock screen can show; on the lock screen they stay real
+AN_O0="$(anoffs)"
+adb shell input keyevent KEYCODE_POWER
+AN_T3="$(anwait '1.0 1.0 1.0 ' 6)"
+info "AN3: scales back $AN_T3 ms after the screen-off key returned"
+check "AN3: the moment the screen goes off (the lock screen is next) the animations are back (1.0), within 2.5 s" bash -c "[ \"$AN_T3\" != never ] && [ \"$AN_T3\" -le 2500 ]"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 3; shot 98-an-lockscreen
+AN_L="$(anscales)"
+info "AN4: lock screen: $(adb shell dumpsys window policy 2>/dev/null | grep -io 'showing=[a-z]*' | head -2 | tr '\n' ' ')scales $AN_L"
+check "AN4: on the lock screen the animations stay real (1.0)" bash -c "[ \"$AN_L\" = '1.0 1.0 1.0 ' ]"
+# AN5: a plain PIN = the custom launcher. The stored mode still says Quickstep until the unlock handler answers: the animations must not blink off in between
+adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 6
+AN_P="$(anscales)"; getmode > "$OUT/an-mode-plain.txt"; AN_O1="$(anoffs)"
+check "AN5: a plain PIN ends in the custom launcher with the animations real (1.0)" bash -c "grep -q custom $OUT/an-mode-plain.txt && [ \"$AN_P\" = '1.0 1.0 1.0 ' ]"
+check "AN5: ... and they were never switched off on the way (no new ANIM OFF line since the Quickstep session)" bash -c "[ \"$AN_O1\" = \"$AN_O0\" ]"
+# AN6: the gesture (Delete x2 before the PIN) = Quickstep again: off once the unlock is decided
+lockpad
+pad d d 1 2 3 4 e; sleep 4
+AN_T6="$(anwait '0 0 0 ' 8)"; getmode > "$OUT/an-mode-gesture.txt"
+check "AN6: the gesture unlock into Quickstep switches the animations off (after the lock screen is gone)" bash -c "grep -q quickstep $OUT/an-mode-gesture.txt && [ \"$AN_T6\" != never ]"
+info "AN6: off after $AN_T6 ms of polling; lock log: $(anlog | grep ' ANIM ' | tail -3 | cut -c1-120 | tr '\n' '|')"
+# AN7: the way back (double Home) = custom: the animations are real again (the return reset itself runs animation-free behind its cover and gives them back when its work is done)
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 8
+AN_B="$(anscales)"; getmode > "$OUT/an-mode-back.txt"
+check "AN7: the double-Home return to the custom launcher gives the animations back (1.0)" bash -c "grep -q custom $OUT/an-mode-back.txt && [ \"$AN_B\" = '1.0 1.0 1.0 ' ]"
+# AN8: exactly as they were (0.5 here, not a fixed 1.0); a scale changed by hand during the session is his and stays
+anset 0.5; setmode quickstep; rebind; home
+AN_T8="$(anwait '0 0 0 ' 10)"
+adb shell settings put global window_animation_scale 1.5     # one scale changed in Developer options while the session runs
+adb shell input keyevent KEYCODE_POWER; sleep 3
+AN_X="$(anscales)"
+check "AN8: the scales return exactly as they were (0.5 / 0.5), and the one changed by hand during the session stays (1.5)" bash -c "[ \"$AN_T8\" != never ] && [ \"$AN_X\" = '1.5 0.5 0.5 ' ]"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2; pad 1 2 3 4 e; sleep 5
+# AN9: a Quickstep session cut off by a kill cannot leave the animations off. A force-stop also unbinds the accessibility helper, so the next start must give them back by itself
+anset 1.0; setmode quickstep; rebind; home
+AN_T9="$(anwait '0 0 0 ' 10)"
+adb shell am force-stop "$PKG"; sleep 1
+info "AN9: right after the kill the scales are $(anscales)(a dead process cannot give them back)"
+adb shell input keyevent KEYCODE_HOME
+AN_T9B="$(anwait '1.0 1.0 1.0 ' 14)"
+check "AN9: the next start of the launcher process gives them back (1.0)" bash -c "[ \"$AN_T9\" != never ] && [ \"$AN_T9B\" != never ]"
+# AN10: the switch OFF = nothing changes
+anset 1.0; anfeat false; setmode quickstep; rebind; home; sleep 4
+AN_S="$(anscales)"
+check "AN10: with the switch OFF a Quickstep session leaves the animations alone (1.0)" bash -c "[ \"$AN_S\" = '1.0 1.0 1.0 ' ]"
+adb shell locksettings clear --old 1234 > "$OUT/an-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+anset 0     # the CI emulator's normal state (animations off): the next section expects it
+setfeat; setmode custom; rebind; home
+fi # section an
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
