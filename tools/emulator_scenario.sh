@@ -2209,7 +2209,28 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
     PBP0="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra0/fringe9=[0-9.]*' | head -1 | cut -d= -f2)"; PBP1="$(grep PBSIM "$OUT/pb-metrics.txt" | grep -o 'extra26/fringe4=[0-9.]*' | head -1 | cut -d= -f2)"
     info "PB: the line a geometry would leave on a menu WITHOUT the second card, predicted from the stock shadow measured under it (levels): v0.8.2 geometry ${PBP0:-?}, default ${PBP1:-?}"
     check "PB: from the stock shadow the default geometry leaves a line of at most 2 levels, and no more than the v0.8.2 geometry" awk -v n="${PBP1:-99}" -v o="${PBP0:-0}" 'BEGIN{exit !(n+0 <= 2.0 && n+0 <= o+0)}'
-  else info "PB: no measurement, so phase D (the shadow line) is skipped"; fi
+    # ---- E (BB2, Tj, 2026-11-07, while testing the battery saver: "the lock screen screenshot itself again, not sure why"): the stored measurement was valid for ONE theme only and there was ONE slot, so every flip of the
+    #      theme (battery saver switches the dark theme on and off) made the helper measure again (two camera flashes, the stock menu opening by itself) and overwrite the other theme's value. One slot per theme: the
+    #      first time in the dark theme it is measured ONCE (slot patch_scrim_r0n, the light slot untouched); flipping back to the light theme must not start another measurement.
+    scrimslot(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o "name=\"$1\">[^<]*" | sed 's/.*>//'; }
+    adb shell cmd uimode night yes >/dev/null 2>&1; sleep 2
+    info "PT/BB2: uimode after 'night yes': $(adb shell cmd uimode night 2>&1 | tr -d '\r' | head -1)"
+    adb logcat -c
+    pbrestart                                                                   # the helper starts in the dark theme: nothing is stored for it yet, so ONE measurement
+    for i in $(seq 1 50); do scrimslot patch_scrim_r0n | grep -q '#n#' && break; sleep 2; done
+    NIGHT_SLOT="$(scrimslot patch_scrim_r0n)"; DAY_SLOT="$(scrimslot patch_scrim_r0)"; WHYN="$(scrimslot scrim_why)"
+    STARTS_N="$(adb logcat -d -s TjA11y:I 2>/dev/null | grep -c 'SCRIM measurement started')"
+    info "PT/BB2: in the dark theme: dark slot = ${NIGHT_SLOT:-none}; light slot = ${DAY_SLOT:-none}; measurements started $STARTS_N; why: ${WHYN:-?}"
+    check "BB2: the dark theme got its OWN measurement (slot patch_scrim_r0n)" bash -c "echo \"$NIGHT_SLOT\" | grep -q '#n#'"
+    check "BB2: ... and the light theme's measurement was not overwritten (slot patch_scrim_r0 is still the light one)" bash -c "echo \"$DAY_SLOT\" | grep -q '#d#'"
+    check "BB2: the reason of the dark-theme measurement is written in plain words" bash -c "echo \"$WHYN\" | grep -q 'started because'"
+    adb shell cmd uimode night no >/dev/null 2>&1; sleep 2
+    adb logcat -c
+    pbrestart; sleep 25                                                          # back in the light theme: it was measured already, no second measurement may start
+    STARTS_D="$(adb logcat -d -s TjA11y:I 2>/dev/null | grep -c 'SCRIM measurement started')"
+    info "PT/BB2: back in the light theme: measurements started in the next ~40 s: $STARTS_D"
+    check "BB2: flipping the theme back does not start another measurement (no flashes, no menu opening by itself)" test "${STARTS_D:-9}" -eq 0
+  else info "PB: no measurement, so phases D (the shadow line) and E (the theme slots) are skipped"; fi
 else info "PT: no menu geometry (no CARD area line)"; check "PT: the menu rectangle was learned" false; fi
 
 # ---------------- clean up
