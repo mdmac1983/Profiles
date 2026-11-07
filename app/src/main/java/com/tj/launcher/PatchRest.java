@@ -49,8 +49,37 @@ public final class PatchRest {
      * top edge of the RESTING patch; while the menu is open that strip is transparent and the card covers the rest). Clamped to the display.
      */
     public static int[] slotWindow(int panelLeft, int cardBottom, int panelRight, int panelBottom, int edge, int feather, int dispW, int dispH) {
+        return slotWindow(panelLeft, cardBottom, panelRight, panelBottom, edge, feather, 0, feather, dispW, dispH);   // the v0.8.2 geometry: no extension, the bottom fringe as wide as the others
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------------
+    // BB1 (Tj, 2026-11-07, v0.8.2, after the square itself became invisible: "a very slight tinted line about where the bottom of the card would be. Like a faded tint"). The stock panel casts an ELEVATION SHADOW downward
+    // (a dark band 6 to 10 levels deep right under its real bottom edge that fades out over ~15 to 30 px; measured in Tj's photos 2026-11-07 00:20 / 00:21, TASKS BB1a). The opaque core reached only EDGE_DP past the panel and
+    // then faded out, so the shadow showed through the fringe and below the window. The core now reaches EXTRA_BOTTOM_DP further DOWN (the sides keep their margin: the shadow is cast downward) and the bottom fringe may be
+    // shorter. The stored real-pixel crop is the window + PatchShot.MARGIN_PX on every side, so the extension is clamped to stay inside it (no new calibration screenshot for existing installs).
+    // ------------------------------------------------------------------------------------------------------------------------------------------------
+
+    /** dp: how much further down than the old window the opaque core reaches (default; the hidden preference {@code patch_extra_dp} overrides it, 0 = the v0.8.2 geometry). */
+    public static final float EXTRA_BOTTOM_DP = 20f;
+    /** The hidden preferences (dp): the extension and the width of the bottom fringe (default = FEATHER_DP). Not in Launcher control: the emulator section {@code pb} sets them to compare geometries. */
+    public static final String EXTRA_KEY = "patch_extra_dp", BOTTOM_FEATHER_KEY = "patch_bfeather_dp";
+    /** px of slack kept inside the stored crop: the learned panel's bottom can wobble by a pixel between scans, and the crop must still cover the window. */
+    public static final int CROP_SLACK_PX = 3;
+
+    /** The slot window with a taller bottom: the core reaches {@code extraBottom} px past the usual edge, then a fringe of {@code bottomFeather} px. */
+    public static int[] slotWindow(int panelLeft, int cardBottom, int panelRight, int panelBottom, int edge, int feather, int extraBottom, int bottomFeather, int dispW, int dispH) {
         int m = edge + feather;
-        return new int[] { Math.max(0, panelLeft - m), Math.max(0, cardBottom - feather), Math.min(dispW, panelRight + m), Math.min(dispH, panelBottom + m) };
+        int mb = edge + Math.max(0, extraBottom) + Math.max(0, bottomFeather);
+        return new int[] { Math.max(0, panelLeft - m), Math.max(0, cardBottom - feather), Math.min(dispW, panelRight + m), Math.min(dispH, panelBottom + mb) };
+    }
+
+    /**
+     * The extension in px for a wish in dp: never negative, and never more than the stored crop's margin minus the slack, so the window stays inside the crop that was cut for the OLD window (margin = the crop's
+     * extra rows on every side). The bottom fringe eats into the same margin: pass what is left after it ({@code extra + bottomFeather - oldFeather <= margin - slack}).
+     */
+    public static int clampExtra(int wantedPx, int bottomFeatherPx, int oldFeatherPx, int cropMarginPx) {
+        int room = cropMarginPx - CROP_SLACK_PX - (bottomFeatherPx - oldFeatherPx);
+        return Math.max(0, Math.min(wantedPx, room));
     }
 
     /**
