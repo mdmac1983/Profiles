@@ -1325,6 +1325,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (!pressed[0] && dt >= 200) { pressed[0] = true; goHome(); }
                 if (dt < 1500) { handler.postDelayed(this, 40); return; }
                 hideResetCover();
+                AnimationSpeedup.releaseReset(getApplicationContext(), "settle timed out");
                 appendReport("clean start: the custom home was not confirmed in front after " + dt + " ms (cover removed anyway)");
                 LockLog.add(getApplicationContext(), "HOME", "custom home NOT confirmed in front after " + dt + " ms; cover removed anyway");
             } catch (Throwable t) { Log.e(TAG, "settle home failed", t); hideResetCover(); }
