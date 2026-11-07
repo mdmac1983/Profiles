@@ -986,6 +986,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void lockQuietNow(String why) {
         lqLastWrite = 0; lqWrites = 0;
         LockQuiet.onLockAsync(getApplicationContext());
+        BatterySaverGuard.onLockAsync(getApplicationContext(), why);   // BA2 (Tj, 2026-11-07): the lock screen always has battery saver OFF, from any launcher; Quickstep's own state is remembered for a gesture unlock
         applyLockTiles(why);
         handler.removeCallbacks(autoCalTrigger); handler.postDelayed(autoCalTrigger, 3000);   // AW5: a lock screen without a valid crop is calibrated once it is plain
     }
