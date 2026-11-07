@@ -741,3 +741,7 @@
 >   4. Update Brave.
 > - For a lighter browser, try Firefox. It has its own engine and doesn't use the Chromium graphics path. DuckDuckGo or Via are also lighter.
 <!-- sha:8d92bf40e038 -->
+
+## 2026-11-07T16:41:17Z
+> The emulator run (#295) that films the three ways of closing the menu and probes the right-edge columns is still going. It should finish by about 16:42 UTC, and I'll read it at 16:43.
+<!-- sha:237572c535a9 -->
