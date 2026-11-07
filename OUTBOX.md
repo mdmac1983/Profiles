@@ -753,3 +753,14 @@
 ## 2026-11-07T16:58:29Z
 > The second emulator run with animations back on is almost finished, so I'll read it at 17:00 UTC. It shows whether the patch now follows the stock fade-out when the menu is closed by a tap or the Home key.
 <!-- sha:b6e9f558ca36 -->
+
+## 2026-11-07T17:02:12Z
+> The v0.8.4 candidate is in its full test gate: three emulator runs in parallel, started at 17:02 UTC. They should finish at about 17:19 UTC, and I'll read them then.
+>
+> The version bump and release only happen once all three are clean.
+>
+> Status of your two requests:
+> - **Right-edge sliver:** fixed. The patch now matches the lock screen to the last column on the emulator, within 0.1 level.
+> - **Flicker when closing:** fixed for the tap-in-the-middle case. The largest brightness mismatch dropped from 20% to 3.8%.
+> - **Pull-up for the PIN:** I can't reproduce it on the emulator, so I don't yet know how it behaves.
+<!-- sha:35745429e4f4 -->
