@@ -1,13 +1,13 @@
-# CHECKPOINT 559 — read me first, then TASKS.md
+# CHECKPOINT 560 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T01:00:27Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `ab47af8` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T01:00:59Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/power-menu-wallpaper-brightness-g7588s` · **builds on:** `5e89113` (this checkpoint is the commit after it)
 
 ## Just done
-gate prep: decode retry, Control switch also stops using a stored measurement, async hold bookkeeping; BA2 proven (#265 bl 21 PASS, #268 bs 13 PASS); #269 pt (phase C) still running
+gate runs dispatched on 5e89113: #270 id 42321616646 = {n,o,t,x,ac,bs,lq}, #271 id 42321619870 = {x1,e1,bl,ps,rb}; #269 pt id 42321050689 (phase C) still running
 
 ## Do this next
-Gate runs dispatched on this commit: {n,o,t,x,ac,bs,lq} and {x1,e1,bl,ps,rb}; when #269 pt reports, dispatch {base,v,pa,pt,uf,last}; read all; tick BA1b-d; bump version (app/build.gradle.kts 27 / 0.8.2), ship.sh, android.yml full_build, record-release
+Read #269 first (pt phase C: INFO PT/BA1 lines + the BA1 checks); then #270/#271 (get_job_logs tail 80 each); then dispatch {base,v,pa,pt,uf,last} on the final commit; bump version, ship
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ Gate runs dispatched on this commit: {n,o,t,x,ac,bs,lq} and {x1,e1,bl,ps,rb}; wh
 
 ## Last ten checkpoints
 ```
+  5e89113 ckpt 559: gate prep: decode retry, Control switch also stops using a stored measurement,
   35e87c1 ckpt 558: HANDOFF 0g + CLAUDE.md lessons written; scrim decision uses the stored measure
   11b1655 ckpt 557: BA2 boxes ticked with run #265 proof; BA1 status written; guard hold bookkeepi
   13c6146 ckpt 556: BA1a-c coded: ScrimFit (robust per-channel fit, 17 tests), ScrimMeasure (polic
@@ -25,8 +26,4 @@ Gate runs dispatched on this commit: {n,o,t,x,ac,bs,lq} and {x1,e1,bl,ps,rb}; wh
   1a81bd9 ckpt 552: v0.8.1 gated (ship.sh OK, commit 7d85b50 pushed, main = branch tip) and androi
   7d85b50 ckpt 551: gated v0.8.1 (code 26) and pushed it: the handoff self-test, the full unit sui
   b23199b ckpt 550: TASKS: 21 boxes ticked with proof (tools/tick_v081.py), AZ FINAL + AZ4 written
-  2808072 ckpt 549: final gate: #260 {x1,e1,b6,o,bs,lq,ao,rb} PASS, #262 pt PASS, #259 {base,y2,t,
 ```
-
-(2 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
