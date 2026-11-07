@@ -2432,6 +2432,7 @@ csclean; csapps ""; csfeat false true; setmode custom; rebind; home; sleep 2; cs
 check "CS-A0: the shell helper process is running" bash -c "[ -n \"\$(adb shell pgrep -f com.tj.launcher.ShellServer | tr -d '\\r\\n')\" ]"
 csopen com.android.calendar; csopen com.android.contacts
 sleep 3
+info "CS progress: part A, hidden app left the screen, +${SECONDS}s"
 CSA_CAL="$(cscount com.android.calendar)"; CSA_CON="$(cscount com.android.contacts)"
 info "CS-A: the hidden app (Calendar) was opened and left, then a drawer app (Contacts): Recents calendar=$CSA_CAL contacts=$CSA_CON; raw: $(csshow 6)"
 check "CS-A1 (BE2): a hidden app that has left the screen is NOT in Recents (removed by id in the background, before any Recents screen)" bash -c "[ \"${CSA_CAL:-9}\" = 0 ]"
@@ -2451,6 +2452,7 @@ check "CS-A3 (BE2): at the lock the task of an app that is NOT in the drawer is 
 check "CS-A4: ... the lock log says so ('SWEEP lock')" grep -q 'SWEEP lock' "$OUT/cs-a-lock.txt"
 check "CS-A5: ... and the drawer app's task is still there" bash -c "[ \"${CSA_CON3:-0}\" -ge 1 ]"
 adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2; pad 1 2 3 4 e; sleep 4
+info "CS progress: part A done, +${SECONDS}s"
 # ---------------- B: clean start, a plain PIN after a Quickstep session, NO helper
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
 csclean; csapps ""; csfeat true false; setmode quickstep; rebind; home; sleep 2
@@ -2461,13 +2463,14 @@ pad 1 2 3 4 e; sleep 9
 csev > "$OUT/cs-b-resumed.txt"; getmode > "$OUT/cs-b-mode.txt"; cslog 60 > "$OUT/cs-b-log.txt"
 CSB_CON="$(cscount com.android.contacts)"; CSB_CAL="$(cscount com.android.calendar)"
 info "CS-B: after the plain PIN: mode $(cat $OUT/cs-b-mode.txt); resumed in order: $(csnames $OUT/cs-b-resumed.txt); Recents contacts=$CSB_CON calendar=$CSB_CAL; stand-in process: [$(adb shell pidof com.android.calendar | tr -d '\r\n')]"
-info "CS-B: the log: $(grep -E 'RESET|HOME|UNLOCK' $OUT/cs-b-log.txt | tail -5 | cut -c1-170 | tr '\n' '|')"
+info "CS-B: the log: $(grep -E 'RESET|HOME|UNLOCK|LOCKPREP' $OUT/cs-b-log.txt | tail -7 | cut -c1-300 | tr '\n' '|')"
 check "CS-B1 (BE3): after a Quickstep session a plain PIN ends in the custom world (mode custom)" grep -q custom "$OUT/cs-b-mode.txt"
 check "CS-B2 (BE2): Recents is COMPLETELY cleared (a drawer app and a hidden app of the Quickstep session are both gone)" bash -c "[ \"${CSB_CON:-9}\" = 0 ] && [ \"${CSB_CAL:-9}\" = 0 ]"
 check "CS-B3 (BE3): no stand-in app was started although 'Open Solitaire' is ON (clean start wins): Calendar has no process" bash -c "[ -z \"\$(adb shell pidof com.android.calendar | tr -d '\r\n')\" ]"
 check "CS-B4 (BE3): the last thing resumed is our launcher (the custom home is the screen)" bash -c "tail -1 $OUT/cs-b-resumed.txt | grep -q ' com.tj.launcher/'"
 check "CS-B5 (BE3): the stock launcher's HOME screen / a Quickstep app is never resumed after the Enter (the Recents screen may be, behind the cover)" bash -c "! grep -qE ' (com.android.launcher3/[.]Launcher|com.android.contacts/|com.android.calendar/)' $OUT/cs-b-resumed.txt"
 check "CS-B6 (BE3): the lock log shows the custom home in front after the clean-up ('HOME custom home in front')" grep -q 'HOME custom home in front' "$OUT/cs-b-log.txt"
+info "CS progress: part B read, +${SECONDS}s"
 check "CS-B7: the black cover is gone (the window list has no TjResetCover)" bash -c "! adb shell dumpsys window windows | grep -q TjResetCover"
 adb shell locksettings clear --old 1234 > "$OUT/cs-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
@@ -2502,6 +2505,7 @@ lockpad; pad d d 1 2 3 4 e; sleep 7                      # the default handshake
 getmode > "$OUT/cs-c-mode0.txt"
 check "CS-C0: a Quickstep session began (the handshake worked)" grep -q quickstep "$OUT/cs-c-mode0.txt"
 csopen com.android.contacts; csopen com.android.calendar; csopen com.android.gallery3d
+info "CS2 progress: Quickstep session open, +${SECONDS}s"
 info "CS-C: Quickstep session, Recents before the lock: contacts=$(cscount com.android.contacts) calendar=$(cscount com.android.calendar) gallery=$(cscount com.android.gallery3d)"
 adb logcat -c; adb shell input keyevent KEYCODE_POWER; sleep 10
 getmode > "$OUT/cs-c-mode1.txt"; cslog 60 > "$OUT/cs-c-lock.txt"
@@ -2510,8 +2514,10 @@ info "CS-C: after the lock: Recents contacts=$CSC_CON calendar=$CSC_CAL gallery=
 check "CS-C1 (BE2/BE3): the lock-time clean-up cleared Recents COMPLETELY (drawer app, hidden app and Quickstep-only app all gone)" bash -c "[ \"${CSC_CON:-9}\" = 0 ] && [ \"${CSC_CAL:-9}\" = 0 ] && [ \"${CSC_GAL:-9}\" = 0 ]"
 check "CS-C2: ... the persistent lock log says 'CLEANLOCK complete clear'" grep -q 'CLEANLOCK complete clear' "$OUT/cs-c-lock.txt"
 check "CS-C3: ... and the custom account is active behind the lock screen" grep -q custom "$OUT/cs-c-mode1.txt"
+info "CS2 progress: locked and read, +${SECONDS}s"
 adb shell input keyevent KEYCODE_WAKEUP; sleep 2; adb shell input swipe 300 900 300 300 300; sleep 2
 adb logcat -b events -c; pad 1 2 3 4 e; sleep 5
+info "CS2 progress: unlocked again, +${SECONDS}s"
 csev > "$OUT/cs-c-resumed.txt"
 info "CS-C: the unlock after the lock-time clean-up resumed: $(csnames $OUT/cs-c-resumed.txt)"
 check "CS-C4 (BE3): the unlock after a lock-time clean-up shows only our launcher (no Quickstep item, no stand-in)" bash -c "! grep -qE ' (com.android.launcher3/|com.android.contacts/|com.android.calendar/|com.android.gallery3d/)' $OUT/cs-c-resumed.txt"
