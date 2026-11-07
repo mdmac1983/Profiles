@@ -117,6 +117,13 @@ public class ScrimFitTest {
         assertNull(ScrimFit.combine(fitOf(1.00, 0, 30), fitOf(1.00, 0, 31), fitOf(1.00, 0, 32), why));   // s = 1: nothing was darkened (the menu was not open)
         assertTrue(why[0].contains("not a darkening"));
     }
+    @Test public void aFrameFromTheMiddleOfTheFadeIsNotStoredForGood() {
+        String[] why = new String[1];
+        assertNull(ScrimFit.combine(fitOf(0.97, 0, 60), fitOf(0.97, 0, 61), fitOf(0.97, 0, 62), why));   // the fade had barely begun
+        assertTrue(why[0], why[0].contains("not a darkening"));
+        assertNotNull(ScrimFit.combine(fitOf(0.80, 0, 63), fitOf(0.80, 0, 64), fitOf(0.80, 0, 65), why));   // the stock scrim
+        assertNull(ScrimFit.decode(ScrimFit.encode(new ScrimFit.Transform(new float[] { 0.96f, 0.96f, 0.96f }, new float[] { 0, 0, 0 }, 1000, 0.5), "a|r0|1x1", false, 1L), "a|r0|1x1", false));   // and a stored one is held to the same gate
+    }
     @Test public void aHugeOffsetIsNotAScrim() {
         String[] why = new String[1];
         assertNull(ScrimFit.combine(fitOf(0.80, 50, 40), fitOf(0.80, 50, 41), fitOf(0.80, 50, 42), why));

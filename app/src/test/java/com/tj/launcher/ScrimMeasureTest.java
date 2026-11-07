@@ -49,6 +49,32 @@ public class ScrimMeasureTest {
         s = go(); s.startsThisLock = ScrimMeasure.MAX_PER_LOCK; assertTrue(ScrimMeasure.decision(s).contains("this lock"));
         s = go(); s.startsToday = ScrimMeasure.MAX_PER_DAY; assertTrue(ScrimMeasure.decision(s).contains("today"));
     }
+    // ---- review of BA1: a lock screen that cannot be fitted is not retried every day
+    @Test public void aLockScreenThatCannotBeFittedIsGivenUpAfterTwoTries() {
+        ScrimMeasure.State s = go(); s.failures = 1; assertTrue(ScrimMeasure.shouldStart(s));
+        s.failures = ScrimMeasure.MAX_FAILURES; assertFalse(ScrimMeasure.shouldStart(s)); assertTrue(ScrimMeasure.decision(s).contains("gave up for this lock screen"));
+        s.haveMeasurement = true; assertEquals("", ScrimMeasure.decision(s));   // a measurement that exists always wins
+    }
+    @Test public void failuresAreCountedPerLockScreenAndTheme() {
+        String sig = PatchShot.sig(7, 0, 600, 1024), other = PatchShot.sig(8, 0, 600, 1024);
+        assertEquals(0, ScrimMeasure.failures("", sig, false)); assertEquals(0, ScrimMeasure.failures(null, sig, false));
+        String one = ScrimMeasure.addFailure("", sig, false); assertEquals(1, ScrimMeasure.failures(one, sig, false));
+        String two = ScrimMeasure.addFailure(one, sig, false); assertEquals(2, ScrimMeasure.failures(two, sig, false));
+        assertEquals(0, ScrimMeasure.failures(two, other, false));       // another wallpaper starts afresh
+        assertEquals(0, ScrimMeasure.failures(two, sig, true));          // the dark theme is another lock screen
+        assertEquals(1, ScrimMeasure.failures(ScrimMeasure.addFailure(two, other, false), other, false));   // and a record of another lock screen is replaced, not added to
+        assertEquals(0, ScrimMeasure.failures("garbage", sig, false)); assertEquals(0, ScrimMeasure.failures(sig + "#d#abc", sig, false));
+    }
+    @Test public void onlyFramesThatCouldNotBeFittedCountAsFailures() {
+        assertTrue(ScrimMeasure.measurementFailure("not measured: the fit is not tight enough (rms 4.1 levels)"));
+        assertTrue(ScrimMeasure.measurementFailure("stopped: too little plain wallpaper on this lock screen to measure (120 usable points)"));
+        assertFalse(ScrimMeasure.measurementFailure("stopped: the screen went off"));
+        assertFalse(ScrimMeasure.measurementFailure("stopped: the PIN pad came up"));
+        assertFalse(ScrimMeasure.measurementFailure("MEASURED scale 0.800 / 0.800 / 0.800"));
+        assertFalse(ScrimMeasure.measurementFailure(null));
+        assertEquals("scrim_fail_r0", ScrimMeasure.failKey(0));
+    }
+    @Test public void theSecondFrameWaitsForTheWholeFadeAndMore() { assertTrue(ScrimMeasure.OPEN_SETTLE_MS >= PatchFade.OPEN_MS + 800); }
     @Test public void aDebugBuildDoesNotMeasureUnlessAskedTo() { assertFalse(ScrimMeasure.defaultOn(true)); assertTrue(ScrimMeasure.defaultOn(false)); }
     @Test public void theValueKeyIsPerRotation() { assertEquals("patch_scrim_r0", ScrimMeasure.valueKey(0)); assertEquals("patch_scrim_r3", ScrimMeasure.valueKey(3)); }
 

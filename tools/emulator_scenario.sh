@@ -1469,7 +1469,8 @@ adb shell input swipe 300 900 300 300 300; sleep 4
 pad 1 2 3 4 e; sleep 8                                               # a plain PIN: the custom launcher
 BL2C="$(lowpower)"
 info "BL2: after a plain PIN (custom launcher): low_power=$BL2C; $(bllog 4)"
-check "BL2c: a plain unlock into the custom launcher leaves battery saver off" bash -c "[ \"$BL2C\" = 0 ]"
+adb logcat -d -s TjA11y:I | grep -c 'UNLOCKPICK custom' > "$OUT/bl2-unlock.txt" 2>&1
+check "BL2c: a plain unlock into the custom launcher leaves battery saver off (and that plain unlock really happened: UNLOCKPICK custom in the log)" bash -c "[ \"$BL2C\" = 0 ] && [ \"\$(tr -d ' \\r\\n' < $OUT/bl2-unlock.txt)\" -ge 1 ]"
 # ---------------- BL3: the memory survives a detour in the custom launcher (Quickstep with the saver on -> custom -> lock + plain PIN -> lock + gesture)
 blround true true quickstep
 bstap on; BL3A="$(lowpower)"; home; sleep 1
@@ -1478,7 +1479,8 @@ BL3B="$(lowpower)"
 check "BL3a: the custom launcher has the saver off when a Quickstep session that had it on ends" bash -c "[ \"$BL3A\" = 1 ] && [ \"$BL3B\" = 0 ]"
 lockpad; sleep 4; pad 1 2 3 4 e; sleep 8                              # lock + a plain PIN: still the custom launcher
 BL3C="$(lowpower)"
-check "BL3b: a lock and a plain unlock in between keep it off" bash -c "[ \"$BL3C\" = 0 ]"
+adb logcat -d -s TjA11y:I | grep -c 'UNLOCKPICK custom' > "$OUT/bl3-unlock.txt" 2>&1
+check "BL3b: a lock and a plain unlock in between keep it off (and that unlock really happened)" bash -c "[ \"$BL3C\" = 0 ] && [ \"\$(tr -d ' \\r\\n' < $OUT/bl3-unlock.txt)\" -ge 1 ]"
 lockpad; sleep 4; pad d d 1 2 3 4 e; sleep 9                          # the gesture: Quickstep again
 BL3D="$(lowpower)"
 info "BL3: after the gesture unlock into Quickstep (last Quickstep session had it on): low_power=$BL3D; state machine: $(bsstate); $(bllog 5)"
@@ -1497,7 +1499,8 @@ adb shell input swipe 300 900 300 300 300; sleep 4
 pad d d 1 2 3 4 e; sleep 9
 BL4C="$(lowpower)"
 info "BL4: plugged in while locked, then the gesture unlock: low_power=$BL4C; $(bllog 5)"
-check "BL4a: after a plug-in while locked the gesture unlock does NOT switch battery saver back on from outside" bash -c "[ \"$BL4A\" = 1 ] && [ \"$BL4B\" = 0 ] && [ \"$BL4C\" = 0 ]"
+adb logcat -d -s TjBatSaver:I | grep -c 'not restored: the tablet was plugged in' > "$OUT/bl4-refused.txt" 2>&1
+check "BL4a: after a plug-in while locked the gesture unlock does NOT switch battery saver back on from outside (and the guard says it refused BECAUSE of the plug-in, so the gesture unlock really happened)" bash -c "[ \"$BL4A\" = 1 ] && [ \"$BL4B\" = 0 ] && [ \"$BL4C\" = 0 ] && [ \"\$(tr -d ' \\r\\n' < $OUT/bl4-refused.txt)\" -ge 1 ]"
 bstap on; BL4D="$(lowpower)"; bstap off; BL4E="$(lowpower)"
 check "BL4b: and Android's own state is sound: the Settings button turns the saver on and off again" bash -c "[ \"$BL4D\" = 1 ] && [ \"$BL4E\" = 0 ]"
 home; sleep 1; adb shell dumpsys battery set level 60 >/dev/null 2>&1
