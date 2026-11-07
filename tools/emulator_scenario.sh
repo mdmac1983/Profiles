@@ -1861,6 +1861,10 @@ sleep 3; shot 94-ps-bare                                            # the patch 
 for i in 1 2 3 4 5 6 7 8; do psstatus | grep -q "CALIBRATED" && break; sleep 2; done
 if ! psstatus | grep -q "CALIBRATED"; then
   info "PS B: the service's own screenshot did not arrive (status: $(psstatus)); fallback: a plain screencap + media scan"
+  # DIAGNOSTICS (run #271: a bright colourless block over the Screenshot spot and a brighter middle band, after sections x1,e1,bl): what is on the lock screen right now?
+  info "PS B: DIAG windows: $(adb shell dumpsys window windows 2>/dev/null | grep -E '^  Window #' | sed -E 's/^  Window #[0-9]+ Window\{[0-9a-f]+ u0 //; s/\}:$//' | tr '\n' '|' | cut -c1-760)"
+  info "PS B: DIAG notifications: $(adb shell dumpsys notification --noredact 2>/dev/null | grep -E 'NotificationRecord\(' | sed -E 's/^ +//' | cut -c1-120 | head -10 | tr '\n' '|')"
+  adb shell uiautomator dump /sdcard/psd.xml >/dev/null 2>&1; info "PS B: DIAG texts on screen: $(adb shell cat /sdcard/psd.xml 2>/dev/null | grep -o 'text="[^"]*"' | grep -v 'text=""' | head -25 | tr '\n' ' ' | cut -c1-500)"
   adb shell "mkdir -p /sdcard/Pictures/Screenshots; screencap -p /sdcard/Pictures/Screenshots/Screenshot_ps.png"
   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/Screenshots/Screenshot_ps.png >/dev/null 2>&1
   for i in 1 2 3 4 5 6 7 8 9 10; do psstatus | grep -q "CALIBRATED" && break; sleep 2; done
