@@ -57,7 +57,7 @@ public class TjAccessibilityService extends AccessibilityService {
         int type = e.getEventType();
         CharSequence pk = e.getPackageName();
         if (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED && (pk == null || !"com.android.systemui".contentEquals(pk))) return;
-        if (diagLines >= 70) return;
+        if (diagLines >= 200) return;   // BC2: the opening alone logs ~70 lines; the close follows ~2 s later in the same count
         diagLines++; diagLastMs = now;
         Log.i(TAG, "PATCHEV t=" + now + " type=0x" + Integer.toHexString(type) + " pkg=" + pk + " cls=" + e.getClassName() + " age=" + Math.max(-1, now - e.getEventTime()) + " rest=" + (patchResting ? 1 : 0) + " open=" + (overlayShown ? 1 : 0) + " wid=" + e.getWindowId() + " dlg=" + dialogWindowId + " wc=" + e.getWindowChanges() + (closing ? " closing=1" : ""));   // BC2: wid / wc show which window an event is about (the dialog's removal ends the fade-out)
     }
