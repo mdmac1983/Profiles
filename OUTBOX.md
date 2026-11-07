@@ -890,3 +890,7 @@
 >
 > This conversation is very long. Please start a new session for those two items: "Handoff ready: start a new session, it resumes from CHECKPOINT.md". The notes and plan for both are already saved.
 <!-- sha:488a3ac886c4 -->
+
+## 2026-11-07T20:17:40Z
+> I'll start with the repo's required first action (hooks), then read the notes for the open items that match your two requests: BC5 (pull-up hide), BC4 (screenshots), BD1 (hidden apps in Recents) and BD2 (slow unlock).
+<!-- sha:9bd34fd1196f -->
