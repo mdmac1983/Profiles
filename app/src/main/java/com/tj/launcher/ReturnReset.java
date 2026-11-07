@@ -377,7 +377,7 @@ public final class ReturnReset {
     /** N3: might the return reset have anything to do (used to decide whether the black cover goes up at the Enter tap)? */
     public static boolean mayHaveWork(Context c) {
         if (!enabled(c) || invisibleReady(c)) return false;   // the invisible path needs no cover
-        return clearNotifications(c) || (clearRecents(c) && (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty()));
+        return clearNotifications(c) || (clearRecents(c) && (cleanStart(c) ? recentsNeeded(c) : (!AppOrigin.tracked(c) || !AppOrigin.pending(c).isEmpty())));
     }
 
     /** Puts the target app in front because the custom launcher just STARTED (boot / restart). Same safe, verified launch as the return reset; nothing else is touched. */
@@ -387,6 +387,7 @@ public final class ReturnReset {
 
     /** Starts the target app and makes sure it ends up in FRONT: re-starts it (harmless if already on top) up to 3 more times, checking with the accessibility helper when it is on. */
     private static void openApp(final Context c) {
+        if (cleanStart(c)) { settleHome(c); return; }   // BE3: a clean start never starts a stand-in app
         final long t0 = android.os.SystemClock.elapsedRealtime();
         final List<String> labels = new ArrayList<>();
         String targetPkg = targetPackage(c);                       // AB2: cached, no label loading for every installed app

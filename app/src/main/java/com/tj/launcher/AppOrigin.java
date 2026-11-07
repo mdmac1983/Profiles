@@ -89,6 +89,27 @@ public final class AppOrigin {
             }
         } catch (Throwable t) { android.util.Log.e("TjOrigin", "usage merge failed", t); }
     }
+    /**
+     * BE3 (clean start): the apps resumed since the last clear of Recents (Android's own usage log, so it does not depend on the accessibility tracker), whoever opened them and in whichever mode, without the ones
+     * that are never cards (this app, the stock launcher, the keyboard, the system) and without anything that appeared under the lock screen. Empty = a complete clear has nothing to do. Never throws.
+     */
+    public static java.util.Set<String> usedSinceClear(Context c) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        try {
+            long now = System.currentTimeMillis();
+            long from = p(c).getLong("usageFrom", 0);
+            if (from <= 0) from = now - UsageGap.MAX_LOOKBACK_MS;           // never cleared by this version: look back as far as is sensible
+            java.util.Set<String> used = QuickstepUsage.resumedDuring(c, from, now);
+            if (used.isEmpty()) return out;
+            android.content.ComponentName stock = StockLauncher.find(c);
+            String ime = null;
+            String cur = android.provider.Settings.Secure.getString(c.getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (cur != null && cur.contains("/")) ime = cur.substring(0, cur.indexOf('/'));
+            for (String pkg : used) if (RecentsDirty.shouldMark(pkg, c.getPackageName(), stock == null ? null : stock.getPackageName(), ime, null, true)) out.add(pkg);
+        } catch (Throwable t) { android.util.Log.e("TjOrigin", "usage since clear failed", t); }
+        return out;
+    }
+
     /** False until the first successful Recents clear after install: older Quickstep apps are unknown, so the first reset clears everything. */
     public static boolean tracked(Context c) { return p(c).getBoolean("tracked", false); }
     public static void setTracked(Context c) { p(c).edit().putBoolean("tracked", true).apply(); }

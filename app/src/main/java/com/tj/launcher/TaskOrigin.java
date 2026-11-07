@@ -156,21 +156,39 @@ public final class TaskOrigin {
     /** What {@link #finish} decided. */
     public static final class Outcome {
         public final List<String> stop; public final List<Integer> removeIds; public final String note;
-        Outcome(List<String> stop, List<Integer> removeIds, String note) { this.stop = stop; this.removeIds = removeIds; this.note = note; }
+        /** BE3: the helper's task list was read (so {@link #removeIds} is the complete answer, not a fallback). */
+        public final boolean listed;
+        Outcome(List<String> stop, List<Integer> removeIds, String note) { this(stop, removeIds, note, true); }
+        Outcome(List<String> stop, List<Integer> removeIds, String note, boolean listed) { this.stop = stop; this.removeIds = removeIds; this.note = note; this.listed = listed; }
     }
 
     /**
      * The Quickstep session ends and the helper cleans up. Blocking (talks to the helper): call from the clean-up thread. Always returns a usable list: with no snapshot, or if the helper
      * cannot list the tasks, it is just {@code oldList} (the package-based clean-up) and the note says why.
      */
-    public static Outcome finish(Context c, List<String> oldList, String target, Guard guard) {
+    public static Outcome finish(Context c, List<String> oldList, String target, Guard guard) { return finish(c, oldList, target, guard, false); }
+
+    /**
+     * @param complete BE3 (clean start): EVERY Recents task that may be closed at all is removed by id, whatever its origin ({@link RecentsSweep#ALL}); the app list to force-stop (processes, notifications) is still the
+     *                 origin-based one, because force-stopping an app also puts it into Android's "stopped" state, which silences its pushes until it is opened again: only apps Quickstep opened get that.
+     */
+    public static Outcome finish(Context c, List<String> oldList, String target, Guard guard, boolean complete) {
         Context app = c.getApplicationContext();
         LinkedHashMap<Integer, String> base = base(app);
         clearBase(app);                                            // one-shot: a snapshot is only ever valid for the session it was taken for
         List<Integer> noIds = new ArrayList<>();
-        if (base == null) return new Outcome(oldList, noIds, "tasks: no start-of-session snapshot (the helper was not running when Quickstep began): package-based clean-up only");
+        if (complete) {
+            LinkedHashMap<Integer, String> all = ShellHelper.listTasks();
+            if (all == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only (Recents NOT verified empty)", false);
+            RecentsSweep.Plan sp = RecentsSweep.plan(all, RecentsSweep.ALL, null, guard, null);
+            List<String> stopAll = new ArrayList<>(oldList);
+            if (base != null) for (String p : plan(base, all, oldList, AppOrigin.custom(app), target, guard).stopPackages) if (!stopAll.contains(p)) stopAll.add(p);
+            android.util.Log.i("TjTasks", "complete clear: tasks now " + encode(all) + " | remove by id " + sp.removeIds + " | stop " + stopAll);
+            return new Outcome(stopAll, sp.removeIds, "tasks: complete clear (clean start): " + sp.removeIds.size() + " of " + all.size() + " task(s) removed by id, " + sp.protectedTasks + " protected (us, the stock launcher, the keyboard, the system), " + stopAll.size() + " app(s) force-stopped", true);
+        }
+        if (base == null) return new Outcome(oldList, noIds, "tasks: no start-of-session snapshot (the helper was not running when Quickstep began): package-based clean-up only", false);
         LinkedHashMap<Integer, String> now = ShellHelper.listTasks();
-        if (now == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only");
+        if (now == null) return new Outcome(oldList, noIds, "tasks: the helper could not list Recents: package-based clean-up only", false);
         Plan plan = plan(base, now, oldList, AppOrigin.custom(app), target, guard);
         if (!plan.spared.isEmpty() || !plan.removeIds.isEmpty()) {     // AB3: shared apps exist: do any of them have a notification? (one extra helper call, only then)
             java.util.Set<String> notified = ShellHelper.notifPackages();
