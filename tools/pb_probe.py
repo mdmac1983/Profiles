@@ -108,14 +108,27 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
     cy0, cy1 = max(T + 60, 470), min(B + 120, 800)
     model = fit_scrim(bare, shot, cx0, cy0, cx1 - cx0, cy1 - cy0)
     xa, xb = L + 15, R - 15
-    y0, y1 = max(0, B - 75), min(disp[1], B + 65)
+    y0, y1 = max(0, B - 75), min(disp[1], B + 185)   # the emulator's menu has a second white card under the panel: reach far enough to see its bottom edge and the shadow below it
     prof = profile(bare, shot, model, xa, xb, y0, y1)
     d_of = lambda y: y - B
     out = {"scale": tuple(m[0] for m in model), "offset": tuple(m[1] for m in model), "profile": {d_of(y): v for y, v in prof.items()}}
     if stock:
-        sh = {d: -v[0] for d, v in out["profile"].items() if 1 <= d <= 60}    # positive = darker than the dimmed wallpaper
+        pr = out["profile"]
+        # the stock panel's shadow, measured where it is clean: the emulator's menu has ANOTHER white card (a 4th entry) 4 px below the panel, so the shadow tail under the panel is hidden by it. The shadow below the LAST
+        # white block has the same elevation. edge = the last row (d) of that block; j = rows below it (j = 0 is the first row under the edge, like d = 0 under the panel).
+        edge = None
+        for d in sorted((d for d, v in pr.items() if v[0] >= 40.0), reverse=True):
+            if all(pr.get(d + k, (0.0,))[0] < 40.0 for k in (1, 2, 3)) and (d + 70) in pr:
+                edge = d
+                break
+        if edge is None:
+            edge = -1
+        out["edge_d"] = edge
+        sh = {j: -pr[edge + 1 + j][0] for j in range(0, 70) if (edge + 1 + j) in pr}      # positive = darker than the dimmed wallpaper
+        out["shadow_prof"] = sh
         out["shadow_max"] = max(sh.values()) if sh else 0.0
-        out["shadow_ext"] = max([d for d, v in sh.items() if v >= 1.0] or [0])
+        out["shadow_ext"] = max([j for j, v in sh.items() if v >= 1.0] or [0])
+        out["shadow_near"] = max([-pr[d][0] for d in (0, 1, 2, 3) if d in pr] or [0.0])    # the first card's own shadow right under the panel (before the second card hides the rest)
     else:
         ln = {d: v[0] for d, v in out["profile"].items() if 0 <= d <= 60}
         at = max(ln, key=lambda d: abs(ln[d])) if ln else 0
@@ -130,12 +143,40 @@ def analyse(label, bare, shot, panel, stock, disp=(600, 1024), want_grid=False):
     return out
 
 
+def _ramp(dist, width):
+    """PatchRest.ramp: the smoothstep of the fringe"""
+    if width <= 0:
+        return 0.0
+    t = 1.0 - dist / (width + 1.0)
+    return 0.0 if t <= 0.0 else t * t * (3.0 - 2.0 * t)
+
+
+def predict(shadow, extra, bfeather, edge=2):
+    """the line a geometry would leave on a screen whose menu has NO second card: residual(j) = (1 - alpha) * shadow(j), j rows below the panel, alpha = PatchRest.alphaAt below the core (the core ends edge + extra rows below the panel)"""
+    cb = edge + extra
+    worst, at = 0.0, 0
+    for j in sorted(shadow):
+        a = 1.0 if j < cb else _ramp(j - cb + 1, bfeather)
+        r = (1.0 - a) * shadow[j]
+        if abs(r) > abs(worst):
+            worst, at = r, j
+    return worst, at
+
+
+SIM_GEOMETRIES = ((0, 9), (10, 9), (21, 9), (21, 4), (26, 4), (30, 0))
+
+
 def report(o):
     keys = ("shadow_max", "shadow_ext") if o["kind"] == "stock" else ("line_max", "line_at", "core_mean")
     vals = " ".join(("%s=%d" % (k, o[k])) if k.endswith(("_ext", "_at")) else ("%s=%+.2f" % (k, o[k]) if k == "core_mean" else "%s=%.2f" % (k, o[k])) for k in keys)
     print("PBMETRIC label=%s kind=%s scale=%.3f/%.3f/%.3f offset=%.1f/%.1f/%.1f %s" % (o["label"], o["kind"], *o["scale"], *o["offset"], vals))
     print("PBPROFILE label=%s (d = px below the panel's bottom edge : deviation in levels, luminance; negative = darker than the dimmed wallpaper) %s" % (
         o["label"], " ".join("%d:%+.1f" % (d, o["profile"][d][0]) for d in PROBE_D if d in o["profile"])))
+    if o["kind"] == "stock":
+        print("PBSHADOW label=%s edge_d=%d near_panel=%.1f (the first card's shadow 0-3 px under the panel); shadow below the last white block, j px below its edge (levels darker): %s" % (
+            o["label"], o["edge_d"], o["shadow_near"], " ".join("%d:%.1f" % (j, o["shadow_prof"][j]) for j in (0, 1, 2, 3, 4, 6, 8, 10, 12, 15, 18, 21, 24, 27, 30, 35, 40, 50, 60) if j in o["shadow_prof"])))
+        print("PBSIM label=%s predicted line (levels) a geometry would leave on a menu with NO second card, from that shadow: %s" % (
+            o["label"], "  ".join("extra%d/fringe%d=%.1f@%d" % (x, f, abs(predict(o["shadow_prof"], x, f)[0]), predict(o["shadow_prof"], x, f)[1]) for x, f in SIM_GEOMETRIES)))
     for ln in o.get("grid", []):
         print(ln)
 
