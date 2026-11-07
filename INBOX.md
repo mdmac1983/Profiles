@@ -1103,3 +1103,12 @@ Build it now
 ```
 So this build is no different from the last one? 
 ```
+
+## 2026-11-07T16:09:18Z
+```
+@"/root/.claude/uploads/7a30ce42-1d53-53a5-9588-2146d41404ef/7385416d-20261107_110139.mp4" On the power menu screenshot cover, it looks great, but there is a sliver of gray from the original card where the screenshot button usually is to the very right of the screen.  It is a very small vertical sliver all the way to the right. Can the wallpaper patch be made to cover all the way to the right edge of the screen?
+
+Also, the fading is perfect when i press the side key, but when the power menu is open, and i press in the middle of the screen to close the power menu, or pull up from the bottom to type the pin, the wallpaper patch flickers for a split second, because the screen fades for a short time during these events. 
+
+Attached is a video of the sliver
+```
