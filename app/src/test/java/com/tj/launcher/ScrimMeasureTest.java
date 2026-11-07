@@ -2,6 +2,8 @@ package com.tj.launcher;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -77,6 +79,30 @@ public class ScrimMeasureTest {
     @Test public void theSecondFrameWaitsForTheWholeFadeAndMore() { assertTrue(ScrimMeasure.OPEN_SETTLE_MS >= PatchFade.OPEN_MS + 800); }
     @Test public void aDebugBuildDoesNotMeasureUnlessAskedTo() { assertFalse(ScrimMeasure.defaultOn(true)); assertTrue(ScrimMeasure.defaultOn(false)); }
     @Test public void theValueKeyIsPerRotation() { assertEquals("patch_scrim_r0", ScrimMeasure.valueKey(0)); assertEquals("patch_scrim_r3", ScrimMeasure.valueKey(3)); }
+    // ---- BB2 (Tj, 2026-11-07: "the lock screen screenshot itself again, not sure why"): one slot per THEME, so a theme flip never invalidates the other theme's measurement
+    @Test public void eachThemeHasItsOwnSlotAndTheLightOneIsTheOldKey() {
+        assertEquals(ScrimMeasure.valueKey(0), ScrimMeasure.valueKey(0, false));            // v0.8.2's stored value stays valid
+        assertEquals("patch_scrim_r0n", ScrimMeasure.valueKey(0, true));
+        assertEquals("scrim_fail_r0", ScrimMeasure.failKey(0)); assertEquals("scrim_fail_r0n", ScrimMeasure.failKey(0, true));
+        for (int rot = 0; rot < 4; rot++) { assertFalse(ScrimMeasure.valueKey(rot, true).equals(ScrimMeasure.valueKey(rot, false))); assertFalse(ScrimMeasure.failKey(rot, true).equals(ScrimMeasure.failKey(rot, false))); }
+    }
+    @Test public void aThemeFlipKeepsBothMeasurementsValid() {
+        ScrimFit.Transform t = new ScrimFit.Transform(new float[] { 0.8f, 0.8f, 0.8f }, new float[] { 6f, 7f, 7f }, 30000, 0.3);
+        String sig = "30|r0|600x1024";
+        String day = ScrimFit.encode(t, sig, false, 1000L), night = ScrimFit.encode(t, sig, true, 2000L);
+        assertNotNull(ScrimFit.decode(day, sig, false)); assertNotNull(ScrimFit.decode(night, sig, true));
+        assertNull("a slot never answers for the other theme", ScrimFit.decode(day, sig, true));
+        assertNull(ScrimFit.decode(night, sig, false));
+    }
+    @Test public void theReasonIsInPlainWords() {
+        ScrimFit.Transform t = new ScrimFit.Transform(new float[] { 0.8f, 0.8f, 0.8f }, new float[] { 6f, 7f, 7f }, 30000, 0.3);
+        String sig = "30|r0|600x1024", other = "31|r0|600x1024";
+        assertTrue(ScrimFit.reasonMissing("", sig, false).contains("nothing is stored yet") && ScrimFit.reasonMissing("", sig, false).contains("light"));
+        assertTrue(ScrimFit.reasonMissing(null, sig, true).contains("dark theme"));
+        assertTrue(ScrimFit.reasonMissing(ScrimFit.encode(t, other, false, 1L), sig, false).contains("lock screen changed"));
+        assertTrue(ScrimFit.reasonMissing(ScrimFit.encode(t, sig, true, 1L), sig, false).contains("other theme"));
+        assertTrue(ScrimFit.reasonMissing("garbage", sig, false).contains("could not be read"));
+    }
 
     // ---- the sampling grid
     @Test public void theGridSkipsTheExcludedRectangles() {
