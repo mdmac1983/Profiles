@@ -1,13 +1,13 @@
-# CHECKPOINT 571 — read me first, then TASKS.md
+# CHECKPOINT 572 — read me first, then TASKS.md
 
-**Written:** 2026-11-07T02:20:01Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `970eb43` (this checkpoint is the commit after it)
+**Written:** 2026-11-07T02:29:19Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-823c5a56-yg8voe` · **builds on:** `42382a3` (this checkpoint is the commit after it)
 
 ## Just done
-tools/patch_photo_step.py written + selftest OK (v0.8.1 photos: patch 5-7 units darker); local gradle tests+lint running
+final gate #277 read: uf = emulator went offline (infra), pt FAIL = test assumed scrim 0.80 (emulator scrim 0.75 after v+pa; phase C measured it right); fix = pt_analyze open_shape + scenario
 
 ## Do this next
-read #277 results after its 50-min job limit (02:22Z; run 42324561598 job 128256727879, get_job_logs tail 80); then re-run on final code whatever it did not prove (base,v,uf,last and pt), then bash ship.sh
+dispatch emulator.yml on branch ccr-823c5a56-yg8voe: sections v,pa,pt and base,v,uf,last (two runs side by side); both green -> bash ship.sh then android.yml full_build
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read #277 results after its 50-min job limit (02:22Z; run 42324561598 job 128256
 
 ## Last ten checkpoints
 ```
+  cd7a0a6 ckpt 571: tools/patch_photo_step.py written + selftest OK (v0.8.1 photos: patch 5-7 unit
   0cac1e7 ckpt 570: BA4 photos measured (patch 4-6 units darker, additive scrim part, TASKS BA4a);
   2675d47 ckpt 569: AZ4 root cause found (stale tj_restore.xml snapshot restores lock-screen notif
   2719c14 ckpt 568: FINAL GATE on dced3e9: #276 A{n,o,t,x,ac,bs,lq} id 42324558796, #277 B{base,v,
@@ -25,8 +26,7 @@ read #277 results after its 50-min job limit (02:22Z; run 42324561598 job 128256
   3056094 ckpt 564: BA1 proven: pt #272 15 PASS (MEASURED 0.7997/0.7999/0.7999 off 0.03/0.0035/0.0
   27728f8 ckpt 563: BA4 written: Tj will send a photo of the patch later (his words in TASKS)
   102771e ckpt 562: waiting: pt #272 job 128248073003, gates 128247261992 + 128247271172, code rev
-  747eebd ckpt 561: pt phase C fixed (no extra lock); gate jobs: 128247261992 {n,o,t,x,ac,bs,lq}, 
 ```
 
-(4 automatic checkpoint(s) since the last deliberate one — the
+(6 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
