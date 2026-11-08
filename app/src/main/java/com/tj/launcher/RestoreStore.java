@@ -96,6 +96,7 @@ public final class RestoreStore {
         Features.set(c, ImmersiveProfile.KEY, false);   // AA1: the policy_control value was put back above (snapshot); the switch itself is off
         Features.set(c, DemoModeProfile.KEY, false);   // (the retired retail-demo option: the flag, if it was ever ours, was put back above)   // O4: restore = nothing of ours closes apps for you
         Features.set(c, AnimationPolicy.KEY, false);   // BF1: the Quickstep animation switch is ON by default in the shipped app, so restore = off (the scales themselves were put back above)
+        Features.set(c, NotifQuietPolicy.KEY, false);   // BH1: the pop-up banner switch is ON by default in the shipped app, so restore = off (the setting itself was put back above)
         try { AnimationSpeedup.syncNow(c, "restore everything"); } catch (Throwable ignored) { }   // BF1: allOff() above made the switch read its default (ON) for a few ms, long enough for the window heartbeat to take the animations off again: this closing look sees the switch OFF and puts them back for good
         Features.set(c, RouterActivity.HOME_TYPE_KEY, false);   // restore = the plain launch (Android keeps treating us as an ordinary home app)   // defaults to ON, so switch it off explicitly: restore means nothing of ours stays on the lock screen
     }
