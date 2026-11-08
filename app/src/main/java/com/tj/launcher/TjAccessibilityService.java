@@ -741,6 +741,7 @@ public class TjAccessibilityService extends AccessibilityService {
     /** TjHooks: the Launcher is about to draw: whatever is under the slot may change, the built patch is stale from now on. Cheap when the patch is already away. */
     private long homeDrawsSeen = 0, homeDrawLoggedMs = 0;
     void homeDrew() {
+        scheduleCurtain();   // BL1: a draw of the Launcher is a sign the home may have changed: the curtain picture is looked at again once the home is quiet (one posted runnable at most, nothing else here)
         if (sumArmed && sumFirstDrawAt == 0) { try { sumNoteDraw(); } catch (Throwable t) { Log.e(TAG, "unlock summary draw failed", t); } }   // BK1c: the first Launcher frame after the keyguard went away
         if (debuggable()) {   // emulator diagnostics only (run #348: HP7 saw no draw at all): one line per burst of draws says whether the listener hears the Launcher and what state the patch was in
             homeDrawsSeen++;
