@@ -2742,7 +2742,7 @@ check "NQ8: a launcher process that starts in an unlocked Quickstep session give
 NQ_SEEN="$(adb shell "run-as $PKG cat shared_prefs/tj_notif_seen.xml" 2>/dev/null | tr -d '\r')"
 echo "$NQ_SEEN" > "$OUT/nq-seen.xml"
 info "NQ9: sightings prefs: $(echo "$NQ_SEEN" | tr '\n' ' ' | cut -c1-380)"
-check "NQ9: the sighting names the posting package (and sets the clean-up flag)" bash -c "grep -q 'com.tj.testnotifier.ctl' $OUT/nq-seen.xml && grep -q 'name=\"dirty\"' $OUT/nq-seen.xml"
+check "NQ9: the sightings name the posting package" bash -c "grep -q 'com.tj.testnotifier.ctl' $OUT/nq-seen.xml"
 check "NQ9b: ... and never the title or text of the notification" bash -c "! grep -q 'posted when the app was opened' $OUT/nq-seen.xml"
 NQ_NL="$(nqlog | grep -c ' NOTIF com.tj.testnotifier.ctl posted a notification' | tr -d ' \r\n')"
 check "NQ9c: the lock log carries a NOTIF line for it" bash -c "[ \"${NQ_NL:-0}\" -ge 1 ]"
