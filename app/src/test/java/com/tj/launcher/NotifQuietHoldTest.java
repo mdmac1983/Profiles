@@ -11,7 +11,7 @@ import org.junit.Test;
 
 /**
  * BH1: the hold state machine ({@link NotifQuietHold}) over in-memory stores. These are the cases that, wrong, leave Tj's tablet with the pop-up banners off in Quickstep or on in the custom launcher, or
- * overwrite a value he set himself: each rule of the class comment is one test. {@code events} records the ORDER of disk and settings writes (the original must be on disk before the first change).
+ * overwrite a value Tj set by hand: each rule of the class comment is one test. {@code events} records the ORDER of disk and settings writes (the original must be on disk before the first change).
  */
 public class NotifQuietHoldTest {
     private final List<String> events = new ArrayList<>();
