@@ -14,9 +14,55 @@ public final class TjHooks {
     private static boolean startedOnce = false;
     public static final String STARTUP_KEY = "startup_open";   // default ON
 
+    // ---------------------------------------------------------------- BI1: what the real-pixel patch on the home screen needs to know about the Launcher
+    private static volatile java.lang.ref.WeakReference<com.android.launcher3.Launcher> launcherRef;
+    private static java.lang.ref.WeakReference<com.android.launcher3.Launcher> drawWatchedFor;
+    /** Uptime ms of the last draw of the Launcher's view tree / of the last finger-down in the Launcher (0 = never since this process started). Written on the main thread. */
+    public static volatile long lastHomeDrawMs = 0, lastHomeTouchMs = 0;
+
+    /** The resumed Launcher instance, or null. Main thread. */
+    public static com.android.launcher3.Launcher launcher() {
+        java.lang.ref.WeakReference<com.android.launcher3.Launcher> r = launcherRef;
+        return r == null ? null : r.get();
+    }
+
+    /**
+     * A folder, popup or other floating view is open over the workspace (the state stays NORMAL for them). Main thread; false when unknown (the draw timer then keeps the patch away anyway).
+     */
+    public static boolean homeFloatingViewOpen() {
+        try { com.android.launcher3.Launcher l = launcher(); return l != null && com.android.launcher3.AbstractFloatingView.getTopOpenView(l) != null; } catch (Throwable t) { return false; }
+    }
+
+    /** An icon drag or a state change is running. Main thread. */
+    public static boolean homeBusy() {
+        try {
+            com.android.launcher3.Launcher l = launcher();
+            return l != null && (l.getDragController().isDragging() || l.getWorkspace().isSwitchingState());
+        } catch (Throwable t) { return false; }
+    }
+
+    /**
+     * Registers (once per Launcher instance) a draw listener on the Launcher's view tree: a draw means something on the home screen may have changed (a scroll, a drag, a folder, a bind, press feedback, a new
+     * icon), so the patch that rests over the slot is stale from that moment until it is built again. A catch-all that needs no hook in the Launcher's many state paths.
+     */
+    private static void watchHomeDraw(com.android.launcher3.Launcher l) {
+        try {
+            java.lang.ref.WeakReference<com.android.launcher3.Launcher> w = drawWatchedFor;
+            if (w != null && w.get() == l) return;
+            drawWatchedFor = new java.lang.ref.WeakReference<>(l);
+            l.getDragLayer().getViewTreeObserver().addOnDrawListener(new android.view.ViewTreeObserver.OnDrawListener() {
+                @Override public void onDraw() {
+                    lastHomeDrawMs = android.os.SystemClock.uptimeMillis();
+                    try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeDrew(); } catch (Throwable ignored) { }
+                }
+            });
+        } catch (Throwable t) { android.util.Log.e("TjHooks", "home draw watch failed", t); }
+    }
+
     /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
     public static void onLauncherResumed(final Context c) {
         launcherResumed = true;
+        try { if (c instanceof com.android.launcher3.Launcher) { launcherRef = new java.lang.ref.WeakReference<>((com.android.launcher3.Launcher) c); watchHomeDraw((com.android.launcher3.Launcher) c); } } catch (Throwable ignored) { }   // BI1
         try { if (c instanceof com.android.launcher3.Launcher) launcherNormal = ((com.android.launcher3.Launcher) c).isInState(com.android.launcher3.LauncherState.NORMAL); } catch (Throwable ignored) { }
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         RecentsGuard.excludeOurTasks(c);                       // W2: also fixes a Launcher task created before the exclude flags existed
