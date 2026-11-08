@@ -197,4 +197,32 @@ public class HomePatchRulesTest {
         assertFalse("an old one", HomePatchRules.shotIsOurs(asked / 1000 - 10, asked));
         assertFalse("no request made", HomePatchRules.shotIsOurs(asked / 1000, 0));
     }
+
+    // ---------------------------------------------------------------- BJ1: the first window event of a power-menu burst (run #382: v0.8.9 treated it as NORMAL, the lock screen as START)
+
+    @Test public void theFirstWindowEventOfABurstStartsAWaitWhenTheDialogsOwnEventWillOpenThePatch() {
+        // this is the case v0.8.9 got wrong on the home screen: it did the node scan / layer refresh at once, on the thread the patch is drawn on, and the dialog's own event waited behind it
+        assertEquals(HomePatchRules.BURST_START, HomePatchRules.burstTreatment(false, 1000, 0, true));
+        assertEquals("a wait that ended long ago is no wait", HomePatchRules.BURST_START, HomePatchRules.burstTreatment(false, 1000, 400, true));
+    }
+
+    @Test public void anEventThatCannotOpenThePatchIsTreatedAsBefore() {
+        assertEquals("not a window event, or the fast path is not possible (the patch is stale, the geometry unknown ...): the card path scans at once", HomePatchRules.BURST_NORMAL, HomePatchRules.burstTreatment(false, 1000, 0, false));
+    }
+
+    @Test public void everyEventInsideARunningWaitIsQuiet() {
+        assertEquals("the wait the first event started", HomePatchRules.BURST_QUIET, HomePatchRules.burstTreatment(false, 1050, 1120, true));
+        assertEquals("... also for an event that would not start one", HomePatchRules.BURST_QUIET, HomePatchRules.burstTreatment(false, 1050, 1120, false));
+        assertEquals("the wait the open menu's own event set (the stock fade is being followed)", HomePatchRules.BURST_QUIET, HomePatchRules.burstTreatment(true, 1100, 1330, false));
+    }
+
+    @Test public void theWaitEndsExactlyAtItsEnd() {
+        assertEquals(HomePatchRules.BURST_QUIET, HomePatchRules.burstTreatment(true, 1329, 1330, false));
+        assertEquals(HomePatchRules.BURST_NORMAL, HomePatchRules.burstTreatment(true, 1330, 1330, false));
+        assertEquals(HomePatchRules.BURST_START, HomePatchRules.burstTreatment(false, 1120, 1120, true));
+    }
+
+    @Test public void anOpenMenuNeverStartsAnotherWait() {
+        assertEquals("once our patch is up the stock dialog's event has been handled: nothing to wait for", HomePatchRules.BURST_NORMAL, HomePatchRules.burstTreatment(true, 2000, 0, true));
+    }
 }
