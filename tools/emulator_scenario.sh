@@ -2834,8 +2834,8 @@ adb logcat -c
 hpopen
 shot 162-hp-open
 adb shell dumpsys window windows 2>/dev/null | grep -E "^ +Window #" | sed 's/^ *//; s/Window{[0-9a-f]* u0 //; s/}:$//' | cut -c1-80 > "$OUT/hp-open-windows.txt"
-hplog | grep -E "CARD area|PATCH fast|PATCH fade" > "$OUT/hp-open-log.txt"
-info "HP4: log with the menu open: $(cut -c25-150 "$OUT/hp-open-log.txt" | tr '\n' '|' | cut -c1-500)"
+hplog | grep -E "CARD area|PATCH fast|PATCH fade|HOMEPATCH away|HOMEPATCH stale" > "$OUT/hp-open-log.txt"
+info "HP4: log with the menu open: $(cut -c25-150 "$OUT/hp-open-log.txt" | tr '\n' '|' | cut -c1-760)"
 check "HP4: the menu opened on the CARDLESS path (the stock Power off / Restart stay untouched: log 'lockPatch=true stock=true')" grep -q "lockPatch=true stock=true" "$OUT/hp-open-log.txt"
 if [ -n "$PANEL" ]; then
   python3 -I tools/pb_probe.py hp "$OUT/161-hp-rest.png" "$OUT/162-hp-open.png" --panel "$PANEL" > "$OUT/hp-pb.txt" 2>&1
