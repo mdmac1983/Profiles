@@ -194,7 +194,8 @@ public class TjAccessibilityService extends AccessibilityService {
         // path was used in 1 of 10 films, median open_shape 0.20). The lock screen's wait fixes that (fast path in 10 of 10 films, median 0.054). It is only started when the fast path will be taken, ends after FAST_WAIT_MS
         // at the latest (fail-open: then the scan runs as before), and the pencil is NOT part of it: it follows every event, as before.
         if (patchHomeMode) {
-            boolean ready = !overlayShown && now >= quietUntilMs && event != null && EventNoise.windowsJustChanged(event.getEventType()) && fastDecline() == null;   // fastDecline() is asked only when it can matter
+            // `ready` only says "this event could start the wait"; the guards in front of fastDecline() are there so that it is asked only when it can matter (burstTreatment decides, and is what the JVM tests pin)
+            boolean ready = !overlayShown && now >= quietUntilMs && event != null && EventNoise.windowsJustChanged(event.getEventType()) && fastDecline() == null;
             int t = HomePatchRules.burstTreatment(overlayShown, now, quietUntilMs, ready);
             if (t == HomePatchRules.BURST_NORMAL) return false;   // with the menu closed and no wait running no event is deferred, so the shade / QS pencil keep their 40 ms rule
             if (!overlayShown) schedulePencil(event);             // a wait on the closed home: the pencil cover still follows every SystemUI event
