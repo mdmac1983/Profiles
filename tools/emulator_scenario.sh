@@ -2835,7 +2835,7 @@ else check "HP3: the slot geometry is known" false; fi
 HP_EVRE='HOMEPATCH away: another window|RESET (start|cover|notifications|recents)'
 HP_QN="$(hplog | grep -cE "$HP_EVRE")"; HP_QS=0; HP_Q0=$(date +%s)
 for HP_I in $(seq 1 25); do sleep 2; HP_QM="$(hplog | grep -cE "$HP_EVRE")"; if [ "$HP_QM" = "$HP_QN" ]; then HP_QS=$((HP_QS+1)); else HP_QS=0; HP_QN=$HP_QM; fi; [ "$HP_QS" -ge 3 ] && break; done
-info "HP B: waited $(( $(date +%s) - HP_Q0 )) s for a quiet home (no foreign window, no reset step for 6 s) before the menu; events newest first: $(hplog | grep -E "HOMEPATCH away|HOMEPATCH stale|PATCH rest on|PATCH window created|PATCH removed|RESET (start|cover|notifications|recents)" | sed 's/^.*TjA11y *: //' | cut -c1-34 | tail -n 9 | tac | tr '\n' '|')"
+info "HP B: waited $(( $(date +%s) - HP_Q0 )) s for a quiet home (no foreign window, no reset step for 6 s) before the menu; events newest first: $(hplog | grep -E "HOMEPATCH away|HOMEPATCH stale|PATCH rest on|PATCH window created|PATCH removed|RESET (start|cover|notifications|recents)" | sed 's/^.*TjA11y *: //; s/HOMEPATCH away: another window (/AWAY(/; s/HOMEPATCH stale.*/STALE/; s/PATCH window created.*/WINDOW+/; s/PATCH rest on.*/REST/; s/PATCH removed.*/WINDOW-/; s/HOMEPATCH away: a finger.*/FINGER/' | cut -c1-52 | tail -n 7 | tac | tr '\n' '|')"
 adb logcat -c
 hpopen
 shot 162-hp-open
