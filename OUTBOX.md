@@ -1219,3 +1219,7 @@
 >
 > Still waiting on you from earlier: the v0.8.5, v0.8.6 and v0.8.9 tablet checks, the three answers about the home screen's menu, and where you saw the notification banner.
 <!-- sha:dfa9f5c8f28a -->
+
+## 2026-11-08T18:17:40Z
+> New session, so the working agreement's first step comes first: install the hooks and check where this branch stands. The "interrupted mid-change" warning is only my last reply being saved to `OUTBOX.md`.
+<!-- sha:b915efcf6fdb -->
