@@ -92,7 +92,7 @@ public class NotifQuietHoldTest {
     @Test public void aValueChangedByHandWhileHeldIsKeptWhenTheHoldEnds() {
         FakeState st = new FakeState(); FakeSetting s = new FakeSetting("1");
         set(st, s, true, true);
-        s.value = "1";   // he turned the banners on again in the meantime
+        s.value = "1";   // the banners were turned on again by hand in the meantime
         events.clear();
         assertFalse(set(st, s, true, false));
         assertEquals("1", s.value);
