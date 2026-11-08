@@ -2986,6 +2986,7 @@ hfline(){ local L="$1" sh mx fo sc pc fe   # one film in a few characters: timin
 hfmed(){ local t k v; for t in $1; do for k in 1 2 3 4 5; do v="$(hfget ${t}f$k $2)"; [ -n "$v" ] && echo "$v"; done; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }   # median over the films of the given groups
 hfok(){ local t k v n=0; for t in $1; do for k in 1 2 3 4 5; do v="$(hfget ${t}f$k open_shape)"; awk -v f="${v:-9}" 'BEGIN{exit !(f+0 < 0.08)}' && n=$((n+1)); done; done; echo $n; }   # films within 8 % (timing only)
 hffast(){ local t k n=0; for t in $1; do for k in 1 2 3 4 5; do [ "$(grep -c 'PATCH fast open' "$OUT/hf-all-${t}f$k.txt" 2>/dev/null)" -ge 1 ] && n=$((n+1)); done; done; echo $n; }   # films in which the patch opened by the FAST path
+hfcount(){ local t k v n=0; for t in $1; do for k in 1 2 3 4 5; do v="$(hfget ${t}f$k open_shape)"; [ -n "$v" ] && n=$((n+1)); done; done; echo $n; }   # films that produced a timing number (a film lost to screenrecord / ffmpeg must not shrink the sample unseen)
 hfseen(){ local t k n=0; for t in $1; do for k in 1 2 3 4 5; do hfget ${t}f$k onset | grep -q . && n=$((n+1)); done; done; echo $n; }   # films in which the dimming was found
 hfarm(){ # hfarm <tag>: restart the app, wait for the patch to rest, film five openings
   setmode custom; rebind; adb logcat -c; home
@@ -3002,7 +3003,7 @@ hfarm(){ # hfarm <tag>: restart the app, wait for the patch to rest, film five o
   local CV; CV="$(grep "PTSERIES label=${1}f2 " "$OUT/hf-metrics.txt" | tail -1 | sed 's/.*onset) //')"
   info "HF group $1 open curve of film 2, ms:surround/patch/deviation in per mille (a): $(echo "$CV" | cut -c1-330)"
   info "HF group $1 open curve of film 2 (b): $(echo "$CV" | cut -c331-660)"
-  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape), median open_max $(hfmed $1 open_max)"; }
+  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max)"; }
 # ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
 hpinit false
 hpwall
@@ -3039,9 +3040,10 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   # BJ1 regression guard: the stock dialog's own event must open the patch at once, BEFORE any node scan (v0.8.9: 1 of 10 films, the slow path won the race and the patch stayed bright for the whole fade)
   check "HF4: the patch (not the card, not the slow scan path) covered the Screenshot spot in at least 9 of the 10 films (log 'PATCH fast open')" test "$(hffast 'g1 g2')" -ge 9
   # lenient on purpose (film noise): v0.8.9 read 0.197 (every film but one above 0.19), the lock screen's films read 0.02 - 0.10
-  HF_MED="$(hfmed 'g1 g2' open_shape)"
-  info "HF: all 10 films: median open_shape $HF_MED; within 8 % in $(hfok 'g1 g2') of 10 (section pt asks 3 of 5 for the lock screen)"
-  check "HF5: the home patch follows the stock dimming: median open_shape of the 10 films below 0.12 (v0.8.9: 0.197)" awk -v m="${HF_MED:-9}" 'BEGIN{exit !(m+0 < 0.12)}'
+  HF_MED="$(hfmed 'g1 g2' open_shape)"; HF_N="$(hfcount 'g1 g2')"
+  info "HF: all 10 films: median open_shape $HF_MED over $HF_N films; within 8 % in $(hfok 'g1 g2') of 10 (section pt asks 3 of 5 for the lock screen)"
+  # a number is required: with no film read the median is '?', which awk would compare as 0 (review 2026-11-08), and fewer than 9 films read is not a measurement
+  check "HF5: the home patch follows the stock dimming: median open_shape of at least 9 read films below 0.12 (v0.8.9: 0.197)" awk -v m="$HF_MED" -v n="$HF_N" 'BEGIN{exit !(n+0 >= 9 && m ~ /^[0-9.]+$/ && m+0 < 0.12)}'
 else check "HF2: the menu geometry is known" false; fi
 hfanim 0
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
