@@ -2590,9 +2590,10 @@ AN_T6="$(anwait '0 0 0 ' 8)"; getmode > "$OUT/an-mode-gesture.txt"
 check "AN6: the gesture unlock into Quickstep switches the animations off (after the lock screen is gone)" bash -c "grep -q quickstep $OUT/an-mode-gesture.txt && [ \"$AN_T6\" != never ]"
 info "AN6: off after $AN_T6 ms of polling; lock log: $(anlog | grep ' ANIM ' | tail -3 | cut -c1-120 | tr '\n' '|')"
 # AN7: the way back (double Home) = custom: the animations are real again (the return reset itself runs animation-free behind its cover and gives them back when its work is done)
-adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 8
-AN_B="$(anscales)"; getmode > "$OUT/an-mode-back.txt"
-check "AN7: the double-Home return to the custom launcher gives the animations back (1.0)" bash -c "grep -q custom $OUT/an-mode-back.txt && [ \"$AN_B\" = '1.0 1.0 1.0 ' ]"
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 3
+AN_B="$(anstable '1.0 1.0 1.0 ' 25)"; getmode > "$OUT/an-mode-back.txt"
+info "AN7: the animations were stably real $AN_B s after the double Home (the return reset runs animation-free behind its cover first)"
+check "AN7: the double-Home return to the custom launcher gives the animations back (1.0, three reads in a row)" bash -c "grep -q custom $OUT/an-mode-back.txt && [ \"$AN_B\" != never ]"
 # AN8: exactly as they were (0.5 here, not a fixed 1.0); a scale changed by hand during the session is his and stays
 anset 0.5; setmode quickstep; rebind; home
 AN_T8="$(anwait '0 0 0 ' 10)"
