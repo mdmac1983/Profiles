@@ -243,6 +243,19 @@ public final class AnimationSpeedup {
         return true;
     }
 
+    /**
+     * One {@link #syncNow}'s look at the screen and the lock screen: each binder call at most once, shared by every rule that reads them (the animations here, the banners in {@link NotifQuiet}); the
+     * caller's own answer, when it has one, is used instead of asking (it is the broadcast that says so). Same results as asking directly: the lock is "up" only on a lit screen.
+     */
+    static final class Look {
+        private final Context app;
+        private final Boolean screenOnGiven, lockUpGiven;
+        private Boolean screenOn, lockUp;
+        Look(Context app, Boolean screenOnGiven, Boolean lockUpGiven) { this.app = app; this.screenOnGiven = screenOnGiven; this.lockUpGiven = lockUpGiven; }
+        boolean screenOn() { if (screenOn == null) screenOn = screenOnGiven != null ? screenOnGiven : Boolean.valueOf(interactive(app)); return screenOn.booleanValue(); }
+        boolean lockUp() { if (lockUp == null) lockUp = Boolean.valueOf(screenOn() && (lockUpGiven != null ? lockUpGiven.booleanValue() : keyguardUp(app))); return lockUp.booleanValue(); }
+    }
+
     static boolean interactive(Context app) {
         try { PowerManager pm = (PowerManager) app.getSystemService(Context.POWER_SERVICE); return pm != null && pm.isInteractive(); } catch (Throwable t) { return false; }
     }
