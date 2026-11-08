@@ -391,7 +391,8 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean cardWanted() {
         if (Features.get(this, POWER_CARD_KEY, false)) return true;
         if (Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return true;
-        return !keyguardLockedFast();
+        if (keyguardLockedFast()) return false;
+        return !homePatchReady();   // BI1: the home screen is cardless too, but only while the real-pixel patch is ready (fresh, restable); anything else keeps today's replacement panel
     }
     /** Debug builds only (the emulator tests): the resting patch may also rest on the wallpaper MODEL, which is otherwise forbidden because a model patch is a visible block. */
     private boolean modelRestAllowed() { return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 && Features.get(this, "patch_rest_model", false); }
