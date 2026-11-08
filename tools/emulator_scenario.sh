@@ -531,6 +531,7 @@ pen_none(){ local s; for s in "$@"; do case "$s" in cover=shown*) return 1;; esa
 pen_all_shown(){ local s; for s in "$@"; do case "$s" in cover=shown*) ;; *) return 1;; esac; done; return 0; }
 pen_control_ok(){ case "$1" in *"showing=false"*) ;; *) return 1;; esac; case "$1" in cover=shown*) return 1;; esac; return 0; }
 b6lock(){ # b6lock <stored mode custom|quickstep>
+  b6unlock >/dev/null 2>&1
   setmode "$1"; rebind; home
   # a quiet start: the previous phase's unlock starts a return reset that pulls the shade by itself; let it finish and close any panel first
   sleep 6; adb shell cmd statusbar collapse; sleep 2
