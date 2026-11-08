@@ -751,14 +751,8 @@ public class TjAccessibilityService extends AccessibilityService {
     } };
     private final Runnable homeCalAbort = new Runnable() { @Override public void run() { try { if (homeCalRunning) homeCalFinish(false, "no screenshot appeared in time"); } catch (Throwable t) { Log.e(TAG, "home calibration abort failed", t); } } };
 
-    /** Public for Launcher control ("Calibrate the home patch now"): {@code manual} skips the waiting rules but never the safety ones. Returns a sentence for the person. */
-    public String homeCalibrateNow() {
-        String r = maybeHomeCalibrate("Launcher control", true);
-        return r.isEmpty() ? "calibrating: the home screen goes blank for a second and the screen flashes once" : "not now: " + r;
-    }
-
-    /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. */
-    private String maybeHomeCalibrate(String why, boolean manual) {
+    /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. (Launcher control only opens in Quickstep, where no calibration can run: its button forgets the crops, and this starts by itself the next time the custom home screen is quiet.) */
+    private String maybeHomeCalibrate(String why) {
         final android.content.Context app = getApplicationContext();
         HomePatchRules.CalState s = new HomePatchRules.CalState();
         s.switchOn = homeSwitchOn();
