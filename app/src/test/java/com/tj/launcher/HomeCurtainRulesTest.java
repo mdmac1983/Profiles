@@ -72,6 +72,15 @@ public class HomeCurtainRulesTest {
         assertEquals("exactly the limit is still fine", "", HomeCurtainRules.whyNotUse(f));
     }
 
+    @Test public void aConfirmedPictureIsRestampedBeforeItCanExpire() {
+        assertFalse("a fresh picture needs no new stamp", HomeCurtainRules.stampDue(60_000));
+        assertFalse("exactly the stamp age is not yet due", HomeCurtainRules.stampDue(HomeCurtainRules.STAMP_AFTER_MS));
+        assertTrue("older than a day and confirmed unchanged: renew the stamp", HomeCurtainRules.stampDue(HomeCurtainRules.STAMP_AFTER_MS + 1));
+        assertTrue("even a picture that is already past the use limit is renewed when the home is confirmed unchanged", HomeCurtainRules.stampDue(HomeCurtainRules.MAX_AGE_MS + 1));
+        assertFalse("a stamp from the future (clock jump) is not renewed", HomeCurtainRules.stampDue(-5));
+        assertTrue("the renewal is far below the use limit, so a still-correct picture never expires", HomeCurtainRules.STAMP_AFTER_MS < HomeCurtainRules.MAX_AGE_MS / 10);
+    }
+
     // ---------------------------------------------------------------- capture
 
     @Test public void aQuietHomeIsCaptured() { assertEquals("", HomeCurtainRules.whyNotCapture(goodCapture())); }
