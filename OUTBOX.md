@@ -1245,3 +1245,14 @@
 >
 > I changed only test code, so the product is unchanged since the gated commit. Three solo runs (`uf`, `cs`, `b6`) are going and should be done around 20:04 UTC. I'll read them and then decide whether to ship.
 <!-- sha:7dcd26a0a569 -->
+
+## 2026-11-08T20:10:26Z
+> The handoff self-test passes (38/0). The corrected `b6` run should land in about two minutes, and I'm waiting on it.
+>
+> - **Product code:** unchanged since the gated commit c4f47b5. Only a version bump, docs and test code differ.
+> - **Failures now explained:**
+>   - UF2 and CS-B5: the stock home resumes under the black cover. This happens intermittently and also on v0.8.10, and the checks now fail only if it happens outside the cover (the logic is pinned offline by 11 cases).
+>   - CS-A3 and HP4: flukes, since both pass when run alone.
+> - **Still open:** whether the pencil cover shows in the Quickstep lock screen case. The new check reads the cover window's own state at three openings in a row, with an unlocked control.
+> - **Next:** I'll read the `b6` result, then ship v0.8.11 if it's clean.
+<!-- sha:27480e5e0279 -->
