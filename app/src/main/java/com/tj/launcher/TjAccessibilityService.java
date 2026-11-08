@@ -1050,6 +1050,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 final String model = res == null ? "wallpaper model: default alignment kept" : "wallpaper model: " + res;
                 result = photo != null ? "PHOTO of the lock screen taken (" + photo.getWidth() + "x" + photo.getHeight() + ", mean colour " + mean + "); " + model : model;
                 handler.post(new Runnable() { @Override public void run() {
+                    if (patchHomeMode || !keyguardLocked()) { Log.i(TAG, "CAL lock patch result discarded: the screen is not the lock screen any more (unlocked while the photo was taken)"); return; }   // BI1 (audit 2026-11-08): a photo taken while Tj unlocked can show the home screen: never fit the LOCK wallpaper to it and never store that fit under the lock signature
                     lockCalM = m; lockCalDx = dx; lockCalDy = dy; lockCalSig = sig;
                     Features.setString(TjAccessibilityService.this, LOCK_CAL_KEY, sig + "#" + m + "#" + dx + "#" + dy);
                     if (photo != null && patchView != null && patchLockMode && patchAt.equals(r) && keyguardLocked()) { lockShot = photo; lockShotDx = photoDx; lockShotDy = photoDy; lockShotFresh = true; }
