@@ -36,6 +36,8 @@ public final class NotifQuietPolicy {
         public boolean automationOff;
         /** the stored mode says Quickstep (false = the custom launcher) */
         public boolean quickstepMode;
+        /** the accessibility helper is connected: it is what hears the screen go off and the unlock, so a Quickstep session without it can never end a hold in time (only asked in Quickstep mode) */
+        public boolean helperUp;
         /** the display is on (interactive) */
         public boolean screenOn;
         /** the lock screen is up (keyguard locked) */
