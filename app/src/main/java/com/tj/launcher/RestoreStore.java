@@ -79,6 +79,7 @@ public final class RestoreStore {
             }
         }
         try { AnimationSpeedup.restoreIfPending(c); } catch (Throwable ignored) { }
+        try { NotifQuiet.restoreIfHeld(c); } catch (Throwable ignored) { }   // BH1: the pop-up banner setting goes back too (our own saved original, not a snapshot in this store)
         sp.edit().clear().commit();
         Features.allOff(c);
         Features.set(c, LockNumber.KEY, false);
