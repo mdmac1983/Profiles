@@ -1,17 +1,13 @@
-# CHECKPOINT 656 — read me first, then TASKS.md
+# CHECKPOINT 657 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T02:22:07Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-da0d2646-5yt029` · **builds on:** `bf90b5a` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T02:26:31Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-da0d2646-5yt029` · **builds on:** `95f27b6` (this checkpoint is the commit after it)
 
 ## Just done
-gated v0.8.7 (code 32) and pushed it: the handoff self-test, the full unit suite + lint
-and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
+v0.8.7 RELEASE build triggered 02:26 UTC: android.yml run 34 id 42438532391 on 95f27b6 (full_build=true); gate complete (A #334, B #335, C #336, #337 base,rt, #338 x,n6,cs2 43 PASS, #339 cs2)
 
 ## Do this next
-TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
-android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
-confirm the Release is published (get_release_by_tag is enough) and then run:
-  bash tools/record-release.sh v0.8.7 "the unlock no longer waits on small file writes (the lock log and the last-unlock text are written in the background); the tablet report now shows how often Android restarts the launcher process and its priority while locked, and a flight recorder in the adb helper that says why it dies (measurements for the fast-unlock and power-menu work; nothing changes how anything looks)"
+when run 34 is green: get_release_by_tag v0.8.7; bash tools/record-release.sh v0.8.7 '<the ship.sh note>'; HANDOFF 0j + TASKS BG1c tick; send Tj the answer to BG1 + BG2 with the Release link
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -20,6 +16,7 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
 
 ## Last ten checkpoints
 ```
+  95f27b6 ckpt 656: gated v0.8.7 (code 32) and pushed it: the handoff self-test, the full unit sui
   bf90b5a ckpt 655: v0.8.7 gate: {base,rt} #337 41 PASS / 2 FAIL (both in base right after a NATIV
   04de4ff ckpt 654: v0.8.7 gate read: B #335 and C #336 SUCCESS; A #334 {base,e1,x,ac,rt} 103 PASS
   00938b2 ckpt 653: v0.8.7 GATE dispatched 01:41 UTC on f39b3db: #334 id 42435300260 {base,e1,x,ac
@@ -29,5 +26,4 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
   66f6f86 ckpt 649: v0.8.6 RELEASED 01:00 UTC (https://github.com/tjshea90/Launcher/releases/tag/v
   3894239 ckpt 648: v0.8.6 RELEASE build triggered 00:58 UTC: android.yml run 33 id 42432136845 on
   9e18849 ckpt 647: gated v0.8.6 (code 31) and pushed it: the handoff self-test, the full unit sui
-  709626c ckpt 646: BF1 RE-RUNS dispatched 00:46 UTC on 0bded84 (product code = 72f12a6): #331 id 
 ```
