@@ -1,0 +1,25 @@
+# Tablet checklist for v0.8.9 (written 2026-11-08; NOTHING in this release has run on the real tablet yet, only on the CI emulator)
+
+What changed since v0.8.8 and what to do. Install: Release page, `Launcher-v0.8.9.apk`, install over the old one (same key: permissions, Home choice, accessibility stay). The adb helper does not survive an install. The accessibility service restarts by itself after the update; if Android asks again, switch it on in Accessibility settings.
+
+## What changed (your message of 2026-11-08 ~04:00 UTC: "For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen.")
+1. **The power menu on the UNLOCKED CUSTOM HOME SCREEN is now the stock one, like on the lock screen.** Before (v0.8.8 and older) my own replacement card covered the buttons on the home screen. Now the stock panel (Power off, Restart, ...) is not touched at all, and the Screenshot button is hidden by a patch made of REAL pixels: one picture of your plain wallpaper (taken once) plus the Launcher's own icons and labels (copied live). At rest the patch is invisible; with the menu open it dims exactly like the stock scrim. New switch: Launcher control > the power menu group > "Home screen: hide the Screenshot button with a patch of the real home screen" (default ON). OFF = my card as in v0.8.8. The lock screen is unchanged.
+2. **The first time (and once per wallpaper, and once per page position when you use more than one home page) the app calibrates by itself:** when the custom home screen has been quiet for a few seconds (no finger, no scrolling, not right after the screen came on) the home screen goes BLANK for about a second and the screen FLASHES once (a normal screenshot; it stays in the gallery, like the lock-screen one). Needs "Allow wallpaper access" in Launcher control and the power menu mode "hide Screenshot".
+3. **The patch steps away whenever it could be wrong, and my card covers the buttons as before (never worse than v0.8.8):** a finger on the home screen, scrolling, dragging an icon, a folder or popup open, the notification shade or the volume panel over the home screen. It comes back by itself a moment after the home screen is quiet again.
+4. **Fixed: the start-of-session clean-up now looks in the shade when something was posted** since the last clean-up, even if no icon shows in the status bar (BH1e: a silent notification has no icon but the shade lists it).
+
+## Do this
+**A. Install, use the custom home screen as usual for a few minutes.** Open Launcher control (from Quickstep) and read the line "Home patch: ...". It says which of these it is waiting for. The first calibration needs the menu's place learned: if it says "open the power menu once", hold the side key once on the home screen and close the menu.
+**B. Let it calibrate** (a blank second, one flash). The line then says "HOME PATCH CALIBRATED" and "window resting".
+**C. Compare with the stock look.** Hold the side key on the home screen: Power off / Restart must look like the stock ones, the Screenshot button must be gone, no lighter or darker rectangle where it was, no card sliding in. Photograph it the way you did for the lock screen (stock tablet and ours TOGETHER in one photo is best). Also photograph the home screen at rest WITHOUT the menu: the patch must be invisible (no rectangle, the icon and label in the right-hand column look normal).
+**D. Try to break it.** Open the menu while: scrolling to another page, dragging an icon, with a folder open, right after tapping the home screen, with the notification shade pulled down (close the shade first, then the menu). Each time either the stock look appears or my card covers the buttons; never the Screenshot button, never a flash of it.
+**E. Another page or another wallpaper:** the first quiet moment on a page you have not used before (or after changing the wallpaper) calibrates again (one more flash).
+
+## Send back
+* The tablet report: the line `home-screen patch (BI1, real pixels over the Screenshot spot on the unlocked home)` says the state, the crops stored and the last status; the older lines are unchanged.
+* The photos of C (view-only for me: they never go into the repo) and a word on D: which of the cases showed the patch, which the card, and anything that flickered.
+* Anything where the Screenshot button showed on the home screen.
+
+## If something is wrong
+* Launcher control > the new switch OFF puts back my card at once. "Calibrate the home patch again" forgets the stored wallpaper picture and calibrates again by itself at the next quiet moment. "Restore everything" resets all switches.
+* Nothing else changes: the lock screen, the drawer, the Recents rules and the notification rules of v0.8.8 are as they were.
