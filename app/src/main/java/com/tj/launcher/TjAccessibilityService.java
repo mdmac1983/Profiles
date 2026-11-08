@@ -2545,6 +2545,8 @@ public class TjAccessibilityService extends AccessibilityService {
             handler.removeCallbacks(restRecheck); handler.removeCallbacks(autoShot); handler.removeCallbacks(shotEnd); handler.removeCallbacks(shotIngest); handler.removeCallbacks(autoCalTrigger);
             handler.removeCallbacks(radioRecheck); handler.removeCallbacks(restoreTilesLater); handler.removeCallbacks(recheck); handler.removeCallbacks(debounced); handler.removeCallbacks(quietWork); handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
             quietUntilMs = 0;
+            try { homeCalInterrupted("the helper was stopped"); } catch (Throwable ignored) { }   // BI1 (code review 2026-11-08): a calibration under way ends with the Launcher SHOWN again: the Launcher must never stay hidden because the object that hid it is gone ...
+            handler.removeCallbacks(homeBuild); handler.removeCallbacks(homeShowCheck); handler.removeCallbacks(homeCalTrigger); handler.removeCallbacks(homeCalShoot); handler.removeCallbacks(homeCalAbort); handler.removeCallbacks(homeOffsetSettled);   // ... and after it (a failed calibration re-posts its retry timer) the home timers go
             scrimTeardown();   // BA1
         } catch (Throwable ignored) { }
     }
