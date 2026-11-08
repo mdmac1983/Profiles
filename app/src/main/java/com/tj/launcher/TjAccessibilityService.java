@@ -955,7 +955,9 @@ public class TjAccessibilityService extends AccessibilityService {
     String homePatchInfo() {
         try {
             return "switch " + (homeSwitchOn() ? "on" : "off") + ", power menu mode " + Features.powerMode(this) + ", crops stored " + HomeShot.count(this) + ", window " + (patchView != null && patchHomeMode ? (patchResting ? "resting" : "present, away") : "none")
-                    + ", fresh " + homeRestable() + ", calibrating " + homeCalRunning + " | " + Features.getString(this, HOME_STATUS_KEY, "(nothing yet)");
+                    + ", fresh " + homeRestable() + ", calibrating " + homeCalRunning
+                    + ", foreign windows seen " + homeForeignCount + (homeForeignCount == 0 ? "" : " (" + homeForeignNames + "; the last " + Math.max(0, (android.os.SystemClock.uptimeMillis() - homeForeignLastAtMs) / 1000) + " s ago)")
+                    + " | " + Features.getString(this, HOME_STATUS_KEY, "(nothing yet)");
         } catch (Throwable t) { return "(unreadable)"; }
     }
 
