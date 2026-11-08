@@ -849,6 +849,8 @@ public class TjAccessibilityService extends AccessibilityService {
             patchStatus("lock screen: patch window wanted at " + r.toShortString());
             return patchRect(r, true);
         }
+        Rect homeReal = homePatchTarget();   // BI1: the unlocked custom home screen in "hide Screenshot" mode: the cardless real-pixel patch, when its crop exists
+        if (homeReal != null) { targetIsLock = true; targetIsHome = true; return homeReal; }
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) return null;
         if (!Mode.isCustom(this)) { patchStatus("off: Quickstep mode"); return null; }
         if (!TjHooks.homeScreenShowing()) { patchStatus("off: only shown on the home screen (not over apps, not in All Apps)"); return null; }
