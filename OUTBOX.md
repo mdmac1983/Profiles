@@ -1321,3 +1321,12 @@
 ## 2026-11-08T21:16:55Z
 > The map is running in the background. While it works I'm not touching the files it's reading. I'll read its report when it lands and then write the design down before building anything.
 <!-- sha:d2f68d060102 -->
+
+## 2026-11-08T21:26:48Z
+> The map is back, and it holds two findings that change my plan:
+>
+> 1. **The black cover is `NOT_TOUCHABLE`.** It does not swallow touches. My question to you assumed it did. A home-looking curtain *must* swallow touches, otherwise a tap on a picture of an icon would land on whatever sits underneath, such as Recents.
+> 2. **The picture machinery exists but is cropped.** The home patch already makes pixel-identical pictures (wallpaper screenshot plus the Launcher's own pixels via `PixelCopy`, proven at MAE 0). It stores only a small crop, never the full wallpaper.
+>
+> That map cost about 500k tokens to produce, so before anything else I'll save it, with the design decisions, in `research/` so a compaction or cut-off can't lose it.
+<!-- sha:345863de2695 -->
