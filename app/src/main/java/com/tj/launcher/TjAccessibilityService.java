@@ -1042,7 +1042,8 @@ public class TjAccessibilityService extends AccessibilityService {
             }
             if (patchView != null && (!PatchRest.sameWindow(rectArr(patchAt), rectArr(want), 2) || patchRot != rotation() || patchLockMode != targetIsLock || patchHomeMode != targetIsHome)) { removeOverlay(); removePatch(); }   // AH3: the slot window follows the card's bottom edge, measured on every scan: a 1-2 px wobble must not rebuild the patch
             if (patchView == null) { removeOverlay(); addPatch(want); warmUp(); }
-            if (patchLockMode) { handler.removeCallbacks(calTrigger); handler.postDelayed(calTrigger, 1500); }
+            if (patchLockMode && !patchHomeMode) { handler.removeCallbacks(calTrigger); handler.postDelayed(calTrigger, 1500); }
+            if (patchHomeMode) scheduleHomeBuild();   // BI1
         } catch (Throwable t) { Log.e(TAG, "layer refresh failed", t); removeOverlay(); removePatch(); }
     }
 
