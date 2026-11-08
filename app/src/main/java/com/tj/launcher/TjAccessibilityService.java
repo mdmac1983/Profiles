@@ -836,41 +836,47 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     /** The media store changed while a home calibration runs: is our screenshot in it? Then the capture is over, the Launcher is shown again at once and the crop is cut (worker thread). */
+    /** Finishes the calibration of run {@code gen} only if that run is still the current one (a worker thread must never end or save for a run that was aborted). */
+    private void homeCalFinishIf(int gen, boolean ok, String msg) { if (gen == homeCalGen && homeCalRunning) homeCalFinish(ok, msg); }
+
     private void homeShotObserved() {
         if (!homeCalRunning) return;
         final android.content.Context app = getApplicationContext();
         final long asked = homeCalAskedWall; final Rect win = homeCalWin == null ? null : new Rect(homeCalWin); final int rot = rotation(); final int step = homeCalStep; final String sig = homeSig(); final long wid = homeWallpaperId();
         final android.util.DisplayMetrics dm = realMetrics();
+        final int gen = homeCalGen;   // this run: an abort / a finish / a new start makes every later step of THIS worker void (code review 2026-11-08)
         new Thread(new Runnable() { @Override public void run() {
             try {
+                if (gen != homeCalGen) return;
                 final PatchShot.Shot row = PatchShot.newestShot(app, asked);
                 if (row == null || !HomePatchRules.shotIsOurs(row.addedSec, asked)) return;   // some other image change: keep waiting
                 if (!AutoCalibration.ownerOk(row.owner) && !isSystemPackage(row.owner)) { Log.i(TAG, "HOMEPATCH ignored a screenshot written by " + row.owner); return; }
                 if (lastShotId == android.content.ContentUris.parseId(row.uri)) return;
                 lastShotId = android.content.ContentUris.parseId(row.uri);
-                handler.post(new Runnable() { @Override public void run() { try { if (homeCalRunning) TjHooks.setLauncherHidden(false); removeHomeCalGuard(); } catch (Throwable ignored) { } } });   // the capture is over: the home screen comes back at once
-                if (win == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the menu rectangle is not learned"); } }); return; }
+                handler.post(new Runnable() { @Override public void run() { try { if (homeCalRunning && gen == homeCalGen) { TjHooks.setLauncherHidden(false); removeHomeCalGuard(); } } catch (Throwable ignored) { } } });   // the capture is over: the home screen comes back at once
+                if (win == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, false, "the menu rectangle is not learned"); } }); return; }
                 android.graphics.Bitmap full = PatchShot.decode(app, row.uri);
-                if (full == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the screenshot could not be read"); } }); return; }
+                if (full == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, false, "the screenshot could not be read"); } }); return; }
                 int W = full.getWidth(), H = full.getHeight();
-                if (W != dm.widthPixels || H != dm.heightPixels) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the screenshot has another size than the screen"); } }); return; }
+                if (W != dm.widthPixels || H != dm.heightPixels) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, false, "the screenshot has another size than the screen"); } }); return; }
                 long sr = 0, sg = 0, sb = 0; int n = 0;
                 for (int y = Math.max(0, win.top); y < Math.min(H, win.bottom); y += 3) for (int x = Math.max(0, win.left); x < Math.min(W, win.right); x += 3) { int q = full.getPixel(x, y); sr += (q >> 16) & 255; sg += (q >> 8) & 255; sb += q & 255; n++; }
-                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the power menu was in that screenshot"); } }); return; }
+                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, false, "the power menu was in that screenshot"); } }); return; }
                 int[] cr = PatchShot.cropRect(win.left, win.top, win.right, win.bottom, PatchShot.MARGIN_PX, W, H);
                 android.graphics.Bitmap crop = android.graphics.Bitmap.createBitmap(full, cr[0], cr[1], cr[2] - cr[0], cr[3] - cr[1]);
+                if (gen != homeCalGen) { full.recycle(); crop.recycle(); Log.i(TAG, "HOMEPATCH the calibration was cut short: the screenshot is thrown away"); return; }
                 final boolean saved = HomeShot.save(app, rot, step, crop, sig, cr[0], cr[1], wid, W, H);
                 final String dims = crop.getWidth() + "x" + crop.getHeight();
                 full.recycle();
                 final boolean deleted = saved && PatchShot.deleteQuietly(app, row.uri);
-                handler.post(new Runnable() { @Override public void run() { homeCalFinish(saved, saved ? "HOME PATCH CALIBRATED (" + dims + ", wallpaper position " + step + ")" + (deleted ? "; the screenshot was removed from the gallery again" : "; the screenshot itself stays in the gallery") : "the crop could not be stored"); } });
-            } catch (Throwable t) { Log.e(TAG, "home shot ingest failed", t); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "failed: " + t); } }); }
+                handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, saved, saved ? "HOME PATCH CALIBRATED (" + dims + ", wallpaper position " + step + ")" + (deleted ? "; the screenshot was removed from the gallery again" : "; the screenshot itself stays in the gallery") : "the crop could not be stored"); } });
+            } catch (Throwable t) { Log.e(TAG, "home shot ingest failed", t); handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, false, "failed: " + t); } }); }
         } }, "tj-homeshot").start();
     }
 
     private void homeCalFinish(boolean ok, String msg) {
         handler.removeCallbacks(homeCalShoot); handler.removeCallbacks(homeCalAbort);
-        homeCalRunning = false;
+        homeCalGen++; homeCalRunning = false;
         try { TjHooks.setLauncherHidden(false); } catch (Throwable ignored) { }
         removeHomeCalGuard();
         try { if (!calibrating()) stopShotWatch(); } catch (Throwable ignored) { }
