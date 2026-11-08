@@ -1790,6 +1790,166 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable t) { Log.e(TAG, "dirty tracking failed", t); }
     }
 
+    // ---------------------------------------------------------------- BL1: the HOME CURTAIN, the home-looking cover of the no-helper return reset (rules: HomeCurtainRules; store: HomeCurtain; design: research/BL1_HOME_CURTAIN_2026-11-08.md)
+    /** Prefs shown in the tablet report: what the curtain did last (shown, or why the plain black cover was used) and what the last capture said. */
+    public static final String CURTAIN_STATE_KEY = "home_curtain_state", CURTAIN_CAPTURE_KEY = "home_curtain_capture";
+    private volatile boolean curtainPreloading = false;
+    private boolean curtainPending = false, curtainBuilding = false;
+    private long curtainLastStartUp = 0;
+    private int curtainWaits = 0;
+    private String curtainCaptureNote = "";
+
+    private boolean curtainSwitchOn() { return Features.get(this, HomeCurtainRules.KEY, HomeCurtainRules.defaultOn(debuggable())); }
+
+    /** The curtain is wanted but the plain-wallpaper picture of THIS page is not stored yet (a calibration made before the curtain existed kept only the crop): the next calibration takes it (one flash). */
+    private boolean curtainWallMissing() {
+        try { return curtainSwitchOn() && !HomeCurtain.hasWall(this, rotation(), homeStepNow(), homeSig()); } catch (Throwable t) { return false; }
+    }
+
+    /** The facts the rules need to say whether the stored picture may be the cover now. Main thread, NO decoding and no disk read of the picture (two preference reads and a file check). */
+    private HomeCurtainRules.UseFacts curtainUseFacts(android.util.DisplayMetrics dm) {
+        HomeCurtainRules.UseFacts f = new HomeCurtainRules.UseFacts();
+        f.switchOn = curtainSwitchOn();
+        f.rotation = rotation(); f.picRotation = f.rotation;
+        f.dispW = dm.widthPixels; f.dispH = dm.heightPixels;
+        f.currentSig = homeSig();
+        HomeCurtainRules.Meta m = HomeCurtain.meta(this, f.rotation);
+        android.graphics.Bitmap pic = m == null ? null : HomeCurtain.cachedFor(f.rotation, m.sig);
+        if (m != null && pic == null) curtainPreloadAsync();   // stored but not in memory (a restarted process): it is loaded for the NEXT unlock
+        f.hasPicture = m != null && pic != null;
+        if (f.hasPicture) { f.pictureSig = m.sig; f.picW = pic.getWidth(); f.picH = pic.getHeight(); f.ageMs = System.currentTimeMillis() - m.savedAtMs; }
+        return f;
+    }
+
+    /** Reads the stored curtain into memory (worker thread, one at a time): at service start, after a trim, and whenever a cover found it stored but not in memory. */
+    private void curtainPreloadAsync() {
+        if (curtainPreloading || !curtainSwitchOn()) return;
+        curtainPreloading = true;
+        final android.content.Context app = getApplicationContext();
+        new Thread(new Runnable() { @Override public void run() {
+            try { android.util.DisplayMetrics dm = realMetrics(); HomeCurtain.preload(app, rotation(), homeSig(), dm.widthPixels, dm.heightPixels); }
+            catch (Throwable t) { Log.e(TAG, "curtain preload failed", t); }
+            finally { curtainPreloading = false; }
+        } }, "tj-curtain-load").start();
+    }
+
+    /** What the cover did, for Launcher control, the tablet report and the lock log (written off the main thread). */
+    private void curtainNoteUse(boolean curtain, String why, boolean touchable) {
+        try {
+            String line = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  "
+                    + (curtain ? "the curtain was shown (touches " + (touchable ? "swallowed" : "pass through until the unlock is confirmed") + ")" : "black cover: " + why);
+            Features.setStringAsync(this, CURTAIN_STATE_KEY, line);
+            LockLog.add(getApplicationContext(), "COVER", line);
+        } catch (Throwable ignored) { }
+    }
+
+    /** USER_PRESENT: the unlock is confirmed, so the curtain now swallows touches until it goes (the black cover never did). Main thread. */
+    private void curtainSwallowTouches() {
+        try {
+            if (resetCover == null || !resetCoverIsCurtain || resetCoverLp == null) return;
+            if ((resetCoverLp.flags & WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) == 0) return;
+            resetCoverLp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).updateViewLayout(resetCover, resetCoverLp);
+            Log.i(TAG, "RESET curtain swallows touches now (the unlock is confirmed)");
+        } catch (Throwable t) { Log.e(TAG, "curtain touch switch failed", t); }
+    }
+
+    private final Runnable curtainBuild = new Runnable() { @Override public void run() { curtainPending = false; try { buildCurtainNow(); } catch (Throwable t) { curtainBuilding = false; Log.e(TAG, "curtain capture failed", t); } } };
+
+    /** From {@link #homeDrew} (every draw of the Launcher): look at the curtain picture again once the home has been quiet. At most ONE posted runnable; nothing else on the draw path. */
+    private void scheduleCurtain() {
+        if (curtainPending || curtainBuilding) return;
+        if (!curtainSwitchOn()) return;
+        curtainPending = true;
+        handler.postDelayed(curtainBuild, HomeCurtainRules.QUIET_DRAW_MS + 100);
+    }
+
+    /** Captures the Launcher's own pixels (no flash: its own window, PixelCopy) when the custom home is quiet, and re-makes the stored picture only when the home really changed. Main thread; the heavy part runs on a worker. */
+    private void buildCurtainNow() {
+        if (curtainBuilding) return;
+        final android.content.Context app = getApplicationContext();
+        final HomeCurtainRules.CaptureFacts f = new HomeCurtainRules.CaptureFacts();
+        f.switchOn = curtainSwitchOn();
+        if (!f.switchOn) return;
+        f.customMode = Mode.isCustom(app); f.unlocked = !keyguardLockedFast(); f.screenOn = isScreenOn();
+        f.calibrating = homeCalRunning || calibrating() || scrimStage != 0; f.building = curtainBuilding;
+        f.positionKnown = TjHooks.wallpaperReported;
+        final int rot = rotation(); final int step = homeStepNow(); final String sig = homeSig();
+        f.wallKnown = f.positionKnown && HomeCurtain.hasWall(app, rot, step, sig);
+        f.homeAtRest = TjHooks.homeScreenShowing() && !TjHooks.homeFloatingViewOpen() && !TjHooks.homeBusy();
+        f.msSinceDraw = since(TjHooks.lastHomeDrawMs); f.msSinceTouch = since(homeLastTouchMs()); f.msSinceLastCapture = since(curtainLastStartUp);
+        String why = HomeCurtainRules.whyNotCapture(f);
+        if (!why.isEmpty()) {
+            curtainCaptureNote = "not capturing: " + why;
+            boolean quietish = f.customMode && f.unlocked && f.screenOn && f.positionKnown;
+            if (quietish && !f.wallKnown) {   // the wallpaper picture of this page comes with a calibration (one flash); the calibration's own rules decide when
+                if (!f.calibrating) { handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, HomePatchRules.CAL_DRAW_QUIET_MS + 600); }
+            } else if (quietish && ++curtainWaits <= 12) { curtainPending = true; handler.postDelayed(curtainBuild, 1500); }   // a "not yet" reason: look again, a bounded number of times (the next draw starts a new wish anyway)
+            return;
+        }
+        curtainWaits = 0;
+        final int[] win = TjHooks.launcherWindowSize();
+        final android.util.DisplayMetrics dm = realMetrics();
+        if (win == null || win[0] <= 0 || win[1] <= 0) { curtainCaptureNote = "no Launcher window to copy"; return; }
+        final int cw = Math.min(dm.widthPixels, win[0]), ch = Math.min(dm.heightPixels, win[1]);
+        curtainBuilding = true; curtainLastStartUp = android.os.SystemClock.uptimeMillis();
+        HomeLayer.copy(new Rect(0, 0, cw, ch), handler, new HomeLayer.Done() {
+            @Override public void done(final android.graphics.Bitmap layer, String problem) {
+                if (layer == null) { curtainBuilding = false; curtainCaptureNote = "could not read the Launcher's pixels (" + problem + ")"; Log.i(TAG, "CURTAIN layer copy failed: " + problem); return; }
+                new Thread(new Runnable() { @Override public void run() { curtainFinishOffMain(app, layer, rot, step, sig, dm.widthPixels, dm.heightPixels); } }, "tj-curtain").start();
+            }
+        });
+    }
+
+    /** Worker thread: hash the layer, refuse a blank copy, and only when the home changed compose it over the wallpaper picture and store it (PNG) and keep it in memory. Always ends by clearing the busy flag on the main thread. */
+    private void curtainFinishOffMain(final android.content.Context app, final android.graphics.Bitmap layer, final int rot, final int step, final String sig, final int dispW, final int dispH) {
+        String result;
+        boolean noteIt = true;
+        try {
+            int[] opaque = new int[1]; int h = 17; int[] row = new int[layer.getWidth()];
+            for (int y = 0; y < layer.getHeight(); y += HomeCurtainRules.SAMPLE_STEP_ROW) { layer.getPixels(row, 0, layer.getWidth(), 0, y, layer.getWidth(), 1); h = HomeCurtainRules.foldRow(h, row, row.length, opaque); }
+            if (HomeCurtainRules.blank(opaque)) result = "the copy was blank (the Launcher had not drawn yet)";
+            else {
+                HomeCurtainRules.Meta m = HomeCurtain.meta(app, rot);
+                boolean changed = HomeCurtainRules.changed(m != null, m == null ? "" : m.sig, m == null ? 0 : m.step, m == null ? 0 : m.hash, sig, step, h);
+                if (!changed) { HomeCurtain.preload(app, rot, sig, dispW, dispH); result = "unchanged since the last picture"; noteIt = false; }
+                else {
+                    android.graphics.Bitmap wall = HomeCurtain.loadWall(app, rot, step, sig);
+                    if (wall == null) result = "the wallpaper picture could not be loaded";
+                    else {
+                        android.graphics.Bitmap comp = HomeLayer.composeAt(wall, layer, 0, 0);
+                        wall.recycle();
+                        if (comp == null) result = "could not compose the picture";
+                        else {
+                            long now = System.currentTimeMillis();
+                            if (HomeCurtain.saveCurtain(app, rot, comp, sig, step, h, now)) { HomeCurtain.setCache(rot, sig, now, comp); result = "picture saved (" + comp.getWidth() + "x" + comp.getHeight() + ", layer " + layer.getWidth() + "x" + layer.getHeight() + ", wallpaper position " + step + ")"; }
+                            else { comp.recycle(); result = "the picture could not be written"; }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) { Log.e(TAG, "curtain capture failed", t); result = "failed: " + t; }
+        finally { layer.recycle(); }
+        final String res = result; final boolean note = noteIt;
+        handler.post(new Runnable() { @Override public void run() {
+            curtainBuilding = false; curtainCaptureNote = res;
+            Log.i(TAG, "CURTAIN " + res);
+            if (note) Features.setStringAsync(TjAccessibilityService.this, CURTAIN_CAPTURE_KEY, new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + res);
+        } });
+    }
+
+    /** One line for Launcher control: is the curtain ready, and if not why the black cover is used. */
+    public String curtainInfo() {
+        try {
+            if (!curtainSwitchOn()) return "off (the black cover is used)";
+            HomeCurtainRules.UseFacts f = curtainUseFacts(realMetrics());
+            String use = HomeCurtainRules.whyNotUse(f);
+            HomeCurtainRules.Meta m = HomeCurtain.meta(this, rotation());
+            String ready = use.isEmpty() ? "ready: a picture of your home screen taken " + Math.max(0, (System.currentTimeMillis() - m.savedAtMs) / 60000) + " min ago" : "the black cover is used (" + use + ")";
+            return ready + "; wallpaper pictures kept: " + HomeCurtain.wallCount(this) + "; capture: " + (curtainCaptureNote.isEmpty() ? "(nothing yet)" : curtainCaptureNote) + "; last use: " + Features.getString(this, CURTAIN_STATE_KEY, "(not used yet)");
+        } catch (Throwable t) { return "(unreadable: " + t + ")"; }
+    }
+
     // ---------------------------------------------------------------- B4: black cover while the reset drives the shade / Recents (never touchable, always removed)
     private View resetCover;
     private boolean resetCoverIsCurtain;                      // BL1: the cover shows the picture of the home screen (not plain black)
