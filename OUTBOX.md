@@ -1098,3 +1098,56 @@
 >
 > `research/TABLET_CHECKLIST_v0.8.9.md` is written, and nothing in this release has run on the real tablet yet.
 <!-- sha:d0bf629909aa -->
+
+## 2026-11-08T07:23:24Z
+> **v0.8.9 is not shipped yet.** The home-screen patch works on the emulator, but I don't yet understand two failures well enough to release. Eight CI runs are in flight to settle them, and the timer fires at 07:35 UTC.
+>
+> **Where the home-screen patch stands**
+> - The section I wrote for it (`hp`) passes 28/28 on its own. It passes again when run after the notification and PIN sections once the test waits for a quiet home screen.
+> - The three gate runs on the final commit came back mixed. I investigated every failure instead of rerunning blindly:
+>   - **`hp` check HP4:** the menu opened within the 2.5 s the patch deliberately steps away after another window (the shade, a dialog) has been on screen. That was a test-timing problem, now fixed by waiting.
+>   - **`pt` brightness checks and a native-crash line:** a rerun passed them. The same section also fails on the released v0.8.8 (different checks each time), so it is flaky on this CI, not caused by my changes.
+>   - **`ps` hang:** run #357 stalled on a hung emulator. The sections that never ran passed when rerun.
+>
+> **Two things I can't dismiss yet**
+> - **`W5` (stock home sent back to our launcher):** it failed twice on `main`, but the same sections on the v0.8.8 tag passed. One suspect is the notification clean-up fix, which can pause that redirect for 10 s. I added diagnostics and a rerun is in flight.
+> - **`BC2` (lock-screen menu-close timing):** the close mismatch read 11.8, over 15 and 20.3 % on `main` versus 3.3 % on v0.8.8, from one sample each. Two more samples per side are in flight. I want to know before shipping, because the lock screen is the part Tj calls perfect.
+>
+> **What changed since the last update**
+> - Two code reviews and a read-only audit of the shared lock-screen flag: I fixed the real findings, including two that could have wiped all stored wallpaper crops or exposed the stock Screenshot entry.
+> - The tablet report now counts which other windows take the patch away, so the first real-tablet round returns data.
+>
+> Everything is saved (checkpoint 686, `main` equals my branch tip). Tj's open items are unchanged: the v0.8.5/0.8.6 tablet checklists and the notification question.
+>
+> 📌 **Chat checkpoint: 🟡 Yellow**
+>
+> **Goal:** Take over the cut-off Launcher session (Android 10 Go launcher, `com.tj.launcher`) and ship v0.8.9: the stock power menu on the unlocked custom home screen with a real-pixel wallpaper patch (TASKS BI1), plus the notification clean-up fix BH1e.
+>
+> **Decisions made:**
+> - Takeover from `CHECKPOINT.md` and `TASKS.md`; work on branch `claude/new-session-2r9ji2`, `main` mirrors every push.
+> - Product code is final except for fixes the pending reads may force.
+> - Version bumped to 0.8.9 / code 34.
+> - No release until `W5` is understood and `BC2` is not worse than v0.8.8.
+>
+> **Changed / rejected:**
+> - First gate on e60f9ad was cancelled on purpose after a second code review of my own fixes.
+> - Delta-only gate plan → full gate against b1399c9, because nothing had been gated yet.
+> - A home-screen fade 
+> [... 1081 characters omitted ...]
+> e).
+> 2. `W5`: if a reset ran just before the stock start, fix the test wait or shorten the guard pause, then rerun `base,legacy`.
+> 3. `BC2`: compare three or more samples per side.
+> 4. Then ship v0.8.9 and give Tj the Release link.
+>
+> **Rules to remember:**
+> - Checkpoint after every step; Tj's photos never go in the repo.
+> - Run Gradle only through `tools/gradle.sh`, one at a time.
+> - Keep checkpoint text short (run listings echo it).
+> - A cancelled run still prints its results block.
+> - Do not release anything the gate did not run on.
+>
+> ⚠️ **Health:** The chat is long and heavy with CI output, so detail from the early takeover could blur; the repo files carry all the state.
+>
+> 💡 This chat is getting long. Consider `/amhandoff` at the next good stopping point.
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:ceeb9a34649d -->
