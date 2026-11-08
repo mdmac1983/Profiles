@@ -20,6 +20,10 @@ public final class HomeShot {
 
     private HomeShot() {}
 
+    /** Incremented whenever a crop is stored or forgotten (any thread, any Activity of this process): callers that cache "is there a valid crop" compare it. */
+    private static volatile int generation = 0;
+    public static int generation() { return generation; }
+
     private static File file(Context c, int rot, int step) { return new File(c.getFilesDir(), HomePatchRules.fileName(rot, step)); }
     private static String entry(int rot, int step) { return "r" + rot + "x" + step; }
 
