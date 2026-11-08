@@ -1,17 +1,13 @@
-# CHECKPOINT 703 — read me first, then TASKS.md
+# CHECKPOINT 704 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T17:49:16Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-dda19ce3-8dl2cy` · **builds on:** `08fe4c2` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T17:49:46Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-dda19ce3-8dl2cy` · **builds on:** `faf153d` (this checkpoint is the commit after it)
 
 ## Just done
-gated v0.8.10 (code 35) and pushed it: the handoff self-test, the full unit suite + lint
-and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
+v0.8.10 (code 35) RELEASE BUILD triggered 17:49:40 UTC: android.yml full_build=true on main at faf153d (ship.sh green: handoff test, 707+ unit tests, lint; the product code is the gated b0d29fd + the version bump only)
 
 ## Do this next
-TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
-android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
-confirm the Release is published (get_release_by_tag is enough) and then run:
-  bash tools/record-release.sh v0.8.10 "on the unlocked home screen the patch over the hidden Screenshot button now dims in step with the stock power menu, like on the lock screen: it used to stay bright for the whole fade and drop at the end (measured on the emulator, the right path ran in 1 of 10 openings, now 10 of 10); the tablet report shows how the last fade looked from the patch's side (first frame, late frames, animation scale)"
+read the android.yml run (workflow android.yml, branch main, event workflow_dispatch, perPage 1): green -> get_release_by_tag v0.8.10 -> bash tools/record-release.sh v0.8.10 '<the ship note>' (only after green) -> tick BJ1 note in TASKS (BJ1e waits on Tj) -> give Tj the Release link as plain text on its own line
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -20,6 +16,7 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
 
 ## Last ten checkpoints
 ```
+  faf153d ckpt 703: gated v0.8.10 (code 35) and pushed it: the handoff self-test, the full unit su
   2864951 ckpt 702: BJ1 GATE READ: #384 b6,n,o,hp,last SUCCESS; #385 e1,pt SUCCESS; #387 hp,hf on 
   b0d29fd ckpt 701: BJ1: one more guard (code re-read): fastMenuOpen ends a home-flavour wait star
   fcee0dc ckpt 700: BJ1: docs written (HOME_PATCH design doc section with the measured table, TABL
@@ -29,8 +26,4 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
   825ae3d ckpt 696: BJ1c: run #382 PROVED the cause (home started no wait for a burst's first wind
   22a8038 ckpt 695: BJ1b: per-fade frame statistics (first draw lateness, frames, slow frames, wor
   e321189 ckpt 694: BJ1b: emulator.yml run #382 id 42500697309 (sections=hf, head ae64eec) dispatc
-  ae64eec ckpt 693: BJ1b: section hf (home fade film, 4 arms x 5 films) + debug-only switch home_b
 ```
-
-(3 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
