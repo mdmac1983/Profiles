@@ -209,7 +209,7 @@ public final class ReturnReset {
             final boolean doRecents = recents && (clean ? recentsNeeded(app) : (!tracked || !pendPkgs.isEmpty()));
             final java.util.Set<String> labels = (!clean && tracked && !AppOrigin.custom(app).isEmpty()) ? labelsOf(app, pendPkgs) : null;   // selective dismissal only when something must be preserved
             // AI1: why an app was (not) closed is now in the lock log. v0.7.6 (review): LockLog cuts a line at 200 characters, so the decision flags and the COUNTS come first and the unbounded lists last
-            LockLog.add(app, "RESET", "plan: " + (clean ? "clean start, " : "") + "tracked=" + tracked + ", Recents step=" + doRecents + ", shade step=" + doShade + ", pending=" + pendPkgs.size() + ", kept(custom)=" + AppOrigin.custom(app).size() + ", cards to close=" + labels + ", opened in Quickstep=" + pendPkgs);
+            LockLog.add(app, "RESET", "plan: " + (clean ? "clean start, " : "") + "tracked=" + tracked + ", Recents step=" + doRecents + ", shade step=" + doShade + " (icons=" + icons + ", seen=" + seen + "), pending=" + pendPkgs.size() + ", kept(custom)=" + AppOrigin.custom(app).size() + ", cards to close=" + labels + ", opened in Quickstep=" + pendPkgs);
             if (!doShade && !doRecents) {
                 fastActive = false;
                 svc.appendReport("nothing to clear (status bar shows no notifications" + (recents ? ", no app was opened from Quickstep since the last clear" : "") + "): " + (clean ? "the custom home stays" : "Solitaire at once"));
