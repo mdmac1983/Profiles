@@ -507,7 +507,9 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
   # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
   check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
-  check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil after the panel was asked to open (a lingering warm window does not count)" bash -c "sed -n '/BK1b marker/,\$p' $OUT/pencil-lock-$1-log.txt | grep -q 'PENCIL cover shown'"
+  # Run #395 (head 203a5b1): in the QUICKSTEP-stored-mode phase the cover was shown 6.6 s BEFORE the marker (the panel was already open when the lock screen came up), so the line is looked for in the WHOLE phase (the log is cleared before
+  # the lock cycle, so no earlier phase can supply it). Stored mode quickstep + locked = the case the old `Mode.isCustom` gate could never cover.
+  check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil during this phase (the log was cleared before the lock cycle)" bash -c "grep -q 'PENCIL cover shown' $OUT/pencil-lock-$1-log.txt"
 }
 b6lock custom
 b6lock quickstep
