@@ -177,12 +177,15 @@ public final class AnimationSpeedup {
      */
     public static void reconcileAsync(final Context c) {
         final Context app = c.getApplicationContext();
-        Worker.H.post(new Runnable() { @Override public void run() {
-            try { if (!resetStartedHere) setHold(app, AnimationPolicy.HOLD_RESET, false); syncNow(app, "process start", null, null, true); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
-        } });
-        Worker.H.postDelayed(new Runnable() { @Override public void run() {
-            try { syncNow(app, "process start + 2.5 s", null, null, false); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
-        } }, 2500);
+        // a short-lived thread creates the worker, so Application.onCreate (whose cost AD8 measures on the slow tablet) never waits for a new thread's looper
+        new Thread(new Runnable() { @Override public void run() {
+            Worker.H.post(new Runnable() { @Override public void run() {
+                try { if (!resetStartedHere) setHold(app, AnimationPolicy.HOLD_RESET, false); syncNow(app, "process start", null, null, true); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
+            } });
+            Worker.H.postDelayed(new Runnable() { @Override public void run() {
+                try { syncNow(app, "process start + 2.5 s", null, null, false); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
+            } }, 2500);
+        } }, "tj-anim-start").start();
     }
 
     public static void syncNow(Context c, String trigger) { syncNow(c, trigger, null, null, false); }
