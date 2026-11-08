@@ -3369,12 +3369,20 @@ public class TjAccessibilityService extends AccessibilityService {
         fadeFrameLastMs = now; fadeFrames++;
         if (!PatchFade.fading(now, fadeStartMs, fadeLeadMs)) {   // this frame is the last one: the final brightness
             fading = false;
-            String scale = animScaleText();   // read on the LAST frame only, never on the critical first ones
-            fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms, animator scale " + scale;
-            Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms scale=" + scale + " t=" + now);
+            fadeEndMs = now;
+            handler.post(fadeSummaryRun);   // review 2026-11-08: the summary (a settings read, a string, a log line) is made AFTER this frame has been handed to the renderer, never inside it: the lock screen's last frame must not wait for it
         }
         return p;
     }
+
+    private long fadeEndMs = 0;
+    private final Runnable fadeSummaryRun = new Runnable() { @Override public void run() {
+        try {
+            String scale = animScaleText();
+            fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms, animator scale " + scale;
+            Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms scale=" + scale + " t=" + fadeEndMs);
+        } catch (Throwable t) { Log.e(TAG, "fade summary failed", t); }
+    } };
 
     /** BJ1: the system's animator duration scale as it is now. The stock fade runs 300 ms x this; at 0 ("Remove animations") the stock scrim appears in ONE frame, which a 300 ms patch fade would not match. For the report and the log only. */
     private String animScaleText() {
