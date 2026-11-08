@@ -1334,3 +1334,7 @@
 ## 2026-11-08T21:43:45Z
 > The first `cu` run is on CI (due about 21:52). It's the first time the whole curtain runs on the emulator, so I expect to learn something from its INFO lines either way.
 <!-- sha:5af7a38fec7d -->
+
+## 2026-11-08T21:55:16Z
+> The second `cu` run, with the localization diagnostics, is on CI (due in about five minutes). The first run's findings are checkpointed.
+<!-- sha:8264e1a0eacb -->
