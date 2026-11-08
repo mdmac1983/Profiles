@@ -518,7 +518,9 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   sleep 6; adb shell cmd statusbar collapse; sleep 2
   adb logcat -c
   adb shell locksettings set-pin 1234 >/dev/null 2>&1
+  BK_P1="$(pen_cover_state)"   # the cover window right after the PIN was set, before the power key (run #407: a 'PENCIL cover shown' line came ~5 s BEFORE the marker in the Quickstep phase: is a stray cover sitting there with no panel open?)
   palock
+  BK_P2="$(pen_cover_state)"   # the lock screen is up, the panel has NOT been opened yet
   adb shell log -t TjA11y "BK1b marker expand"
   adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock-$1
   BK_S="$(pen_cover_state)"   # the cover window at +3 s of the 1st opening (the others are sampled below, still locked)
