@@ -2921,6 +2921,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!pressure) return;
             handler.post(new Runnable() { @Override public void run() {
                 launchableCache.clear();
+                HomeCurtain.dropCache();   // BL1: the in-memory curtain (about 2.4 MB) goes under real pressure; it is read back from its file the next time it is needed (a cover that shows it keeps its own reference)
                 if (patchView == null) { wallpaperBmp = null; lockBmp = null; lockShot = null; lockShotFresh = false; Log.i(TAG, "TRIM released the cached wallpaper bitmaps"); }
             } });
         } catch (Throwable ignored) { }
