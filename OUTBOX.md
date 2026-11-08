@@ -1313,3 +1313,7 @@
 >
 > Handoff ready: a new session resumes from CHECKPOINT.md.
 <!-- sha:866417ed5b0b -->
+
+## 2026-11-08T21:12:58Z
+> Your decision is clear: yes to the home-looking curtain, an identical picture of the current home screen instead of black. Per the working agreement, I'll write the request into TASKS.md in your words and checkpoint **before** any code. Then I'll map the existing code, since this touches the unlock path.
+<!-- sha:d3bcf6acefab -->
