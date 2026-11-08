@@ -221,7 +221,7 @@ public final class ReturnReset {
             // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app (BE3: then show the home).
             try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() {
                 try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }   // the flags (dirty, boot) are cleared by the Recents step ITSELF, and only when it really finished (code review 2026-11-07)
-                AnimationSpeedup.restoreLater(app, fast ? 700 : 0); } }); return; }
+                AnimationSpeedup.restoreLater(app, clean ? 2000 : (fast ? 700 : 0)); } }); return; }   // BF1: a clean start releases the animations the moment the custom home is in front (TjAccessibilityService.settleHome, or its own 1.5 s timeout); this timer is only the backstop. The Solitaire flow keeps its 700 ms
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
         } else if (svc == null && (notif || recents)) {
             Features.setString(app, TjAccessibilityService.RESET_REPORT_KEY, "Accessibility helper is OFF: notifications and Recents were NOT cleared (turn it on in Accessibility settings).");
