@@ -17,8 +17,10 @@ public class MainActivity extends Activity {
         setContentView(t);
         if (getIntent().getBooleanExtra("quiet", false)) return;   // the task-clean-up test (section rt) needs a shared app that opens WITHOUT a notification
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        nm.createNotificationChannel(new NotificationChannel("t", "Test", NotificationManager.IMPORTANCE_DEFAULT));
-        nm.notify(1, new Notification.Builder(this, "t")
+        boolean high = getIntent().getBooleanExtra("high", false);   // section nq (BH1): only a HIGH-importance notification pops up as a banner; every other section keeps the default channel
+        String ch = high ? "h" : "t";
+        nm.createNotificationChannel(new NotificationChannel(ch, high ? "Test pop-up" : "Test", high ? NotificationManager.IMPORTANCE_HIGH : NotificationManager.IMPORTANCE_DEFAULT));
+        nm.notify(1, new Notification.Builder(this, ch)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("NOTIFIER " + getPackageName())
                 .setContentText("posted when the app was opened")
