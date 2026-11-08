@@ -3074,6 +3074,8 @@ check "CU1: the home calibration KEPT the whole wallpaper picture (it used to th
 check "CU2: the curtain picture was captured over it from the Launcher's own pixels (no second flash)" test "$CU_T2" != never
 sleep 5
 shot 170-cu-bare
+sleep 1; shot 170b-cu-bare2
+info "CU B: touch indicators: show_touches=$(adb shell settings get system show_touches | tr -d '\r') pointer_location=$(adb shell settings get system pointer_location | tr -d '\r')"
 info "CU B: the capture line in the report: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_curtain_capture">[^<]*' | cut -d'>' -f2 | tr -d '\r' | cut -c1-200)"
 # ---------------- phase C: a Quickstep session, no helper, a plain PIN; screenshots WHILE the cover is up
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
@@ -3085,8 +3087,9 @@ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCOD
 adb logcat -c
 for CU_K in "177 628" "300 628" "424 628" "177 714"; do adb shell input tap $CU_K; sleep 0.4; done
 adb shell input tap 424 886
+rm -f "$OUT/cu-taps.txt"
 for CU_I in 1 2 3 4 5; do
-  if [ "$CU_I" = 2 ] || [ "$CU_I" = 3 ]; then adb shell input tap 300 400 >/dev/null 2>&1; fi   # a tap on the picture AFTER the unlock is confirmed: it must be swallowed
+  if [ "$CU_I" -ge 2 ]; then echo "tap$CU_I@$(adb shell date +%s%N | cut -c1-13) at $((300+CU_I)),$((400+CU_I))" >> "$OUT/cu-taps.txt"; adb shell input tap $((300+CU_I)) $((400+CU_I)) >/dev/null 2>&1; fi   # a tap on the picture AFTER the unlock is confirmed: it must be swallowed
   shot 171-cu-during-$CU_I; adb shell date +%s%N | cut -c1-13 > "$OUT/cu-t$CU_I.txt"
 done
 sleep 6
@@ -3094,15 +3097,17 @@ CULOG="$(adb logcat -d -v epoch -s TjA11y:I 2>/dev/null)"
 CU_UP="$(echo "$CULOG" | grep 'RESET cover shown' | tail -1 | awk '{printf "%.0f", $1*1000}')"
 CU_DOWN="$(echo "$CULOG" | grep 'RESET cover removed' | tail -1 | awk '{printf "%.0f", $1*1000}')"
 cu_mae(){ compare -metric MAE "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
-CU_IN=0; CU_MAX=0; CU_LIST=""
+CU_IN=0; CU_MAX=0; CU_LIST=""; CU_BBS=""
 for CU_I in 1 2 3 4 5; do
   CU_T="$(cat "$OUT/cu-t$CU_I.txt" 2>/dev/null)"
   if [ -n "$CU_T" ] && [ -n "$CU_UP" ] && [ -n "$CU_DOWN" ] && [ $((CU_T-500)) -gt "$CU_UP" ] && [ "$CU_T" -lt "$CU_DOWN" ]; then   # the whole screenshot (about 0.4 s) lies inside the cover's life
     CU_M="$(cu_mae 170-cu-bare 171-cu-during-$CU_I)"; CU_IN=$((CU_IN+1)); CU_LIST="$CU_LIST $CU_I:$CU_M"
+    CU_BB="$(convert "$OUT/170-cu-bare.png" "$OUT/171-cu-during-$CU_I.png" -compose difference -composite -colorspace Gray -threshold 4% -trim -format '%wx%h%O' info: 2>/dev/null)"; CU_BBS="$CU_BBS $CU_I:$CU_BB"
     CU_MAX="$(awk -v a="$CU_MAX" -v b="${CU_M:-9}" 'BEGIN{print (b+0>a+0)?b:a}')"
   fi
 done
 info "CU C: the cover went up at $CU_UP and was removed at $CU_DOWN (device ms); screenshots inside its life: $CU_IN; MAE vs the bare home:$CU_LIST; worst $CU_MAX"
+info "CU C: where the differing pixels sit (bounding box of |diff| > 4 %, WxH+X+Y):$CU_BBS; the metric's own noise floor (two bare screenshots 1 s apart): MAE $(cu_mae 170-cu-bare 170b-cu-bare2); screenshot end times: $(for k in 1 2 3 4 5; do printf '%s ' "$(cat "$OUT/cu-t$k.txt")"; done); taps: $(tr '\n' ' ' < "$OUT/cu-taps.txt"); swallowed (ms:xy): $(echo "$CULOG" | grep 'swallowed a tap' | awk '{printf "%.0f:%s ", $1*1000, $NF}')"
 CU_CURTAIN="$(echo "$CULOG" | grep -c 'RESET cover shown (curtain)')"
 check "CU3: the cover that went up was the CURTAIN (a picture of the home screen), not the black one" test "$CU_CURTAIN" -ge 1
 check "CU4: at least one screenshot was taken while the cover was up (so the comparison means something)" test "$CU_IN" -ge 1
