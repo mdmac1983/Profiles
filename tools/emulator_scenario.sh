@@ -10,6 +10,18 @@ APK=app/build/outputs/apk/debug/app-debug.apk
 PKG=com.tj.launcher
 FAILS=0
 shot(){ adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null; }
+# BK1 gate triage (2026-11-08; runs #400 uf on main, #403 uf on the TAG v0.8.10, #401 cs on main): what UF2 and CS-B5 protect is "nothing of Quickstep is VISIBLE after the Enter", not "no stock activity ever resumes". With no helper the reset runs
+# behind the black cover and the stock HOME (or the Recents screen) can resume UNDER it; the released v0.8.10 does exactly that (UF2 fails on the tag with the same order CUSTOM CUSTOM STOCK:.Launcher CUSTOM). cover_resumes prints every resume in the
+# events file that matches the regex and happened OUTSIDE the cover's life (from the last 'RESET cover shown' to the first 'RESET cover removed' after it, 40 ms of slack); empty = fine. No cover line at all = every match is outside.
+# $OUT/cover-times.txt keeps the cover lines. (FILENAME, not FNR==NR: an empty cover file must not make awk read the events file as the first one.)
+cover_resumes(){ # cover_resumes <events file "MM-DD HH:MM:SS.mmm component"> <ERE of the components that may only resume under the cover>
+  adb logcat -d -v time -s TjA11y:I 2>/dev/null | grep -E 'RESET cover (shown|removed)' > "$OUT/cover-times.txt"
+  awk -v re="$2" '
+    function ms(t,  a){ split(t,a,"[:.]"); return ((a[1]*60+a[2])*60+a[3])*1000+a[4] }
+    FILENAME==ARGV[1] { if ($0 ~ /cover shown/) { u=ms($2); d=-1 } else if ($0 ~ /cover removed/ && u>0 && d<0 && ms($2)>=u) { d=ms($2) } next }
+    $0 ~ re { t=ms($2); if (u<=0 || t < u-40 || (d>=0 && t > d+40)) print $0 }
+  ' "$OUT/cover-times.txt" "$1"
+}
 resumed(){ adb shell dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity' | head -1; }
 check(){ # check "<name>" <command...>
   local name="$1"; shift
