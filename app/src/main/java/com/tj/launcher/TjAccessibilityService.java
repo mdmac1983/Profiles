@@ -804,7 +804,8 @@ public class TjAccessibilityService extends AccessibilityService {
         s.permission = checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         s.running = homeCalRunning;
         s.otherCalibration = calibrating() || scrimStage != 0;
-        s.hasCrop = homeCropValid(homeStepNow(), homeSig());
+        s.positionKnown = TjHooks.wallpaperReported;   // BI1: never file a crop under the placeholder step (code review 2026-11-08)
+        s.hasCrop = s.positionKnown && homeCropValid(homeStepNow(), homeSig());
         s.rectKnown = cachedCard() != null;
         s.homeAtRest = TjHooks.homeScreenShowing() && !TjHooks.homeFloatingViewOpen() && !TjHooks.homeBusy();
         s.menuOpen = overlayShown || since(menuUpAtMs) < 3000;
