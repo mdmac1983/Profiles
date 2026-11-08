@@ -785,6 +785,7 @@ public class TjAccessibilityService extends AccessibilityService {
         homeCalWin = new Rect(win);
         homeCalStep = homeStepNow();
         homeCalStartsToday(true);
+        homeCalGen++;
         homeCalRunning = true; homeCalAskedWall = System.currentTimeMillis(); homeCalLastStartUp = android.os.SystemClock.uptimeMillis();
         Log.i(TAG, "HOMEPATCH calibration starts (" + why + ") window " + win.toShortString() + " step " + homeCalStep);
         homeStatus("calibrating: the home screen is hidden for a second");
