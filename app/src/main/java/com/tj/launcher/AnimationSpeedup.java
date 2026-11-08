@@ -23,8 +23,8 @@ import android.util.Log;
  * off: {@code Mode.set}, screen off / on, the unlock decision, the helper connecting / going away, the start of the process, a window-change heartbeat ({@link #tick}) and "Restore everything".</li>
  * </ul>
  * Safety (L10, now for a LONG hold): the original values are written to our prefs BEFORE anything is changed; a scale is put back only if it is still at OUR zero (a value Tj changed by hand in Developer options
- * meanwhile is his), and only when its original was not zero itself (Tj's own permanent setting is never touched); the holds are restored (1) when the last reason ends, (2) by the reset's 10 s failsafe, (3) at the next
- * start of the main process (a reset never outlives its process; the Quickstep hold is re-decided from the facts) and when the helper is not connected, (4) by "Restore everything".
+ * meanwhile is his), and only when its original was not zero itself (Tj's own permanent setting is never touched); the holds end (1) when their reason does, (2) by the reset's 10 s failsafe, (3) at the next start of the
+ * main process (a reset never outlives its process; the Quickstep hold is re-decided from the facts AT ONCE, and once more after 2.5 s without the helper), (4) by "Restore everything" and the crash breaker.
  */
 public final class AnimationSpeedup {
     private static final String TAG = "TjAnim";
@@ -58,24 +58,28 @@ public final class AnimationSpeedup {
             if (next != 0) {
                 if (!permitted(app)) return holds;
                 final boolean first = holds == 0 || !pending;   // nobody held them before: this reason makes them zero. A reason that JOINS one already holding rewrites nothing: a scale Tj changed by hand since stays his
+                boolean snapshotDone = false;
                 try {
-                    if (!pending) {   // the first reason: the originals and the hold are on disk BEFORE the first change
+                    if (first) {   // the originals and the hold are on disk BEFORE the first change
                         SharedPreferences.Editor e = sp.edit();
-                        for (String n : NAMES) e.putString(n, AnimationPolicy.originalOf(Settings.Global.getString(cr, n)));
+                        for (String n : NAMES) {
+                            String cur = Settings.Global.getString(cr, n);
+                            // a scale that is STILL at our zero while an earlier restore never finished (`pending` left over, e.g. the grant was away) keeps the original saved then; any other value is the truth NOW (review BF1: never reuse stale originals)
+                            if (!(pending && AnimationPolicy.isOff(cur) && sp.contains(n))) e.putString(n, AnimationPolicy.originalOf(cur));
+                        }
                         e.putBoolean("pending", true).putInt("holds", next).commit();
+                        snapshotDone = true;
+                        for (String n : NAMES) if (AnimationPolicy.needsZero(Settings.Global.getString(cr, n))) Settings.Global.putString(cr, n, "0");   // a scale that already is zero is left alone (Tj's own permanent setting)
                     } else if (next != holds) {
                         sp.edit().putInt("holds", next).commit();
-                    }
-                    if (first) {   // a scale that already is zero is left alone (Tj's own permanent setting)
-                        for (String n : NAMES) if (AnimationPolicy.needsZero(Settings.Global.getString(cr, n))) Settings.Global.putString(cr, n, "0");
                     }
                     return next;
                 } catch (Throwable t) {   // a write failed half way: put back what may already be zero and forget this hold, so the stored mask never claims a hold that does not exist
                     Log.e(TAG, "could not turn animations off", t);
-                    if (first) {
+                    if (first && snapshotDone) {
                         try { for (String n : NAMES) { String w = AnimationPolicy.restoreValue(Settings.Global.getString(cr, n), sp.getString(n, "1.0")); if (w != null) Settings.Global.putString(cr, n, w); } } catch (Throwable ignored) { }
                     }
-                    try { sp.edit().putInt("holds", holds).putBoolean("pending", pending).commit(); } catch (Throwable ignored) { }
+                    try { sp.edit().putInt("holds", holds).putBoolean("pending", pending && !snapshotDone ? pending : (snapshotDone ? false : pending)).commit(); } catch (Throwable ignored) { }
                     return holds;
                 }
             }
@@ -102,10 +106,14 @@ public final class AnimationSpeedup {
 
     // ================================================================ the RETURN RESET's hold (Y2b)
 
+    /** Set when THIS process began a reset: the start-of-process look must not end it (review BF1). */
+    private static volatile boolean resetStartedHere = false;
+
     /** Turns the animations off for the reset. Returns true if they are now off (so the caller can shorten its waits). */
     public static synchronized boolean begin(final Context c) {
         try {
             if (!enabled(c) || !permitted(c)) return false;
+            resetStartedHere = true;
             int after = setHold(c, AnimationPolicy.HOLD_RESET, true);
             if (!AnimationPolicy.has(after, AnimationPolicy.HOLD_RESET)) return false;
             MAIN.postDelayed(new Runnable() { @Override public void run() { releaseReset(c, "failsafe"); } }, 10_000);   // failsafe
@@ -139,57 +147,71 @@ public final class AnimationSpeedup {
     /** Uptime at which the keyguard was first seen GONE during a lock cycle: the safety valve for an unlock handler that never answers. */
     private static volatile long unlockSeenAt = 0;
 
-    /** The screen went off: the lock screen is next. The animations come back NOW, before it can show. */
-    public static void onScreenOff(Context c) { lockCycle = true; unlockSeenAt = 0; syncNow(c, "screen off", Boolean.FALSE); }
+    /** The screen went off: the lock screen is next. The animations come back NOW, before it can show (the screen is dark: nothing timing-critical waits for this). */
+    public static void onScreenOff(Context c) { lockCycle = true; unlockSeenAt = 0; syncNow(c, "screen off", Boolean.FALSE, null, false); }
 
-    /** The screen came on. {@code lockUp}: the lock screen is what it shows (stays real); otherwise the session simply continues. */
-    public static void onScreenOn(Context c, boolean lockUp) { if (!lockUp) { lockCycle = false; unlockSeenAt = 0; } syncNow(c, lockUp ? "screen on (lock screen)" : "screen on", Boolean.TRUE); }
+    /** The screen came on. {@code lockUp}: the lock screen is what it shows (stays real); otherwise the session simply continues. The caller's answer is the one used (no second look at the keyguard). */
+    public static void onScreenOn(Context c, boolean lockUp) {
+        if (!lockUp) { lockCycle = false; unlockSeenAt = 0; }
+        syncNow(c, lockUp ? "screen on (lock screen)" : "screen on", Boolean.TRUE, Boolean.valueOf(lockUp), false);
+    }
 
     /** The unlock choice was applied (plain PIN = custom, gesture = Quickstep): from here the stored mode is the truth. */
     public static void onUnlockDecided(Context c) {
         lockCycle = false; unlockSeenAt = 0;
-        syncNow(c, "unlock decided", null);
+        syncNow(c, "unlock decided", null, null, false);
         // Android reports the keyguard gone a moment after the unlock handler can run: two cheap follow-up looks (the window heartbeat is the third) so a gesture unlock never waits for the next window change
         final Context app = c.getApplicationContext();
-        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 400);
-        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 1500);
+        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null, null, false); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 400);
+        Worker.H.postDelayed(new Runnable() { @Override public void run() { try { syncNow(app, "after the unlock", null, null, false); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } }, 1500);
     }
 
     /** Like {@link #syncNow} but on a background thread (coalesced: the run that follows reads the newest facts). For triggers on the app's start path. */
     public static void syncSoon(final Context c, final String trigger) {
         final Context app = c.getApplicationContext();
         if (!SOON_PENDING.compareAndSet(false, true)) return;
-        Worker.H.post(new Runnable() { @Override public void run() { SOON_PENDING.set(false); try { syncNow(app, trigger, null); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } });
+        Worker.H.post(new Runnable() { @Override public void run() { SOON_PENDING.set(false); try { syncNow(app, trigger, null, null, false); } catch (Throwable t) { Log.e(TAG, "sync failed", t); } } });
     }
     private static final java.util.concurrent.atomic.AtomicBoolean SOON_PENDING = new java.util.concurrent.atomic.AtomicBoolean(false);
     private static final class Worker { static final Handler H; static { HandlerThread t = new HandlerThread("tj-anim"); t.start(); H = new Handler(t.getLooper()); } }
 
-    /** The heartbeat (called for every accessibility event, at most twice a second does anything): heals a missed trigger, e.g. a lock screen that appeared after the screen came on. Free in the custom launcher. */
+    /**
+     * The heartbeat (called for every accessibility event; at most twice a second it looks at anything): heals a missed trigger, e.g. a lock screen that appeared after the screen came on. Costs a volatile read and a
+     * time compare in all but two events a second, and after that only preference reads: nothing starts (not even the worker thread) unless the hold is on or could start (Quickstep mode AND the switch on).
+     */
     public static void tick(Context c) {
         long now = SystemClock.uptimeMillis();
         if (now - tickAt < 500) return;
         tickAt = now;
         Context app = c.getApplicationContext();
-        if (!AnimationPolicy.has(holds(app), AnimationPolicy.HOLD_QUICKSTEP) && !Mode.QUICKSTEP.equals(Mode.get(app))) return;   // nothing held and nothing that could start: no work at all
+        if (!AnimationPolicy.has(holds(app), AnimationPolicy.HOLD_QUICKSTEP) && !(Mode.QUICKSTEP.equals(Mode.get(app)) && quickstepSwitch(app))) return;
         syncSoon(app, "window change");
     }
     private static volatile long tickAt = 0;
 
-    /** Main process start: a reset never outlives its process, so that reason ends; the Quickstep reason is decided from the facts like at any other trigger. Waits 2.5 s so a helper that is about to reconnect is not mistaken for a missing one. */
+    /**
+     * Main process start. (1) AT ONCE, on the worker: a reset never outlives its process, so a reset hold left by the process that died ends (unless THIS process has begun one); the Quickstep hold is decided from the facts
+     * with the helper ASSUMED present, so everything that needs no helper (lock screen, screen off, custom launcher, switch off, paused) is acted on without delay: a crash loop that dies in a second still ends up with
+     * real animations on the lock screen. (2) After 2.5 s, with the helper as it really is: a helper that never came back cannot hear the screen go off, so the hold ends.
+     */
     public static void reconcileAsync(final Context c) {
         final Context app = c.getApplicationContext();
+        Worker.H.post(new Runnable() { @Override public void run() {
+            try { if (!resetStartedHere) setHold(app, AnimationPolicy.HOLD_RESET, false); syncNow(app, "process start", null, null, true); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
+        } });
         Worker.H.postDelayed(new Runnable() { @Override public void run() {
-            try { setHold(app, AnimationPolicy.HOLD_RESET, false); syncNow(app, "process start", null); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
+            try { syncNow(app, "process start + 2.5 s", null, null, false); } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
         } }, 2500);
     }
 
-    public static void syncNow(Context c, String trigger) { syncNow(c, trigger, null); }
+    public static void syncNow(Context c, String trigger) { syncNow(c, trigger, null, null, false); }
 
     /**
-     * THE decision. Reads the facts, asks {@link AnimationPolicy#why}, sets or clears the Quickstep reason, and logs a line (lock log + logcat) only when something changed. {@code screenOnNow}: what the caller
-     * knows better than a service query (the broadcast that says so), or null to ask. Cheap when there is nothing to do: no binder call unless the hold is on or could start.
+     * THE decision. Reads the facts, asks {@link AnimationPolicy#why}, sets or clears the Quickstep reason, and logs a line (lock log + logcat) only when something changed. {@code screenOnNow} / {@code lockUpNow}: what
+     * the caller knows better than a service query (the broadcast that says so, the answer it already used), or null to ask. {@code assumeHelper}: the process has just started and its helper is about to connect.
+     * Cheap when there is nothing to do: no binder call unless the hold is on or could start.
      */
-    static synchronized void syncNow(Context c, String trigger, Boolean screenOnNow) {
+    static synchronized void syncNow(Context c, String trigger, Boolean screenOnNow, Boolean lockUpNow, boolean assumeHelper) {
         try {
             final Context app = c.getApplicationContext();
             final int before = holds(app);
@@ -197,7 +219,7 @@ public final class AnimationSpeedup {
             AnimationPolicy.Facts f = new AnimationPolicy.Facts();
             f.switchOn = quickstepSwitch(app);
             f.grant = permitted(app);
-            f.helperUp = TjAccessibilityService.get() != null;
+            f.helperUp = assumeHelper || TjAccessibilityService.get() != null;
             f.quickstepMode = Mode.QUICKSTEP.equals(Mode.get(app));
             f.automationOff = CrashGuard.automationOff(app);
             // stage 1, no binder call: with the screen and the lock assumed fine, is anything else against it? (this runs at every screen off and every mode change)
@@ -206,7 +228,7 @@ public final class AnimationSpeedup {
             if (!why.isEmpty() && !holding) return;   // nothing held and nothing could start
             if (why.isEmpty()) {   // stage 2: the screen and the lock screen
                 f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : interactive(app);
-                f.lockUp = f.screenOn && keyguardUp(app);
+                f.lockUp = f.screenOn && (lockUpNow != null ? lockUpNow.booleanValue() : keyguardUp(app));
                 if (lockCycle) {
                     if (!f.screenOn || f.lockUp) unlockSeenAt = 0;   // still dark or locked: the unlock is still to come
                     else {
