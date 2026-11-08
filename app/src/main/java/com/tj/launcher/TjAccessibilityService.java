@@ -1086,6 +1086,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 android.graphics.Bitmap photo = !patchLockMode ? null : lockShot != null ? lockShot : patchShotBmp;   // AM1: the helper's fresh photo wins, else the stored REAL-pixel crop
                 if (photo != null) {
                     int px = lockShot != null ? lockShotDx : patchShotLeft - rect.left, py = lockShot != null ? lockShotDy : patchShotTop - rect.top;
+                    if (patchHomeMode && debuggable()) px += Features.getInt(TjAccessibilityService.this, "home_patch_test_shift", 0);   // BI1, debug builds only: the emulator shifts the composite on purpose (section hp's negative control: the pixel comparison must notice)
                     if (rest) setDim(p, restDim(true)); else setOpenLook(p, fadeProgress());   // AZ1: the open look follows the stock fade-in (1 = complete); BA1: = the scrim MEASURED on this tablet (per channel scale + offset), else the generic brightness
                     c.drawBitmap(photo, px, py, p); return;
                 }   // V4: the photo of the real lock screen (AC6: the paint is shared with the model path, whose dim filter must not darken the photo: run 136 caught that)
