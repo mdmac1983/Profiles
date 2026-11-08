@@ -532,16 +532,22 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   # Gate run #399 (head c4f47b5): this check FAILED in the quickstep phase (no 'PENCIL cover shown' line) although a cover window existed: the line is only written when the cover goes from hidden to shown, so a cover that is already up (or merely
   # follows the panel) writes nothing. What Tj asked is "the pencil is hidden", so that is what is measured now: the darkest pixel inside the pencil's own rectangle (uiautomator dump + the screenshot of the same moment). Under the pure white cover it
   # is about 1.0; the control below measures the same thing on the UNLOCKED Quickstep panel (no cover is wanted there) and must see the pencil, so a 'covered' result cannot be a measuring accident.
+  # Run #406 (head 540e4e5): the pixel measure read 1.0 in BOTH lock phases AND in the unlocked Quickstep control, so it cannot tell a covered pencil from a glyph that is not drawn dark: it stays as information only. The reliable fact is the
+  # cover window's own state (window flags: showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0), read at +3 s of THREE openings in a row (the first is the one filmed above; 2nd and 3rd are the warm path).
   BK_PM="$(pencil_min "$OUT/54-qs-panel-lock-$1.png" /sdcard/b6l.xml)"
-  info "BK1b ($1 mode, locked): the darkest pixel inside the pencil's rectangle in the screenshot: $BK_PM (about 1.0 = hidden under the white cover, clearly lower = the pencil shows)"
-  check "BK1b: on the LOCK screen (stored mode $1) the pencil is HIDDEN: its rectangle is plain white in the screenshot (darkest pixel >= 0.98)" awk -v m="$BK_PM" 'BEGIN{exit !(m!="" && m!="none" && m+0 >= 0.98)}'
-  if [ "$1" = quickstep ]; then
-    home; adb shell cmd statusbar expand-settings; sleep 3; shot 55-qs-panel-quickstep-open
-    adb shell uiautomator dump /sdcard/b6c.xml >/dev/null 2>&1
-    BK_PC="$(pencil_min "$OUT/55-qs-panel-quickstep-open.png" /sdcard/b6c.xml)"
+  info "BK1b ($1 mode, locked): (information only) the darkest pixel inside the pencil's rectangle in the screenshot: $BK_PM"
+  BK_S="$BK_S1"
+  for BK_I in 2 3; do adb shell cmd statusbar collapse; sleep 2; adb shell cmd statusbar expand-settings; sleep 3; BK_S="$BK_S $(pen_cover_state)"; done
+  info "BK1b ($1 mode, locked): the cover window at +3 s of the 1st / 2nd / 3rd opening of the panel: $BK_S (shown = touchable cover over the pencil)"
+  check "BK1b: on the LOCK screen (stored mode $1) the pencil cover is SHOWN at each of three openings of the panel" test "$BK_S" = "shown shown shown"
+  adb shell cmd statusbar collapse; sleep 2
+  adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+  if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover, so 'shown' above is not a constant
+    home; sleep 4; adb shell cmd statusbar expand-settings; sleep 3
+    BK_C="$(pen_cover_state)"
     adb shell cmd statusbar collapse; sleep 2
-    info "BK1b control (Quickstep, UNLOCKED, no cover wanted): the darkest pixel inside the pencil's rectangle: $BK_PC"
-    check "BK1b control: the measure SEES the pencil when no cover is wanted (darkest pixel < 0.9), so the 'hidden' results above mean something" awk -v m="$BK_PC" 'BEGIN{exit !(m!="" && m!="none" && m+0 < 0.9)}'
+    info "BK1b control (Quickstep, UNLOCKED, no cover wanted): the cover window is: $BK_C"
+    check "BK1b control: on the UNLOCKED Quickstep panel the cover is NOT shown (window hidden or absent)" test "$BK_C" != shown
   fi
 }
 b6lock custom
