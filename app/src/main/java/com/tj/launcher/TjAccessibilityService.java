@@ -185,6 +185,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** AZ1: true while the heavy per-event work of the current window burst waits ({@link #deferWork}); the first window event of a burst on a resting lock-screen patch starts the wait ({@link #FAST_WAIT_MS}). */
     private boolean quietBurst(long now, AccessibilityEvent event) {
+        if (patchHomeMode) return false;   // BI1: on the home screen the heavy per-event work includes the quick-settings pencil cover, which must follow every SystemUI event within ~40 ms (B6): never deferred there. The dialog's own event is still handled first (fastMenuOpen runs at the top of onAccessibilityEvent).
         if (now < quietUntilMs) return true;
         if (event == null || !EventNoise.windowsJustChanged(event.getEventType()) || fastDecline() != null) return false;
         deferWork(now, FAST_WAIT_MS);
