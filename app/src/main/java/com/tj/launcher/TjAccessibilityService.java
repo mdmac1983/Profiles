@@ -631,6 +631,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!patchRestable && !patchResting) return;
         patchRestable = false;
         if (patchResting) { patchResting = false; patchView.setAlpha(0f); }
+        Log.i(TAG, "HOMEPATCH stale: the Launcher drew (the patch is away until it is built again)");
         scheduleHomeBuild();
     }
 
