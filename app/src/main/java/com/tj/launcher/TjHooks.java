@@ -98,9 +98,12 @@ public final class TjHooks {
 
     /** Current wallpaper x offset (0..1) as the launcher last set it; 0.5 until the launcher says otherwise. */
     public static volatile float wallpaperX = 0.5f;
+    /** True once the Launcher of THIS process has reported an offset (BI1): until then {@link #wallpaperX} is only the placeholder, and a home-patch crop looked up or filed under it would be for the wrong page position. */
+    public static volatile boolean wallpaperReported = false;
 
     public static void onWallpaperOffset(float x) {
         wallpaperX = x;
+        wallpaperReported = true;
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
     }
 
