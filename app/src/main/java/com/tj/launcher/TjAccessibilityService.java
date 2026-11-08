@@ -719,7 +719,10 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean fresh = homeRestable();
         if (fresh) { patchShow(false); return; }
         if (!HomePatchRules.buildDue(now, TjHooks.lastHomeDrawMs, fresh, homeBuilding)) { scheduleHomeBuild(); return; }
-        if (!TjHooks.homeScreenShowing() || TjHooks.homeFloatingViewOpen() || TjHooks.homeBusy()) { handler.removeCallbacks(homeBuild); handler.postDelayed(homeBuild, 400); return; }   // not at rest: look again
+        if (!TjHooks.homeScreenShowing() || TjHooks.homeFloatingViewOpen() || TjHooks.homeBusy()) {   // not at rest: look again a few times (the draws that end a folder / a drag start a new wish anyway)
+            if (++homeBuildWaits <= 10) { handler.removeCallbacks(homeBuild); handler.postDelayed(homeBuild, 400); }
+            return;
+        }
         int stepNow = homeStepNow();
         if (homeWallBmp == null || !HomePatchRules.sameStep(homeWallStep, stepNow)) {   // another page (the wallpaper moved) or nothing loaded: the crop of THIS position, or the calibration of it
             loadHomeWall(new Rect(patchAt));
