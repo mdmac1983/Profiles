@@ -3273,6 +3273,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** BE1: a diagnostic line in the persistent lock log, written OFF the main thread (the patch paths must not wait for a file). */
     private void logPatch(final String what) {
+        // BI1 (audit 2026-11-08): the lock log is a 48 KB ring of the PAD / UNLOCK / HANDSHAKE history that unlock debugging needs; the home flavour (patchLockMode is true there too) would write "window created" and
+        // a touch line every 3 s of use into it. Only the rare home lines stay: the calibration result and a menu opened while the patch was away.
+        if (patchHomeMode && !what.startsWith("home calibration") && !what.startsWith("menu opened")) return;
         final android.content.Context app = getApplicationContext();
         LockLog.addAsync(app, "PATCH", what);
     }
