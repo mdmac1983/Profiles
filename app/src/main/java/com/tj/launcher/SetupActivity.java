@@ -49,6 +49,18 @@ public class SetupActivity extends Activity {
             Features.setString(this, "test_lock_wallpaper_done", "yes " + w + "x" + h);
         } catch (Throwable t) { Features.setString(this, "test_lock_wallpaper_done", "FAILED " + t); }
     }
+    private void setTestHomeWallpaper() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int w = dm.widthPixels * 2, h = dm.heightPixels;
+            android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+            int[] px = new int[w * h];
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) px[y * w + x] = 0xFF000000 | ((x * 255 / w) << 16) | ((y * 255 / h) << 8) | ((((x / 2 + y / 2) & 1) * 150) + 50);
+            b.setPixels(px, 0, w, 0, 0, w, h);
+            android.app.WallpaperManager.getInstance(this).setBitmap(b, null, true, android.app.WallpaperManager.FLAG_SYSTEM);
+            Features.setString(this, "test_home_wallpaper_done", "yes " + w + "x" + h);
+        } catch (Throwable t) { Features.setString(this, "test_home_wallpaper_done", "FAILED " + t); }
+    }
     private static final int ACCENT = Color.parseColor("#00796B"), INK = Color.parseColor("#202124"), MUTED = Color.parseColor("#5F6368"), BAD = Color.parseColor("#B3261E");
 
     private LinearLayout page;
