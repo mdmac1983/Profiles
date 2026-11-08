@@ -2607,7 +2607,10 @@ public class TjAccessibilityService extends AccessibilityService {
     public void runReset(final boolean clearNotifications, final boolean clearRecents, final Runnable done) { runReset(clearNotifications, clearRecents, null, done); }
 
     /** @param closeLabels null = press "Clear all"; otherwise dismiss ONLY the Recents cards of these app labels (D5: Quickstep-opened apps), falling back to Clear all if the cards cannot be found. */
-    public void runReset(final boolean clearNotifications, final boolean clearRecents, final java.util.Set<String> closeLabels, final Runnable done) {
+    public void runReset(final boolean clearNotifications, final boolean clearRecents, final java.util.Set<String> closeLabels, final Runnable done) { runReset(clearNotifications, clearRecents, closeLabels, false, done); }
+
+    /** @param seen a notification was posted since the shade was last cleared ({@link NotifSightings}): the shade is opened even when the status bar shows no icon (a silent notification has none). BH1e: v0.8.8 forgot this second check. */
+    public void runReset(final boolean clearNotifications, final boolean clearRecents, final java.util.Set<String> closeLabels, final boolean seen, final Runnable done) {
         resetReport.setLength(0);
         guardPausedUntil = System.currentTimeMillis() + 10_000;   // Recents / the shade are opened on purpose during the reset
         removeOverlay();
