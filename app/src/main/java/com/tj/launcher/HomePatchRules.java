@@ -178,8 +178,12 @@ public final class HomePatchRules {
      */
     public static final long HIDE_SETTLE_MS = 150, HIDE_MAX_MS = 4500;
 
-    /** Is a screenshot whose media-store time is {@code addedSec} (epoch seconds) the one asked for at {@code askedAtMs} (epoch ms)? A second of slack for the rounding. */
+    /**
+     * Is a screenshot whose media-store time is {@code addedSec} (epoch seconds) the one asked for at {@code askedAtMs} (epoch ms)? One second of slack, exactly the rounding of the media store's whole seconds (a
+     * file made at the very moment of the request is stamped at most 999 ms early). Two seconds, as this had, accepted a hardware-key screenshot of the normal home screen taken just before (code review 2026-11-08):
+     * its icons would have been stored as "wallpaper only".
+     */
     public static boolean shotIsOurs(long addedSec, long askedAtMs) {
-        return askedAtMs > 0 && addedSec * 1000L >= askedAtMs - 2000L;
+        return askedAtMs > 0 && addedSec * 1000L >= askedAtMs - 1000L;
     }
 }
