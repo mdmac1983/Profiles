@@ -144,6 +144,16 @@ public final class TjHooks {
 
     public static boolean homeScreenShowing() { return launcherResumed && launcherNormal; }
 
+    /** BL1: the size of the Launcher window's decor view (the home curtain copies the whole window), or null while there is none attached. Main thread. */
+    public static int[] launcherWindowSize() {
+        try {
+            com.android.launcher3.Launcher l = launcher();
+            if (l == null || l.getWindow() == null) return null;
+            android.view.View d = l.getWindow().peekDecorView();
+            return d == null || !d.isAttachedToWindow() ? null : new int[] { d.getWidth(), d.getHeight() };
+        } catch (Throwable t) { return null; }
+    }
+
     public static void watchState(com.android.launcher3.LauncherStateManager sm) {
         try {
             sm.addStateListener(new com.android.launcher3.LauncherStateManager.StateListener() {
