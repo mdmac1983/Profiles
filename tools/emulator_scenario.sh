@@ -515,6 +515,18 @@ pen_sample(){ # "cover=<shown|hidden|none> showing=<keyguard> sb=<the StatusBar 
   sb="$(echo "$D" | awk '/u0 StatusBar}/{f=1} f { l=tolower($0); if (match(l, /m?frame=\[[0-9,]*\]\[[0-9,]*\]/)) { s=substr(l, RSTART, RLENGTH); sub(/^m?frame=/, "", s); print s; exit } }')"
   echo "cover=$st $(kg_state) sb=${sb:-?}"
 }
+b6unlock(){ # really unlock: clear the PIN, dismiss the keyguard, swipe for a swipe-lock, tap the PIN pad if the PIN is still set; 0 only when the keyguard reports showing=false (runs #412 / #413: `clear` + `dismiss-keyguard` alone left the lock screen up, so the next phase and the "unlocked" control started LOCKED)
+  local i
+  adb shell locksettings clear --old 1234 >/dev/null 2>&1
+  for i in 1 2 3 4 5 6; do
+    adb shell input keyevent KEYCODE_WAKEUP; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+    [ "$(kg_state)" = "showing=false" ] && return 0
+    adb shell input swipe 300 900 300 300 300; sleep 1
+    [ "$(kg_state)" = "showing=false" ] && return 0
+    if [ "$i" -ge 3 ]; then adb shell input tap 177 628; sleep 0.4; adb shell input tap 300 628; sleep 0.4; adb shell input tap 424 628; sleep 0.4; adb shell input tap 177 714; sleep 0.4; adb shell input tap 424 886; sleep 1.5; fi
+  done
+  [ "$(kg_state)" = "showing=false" ]
+}
 pen_none(){ local s; for s in "$@"; do case "$s" in cover=shown*) return 1;; esac; done; return 0; }
 pen_all_shown(){ local s; for s in "$@"; do case "$s" in cover=shown*) ;; *) return 1;; esac; done; return 0; }
 pen_control_ok(){ case "$1" in *"showing=false"*) ;; *) return 1;; esac; case "$1" in cover=shown*) return 1;; esac; return 0; }
