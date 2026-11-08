@@ -104,7 +104,22 @@ public final class TjHooks {
     public static void onWallpaperOffset(float x) {
         wallpaperX = x;
         wallpaperReported = true;
-        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null && (exp(s) & 4) == 0) s.onWallpaperOffset(); } catch (Throwable ignored) { }
+    }
+
+    /**
+     * EXPERIMENT (2026-11-08, TEMPORARY, debug builds only): a bit mask in Settings.Global tj_exp, written by the emulator scenario from an 'expN' token of the sections list, to find which always-on BI1 hook (if any)
+     * moves the lock-screen close timing (section pt, BC2 closetap read 6-20 % on main against 3-6 % on the v0.8.8 tag). 1 = no draw listener on the Launcher, 2 = onWindowFocus ignored, 4 = onWallpaperOffset ignored,
+     * 8 = homeDrew() returns at once, 16 = no debug draw log. Read once per process; 0 in a release build.
+     */
+    private static volatile int expBits = -1;
+    static int exp(android.content.Context c) {
+        int v = expBits;
+        if (v >= 0) return v;
+        v = 0;
+        try { if ((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) v = android.provider.Settings.Global.getInt(c.getContentResolver(), "tj_exp", 0); } catch (Throwable ignored) { }
+        expBits = v;
+        return v;
     }
 
     // ---------------------------------------------------------------- AD4: the page-flick entrance watches every single-finger swipe that STARTS on the settled home screen (a passive observer: it never consumes an event)
