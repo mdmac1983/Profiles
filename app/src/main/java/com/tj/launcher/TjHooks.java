@@ -152,9 +152,15 @@ public final class TjHooks {
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
     }
 
+    /** The Launcher's window got or lost the focus (a shade or a dialog over the home screen takes it; it comes back when they go). */
+    public static void onWindowFocus(boolean has) {
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeFocusChanged(has); } catch (Throwable ignored) { }
+    }
+
     public static void onLauncherPaused() {
         launcherResumed = false;
         if (launcherHidden) setLauncherHidden(false);   // BI1: never leave the home screen invisible (a calibration that was cut off by a pause)
+        try { TjAccessibilityService s1 = TjAccessibilityService.get(); if (s1 != null) s1.homeCalInterrupted("the Launcher was paused"); } catch (Throwable ignored) { }
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         lastLauncherPauseMs = System.currentTimeMillis();
     }
