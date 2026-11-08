@@ -48,7 +48,7 @@ public final class NotifQuietPolicy {
         /** The facts of an ordinary unlocked Quickstep session with everything granted: the one situation that is NOT quiet. */
         public static Facts quickstepSession() {
             Facts f = new Facts();
-            f.switchOn = true; f.grant = true; f.quickstepMode = true; f.screenOn = true;
+            f.switchOn = true; f.grant = true; f.quickstepMode = true; f.helperUp = true; f.screenOn = true;
             return f;
         }
     }
