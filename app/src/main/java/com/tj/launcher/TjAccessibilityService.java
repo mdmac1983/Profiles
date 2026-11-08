@@ -315,6 +315,8 @@ public class TjAccessibilityService extends AccessibilityService {
     /** V1: the LOCK-screen wallpaper (may differ from the home wallpaper), only held while the lock screen is up. */
     private android.graphics.Bitmap lockBmp;
     private boolean patchLockMode, targetIsLock;
+    /** BI1: the cardless real-pixel patch (patchLockMode) is ALSO used on the unlocked custom home screen; these two say that this window / target is the home flavour (the pixels come from {@link HomeShot} + {@link HomeLayer}, the rest rules from {@link HomePatchRules}). Everything lock-specific stays keyed on the keyguard. */
+    private boolean patchHomeMode, targetIsHome;
     /** AE3 / AD7b: the resting state of the lock-screen patch (see {@link PatchRest}): visible over the Screenshot slot while the lock screen is up and the menu is closed; the switch is in Launcher control, default OFF. */
     /** AH1: Tj's nudge (percent points) of how much the stock dialog's scrim darkens the screen around the OPEN menu; the patch is dimmed the same (lock and home). */
     public static final String PATCH_SCRIM_KEY = "patch_scrim_pct";
