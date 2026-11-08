@@ -2579,9 +2579,9 @@ info "AN4: lock screen: $(adb shell dumpsys window policy 2>/dev/null | grep -io
 check "AN4: on the lock screen the animations stay real (1.0)" bash -c "[ \"$AN_L\" = '1.0 1.0 1.0 ' ]"
 # AN5: a plain PIN = the custom launcher. The stored mode still says Quickstep until the unlock handler answers: the animations must not blink off in between
 adb shell input swipe 300 900 300 300 300; sleep 2
-pad 1 2 3 4 e; sleep 6
-AN_P="$(anscales)"; getmode > "$OUT/an-mode-plain.txt"; AN_O1="$(anoffs)"
-check "AN5: a plain PIN ends in the custom launcher with the animations real (1.0)" bash -c "grep -q custom $OUT/an-mode-plain.txt && [ \"$AN_P\" = '1.0 1.0 1.0 ' ]"
+pad 1 2 3 4 e; sleep 3
+AN_P="$(anstable '1.0 1.0 1.0 ' 25)"; getmode > "$OUT/an-mode-plain.txt"; AN_O1="$(anoffs)"
+check "AN5: a plain PIN ends in the custom launcher with the animations real (1.0, three reads in a row)" bash -c "grep -q custom $OUT/an-mode-plain.txt && [ \"$AN_P\" != never ]"
 check "AN5: ... and they were never switched off on the way (no new ANIM OFF line since the Quickstep session)" bash -c "[ \"$AN_O1\" = \"$AN_O0\" ]"
 # AN6: the gesture (Delete x2 before the PIN) = Quickstep again: off once the unlock is decided
 lockpad
