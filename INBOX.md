@@ -1162,3 +1162,9 @@ Since this app already has adb permissions and accessibility access, is it possi
 How much can the custom launcher be prepped invisibly while the lock screen is on? Can it start loading invisibly as soon as the user starts typing a pin number on the lock screen which wasn't preceded by the gesture to open quickstep? Can it be prepped as soon as the lock screen is on or as soon as the tablet screen turns off? I want the custom launcher to open as fast as possible, without breaking anything and without ever showing apps which aren't in the custom launcher app drawer. think of ways to open the custom  launcher from the lock screen as fast as possible. Can it be kept in ram? 
 Think about how it would be possible to hide the screenshot button without delay or flashing while inside the custom launcher. The lock screen fix is now perfect. But inside the custom launcher it is much harder because the items below where the screenshot button is supposed to be are always changing depending on what is open. Brainstorm and think outside the box. I want the power menu inside the custom launcher to look identical to the power menu you made for the lock screen. It looks totally stock but hides the screenshot button 
 ```
+
+## 2026-11-08T02:29:59Z
+```
+When I unlocked to the custom launcher from the lock screen, there was a notification from a quickstep app. Turn all notifications off for both the lock screen and the custom launcher. The lock screen (no matter which launcher it was on) and the custom launcher should never show any notification at any time, unless it can safely and without delay or flicker only include notifications from apps that are in the custom launcher app drawer and not hidden 
+Compact this session when possible because context window is over 90%
+```
