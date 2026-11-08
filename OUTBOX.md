@@ -1264,3 +1264,7 @@
 ## 2026-11-08T20:30:43Z
 > The two redesigned `b6` samples are running, due about 20:36. This version avoids `uiautomator` inside the sampling, which unbinds the service, and records the keyguard state and the status-bar frame at each sample. I'll read them as soon as they land.
 <!-- sha:9b25101d9838 -->
+
+## 2026-11-08T20:39:15Z
+> The lessons from today are written into CLAUDE.md. The two unlock-fixed `b6` samples are due about 20:44. This version should show whether the Quickstep-mode lock screen behaves like the custom-mode one now that the phase really starts unlocked.
+<!-- sha:c41261bf1734 -->
