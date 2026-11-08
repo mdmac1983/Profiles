@@ -2603,6 +2603,18 @@ info "AN9: right after the kill the scales are $(anscales)(a dead process cannot
 adb shell input keyevent KEYCODE_HOME
 AN_T9B="$(anwait '1.0 1.0 1.0 ' 14)"
 check "AN9: the next start of the launcher process gives them back (1.0)" bash -c "[ \"$AN_T9\" != never ] && [ \"$AN_T9B\" != never ]"
+# AN9b: the same kill, but the lock screen comes up while nobody is alive to give them back; the process that starts ON the lock screen must restore them at once (the trigger in the log is 'process start', not the 2.5 s look)
+anset 1.0; setmode quickstep; rebind; home
+AN_T9C="$(anwait '0 0 0 ' 10)"
+adb shell am force-stop "$PKG"; sleep 1
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+info "AN9b: lock screen up, the launcher process is dead: scales $(anscales)"
+adb shell am start -n "$PKG/com.tj.launcher.RouterActivity" >/dev/null 2>&1
+AN_T9D="$(anwait '1.0 1.0 1.0 ' 10)"; sleep 1
+AN_LG="$(anlog | grep ' ANIM ' | tail -4 | cut -c1-140)"
+info "AN9b: restored after $AN_T9D ms of polling; lock log: $(echo "$AN_LG" | tr '\n' '|')"
+check "AN9b: a launcher process that starts on the lock screen gives the animations back at once (not only after the 2.5 s helper look)" bash -c "[ \"$AN_T9C\" != never ] && [ \"$AN_T9D\" != never ] && echo '$AN_LG' | grep -q 'lock screen (process start)'"
+adb shell input swipe 300 900 300 300 300; sleep 2; pad 1 2 3 4 e; sleep 4
 # AN10: the switch OFF = nothing changes
 anset 1.0; anfeat false; setmode quickstep; rebind; home; sleep 4
 AN_S="$(anscales)"
