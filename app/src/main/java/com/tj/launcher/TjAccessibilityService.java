@@ -1850,7 +1850,7 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.removeCallbacks(coverFailsafe);
         if (resetCover == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(resetCover); } catch (Throwable ignored) { }
-        resetCover = null; sumCoverGoneAt = android.os.SystemClock.uptimeMillis();   // BK1c
+        resetCover = null; resetCoverIsCurtain = false; resetCoverLp = null; sumCoverGoneAt = android.os.SystemClock.uptimeMillis();   // BK1c
         Log.i(TAG, "RESET cover removed");
         if (sumArmed) { try { sumEmit(false); } catch (Throwable t) { Log.e(TAG, "unlock summary failed", t); } }   // review 2026-11-08: the line is complete the moment the cover goes (the first frame came earlier, behind it)
     }
