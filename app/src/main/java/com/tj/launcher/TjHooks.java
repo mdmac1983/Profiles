@@ -79,6 +79,7 @@ public final class TjHooks {
     public static void onLauncherResumed(final Context c) {
         launcherResumed = true;
         try { if (c instanceof com.android.launcher3.Launcher) { launcherRef = new java.lang.ref.WeakReference<>((com.android.launcher3.Launcher) c); watchHomeDraw((com.android.launcher3.Launcher) c); } } catch (Throwable ignored) { }   // BI1
+        try { TjAccessibilityService s0 = TjAccessibilityService.get(); if (launcherHidden && (s0 == null || !s0.homeCalRunning())) setLauncherHidden(false); } catch (Throwable ignored) { }   // BI1: a hidden Launcher without a running calibration is a leftover
         try { if (c instanceof com.android.launcher3.Launcher) launcherNormal = ((com.android.launcher3.Launcher) c).isInState(com.android.launcher3.LauncherState.NORMAL); } catch (Throwable ignored) { }
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         RecentsGuard.excludeOurTasks(c);                       // W2: also fixes a Launcher task created before the exclude flags existed
