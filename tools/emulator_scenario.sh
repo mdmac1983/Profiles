@@ -2714,6 +2714,7 @@ ensurehome
 beat "before RT"
 setfeat; setmode custom; adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_origin.xml"; rebind; home; sleep 2   # AA3 starts from a clean origin record: Quickstep-opened marks left by an earlier section (ad opens Contacts in Quickstep) made the clean-up close Contacts (run 181)
 adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
+for APP in com.android.email com.android.gallery3d com.android.camera2; do adb shell am force-stop $APP; done; sleep 1   # the apps this section opens ONLY in Quickstep must not already have a task: run #334 (order base,e1,x,ac,rt) failed AA3 because `base` had left an Email task, which the clean-up then correctly spared (force-stop removes the app's tasks)
 rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
 adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT what Android prints for Recents (first lines): $(sed -n 1,16p $OUT/rt-recents-dump.txt | sed 's/^ *//' | cut -c1-110 | tr '\n' '|')"
 # the custom account's world: Calendar (the target app here), Contacts (a real app; run 103 showed Android REPLACING its task, id 8 -> 20, once Quickstep opened it again) and the CI test app "ctl" started QUIET
