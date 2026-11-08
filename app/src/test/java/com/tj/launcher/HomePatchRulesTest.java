@@ -163,6 +163,8 @@ public class HomePatchRulesTest {
         s = calGood(); s.running = true; assertEquals("a calibration is running", HomePatchRules.calDecision(s));
         s = calGood(); s.otherCalibration = true; assertEquals("the lock-screen calibration is running", HomePatchRules.calDecision(s));
         s = calGood(); s.hasCrop = true; assertEquals("already calibrated for this wallpaper and page", HomePatchRules.calDecision(s));
+        s = calGood(); s.positionKnown = false; assertEquals("the wallpaper position is not known yet", HomePatchRules.calDecision(s));
+        s = calGood(); s.positionKnown = false; s.hasCrop = true; assertEquals("said before 'already calibrated': nothing can be said for a position nobody reported", "the wallpaper position is not known yet", HomePatchRules.calDecision(s));
         s = calGood(); s.rectKnown = false; assertTrue(HomePatchRules.calDecision(s).startsWith("open the power menu once"));
         s = calGood(); s.homeAtRest = false; assertEquals("the home screen is not at rest", HomePatchRules.calDecision(s));
         s = calGood(); s.menuOpen = true; assertEquals("the power menu is open", HomePatchRules.calDecision(s));
