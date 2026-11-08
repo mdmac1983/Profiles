@@ -143,6 +143,8 @@ public final class HomePatchRules {
 
     public static final class CalState {
         public boolean switchOn, coverMode, customMode, unlocked, screenOn, homeAtRest, rectKnown, hasCrop, running, menuOpen, permission, automationOff, otherCalibration;
+        /** The Launcher has reported its wallpaper offset in this process (until then the offset is only the 0.5 placeholder, and a crop filed under it would be filed under the wrong page position). */
+        public boolean positionKnown = true;
         /** ms since a finger went down / since the Launcher last drew / since the screen came on / since the last calibration start; a huge number = never */
         public long msSinceTouch = Long.MAX_VALUE, msSinceDraw = Long.MAX_VALUE, msSinceScreenOn = Long.MAX_VALUE, msSinceLastStart = Long.MAX_VALUE;
         public int startsToday;
