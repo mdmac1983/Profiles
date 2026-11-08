@@ -1317,3 +1317,7 @@
 ## 2026-11-08T21:12:58Z
 > Your decision is clear: yes to the home-looking curtain, an identical picture of the current home screen instead of black. Per the working agreement, I'll write the request into TASKS.md in your words and checkpoint **before** any code. Then I'll map the existing code, since this touches the unlock path.
 <!-- sha:d3bcf6acefab -->
+
+## 2026-11-08T21:16:55Z
+> The map is running in the background. While it works I'm not touching the files it's reading. I'll read its report when it lands and then write the design down before building anything.
+<!-- sha:d2f68d060102 -->
