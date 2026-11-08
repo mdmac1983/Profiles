@@ -3058,6 +3058,94 @@ else check "HF2: the menu geometry is known" false; fi
 hfanim 0
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section hf
+if want fp; then # section fp
+ensurehome
+# ---- FP (BK1a; Tj, 2026-11-08 18:16 UTC, about v0.8.10: "The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. ...
+#      It could also be the dimmer loading for the first time."). Section pt always runs ONE UNFILMED opening first ("the first opening after a restart of the helper (cold caches, first draw of the patch) is not what is measured"),
+#      which hides exactly this. FP films the FIRST opening after a lock cycle (the screen goes off, comes on, the lock screen; no warm-up) and the SECOND opening of the same cycle, in a fresh process (cold) and in four
+#      cycles of a warm one, with the same analysis (tools/pt_analyze.py: open_shape = timing of the dimming, 0.08 is section pt's yardstick) and the patch's own frame statistics of every fade (PATCH fade end: first = ms from
+#      the stock scrim's start to the patch's first frame, frames drawn, frames later than 34 ms, worst gap). If the first opening is worse than the second, the difference is the one-time work to warm up in the dark.
+beat "before FP"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/fp-grant.txt" 2>&1
+adb shell settings put secure lock_screen_show_notifications 0
+adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
+fpanim(){ for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }
+fpinput(){ adb shell "log -t TjA11y \"PATCH input $1 t=\$(( \$(cut -d' ' -f1 /proc/uptime | tr -d .) * 10 ))\"; $2"; }
+fpget(){ grep "label=$1 " "$OUT/fp-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
+fpkey(){ printf 's#<boolean name="%s" value="[a-z]*" />##\ns#</map>#<boolean name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/fpkey.sed"; local B64; B64="$(base64 -w0 "$OUT/fpkey.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/fpkey.sed; sed -i -f files/fpkey.sed shared_prefs/tj_features.xml'"; }
+fpnote(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="scrim_note">[^<]*' | sed 's/.*>//'; }
+fpwake(){ adb shell input keyevent KEYCODE_POWER; sleep 1.5; adb shell input keyevent KEYCODE_WAKEUP; sleep "${1:-1}"; }   # one lock cycle: the screen goes off, comes on again on the lock screen
+fprun(){ local L="$1"   # film ONE opening of the stock menu (long press of the side key), closed by BACK; NO unfilmed warm-up before it
+  adb logcat -c
+  adb shell rm -f /sdcard/fp.mp4 >/dev/null 2>&1
+  ( adb shell screenrecord --time-limit 6 /sdcard/fp.mp4 >/dev/null 2>&1 & )
+  sleep 1.6
+  adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
+  fpinput back "input keyevent KEYCODE_BACK"; sleep 3.4
+  adb pull /sdcard/fp.mp4 "$OUT/fp-$L.mp4" >/dev/null 2>&1
+  python3 -I tools/pt_analyze.py "$OUT/fp-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/fp-metrics.txt" > /dev/null
+  adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold|window|away|stale|built)' | sed 's/^.*TjA11y *: //' > "$OUT/fp-all-$L.txt"
+  [ -n "$(fpget $L onset)" ] && rm -f "$OUT/fp-$L.mp4"; }
+fpline(){ local L="$1" sh mx fo fe   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the patch's own frame statistics of that fade
+  sh="$(fpget $L open_shape)"; mx="$(fpget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/fp-all-$L.txt" 2>/dev/null)"
+  fe="$(grep -o 'fade end [a-z]* first=[0-9]* ms frames=[0-9]* slow=[0-9]* worst=[0-9]*' "$OUT/fp-all-$L.txt" 2>/dev/null | tail -1 | sed 's/fade end [a-z]* //; s/ ms//g')"
+  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} ${fe:-(no fade end line)}"; }
+fpmed(){ local l v; for l in $1; do v="$(fpget $l $2)"; [ -n "$v" ] && echo "$v"; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }
+# ---- setup as section pt: automatic calibration, the lock screen, the measured scrim
+pafeat true 0; adb shell am force-stop "$PKG"; sleep 1
+setmode quickstep; rebind; home
+adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/fp-setpin.txt" 2>&1
+palock; adb logcat -c
+adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
+adb shell input keyevent KEYCODE_BACK; sleep 3
+for i in $(seq 1 30); do pastatus | grep -q CALIBRATED && break; sleep 2; done
+info "FP setup: patch status: $(pastatus)"
+sleep 4
+adb logcat -d -s TjA11y:I | grep "CARD area" > "$OUT/fp-card.txt" 2>&1
+CL="$(tail -1 "$OUT/fp-card.txt")"
+set -- $(panums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(panums "$CL" area); CB=${4:-}
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  PX=$(( (FL + FR) / 2 )); PY=$(( (CB + FB) / 2 ))
+  if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi; SY=$PY
+  if [ "$FL" -ge 200 ]; then SX2=$(( FL - 160 )); else SX2=$(( FR + 120 )); fi
+  info "FP: menu panel $FL,$FT-$FR,$FB card bottom $CB; probes: patch at $PX,$PY, surround at $SX,$SY and $SX2,$SY"
+  # the measured scrim look, as on the tablet (section pt phase C): the helper measures the stock scrim by itself once
+  fpkey scrim_measure true
+  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind
+  for i in $(seq 1 50); do fpnote | grep -qE 'MEASURED|not measured|stopped|no screenshot|did not|refused|too little' && break; sleep 2; done
+  info "FP: scrim: $(fpnote | cut -c1-160)"
+  sleep 4
+  : > "$OUT/fp-metrics.txt"
+  fpanim 1.0   # animations ON for the films (put back to 0 at the end)
+  # ---- A: a FRESH PROCESS (nothing warmed up in it), one lock cycle, the FIRST opening, then the second one of the same cycle
+  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind
+  fpwake 1; fprun coldA; fprun coldB
+  # ---- B: the process is warm; four lock cycles, in each the first and then the second opening
+  for K in 1 2 3 4; do fpwake 1; fprun w${K}A; fprun w${K}B; done
+  fpanim 0
+  FIRSTS="coldA w1A w2A w3A w4A"; SECONDS_="coldB w1B w2B w3B w4B"
+  for L in coldA coldB w1A w1B w2A w2B w3A w3B w4A w4B; do info "FP $L: $(fpline $L)"; done
+  EV="$(python3 -I tools/pt_analyze.py --events "$OUT/fp-all-coldA.txt" 2>&1)"
+  info "FP coldA events (ms from the dialog's own window event): $(echo "$EV" | cut -c1-300)"; info "FP coldA events (2): $(echo "$EV" | cut -c301-600)"; info "FP coldA events (3): $(echo "$EV" | cut -c601-900)"
+  EV="$(python3 -I tools/pt_analyze.py --events "$OUT/fp-all-w1A.txt" 2>&1)"
+  info "FP w1A events: $(echo "$EV" | cut -c1-300)"; info "FP w1A events (2): $(echo "$EV" | cut -c301-600)"
+  CV="$(grep "PTSERIES label=coldA " "$OUT/fp-metrics.txt" | tail -1 | sed 's/.*onset) //')"
+  info "FP coldA open curve (a): $(echo "$CV" | cut -c1-330)"; info "FP coldA open curve (b): $(echo "$CV" | cut -c331-660)"
+  MF="$(fpmed "$FIRSTS" open_shape)"; MS="$(fpmed "$SECONDS_" open_shape)"
+  info "FP: median open_shape of the FIRST openings $MF, of the SECOND openings $MS (section pt's yardstick 0.08); median open_max of the FIRST openings $(fpmed "$FIRSTS" open_max), of the SECOND openings $(fpmed "$SECONDS_" open_max)"
+  FRAMES="$(fpget coldA frames)"
+  check "FP1: the film worked (more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
+  NSEEN=0; for L in coldA coldB w1A w1B w2A w2B w3A w3B w4A w4B; do fpget $L onset | grep -q . && NSEEN=$((NSEEN+1)); done
+  check "FP2: the menu opening was seen in at least 9 of the 10 films" test "$NSEEN" -ge 9
+else check "FP1: the menu geometry is known" false; fi
+fpanim 0
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section fp
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
