@@ -529,7 +529,20 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
   # Run #395 (head 203a5b1): in the QUICKSTEP-stored-mode phase the cover was shown 6.6 s BEFORE the marker (the panel was already open when the lock screen came up), so the line is looked for in the WHOLE phase (the log is cleared before
   # the lock cycle, so no earlier phase can supply it). Stored mode quickstep + locked = the case the old `Mode.isCustom` gate could never cover.
-  check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil during this phase (the log was cleared before the lock cycle)" bash -c "grep -q 'PENCIL cover shown' $OUT/pencil-lock-$1-log.txt"
+  # Gate run #399 (head c4f47b5): this check FAILED in the quickstep phase (no 'PENCIL cover shown' line) although a cover window existed: the line is only written when the cover goes from hidden to shown, so a cover that is already up (or merely
+  # follows the panel) writes nothing. What Tj asked is "the pencil is hidden", so that is what is measured now: the darkest pixel inside the pencil's own rectangle (uiautomator dump + the screenshot of the same moment). Under the pure white cover it
+  # is about 1.0; the control below measures the same thing on the UNLOCKED Quickstep panel (no cover is wanted there) and must see the pencil, so a 'covered' result cannot be a measuring accident.
+  BK_PM="$(pencil_min "$OUT/54-qs-panel-lock-$1.png" /sdcard/b6l.xml)"
+  info "BK1b ($1 mode, locked): the darkest pixel inside the pencil's rectangle in the screenshot: $BK_PM (about 1.0 = hidden under the white cover, clearly lower = the pencil shows)"
+  check "BK1b: on the LOCK screen (stored mode $1) the pencil is HIDDEN: its rectangle is plain white in the screenshot (darkest pixel >= 0.98)" awk -v m="$BK_PM" 'BEGIN{exit !(m!="" && m!="none" && m+0 >= 0.98)}'
+  if [ "$1" = quickstep ]; then
+    home; adb shell cmd statusbar expand-settings; sleep 3; shot 55-qs-panel-quickstep-open
+    adb shell uiautomator dump /sdcard/b6c.xml >/dev/null 2>&1
+    BK_PC="$(pencil_min "$OUT/55-qs-panel-quickstep-open.png" /sdcard/b6c.xml)"
+    adb shell cmd statusbar collapse; sleep 2
+    info "BK1b control (Quickstep, UNLOCKED, no cover wanted): the darkest pixel inside the pencil's rectangle: $BK_PC"
+    check "BK1b control: the measure SEES the pencil when no cover is wanted (darkest pixel < 0.9), so the 'hidden' results above mean something" awk -v m="$BK_PC" 'BEGIN{exit !(m!="" && m!="none" && m+0 < 0.9)}'
+  fi
 }
 b6lock custom
 b6lock quickstep
