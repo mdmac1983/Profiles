@@ -1998,6 +1998,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 LockLog.add(getApplicationContext(), android.content.Intent.ACTION_SCREEN_OFF.equals(act) ? "SCREEN_OFF" : android.content.Intent.ACTION_SCREEN_ON.equals(act) ? "SCREEN_ON" : "USER_PRESENT", "locked=" + keyguardLocked() + " mode=" + Mode.get(getApplicationContext()));
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
                 homeCalInterrupted("the screen went off");   // BI1
+                try { if (patchHomeMode && patchView != null) { patchRestable = false; patchResting = false; patchView.setAlpha(0f); } } catch (Throwable ignored) { }   // BI1 (review 2026-11-08): the home patch is a copy of the HOME screen's pixels; with the screen dark it is hidden and stale, and the wake decides again (the lock screen's own patch, or this one rebuilt) so it can never show over the lock screen for the moments before the layer refresh
                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
                 qsAppAt = ResumeTarget.refreshedAt(qsApp, fgPkg, qsAppAt, t);   // review RV2: the app still in front when the screen goes off is the one Tj had open: its 6 h clock starts now
                 resumedPkg = null; unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
