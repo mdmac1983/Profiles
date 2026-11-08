@@ -1,22 +1,23 @@
-# CHECKPOINT 709 — read me first, then TASKS.md
+# CHECKPOINT 710 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T18:46:40Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-dda19ce3-8dl2cy` · **builds on:** `2ebe681` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T18:52:35Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-dda19ce3-8dl2cy` · **builds on:** `8372c6c` (this checkpoint is the commit after it)
 
 ## Just done
-BK1c: single-figure unlock summary built (UNLOCKSUM lock-log line + report key unlock_sum + Control note + intake row; stamps: Enter tap, keyguard gone, Launcher resume, first frame, black cover up/gone); compiled. TASKS has the measured BK1a result and the BK1b root cause. Runs in flight: #390 id 42511333451 (b6,fp verification of the warm-up + pencil fix, head e415cd0), #391 id 42511417413 (cs baseline of the no-helper unlock)
+BK1: runs #390 (b6,fp on e415cd0) and #391 (cs baseline) read. FP: warm-up works (PATCH warm-up before the first press; fresh-process first fade 8 frames / worst gap 107 ms instead of 3 / 278; warm first = second opening), film number of the first opening is dominated by stock-scrim jitter so FP3 now judges the patch's own stats. BK1b: Quickstep-mode lock screen shows NO cover and NO service log line even with the fix; my check was vacuous (a warm window lingers): check now needs 'PENCIL cover shown' after the marker, plus diagnostics (stored mode, keyguard state, every log line). cs baseline (no helper, Quickstep -> plain PIN): reset took 1227 ms (shade +281, recents +1165 = 2 cards closed one by one), home in front +11 ms
 
 ## Do this next
-read #390 (FP3/FP4, BK1b quickstep mode) and #391 (CS-B info lines: 'Last reset' step ms, HOME line); then code review + gate + ship v0.8.11 and ask Tj the unlock questions
+dispatch emulator.yml sections=b6,fp,cs on main (b6/fp/cs in one run? no: b6,fp and cs separately): read BK1b quickstep diagnostics -> find why no cover in Quickstep stored mode; read CS-B UNLOCKSUM line
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
 ## Uncommitted right now
      M CHECKPOINT.md
-     M TASKS.md
+     M tools/emulator_scenario.sh
 
 ## Last ten checkpoints
 ```
+  0770182 ckpt 709: BK1c: single-figure unlock summary built (UNLOCKSUM lock-log line + report key
   e415cd0 ckpt 708: BK1a/BK1b fixes built: (a) warm-up draw of the OPEN look once per patch window
   4c2e2e2 ckpt 707: BK1: measurement built, no product change yet: NEW section fp (films the FIRST
   efee840 ckpt 706: BK1 written into TASKS in Tj's words (18:16 UTC): first lock-screen power-menu
@@ -26,8 +27,7 @@ read #390 (FP3/FP4, BK1b quickstep mode) and #391 (CS-B info lines: 'Last reset'
   2864951 ckpt 702: BJ1 GATE READ: #384 b6,n,o,hp,last SUCCESS; #385 e1,pt SUCCESS; #387 hp,hf on 
   b0d29fd ckpt 701: BJ1: one more guard (code re-read): fastMenuOpen ends a home-flavour wait star
   fcee0dc ckpt 700: BJ1: docs written (HOME_PATCH design doc section with the measured table, TABL
-  43a5da9 ckpt 699: BJ1 GATE on head 783b81a dispatched 17:11 UTC: run #384 id 42503687941 = b6,n,
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)

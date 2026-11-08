@@ -2516,6 +2516,7 @@ csev > "$OUT/cs-b-resumed.txt"; getmode > "$OUT/cs-b-mode.txt"; cslog 60 > "$OUT
 CSB_CON="$(cscount com.android.contacts)"; CSB_CAL="$(cscount com.android.calendar)"
 info "CS-B: after the plain PIN: mode $(cat $OUT/cs-b-mode.txt); resumed in order: $(csnames $OUT/cs-b-resumed.txt); Recents contacts=$CSB_CON calendar=$CSB_CAL; stand-in process: [$(adb shell pidof com.android.calendar | tr -d '\r\n')]"
 info "CS-B: the visible-path log lines: $(grep -E 'RESET|HOME' $OUT/cs-b-log.txt | cut -c14-230 | tail -4 | tr '\n' '|')"
+info "CS-B (BK1c): the ONE-figure summary of this unlock: $(grep 'UNLOCKSUM' $OUT/cs-b-log.txt | cut -c14-330 | tail -1)"
 info "CS-B: the reset report (Launcher control 'Last reset'): $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | tr -d '\n' | grep -o 'reset_last">[^<]*' | sed 's/reset_last">//' | tr '\n' '|' | cut -c1-420)"
 sleep 8; info "CS-B: 8 s later: Recents contacts=$(cscount com.android.contacts) calendar=$(cscount com.android.calendar); focus: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-110)"
 check "CS-B0: the shell helper is NOT running here (so this is the on-screen path)" bash -c "[ -z \"\$(adb shell pgrep -f com.tj.launcher.ShellServer | tr -d '\\r\\n')\" ]"
