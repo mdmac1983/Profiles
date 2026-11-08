@@ -2643,7 +2643,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private void evaluate() {
         long t0 = android.os.SystemClock.uptimeMillis();
         try { evaluateScan(); }
-        finally { long d = android.os.SystemClock.uptimeMillis() - t0; scanCount++; scanTotalMs += d; if (d > scanMaxMs) scanMaxMs = d; }
+        finally {
+            long d = android.os.SystemClock.uptimeMillis() - t0; scanCount++; scanTotalMs += d; if (d > scanMaxMs) scanMaxMs = d;
+            if (d >= 15 && debuggable()) Log.i(TAG, "PATCH scan took " + d + " ms t=" + (t0 + d));   // BJ1 diagnostic (debug builds only, EVERY caller: the immediate scan, the deferred one, the recheck): how long the main thread was blocked, which delays the dialog's own event and the patch's redraw (review 2026-11-08: the deferred scan must be timed too)
+        }
     }
 
     private void evaluateScan() {
