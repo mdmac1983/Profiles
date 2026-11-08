@@ -2766,6 +2766,7 @@ check "NQ10: with the switch OFF the setting is put back (1), stays there in the
 adb shell locksettings clear --old 1234 > "$OUT/nq-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 if [ -z "$NQ_ORIG" ] || [ "$NQ_ORIG" = null ]; then adb shell settings delete global heads_up_notifications_enabled >/dev/null 2>&1; else nqset "$NQ_ORIG"; fi   # the emulator's own value: the next section expects it
+adb shell settings delete global tj_banners_original >/dev/null 2>&1
 adb shell am force-stop "$NQC" >/dev/null 2>&1
 setfeat; setmode custom; rebind; home
 fi # section nq
