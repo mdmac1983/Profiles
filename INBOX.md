@@ -1188,3 +1188,8 @@ The home screen power menu looks good now. The first time I press the side key f
 ```
 Make the home looking curtain instead of the black screen. An identical screenshot of the current home screen 
 ```
+
+## 2026-11-08T22:21:26Z
+```
+analyze code and generate a read me of all features and structure of app
+```
