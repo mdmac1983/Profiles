@@ -165,7 +165,7 @@ public final class AnimationSpeedup {
         if (now - tickAt < 500) return;
         tickAt = now;
         Context app = c.getApplicationContext();
-        if (!AnimationPolicy.has(holds(app), AnimationPolicy.HOLD_QUICKSTEP) && !(Mode.QUICKSTEP.equals(Mode.get(app)) && quickstepSwitch(app))) return;
+        if (!AnimationPolicy.has(holds(app), AnimationPolicy.HOLD_QUICKSTEP) && !(Mode.QUICKSTEP.equals(Mode.get(app)) && (quickstepSwitch(app) || NotifQuiet.switchOn(app)))) return;   // BH1: the banner quiet is level-triggered in Quickstep too (a lock screen that came up without its broadcast); still nothing at all in the custom launcher
         syncSoon(app, "window change");
     }
     private static volatile long tickAt = 0;
