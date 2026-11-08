@@ -1875,9 +1875,12 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Look at SystemUI events only (and keep checking while a cover is up, so it follows the panel and goes with it). Throttled. */
     private void schedulePencil(AccessibilityEvent e) {
-        if (!Mode.isCustom(this) || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }   // N3: Quickstep needs no cover over the pencil
+        // N3: Quickstep needs no cover over the pencil. BK1b (Tj, 2026-11-08 18:16 UTC: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the LOCK screen counts as the custom world, exactly as for the
+        // power-menu cover (coverWorld, AD7a). Without the shell helper the stored mode stays Quickstep while the tablet is locked after a Quickstep session, so `Mode.isCustom` alone left the pencil uncovered on the lock screen.
+        if (!coverWorld() || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
-        if (!sysui && penView == null) return;
+        // e == null is quietWork's follow-up of a burst whose events the lock screen held back (quietBurst): those events were the only ones that would have started the search, so one search is allowed now
+        if (!sysui && e != null && penView == null) return;
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
         int type = e == null ? 0 : e.getEventType();
