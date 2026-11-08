@@ -227,12 +227,26 @@ public final class AnimationSpeedup {
         } catch (Throwable t) { Log.e(TAG, "sync failed", t); }
     }
 
-    private static boolean interactive(Context app) {
+    /**
+     * The "lock cycle" fact shared by every level-triggered rule that reads the stored mode (the animations here, the pop-up banners in {@link NotifQuiet}): true while the lock screen was up since the last unlock
+     * decision, the screen is on, the lock screen is gone and the unlock handler has not answered yet (the stored mode can still be the OLD session's). Also runs the safety valve: after
+     * {@link AnimationPolicy#UNDECIDED_MAX_MS} without an answer the cycle is over. Only ever called from {@link #syncNow} (serialised), so the volatile clock needs no more than that.
+     */
+    static boolean unlockUndecided(boolean screenOn, boolean lockUp) {
+        if (!lockCycle) return false;
+        if (!screenOn || lockUp) { unlockSeenAt = 0; return false; }   // still dark or locked: the unlock is still to come
+        long now = SystemClock.uptimeMillis();
+        if (unlockSeenAt == 0) unlockSeenAt = now;
+        if (now - unlockSeenAt > AnimationPolicy.UNDECIDED_MAX_MS) { lockCycle = false; unlockSeenAt = 0; return false; }   // the handler never answered: stop waiting for it
+        return true;
+    }
+
+    static boolean interactive(Context app) {
         try { PowerManager pm = (PowerManager) app.getSystemService(Context.POWER_SERVICE); return pm != null && pm.isInteractive(); } catch (Throwable t) { return false; }
     }
 
     /** Unknown counts as "lock screen up": the safe side (the animations stay real). */
-    private static boolean keyguardUp(Context app) {
+    static boolean keyguardUp(Context app) {
         try { KeyguardManager km = (KeyguardManager) app.getSystemService(Context.KEYGUARD_SERVICE); return km == null || km.isKeyguardLocked(); } catch (Throwable t) { return true; }
     }
 
