@@ -206,7 +206,7 @@ public class ControlActivity extends Activity {
 
         group("power", "Power menu (side key)", false);
         final String mode = Features.powerMode(this);
-        radio("When you hold the side key in the custom launcher", new String[] { "Leave it alone", "Hide the Screenshot button with a wallpaper patch (on the LOCK screen the stock Power off / Restart stay completely stock; on the home screen a card of mine covers them)", "Hide it under a wallpaper patch + my card (home screen only)", "Block it completely" },
+        radio("When you hold the side key in the custom launcher", new String[] { "Leave it alone", "Hide the Screenshot button with a wallpaper patch (the stock Power off / Restart stay completely stock on the LOCK screen and, once calibrated, on the HOME screen; where the patch cannot be shown a card of mine covers them)", "Hide it under a wallpaper patch + my card (home screen only)", "Block it completely" },
                 new String[] { Features.POWER_OFF, Features.POWER_HIDE_SCREENSHOT, Features.POWER_WALLPAPER, Features.POWER_BLOCK }, mode, new Str() { public void on(String v) { Features.setString(ControlActivity.this, Features.POWER_MODE, v); } });
         action("Allow wallpaper access", checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED ? "Granted. The patch and its calibration read the wallpaper and the screenshot." : "NOT granted yet. Needed by the wallpaper patch and its calibration (it reads the wallpaper and the screenshot).", new Runnable() { public void run() { requestPermissions(new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 7); } });
         if (Features.isCover(mode)) {
