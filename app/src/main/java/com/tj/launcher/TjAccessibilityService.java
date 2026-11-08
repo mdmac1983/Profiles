@@ -954,6 +954,10 @@ public class TjAccessibilityService extends AccessibilityService {
                 if (gen != homeCalGen) { full.recycle(); crop.recycle(); Log.i(TAG, "HOMEPATCH the calibration was cut short: the screenshot is thrown away"); return; }
                 final boolean saved = HomeShot.save(app, rot, step, crop, sig, cr[0], cr[1], wid, W, H);
                 final String dims = crop.getWidth() + "x" + crop.getHeight();
+                if (saved && curtainSwitchOn()) {   // BL1: the WHOLE plain-wallpaper screenshot is kept too (it used to be thrown away after the crop was cut): it is the wallpaper half of the home curtain
+                    final boolean wallKept = HomeCurtain.saveWall(app, rot, step, full, sig, wid, W, H);
+                    Log.i(TAG, "CURTAIN wallpaper picture " + (wallKept ? "kept" : "NOT kept") + " (" + W + "x" + H + ", wallpaper position " + step + ")");
+                }
                 full.recycle();
                 final boolean deleted = saved && PatchShot.deleteQuietly(app, row.uri);
                 handler.post(new Runnable() { @Override public void run() { homeCalFinishIf(gen, saved, saved ? "HOME PATCH CALIBRATED (" + dims + ", wallpaper position " + step + ")" + (deleted ? "; the screenshot was removed from the gallery again" : "; the screenshot itself stays in the gallery") : "the crop could not be stored"); } });
