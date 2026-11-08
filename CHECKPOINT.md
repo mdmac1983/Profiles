@@ -1,13 +1,13 @@
-# CHECKPOINT 670 — read me first, then TASKS.md
+# CHECKPOINT 671 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T04:27:53Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-yhyifc` · **builds on:** `c2adf3b` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T04:30:41Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-yhyifc` · **builds on:** `e24eeab` (this checkpoint is the commit after it)
 
 ## Just done
-BI1a design written (research/HOME_PATCH_2026-11-08.md: wallpaper-only calibration crop + Launcher layer via PixelCopy, composited SRC_OVER, visible only at rest, card otherwise); BH1e (v0.8.8 runReset skips the shade step for a silent notification) recorded
+BI1b step 1: HomePatchRules (pure) + HomePatchRulesTest 19 green
 
 ## Do this next
-BI1b step 1: pure HomePatchRules (rest/quiet/away/offset-step/signature/calibration decision/SRC_OVER compose) + JVM tests; then HomeShot + HomeLayer; then TjHooks + Launcher fork hooks (draw listener on DragLayer: see where TjHooks.watchState is called in launcher3/.../Launcher.java ~324); then TAS integration (patchTarget home branch, addPatch, patchShow, onOutsideTouch, cardWanted, calibration flow). Fix BH1e (runReset force flag) in the same release
+BI1b step 2: HomeShot (store: homeshot_r<rot>_x<step>.png + meta, probe step +-2, prune stale) + HomeLayer (PixelCopy of the Launcher window via TjHooks.launcherRef + SRC_OVER compose); then TjHooks (launcherRef, draw listener on DragLayer, touch down, homeAtRest facts: AbstractFloatingView.getTopOpenView, DragController.isDragging, Workspace.isSwitchingState); then TAS integration
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ BI1b step 1: pure HomePatchRules (rest/quiet/away/offset-step/signature/calibrat
 
 ## Last ten checkpoints
 ```
+  1a97981 ckpt 670: BI1a design written (research/HOME_PATCH_2026-11-08.md: wallpaper-only calibra
   1ca0e18 ckpt 669: Tj's 04:00 message written as TASKS BI1 (his go for BG2b (1): the lock-screen 
   314ea77 ckpt 668: v0.8.8 RELEASED 03:49 UTC (android.yml run 35 id 42444134135, https://github.c
   d99d60f ckpt 667: v0.8.8 RELEASE build triggered 03:47 UTC: android.yml run 35 id 42444134135 on
@@ -25,7 +26,6 @@ BI1b step 1: pure HomePatchRules (rest/quiet/away/offset-step/signature/calibrat
   e09cc2b ckpt 663: BH1: v0.8.8 candidate (versionCode 33): version bump, research/NOTIFICATIONS_Q
   f7b6ee0 ckpt 662: BH1 review fixes (8 findings: helper fact in Quickstep, hold state in a Settin
   0095fec ckpt 661: BH1b step 3: emulator section nq (10 checks NQ0-NQ10) + testnotifier high-impo
-  75f3927 ckpt 660: BH1b step 2: Launcher control switch + report lines + NotifSightings (10 JVM t
 ```
 
 (3 automatic checkpoint(s) since the last deliberate one — the
