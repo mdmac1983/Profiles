@@ -396,7 +396,7 @@ public final class ShellServer {
         } catch (Throwable ignored) { }
     }
 
-    private static final java.util.regex.Pattern KILLISH = java.util.regex.Pattern.compile("(?i)lmkd|lowmemorykiller|killing |killed|sigkill|sigterm|sighup|libprocessgroup|tj-shell|shellserver|app_process");
+    private static final java.util.regex.Pattern KILLISH = java.util.regex.Pattern.compile("(?i)lmkd|lowmemorykiller|killing |killed|sigkill|sigterm|sighup|libprocessgroup|tj-shell|shellserver"   /* not plain "app_process": every process the helper starts logs "Core platform API reporting enabled" with that name (emulator run #334), which would fill the 400-line quota; a real kill line names lmkd / killed / Killing anyway */);
 
     /** Copies the kill-related lines of the system log into the recorder as they appear (at most 400 per run, so a noisy log cannot fill the storage). Ends quietly if logcat cannot be started. */
     private static void logcatWatch() {
