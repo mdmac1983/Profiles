@@ -2569,7 +2569,7 @@ public class TjAccessibilityService extends AccessibilityService {
             Features.setString(this, itemKey(), lastPitch > 0 || lastCut > 0 ? lastPitch + "/" + lastCut : "");   // a failed measurement CLEARS the stored value: a stale one from another layout must never be reused
             showOverlay(shot);
             handler.removeCallbacks(recheck);
-            if ((Features.POWER_WALLPAPER.equals(mode) || locked) && patchView == null) refreshLayers();
+            if ((Features.POWER_WALLPAPER.equals(mode) || locked || homeSwitchOn()) && patchView == null) refreshLayers();   // BI1: the first menu on the home screen learns where it sits: the home patch (or its calibration) can start now
             handler.postDelayed(recheck, 1500);   // evaluate() again: removes the cover if the menu is gone   // if the menu closed without an event we still clean up
         } else {
             if (closing) {   // BC2: the stock fade-OUT is being followed: the scan stops finding the menu text when the card gets transparent, BEFORE the scrim is gone; the patch ends its fade with the window's removal or the timer, not with this scan
