@@ -507,6 +507,11 @@ pencil_min(){ # pencil_min <png> <device path of a uiautomator dump taken at the
   [ "$((X2-X1))" -gt 0 ] && [ "$((Y2-Y1))" -gt 0 ] || { echo none; return; }
   convert "$1" -crop "$((X2-X1))x$((Y2-Y1))+$X1+$Y1" +repage -colorspace Gray -format '%[fx:minima]' info: 2>/dev/null || echo none
 }
+pen_cover_state(){ # shown | hidden | none: the pencil cover window's own flags (showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0): needs no glyph and no pixels
+  local blk; blk="$(adb shell dumpsys window windows 2>/dev/null | grep -A10 'TjPencilCover}' | head -14)"
+  [ -n "$blk" ] || { echo none; return; }
+  if echo "$blk" | grep -q 'NOT_TOUCHABLE'; then echo hidden; else echo shown; fi
+}
 b6lock(){ # b6lock <stored mode custom|quickstep>
   setmode "$1"; rebind; home
   adb logcat -c
