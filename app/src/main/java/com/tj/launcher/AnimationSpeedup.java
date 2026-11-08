@@ -79,7 +79,7 @@ public final class AnimationSpeedup {
                     if (first && snapshotDone) {
                         try { for (String n : NAMES) { String w = AnimationPolicy.restoreValue(Settings.Global.getString(cr, n), sp.getString(n, "1.0")); if (w != null) Settings.Global.putString(cr, n, w); } } catch (Throwable ignored) { }
                     }
-                    try { sp.edit().putInt("holds", holds).putBoolean("pending", pending && !snapshotDone ? pending : (snapshotDone ? false : pending)).commit(); } catch (Throwable ignored) { }
+                    try { sp.edit().putInt("holds", holds).putBoolean("pending", pending).commit(); } catch (Throwable ignored) { }   // the plain undo: the mask and `pending` as they were
                     return holds;
                 }
             }
