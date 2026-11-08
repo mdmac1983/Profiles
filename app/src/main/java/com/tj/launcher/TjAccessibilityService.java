@@ -1220,11 +1220,36 @@ public class TjAccessibilityService extends AccessibilityService {
                     int sc = c.saveLayer(0, 0, getWidth(), getHeight(), null);
                     try { paintPatch(c, rest); c.drawBitmap(mask, 0, 0, maskPaint); } finally { c.restoreToCount(sc); }
                     fadeFrameDone(this);   // AZ1: the stock menu is still fading in: draw the next frame
+                    if (rest) warmOpenLookOnce(c);
                     return;
                 }
                 if (rest) { c.save(); c.clipRect(0, patchRestTop, getWidth(), getHeight()); }
                 try { paintPatch(c, rest); } finally { if (rest) c.restore(); }
                 fadeFrameDone(this);   // AZ1
+                if (rest) warmOpenLookOnce(c);
+            }
+            private boolean warmed = false;   // per patch window
+            /**
+             * BK1a (Tj, 2026-11-08 18:16 UTC: "The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. ... Load it
+             * immediately when the screen is turned off or when the screen goes to lock screen ... It could also be the dimming loading for the first time."): MEASURED (emulator section fp, run #389) in a FRESH process the first
+             * opening dims the patch ~100 ms late (open_shape 0.19, +24 % bright, 3 frames drawn, one gap of 278 ms) while a warm process reads 0.04 - 0.06, because the OPEN look (a colour filter and the open-edge mask in a layer)
+             * had never been drawn before the first real opening. Draw it ONCE, now, in the first resting frame of the window, at 1/255 alpha: invisible (at most 0.2 of one brightness level, in one frame), but the GPU work of the
+             * first real opening is done before anybody can press the side key. The real code path (paintPatch / setOpenLook / the open mask), no copy of it.
+             */
+            private void warmOpenLookOnce(android.graphics.Canvas c) {
+                if (warmed) return;
+                warmed = true;
+                try {
+                    int outer = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), 1);
+                    try {
+                        android.graphics.Bitmap mo = patchMaskOpen;
+                        if (mo != null && mo.getWidth() == getWidth() && mo.getHeight() == getHeight()) {
+                            int sc = c.saveLayer(0, 0, getWidth(), getHeight(), null);
+                            try { paintPatch(c, false); c.drawBitmap(mo, 0, 0, maskPaint); } finally { c.restoreToCount(sc); }
+                        } else paintPatch(c, false);
+                    } finally { c.restoreToCount(outer); }
+                    Log.i(TAG, "PATCH warm-up: the open look was drawn once, invisibly" + (patchHomeMode ? " (home)" : ""));
+                } catch (Throwable t) { Log.e(TAG, "patch warm-up failed", t); }
             }
             private void paintPatch(android.graphics.Canvas c, boolean rest) {
                 android.graphics.Bitmap photo = !patchLockMode ? null : lockShot != null ? lockShot : patchShotBmp;   // AM1: the helper's fresh photo wins, else the stored REAL-pixel crop
