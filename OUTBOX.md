@@ -1268,3 +1268,7 @@
 ## 2026-11-08T20:39:15Z
 > The lessons from today are written into CLAUDE.md. The two unlock-fixed `b6` samples are due about 20:44. This version should show whether the Quickstep-mode lock screen behaves like the custom-mode one now that the phase really starts unlocked.
 <!-- sha:c41261bf1734 -->
+
+## 2026-11-08T20:40:40Z
+> It's 20:40, and the real timer fires at 20:44:30. I'm waiting for that one before reading anything.
+<!-- sha:b6a5dcfca044 -->
