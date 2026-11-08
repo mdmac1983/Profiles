@@ -196,10 +196,11 @@ public final class AnimationSpeedup {
      * Cheap when there is nothing to do: no binder call unless the hold is on or could start.
      */
     static synchronized void syncNow(Context c, String trigger, Boolean screenOnNow, Boolean lockUpNow, boolean assumeHelper) {
+        final Context app = c.getApplicationContext();
+        final Look look = new Look(app, screenOnNow, lockUpNow);   // asked at most once, whichever rule needs it first
         // BH1: the pop-up banners follow the same triggers and the same "which session is this" facts (their rule is the complement of the animation rule); first, so nothing below can keep them from being decided
-        try { NotifQuiet.sync(c, trigger, screenOnNow, lockUpNow); } catch (Throwable t) { Log.e(TAG, "banner quiet sync failed", t); }
+        try { NotifQuiet.sync(app, trigger, look, assumeHelper); } catch (Throwable t) { Log.e(TAG, "banner quiet sync failed", t); }
         try {
-            final Context app = c.getApplicationContext();
             final int before = holds(app);
             final boolean holding = AnimationPolicy.has(before, AnimationPolicy.HOLD_QUICKSTEP);
             AnimationPolicy.Facts f = new AnimationPolicy.Facts();
