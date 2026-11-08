@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Offline test of the b6 pencil helpers (pen_sample, pen_none, pen_all_shown, pen_control_ok) with a stubbed adb: bash tools/test_pen_sample.sh [scenario file] (2026-11-08, BK1b gate triage).
+set -u
+SCEN="${1:-tools/emulator_scenario.sh}"
+OUT="$(mktemp -d)"
+ex(){ # print the function text starting at "<name>(){" up to its closing brace (or the one-liner itself)
+  local s; s=$(grep -n "^$1(){" "$SCEN" | head -1 | cut -d: -f1)
+  if sed -n "${s}p" "$SCEN" | grep -q '}[[:space:]]*\(#.*\)\?$' && ! sed -n "${s}p" "$SCEN" | grep -q '{[[:space:]]*#'; then sed -n "${s}p" "$SCEN"; return; fi
+  local e; e=$(awk -v s="$s" 'NR>s && /^}/ {print NR; exit}' "$SCEN"); sed -n "${s},${e}p" "$SCEN"
+}
+for f in kg_state pen_sample pen_none pen_all_shown pen_control_ok; do ex "$f"; done > "$OUT/fns.sh"
+FAKE_WIN=""; FAKE_POL=""
+adb(){ # adb shell dumpsys window windows|policy
+  case "$*" in *"dumpsys window windows"*) printf '%s' "$FAKE_WIN";; *"dumpsys window policy"*) printf '%s' "$FAKE_POL";; esac
+}
+. "$OUT/fns.sh"
+fails=0
+t(){ local name="$1" want="$2" got="$3"; if [ "$got" = "$want" ]; then echo "ok    $name -> $got"; else echo "FAIL  $name: want [$want] got [$got]"; fails=$((fails+1)); fi; }
+
+SB_CLOSED=$'  Window #5 Window{1a u0 StatusBar}:\n    mAttrs={(0,0)(fillx24) ty=STATUS_BAR}\n    Frames: containing=[0,0][600,1024] parent=[0,0][600,1024]\n    mFrame=[0,0][600,24] last=[0,0][600,24]\n'
+SB_OPEN=$'  Window #5 Window{1a u0 StatusBar}:\n    mAttrs={(0,0)(fillxfill) ty=STATUS_BAR}\n    Frames: containing=[0,0][600,1024] parent=[0,0][600,1024]\n    mFrame=[0,0][600,1024] last=[0,0][600,1024]\n'
+SB_LOWER=$'  Window #5 Window{1a u0 StatusBar}:\n    frame=[0,0][600,24]\n'
+COV_SHOWN=$'  Window #9 Window{2b u0 TjPencilCover}:\n    mDisplayId=0\n    mAttrs={(4,564)(51x51) gr=TOP START ty=ACCESSIBILITY_OVERLAY fmt=TRANSLUCENT\n      fl=NOT_FOCUSABLE LAYOUT_IN_SCREEN LAYOUT_NO_LIMITS}\n    mFrame=[4,564][55,615]\n'
+COV_HIDDEN=$'  Window #9 Window{2b u0 TjPencilCover}:\n    mDisplayId=0\n    mAttrs={(4,564)(51x51) gr=TOP START ty=ACCESSIBILITY_OVERLAY fmt=TRANSLUCENT\n      fl=NOT_FOCUSABLE NOT_TOUCHABLE LAYOUT_IN_SCREEN LAYOUT_NO_LIMITS}\n    mFrame=[4,564][55,615]\n'
+POL_F=$'  mKeyguardDelegate: showing=false mOccluded=false\n'
+POL_T=$'  mKeyguardDelegate: showing=true mOccluded=false\n'
+
+FAKE_WIN="$SB_CLOSED"; FAKE_POL="$POL_F";            t "no cover, closed shade, unlocked"     "cover=none showing=false sb=[0,0][600,24]"   "$(pen_sample)"
+FAKE_WIN="$SB_OPEN$COV_SHOWN"; FAKE_POL="$POL_T";    t "shown cover, open panel, locked"      "cover=shown showing=true sb=[0,0][600,1024]" "$(pen_sample)"
+FAKE_WIN="$COV_HIDDEN$SB_CLOSED"; FAKE_POL="$POL_F"; t "hidden (NOT_TOUCHABLE) cover"         "cover=hidden showing=false sb=[0,0][600,24]" "$(pen_sample)"
+FAKE_WIN="$SB_LOWER"; FAKE_POL="$POL_F";             t "frame printed in lower case"          "cover=none showing=false sb=[0,0][600,24]"   "$(pen_sample)"
+FAKE_WIN=""; FAKE_POL="";                            t "empty dumps do not crash"             "cover=none  sb=?"                            "$(pen_sample)"
+
+pen_none "cover=none showing=false sb=x" "cover=hidden showing=true sb=y" && echo "ok    pen_none: none+hidden pass" || { echo "FAIL  pen_none none+hidden"; fails=$((fails+1)); }
+pen_none "cover=none showing=false sb=x" "cover=shown showing=true sb=y" && { echo "FAIL  pen_none must flag shown"; fails=$((fails+1)); } || echo "ok    pen_none flags a shown cover"
+pen_all_shown "cover=shown a" "cover=shown b" "cover=shown c" && echo "ok    pen_all_shown: 3 shown pass" || { echo "FAIL  pen_all_shown 3 shown"; fails=$((fails+1)); }
+pen_all_shown "cover=shown a" "cover=none b" "cover=none c" && { echo "FAIL  pen_all_shown must flag none"; fails=$((fails+1)); } || echo "ok    pen_all_shown flags 'shown none none'"
+pen_control_ok "cover=none showing=false sb=x" && echo "ok    control: unlocked + no cover passes" || { echo "FAIL  control ok"; fails=$((fails+1)); }
+pen_control_ok "cover=shown showing=false sb=x" && { echo "FAIL  control must flag a shown cover"; fails=$((fails+1)); } || echo "ok    control flags a cover on the unlocked Quickstep panel"
+pen_control_ok "cover=none showing=true sb=x" && { echo "FAIL  control must flag a still-locked device"; fails=$((fails+1)); } || echo "ok    control flags a device that is still locked"
+echo "failures: $fails"; exit $fails
