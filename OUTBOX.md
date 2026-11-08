@@ -1276,3 +1276,7 @@
 ## 2026-11-08T20:44:45Z
 > The two samples are still finishing; I'll read them at about 20:46:30.
 <!-- sha:a02576f0abd4 -->
+
+## 2026-11-08T20:48:18Z
+> The local release gate is running in the background, and the `b6` pair is still on CI (due about 20:55). I'll read both when they land.
+<!-- sha:8153ac2760f7 -->
