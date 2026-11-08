@@ -1527,13 +1527,14 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.BroadcastReceiver lockReceiver = new android.content.BroadcastReceiver() {
         @Override public void onReceive(android.content.Context c, android.content.Intent i) {
             kgAt = -10_000;   // AB2: screen on/off and unlock change the keyguard: never answer these from the 250 ms memo
-            try {   // BF1 (Tj: animations back on "immediately" on the lock screen): before anything else of this broadcast, so the lock screen never shows with them off; a wake with no lock screen simply continues the session
-                String a0 = i == null ? null : i.getAction();
-                if (android.content.Intent.ACTION_SCREEN_OFF.equals(a0)) AnimationSpeedup.onScreenOff(getApplicationContext());
-                else if (android.content.Intent.ACTION_SCREEN_ON.equals(a0)) AnimationSpeedup.onScreenOn(getApplicationContext(), keyguardLocked());
+            try {   // BF1 (Tj: animations back on "immediately" on the lock screen): the screen going OFF is handled before anything else of this broadcast, so the lock screen never shows with them off (the screen is dark: no patch work waits for it)
+                if (android.content.Intent.ACTION_SCREEN_OFF.equals(i == null ? null : i.getAction())) AnimationSpeedup.onScreenOff(getApplicationContext());
             } catch (Throwable t) { Log.e(TAG, "animation sync failed", t); }
             handler.post(layerRefresh);   // BE1: the patch window first (a no-op when it was prepared while the screen was dark); the PIN-pad scan of lockEval comes after it
             handler.post(lockEval); handler.postDelayed(lockEval, 400);
+            if (android.content.Intent.ACTION_SCREEN_ON.equals(i == null ? null : i.getAction())) {   // BF1: the wake is handled AFTER the patch work above (code review: the settings writes of a no-lock wake must not delay the patch window); a lock screen needs nothing written (the animations came back at screen off)
+                handler.post(new Runnable() { @Override public void run() { try { AnimationSpeedup.onScreenOn(getApplicationContext(), keyguardLocked()); } catch (Throwable t) { Log.e(TAG, "animation sync failed", t); } } });
+            }
             String act = i == null ? null : i.getAction();
             long t = System.currentTimeMillis();
             ensureUnlockListener();
