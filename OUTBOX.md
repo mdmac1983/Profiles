@@ -1078,3 +1078,7 @@
 >
 > Everything is committed and pushed. A new session resumes from `CHECKPOINT.md`.
 <!-- sha:626686f75073 -->
+
+## 2026-11-08T03:59:22Z
+> Tj's message is the "go" for the home-screen patch from BG2b. Per the project rules, his words go into TASKS.md and get a checkpoint before any code. I'll look at the open BG2 items and the research note's design sections first, so the task entry is accurate.
+<!-- sha:c1f3fde2be45 -->
