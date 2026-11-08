@@ -3046,6 +3046,80 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section hp
+if want cu; then # section cu
+ensurehome
+# ---- CU (BL1; Tj, 2026-11-08 21:11 UTC: "Make the home looking curtain instead of the black screen. An identical screenshot of the current home screen"): the no-helper unlock after a Quickstep session shows a picture
+#      of the REAL home screen instead of the black cover. Phase A (switch off): the first menu on the home screen teaches the app where the stock menu sits (the calibration needs it). Phase B: home_patch and
+#      home_curtain ON: the home calibrates by itself (ONE flash), now KEEPING the whole wallpaper picture, and the Launcher's own pixels are captured over it (no flash): 'CURTAIN picture saved'. Phase C: a Quickstep
+#      session (Contacts open), the helper killed, a plain PIN: screenshots taken WHILE the cover is up must equal the bare home screen (MAE), a tap on the picture is swallowed once the unlock is confirmed, and the real
+#      home is in front at the end. The black-cover path itself is what sections cs / uf / b4 test (the switch is OFF by default in debug builds).
+beat "before CU"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE >/dev/null 2>&1
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+hpinit false
+adb shell "run-as $PKG sh -c 'rm -f files/homewall_* files/homecurtain_*'" >/dev/null 2>&1
+hpwall
+adb logcat -c
+hpopen; hpclose; sleep 2
+CU_CARD="$(hplog | grep -c 'CARD area')"
+check "CU0: the first menu on the home screen was learned (the calibration needs the menu's place)" test "${CU_CARD:-0}" -ge 1
+# ---------------- phase B: both switches ON
+hpkey home_patch true; hpkey home_curtain true
+setmode custom; rebind; adb logcat -c; home
+CU_T1="$(hpwait 'CURTAIN wallpaper picture kept' 90)"
+CU_T2="$(hpwait 'CURTAIN picture saved' 60)"
+info "CU B: the whole wallpaper picture was kept after $CU_T1 s, the curtain was saved after $CU_T2 s; log: $(hplog | grep CURTAIN | cut -c25-175 | tr '\n' '|' | cut -c1-520)"
+check "CU1: the home calibration KEPT the whole wallpaper picture (it used to throw it away after the crop)" test "$CU_T1" != never
+check "CU2: the curtain picture was captured over it from the Launcher's own pixels (no second flash)" test "$CU_T2" != never
+sleep 5
+shot 170-cu-bare
+info "CU B: the capture line in the report: $(adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_curtain_capture">[^<]*' | cut -d'>' -f2 | tr -d '\r' | cut -c1-200)"
+# ---------------- phase C: a Quickstep session, no helper, a plain PIN; screenshots WHILE the cover is up
+adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
+setmode quickstep; rebind; home; sleep 3
+adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
+shot 172-cu-quickstep
+adb shell locksettings set-pin 1234 >/dev/null 2>&1
+adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2
+adb logcat -c
+for CU_K in "177 628" "300 628" "424 628" "177 714"; do adb shell input tap $CU_K; sleep 0.4; done
+adb shell input tap 424 886
+for CU_I in 1 2 3 4 5; do
+  if [ "$CU_I" = 2 ] || [ "$CU_I" = 3 ]; then adb shell input tap 300 400 >/dev/null 2>&1; fi   # a tap on the picture AFTER the unlock is confirmed: it must be swallowed
+  shot 171-cu-during-$CU_I; adb shell date +%s%N | cut -c1-13 > "$OUT/cu-t$CU_I.txt"
+done
+sleep 6
+CULOG="$(adb logcat -d -v epoch -s TjA11y:I 2>/dev/null)"
+CU_UP="$(echo "$CULOG" | grep 'RESET cover shown' | tail -1 | awk '{printf "%.0f", $1*1000}')"
+CU_DOWN="$(echo "$CULOG" | grep 'RESET cover removed' | tail -1 | awk '{printf "%.0f", $1*1000}')"
+cu_mae(){ compare -metric MAE "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+CU_IN=0; CU_MAX=0; CU_LIST=""
+for CU_I in 1 2 3 4 5; do
+  CU_T="$(cat "$OUT/cu-t$CU_I.txt" 2>/dev/null)"
+  if [ -n "$CU_T" ] && [ -n "$CU_UP" ] && [ -n "$CU_DOWN" ] && [ $((CU_T-500)) -gt "$CU_UP" ] && [ "$CU_T" -lt "$CU_DOWN" ]; then   # the whole screenshot (about 0.4 s) lies inside the cover's life
+    CU_M="$(cu_mae 170-cu-bare 171-cu-during-$CU_I)"; CU_IN=$((CU_IN+1)); CU_LIST="$CU_LIST $CU_I:$CU_M"
+    CU_MAX="$(awk -v a="$CU_MAX" -v b="${CU_M:-9}" 'BEGIN{print (b+0>a+0)?b:a}')"
+  fi
+done
+info "CU C: the cover went up at $CU_UP and was removed at $CU_DOWN (device ms); screenshots inside its life: $CU_IN; MAE vs the bare home:$CU_LIST; worst $CU_MAX"
+CU_CURTAIN="$(echo "$CULOG" | grep -c 'RESET cover shown (curtain)')"
+check "CU3: the cover that went up was the CURTAIN (a picture of the home screen), not the black one" test "$CU_CURTAIN" -ge 1
+check "CU4: at least one screenshot was taken while the cover was up (so the comparison means something)" test "$CU_IN" -ge 1
+check "CU5: while the curtain is up the screen equals the bare home screen (worst MAE over the whole display < 0.01)" awk -v m="$CU_MAX" -v n="$CU_IN" 'BEGIN{exit !(n+0 >= 1 && m+0 < 0.01)}'
+CU_NEG="$(cu_mae 170-cu-bare 172-cu-quickstep)"
+info "CU C: negative control, the Quickstep screen against the bare home: MAE $CU_NEG"
+check "CU6: negative control: the measure SEES a difference (the Quickstep screen is not the home screen: MAE > 0.03)" awk -v m="$CU_NEG" 'BEGIN{exit !(m+0 > 0.03)}'
+CU_SWNOW="$(echo "$CULOG" | grep -c 'RESET curtain swallows touches now')"; CU_SW="$(echo "$CULOG" | grep -c 'RESET curtain swallowed a tap')"
+info "CU C: 'swallows touches now' lines $CU_SWNOW; swallowed taps $CU_SW; the cover lines: $(echo "$CULOG" | grep -E 'RESET (cover|curtain)' | sed 's/I.TjA11y *([ 0-9]*): //' | cut -c1-90 | tr '\n' '|' | cut -c1-420)"
+check "CU7: the curtain starts swallowing touches only when the unlock is confirmed (the switch is logged)" test "$CU_SWNOW" -ge 1
+check "CU8: a tap on the picture was swallowed by the curtain's own window" test "$CU_SW" -ge 1
+CU_RES="$(adb shell dumpsys activity activities 2>/dev/null | grep -m1 mResumedActivity | cut -c1-150)"
+info "CU C: resumed at the end: $CU_RES; mode $(getmode); the 'COVER' lock-log lines: $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | grep ' COVER ' | tail -2 | cut -c1-130 | tr '\n' '|')"
+CU_RESL="$(echo "$CU_RES" | grep -c 'com.tj.launcher')"
+check "CU9: at the end the real custom home is in front" test "$CU_RESL" -ge 1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; setmode custom; rebind; home
+fi # section cu
 if want hf; then # section hf
 ensurehome
 # ---- HF (BJ1; Tj, 2026-11-08 16:21 UTC, about v0.8.9's patch on the unlocked home screen: "The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except
