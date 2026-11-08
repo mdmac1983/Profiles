@@ -172,7 +172,7 @@ public final class TjHooks {
 
     /** The Launcher's window got or lost the focus (a shade or a dialog over the home screen takes it; it comes back when they go). */
     public static void onWindowFocus(boolean has) {
-        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeFocusChanged(has); } catch (Throwable ignored) { }
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null && (exp(s) & 2) == 0) s.homeFocusChanged(has); } catch (Throwable ignored) { }
     }
 
     public static void onLauncherPaused() {
