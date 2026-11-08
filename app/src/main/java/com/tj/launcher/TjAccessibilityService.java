@@ -1907,6 +1907,7 @@ public class TjAccessibilityService extends AccessibilityService {
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
         // e == null is quietWork's follow-up of a burst whose events the lock screen held back (quietBurst): those events were the only ones that would have started the search, so one search is allowed now
         if (!sysui && e != null && penView == null) return;
+        if (e == null && penView == null && overlayShown) return;   // the follow-up of a POWER-MENU burst: no panel is open, and the fade path must not be followed by a 100 ms search (emulator run #392: 'pencil took 102 ms' at +536 ms)
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
         int type = e == null ? 0 : e.getEventType();
