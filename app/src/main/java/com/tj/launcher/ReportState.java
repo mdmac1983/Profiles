@@ -124,6 +124,8 @@ public final class ReportState {
         try { b.append("process life (BG1, can the launcher be kept in memory?): ").append(ProcessLife.report(c)).append('\n'); } catch (Throwable t) { /* not available */ }
         try { b.append("shell helper flight recorder (HLP1, why does the helper die?): ").append(HelperLife.summarize(helperLifeLines(c), System.currentTimeMillis())).append('\n'); } catch (Throwable t) { /* not available */ }
         try { b.append("animations (BF1, off only inside the Quickstep session): ").append(AnimationSpeedup.describe(c)).append('\n'); } catch (Throwable t) { /* not available */ }
+        try { b.append("pop-up banners (BH1, off outside an unlocked Quickstep session): ").append(NotifQuiet.describe(c)).append('\n'); } catch (Throwable t) { /* not available */ }
+        try { b.append("notifications seen (BH1: which app, when, in which state; never the text): ").append(NotifSightings.report(c)).append('\n'); } catch (Throwable t) { /* not available */ }
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');
         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
         b.append("retail-demo flag (must be 0 or not set): ").append(setting("global", c, "device_demo_mode")).append('\n');
