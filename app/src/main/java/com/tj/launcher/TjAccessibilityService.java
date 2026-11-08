@@ -707,6 +707,7 @@ public class TjAccessibilityService extends AccessibilityService {
     /** Builds a fresh patch after the home has been quiet for {@link HomePatchRules#DRAW_QUIET_MS}. */
     private void scheduleHomeBuild() {
         if (patchView == null || !patchHomeMode) return;
+        homeBuildWaits = 0;   // a fresh wish to build (a draw, a resume, a focus gain) starts a new bounded wait
         long quiet = HomePatchRules.waitMs(android.os.SystemClock.uptimeMillis(), 0, TjHooks.lastHomeDrawMs);
         handler.removeCallbacks(homeBuild);
         handler.postDelayed(homeBuild, quiet + 20);
