@@ -364,7 +364,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private long fadeFrameLastMs = 0, fadeWorstGapMs = 0, fadeFirstDrawLateMs = -1;
     private int fadeFrames = 0, fadeSlowFrames = 0;
     private boolean fadeHomeFlavour = false;
-    private String fadeSummary = "";
+    private String fadeSummary = "", fadeFirstSummary = "";
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
     // BC2 (Tj, 2026-11-07: "when the power menu is open, and I press in the middle of the screen to close it, or pull up from the bottom to type the pin, the wallpaper patch flickers for a split second"): the stock
@@ -1231,7 +1231,7 @@ public class TjAccessibilityService extends AccessibilityService {
             private boolean warmed = false;   // per patch window
             /**
              * BK1a (Tj, 2026-11-08 18:16 UTC: "The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. ... Load it
-             * immediately when the screen is turned off or when the screen goes to lock screen ... It could also be the dimming loading for the first time."): MEASURED (emulator section fp, run #389) in a FRESH process the first
+             * immediately when the screen is turned off or when the screen goes to lock screen ... It could also be the dimmer loading for the first time."): MEASURED (emulator section fp, run #389) in a FRESH process the first
              * opening dims the patch ~100 ms late (open_shape 0.19, +24 % bright, 3 frames drawn, one gap of 278 ms) while a warm process reads 0.04 - 0.06, because the OPEN look (a colour filter and the open-edge mask in a layer)
              * had never been drawn before the first real opening. Draw it ONCE, now, in the first resting frame of the window, at 1/255 alpha: invisible (at most 0.2 of one brightness level, in one frame), but the GPU work of the
              * first real opening is done before anybody can press the side key. The real code path (paintPatch / setOpenLook / the open mask), no copy of it.
@@ -2670,7 +2670,7 @@ public class TjAccessibilityService extends AccessibilityService {
         long up = connectedAtMs == 0 ? 0 : (android.os.SystemClock.elapsedRealtime() - connectedAtMs) / 60_000;
         long n = scanCount;
         String pen = "; pencil cover: " + penFull + " tree searches" + (penFull == 0 ? "" : " (avg " + (penFullMs / penFull) + " ms, max " + penFullMax + " ms)") + ", " + penFast + " one-node refreshes";   // AN1
-        String fade = "; patch fade (AZ1): " + (patchFadeOn() ? "on" : "off") + ", the last menu opening was noticed " + (fadeLagLast < 0 ? "(no opening yet)" : fadeLagLast + " ms after the stock fade began (" + (fadeLagLast >= PatchFade.OPEN_MS ? "no fade needed" : "the patch followed it") + ")") + "; last fade seen from the patch (BJ1): " + (fadeSummary.isEmpty() ? "(none yet)" : fadeSummary);
+        String fade = "; patch fade (AZ1): " + (patchFadeOn() ? "on" : "off") + ", the last menu opening was noticed " + (fadeLagLast < 0 ? "(no opening yet)" : fadeLagLast + " ms after the stock fade began (" + (fadeLagLast >= PatchFade.OPEN_MS ? "no fade needed" : "the patch followed it") + ")") + "; last fade seen from the patch (BJ1): " + (fadeSummary.isEmpty() ? "(none yet)" : fadeSummary) + "; FIRST fade since this process started (BK1a): " + (fadeFirstSummary.isEmpty() ? "(none yet)" : fadeFirstSummary);
         return "connected " + up + " min, " + evSeen + " events (" + evNoise + " dropped as noise, " + evSkipped + " shade redraws without a scan), " + n + " power-menu scans" + (n == 0 ? "" : ", avg " + (scanTotalMs / n) + " ms, max " + scanMaxMs + " ms") + pen + fade;
     }
 
@@ -3417,6 +3417,7 @@ public class TjAccessibilityService extends AccessibilityService {
             String scale = animScaleText();
             fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms, animator scale " + scale;
             Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms scale=" + scale + " t=" + fadeEndMs);
+            if (fadeFirstSummary.isEmpty()) fadeFirstSummary = fadeSummary;   // BK1a: the FIRST fade of this process is kept apart (the report shows whether it still stalls; the later ones overwrite fadeSummary)
         } catch (Throwable t) { Log.e(TAG, "fade summary failed", t); }
     } };
 
