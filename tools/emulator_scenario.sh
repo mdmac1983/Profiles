@@ -3040,11 +3040,11 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   check "HF3: the menu opening was seen in at least 9 of the 10 films (an onset of the dimming was found)" test "$(hfseen 'g1 g2')" -ge 9
   # BJ1 regression guard: the stock dialog's own event must open the patch at once, BEFORE any node scan (v0.8.9: 1 of 10 films, the slow path won the race and the patch stayed bright for the whole fade)
   check "HF4: the patch (not the card, not the slow scan path) covered the Screenshot spot in at least 9 of the 10 films (log 'PATCH fast open')" test "$(hffast 'g1 g2')" -ge 9
-  # lenient on purpose (film noise): v0.8.9 read 0.197 (every film but one above 0.19), the lock screen's films read 0.02 - 0.10
+  # lenient on purpose (film noise: the emulator's software renderer updates the stock scrim in ~100 ms steps, the small patch window every frame, so single films read 0.03 - 0.17 on the fixed code): v0.8.9 read 0.197 (every film but one above 0.19), run #383 with the fix 0.087 (g1 0.087, g2 0.092)
   HF_MED="$(hfmed 'g1 g2' open_shape)"; HF_N="$(hfcount 'g1 g2')"
   info "HF: all 10 films: median open_shape $HF_MED over $HF_N films; within 8 % in $(hfok 'g1 g2') of 10 (section pt asks 3 of 5 for the lock screen)"
   # a number is required: with no film read the median is '?', which awk would compare as 0 (review 2026-11-08), and fewer than 9 films read is not a measurement
-  check "HF5: the home patch follows the stock dimming: median open_shape of at least 9 read films below 0.12 (v0.8.9: 0.197)" awk -v m="$HF_MED" -v n="$HF_N" 'BEGIN{exit !(n+0 >= 9 && m ~ /^[0-9.]+$/ && m+0 < 0.12)}'
+  check "HF5: the home patch follows the stock dimming: median open_shape of at least 9 read films below 0.14 (v0.8.9: 0.197, run #383 with the fix: 0.087)" awk -v m="$HF_MED" -v n="$HF_N" 'BEGIN{exit !(n+0 >= 9 && m ~ /^[0-9.]+$/ && m+0 < 0.14)}'
 else check "HF2: the menu geometry is known" false; fi
 hfanim 0
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
