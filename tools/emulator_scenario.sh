@@ -2651,7 +2651,9 @@ adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>
 NQC=com.tj.testnotifier.ctl
 adb install -r -g testnotifier/build/outputs/apk/ctl/debug/testnotifier-ctl-debug.apk > "$OUT/nq-install.txt" 2>&1
 check "NQ0: the CI test notifier is installed" bash -c "grep -q Success $OUT/nq-install.txt"
+adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1     # a running app saves its in-memory preferences at its next write: stop it BEFORE anything is written behind its back (run #266)
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_crash.xml shared_prefs/tj_notif_quiet.xml shared_prefs/tj_notif_seen.xml'" >/dev/null 2>&1
+adb shell settings delete global tj_banners_original >/dev/null 2>&1
 adb shell input keyevent KEYCODE_WAKEUP; sleep 1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
 nqget(){ adb shell settings get global heads_up_notifications_enabled 2>/dev/null | tr -d '\r\n'; }
