@@ -3710,7 +3710,10 @@ public class TjAccessibilityService extends AccessibilityService {
     private void startShotWatch() {
         if (shotObserver != null) return;
         shotObserver = new android.database.ContentObserver(handler) {
-            @Override public void onChange(boolean selfChange) { handler.removeCallbacks(shotIngest); handler.postDelayed(shotIngest, 900); }
+            @Override public void onChange(boolean selfChange) {
+                if (homeCalRunning) { try { homeShotObserved(); } catch (Throwable t) { Log.e(TAG, "home shot observer failed", t); } return; }   // BI1: a home calibration is waiting for ITS screenshot (the Launcher is hidden until it exists)
+                handler.removeCallbacks(shotIngest); handler.postDelayed(shotIngest, 900);
+            }
         };
         try { getContentResolver().registerContentObserver(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, shotObserver); } catch (Throwable t) { Log.e(TAG, "media watch failed", t); shotObserver = null; }
     }
