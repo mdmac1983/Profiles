@@ -221,7 +221,7 @@ public final class ReturnReset {
             fastActive = fast;
             if (Features.get(app, COVER_KEY, true)) svc.showResetCover();   // the shade / Recents are driven behind a black cover: you never see them flicker
             // Android Go has no Notification access, and killBackgroundProcesses is not enough: press "Clear all" in the real shade / Recents, THEN open the app (BE3: then show the home).
-            try { svc.runReset(doShade, doRecents, labels, new Runnable() { @Override public void run() {
+            try { svc.runReset(doShade, doRecents, labels, seen, new Runnable() { @Override public void run() {
                 try { if (clean) settleHome(app); else openApp(app); } catch (Throwable t) { Log.e(TAG, "open app failed", t); }   // the flags (dirty, boot) are cleared by the Recents step ITSELF, and only when it really finished (code review 2026-11-07)
                 AnimationSpeedup.restoreLater(app, clean ? 2000 : (fast ? 700 : 0)); } }); return; }   // BF1: a clean start releases the animations the moment the custom home is in front (TjAccessibilityService.settleHome, or its own 1.5 s timeout); this timer is only the backstop. The Solitaire flow keeps its 700 ms
             catch (Throwable t) { Log.e(TAG, "accessibility reset failed, using the simple reset", t); svc.hideResetCover(); }
