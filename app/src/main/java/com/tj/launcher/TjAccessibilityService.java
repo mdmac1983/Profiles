@@ -2626,7 +2626,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         // Y2a: look at the status bar first. No notification icons there = nothing to clear = the whole shade step is skipped. Unknown (bar hidden / not found) = do the step as before.
         Boolean any = notificationIconsPresent();
-        if (any != null && !any) {
+        if (!NotifSightings.shadeStepWanted(true, any, seen)) {   // BH1e: no icon AND nothing posted since the last clear
             resetReport.append("notifications: none in the status bar, step skipped (+").append(android.os.SystemClock.uptimeMillis() - t0).append(" ms)\n");
             Log.i(TAG, "RESET notifications skipped: status bar shows none");
             afterShade.run();
