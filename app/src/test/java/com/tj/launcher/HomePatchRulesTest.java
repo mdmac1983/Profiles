@@ -192,6 +192,8 @@ public class HomePatchRulesTest {
         long asked = 1_000_000_000_000L;
         assertTrue(HomePatchRules.shotIsOurs(asked / 1000, asked));
         assertTrue("a second early: the rounding", HomePatchRules.shotIsOurs(asked / 1000 - 1, asked));
+        assertFalse("two seconds early = another screenshot (a hardware-key one just before): its icons must never be stored as 'wallpaper only'", HomePatchRules.shotIsOurs(asked / 1000 - 2, asked));
+        assertTrue("a request in the middle of a second: the file is stamped with the second's start, 500 ms early", HomePatchRules.shotIsOurs(asked / 1000, asked + 500));
         assertFalse("an old one", HomePatchRules.shotIsOurs(asked / 1000 - 10, asked));
         assertFalse("no request made", HomePatchRules.shotIsOurs(asked / 1000, 0));
     }
