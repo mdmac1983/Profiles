@@ -2847,6 +2847,8 @@ hpclose
 hpint home_patch_test_shift 6
 setmode custom; rebind; adb logcat -c; home
 HP_T3="$(hpwait 'PATCH rest on' 40)"; sleep 3
+hplog | grep -E "HOMEPATCH|PATCH rest|PATCH window|PATCH removed" > "$OUT/hp-c-log.txt"
+info "HP C: after the restart the patch rested after $HP_T3 s (never = it did not); status: $(hpstatus | cut -c1-160); log: $(grep -E 'HOMEPATCH|PATCH rest' $OUT/hp-c-log.txt | cut -c25-120 | tr '\n' '|' | cut -c1-600)"
 shot 163-hp-rest-shifted
 if [ -n "$SLOT" ]; then
   MA_S="$(hpmae 163-hp-rest-shifted 160-hp-bare-a "$SLOT")"
