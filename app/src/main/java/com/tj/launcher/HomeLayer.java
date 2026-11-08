@@ -47,6 +47,20 @@ final class HomeLayer {
         h.post(new Runnable() { @Override public void run() { cb.done(b, why); } });
     }
 
+    /**
+     * BL1 (the home curtain): {@code layer} laid over a copy of {@code base} at ({@code left}, {@code top}), SRC_OVER like {@link #compose}, but the layer may be SMALLER than the base (the Launcher window can leave a
+     * system bar out; everything outside the layer is the wallpaper picture as it is). Null on any failure, and when the layer does not fit inside the base.
+     */
+    static Bitmap composeAt(Bitmap base, Bitmap layer, int left, int top) {
+        try {
+            if (base == null || layer == null || left < 0 || top < 0 || left + layer.getWidth() > base.getWidth() || top + layer.getHeight() > base.getHeight()) return null;
+            Bitmap out = base.copy(Bitmap.Config.ARGB_8888, true);
+            if (out == null) return null;
+            new Canvas(out).drawBitmap(layer, left, top, null);
+            return out;
+        } catch (Throwable t) { Log.e(TAG, "composeAt failed", t); return null; }
+    }
+
     /** {@code layer} over a copy of {@code base} (both the same size, base is the opaque wallpaper crop): what the screen shows. Returns null on any failure. */
     static Bitmap compose(Bitmap base, Bitmap layer) {
         try {
