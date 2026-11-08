@@ -854,7 +854,7 @@ public class TjAccessibilityService extends AccessibilityService {
         s.running = homeCalRunning;
         s.otherCalibration = calibrating() || scrimStage != 0;
         s.positionKnown = TjHooks.wallpaperReported;   // BI1: never file a crop under the placeholder step (code review 2026-11-08)
-        s.hasCrop = s.positionKnown && homeCropValid(homeStepNow(), homeSig());
+        s.hasCrop = s.positionKnown && homeCropValid(homeStepNow(), homeSig()) && !curtainWallMissing();   // BL1: a crop made before the curtain existed has no full wallpaper picture next to it: one more calibration (one flash) takes it
         s.rectKnown = cachedCard() != null;
         s.homeAtRest = TjHooks.homeScreenShowing() && !TjHooks.homeFloatingViewOpen() && !TjHooks.homeBusy();
         s.menuOpen = overlayShown || since(menuUpAtMs) < 3000;
