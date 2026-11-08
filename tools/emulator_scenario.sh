@@ -2570,6 +2570,7 @@ check "AN1: in the custom launcher the animation scales are untouched (1.0 / 1.0
 setmode quickstep; rebind; home
 AN_T2="$(anwait '0 0 0 ' 12)"
 info "AN2: Quickstep session on screen: scales $(anscales)(first seen $AN_T2 ms after the poll began)"
+info "AN2 facts: $(adb shell dumpsys power 2>/dev/null | grep -o 'mWakefulness=[A-Za-z]*' | head -1) keyguard $(adb shell dumpsys window policy 2>/dev/null | grep -io 'showing=[a-z]*' | head -1) mode=$(getmode) crash prefs: $(adb shell "run-as $PKG cat shared_prefs/tj_crash.xml" 2>/dev/null | tr -d '\r\n' | cut -c1-140) helper: $(anlog | grep ' SERVICE ' | tail -1 | cut -c1-90)"
 check "AN2: in an unlocked Quickstep session all three animation scales are 0" bash -c "[ \"$AN_T2\" != never ]"
 check "AN2: the lock log names it (ANIM OFF in the Quickstep session)" bash -c "[ \"$(anoffs)\" -ge 1 ]"
 # AN3 / AN4: the lock screen. Screen off = the animations are back before the lock screen can show; on the lock screen they stay real
