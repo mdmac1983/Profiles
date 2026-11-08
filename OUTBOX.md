@@ -1223,3 +1223,14 @@
 ## 2026-11-08T18:17:40Z
 > New session, so the working agreement's first step comes first: install the hooks and check where this branch stands. The "interrupted mid-change" warning is only my last reply being saved to `OUTBOX.md`.
 <!-- sha:b915efcf6fdb -->
+
+## 2026-11-08T19:35:12Z
+> The takeover is clean and nothing was lost. The old session's three gate runs are still going on exactly c4f47b5, and I'm reading them at about 19:43 UTC.
+>
+> - **Takeover:** the old session's branch tip, `origin/main` and this branch are all c4f47b5. Its three gate runs (#397, #398, #399) were already dispatched at 19:17 UTC. I did not dispatch anything myself.
+> - **Local check:** unit tests and lint pass here (`GRADLE_EXIT=0`).
+> - **Review:** the code the old session changed after its review is one file, the Recents and notification polling in `TjAccessibilityService.java`. I read it against the original helpers, and it behaves the same, so no second review is needed.
+> - **Prepared for the release:** version 0.8.11 (versionCode 36), a research note with all the BK1 numbers, and a plain tablet checklist for you. The follow-ups are written into `TASKS.md` and checkpointed (ckpt 716).
+>
+> I'll read the gate results, ship v0.8.11 if they're green, and answer your 18:16 message in full then.
+<!-- sha:047da3998255 -->
