@@ -58,8 +58,11 @@ public final class LockLog {
         try { BG.execute(new Runnable() { @Override public void run() { addAt(c, t, event, detail); } }); } catch (Throwable ignored) { }
     }
 
-    /** Appends one line. Safe from any thread. */
-    public static void add(Context c, String event, String detail) { addAt(c, System.currentTimeMillis(), event, detail); }
+    /**
+     * Appends one line. Safe from any thread. BG1 (Tj: "open the custom launcher as fast as possible"): the file is written on the log thread, IN ORDER, not by the caller: 46 callers sit on the accessibility
+     * service's main thread, which is also the Launcher's main thread, and several of them ran in the middle of an unlock (a file open + append + close each). The time stamp is the caller's.
+     */
+    public static void add(Context c, String event, String detail) { addAsync(c, event, detail); }
 
     private static void addAt(Context c, long atMs, String event, String detail) {
         try {

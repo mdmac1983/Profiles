@@ -1001,7 +1001,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; qsApp = null; resumedPkg = null; }   // review RV1: the lock began in custom = no live Quickstep session, so nothing to resume (a stale app would be cold-started)
         if (ProfileSession.stockBehindLockOnHandshake()) startQuickstepFront("handshake");   // AD5 (the app that was open, else the stock home) / AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
         preArmedThisLock = true;
-        Features.setString(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
+        Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> Quickstep");
         profileNote("handshake '" + m.title + "' accepted: Quickstep in front behind the lock screen");
         Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: dates this session after the lock it came from, even if the helper dies before the unlock is processed
         LockLog.add(app, "HANDSHAKE", m.id + " accepted, mode now " + Mode.get(app));
@@ -1168,7 +1168,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 ComponentName stock = StockLauncher.find(this);
                 boolean front = (stock != null && isForeground(stock.getPackageName())) || (resumedPkg != null && System.currentTimeMillis() - resumedAt < 15_000 && isForeground(resumedPkg));   // AD5: the resumed app counts (for this unlock only)
                 if (!front) startQuickstepFront("after the unlock");
-                Features.setString(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
+                Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  Quickstep (handshake '" + m.title + "')" + (front ? "" : ", started after the unlock"));
                 Log.i(TAG, "UNLOCKPICK quickstep via " + m.id + " front=" + front);
                 Mode.confirmQuickstep(app, System.currentTimeMillis());   // AC1: this lock ended in a handshake, so the safety net below must not end this Quickstep session
                 LockLog.add(app, "UNLOCK", "handshake " + m.id + " -> Quickstep, stock in front=" + front + ", Enter to unlock " + sinceEnter + " ms");
@@ -1185,19 +1185,19 @@ public class TjAccessibilityService extends AccessibilityService {
                 Mode.set(app, Mode.CUSTOM);
                 startRouter("custom");           // quiet: the stack is already (or about to be) in front; no Home press, no double-Home
                 ReturnReset.run(app);            // closes what Quickstep opened, clears the shade, radios off, Solitaire last (the cover is usually up already)
-                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
+                Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
                 Log.i(TAG, "UNLOCKPICK custom (session ended)");
                 LockLog.add(app, "UNLOCK", "plain -> custom (a Quickstep session ended), Enter to unlock " + sinceEnter + " ms");
             } else if (!CrashGuard.automationOff(app) && ReturnReset.cleanStart(app) && ReturnReset.bootCleanPending(app)) {
                 // BE2/BE3: the first unlock after a boot starts the custom session clean: the persisted Recents list of the last boot (Quickstep's apps among them) goes
-                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (first unlock after a boot: Recents cleared)");
+                Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  custom launcher (first unlock after a boot: Recents cleared)");
                 Log.i(TAG, "UNLOCKPICK custom (boot clean)");
                 LockLog.add(app, "UNLOCK", "plain, first unlock after a boot: the custom session starts clean (Recents cleared), Enter to unlock " + sinceEnter + " ms");
                 ReturnReset.run(app);
                 handler.postDelayed(new Runnable() { @Override public void run() { ReturnReset.clearBootClean(getApplicationContext()); } }, 10_000);   // whatever run() decided, the flag never repeats the clean-up at every later unlock
             } else {
                 hideResetCover();
-                Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
+                Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock)" + (wasFlipped ? " after a withdrawn handshake" : ""));
                 Log.i(TAG, "UNLOCKPICK custom");
                 LockLog.add(app, "UNLOCK", "plain, mode " + Mode.get(app) + (CrashGuard.automationOff(app) ? " (automation paused: the mode is left alone)" : "") + ", Enter to unlock " + sinceEnter + " ms");
                 sweepSoon("unlock", 700);   // BE2: the drawer-only guarantee after the unlock (helper running, invisible)
@@ -1219,7 +1219,7 @@ public class TjAccessibilityService extends AccessibilityService {
             Mode.set(app, Mode.CUSTOM);
             startRouter("custom");
             ReturnReset.run(app);
-            Features.setString(this, UnlockPick.LAST_KEY, now() + "  custom launcher (the helper was away at the unlock; corrected when it came back)");
+            Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  custom launcher (the helper was away at the unlock; corrected when it came back)");
         } catch (Throwable t) { Log.e(TAG, "reconcile failed", t); }
     }
 
@@ -1733,7 +1733,7 @@ public class TjAccessibilityService extends AccessibilityService {
     public static final String UNLOCK_SPEED_KEY = "unlock_speed";
     private long unlockAtMs = 0;
     private final Runnable unlockSpeedTimeout = new Runnable() { @Override public void run() {
-        if (unlockAtMs > 0) { unlockAtMs = 0; Log.i(TAG, "UNLOCKSPEED no new window within 3 s: the target was already in front behind the lock screen"); Features.setString(TjAccessibilityService.this, UNLOCK_SPEED_KEY, now() + "  already in front (nothing to load)"); }
+        if (unlockAtMs > 0) { unlockAtMs = 0; Log.i(TAG, "UNLOCKSPEED no new window within 3 s: the target was already in front behind the lock screen"); Features.setStringAsync(TjAccessibilityService.this, UNLOCK_SPEED_KEY, now() + "  already in front (nothing to load)"); }
     } };
 
     /** USER_PRESENT: start the stopwatch. */
@@ -1745,7 +1745,7 @@ public class TjAccessibilityService extends AccessibilityService {
         long d = android.os.SystemClock.uptimeMillis() - unlockAtMs;
         unlockAtMs = 0; handler.removeCallbacks(unlockSpeedTimeout);
         Log.i(TAG, "UNLOCKSPEED first window after the unlock: " + pk + " +" + d + " ms");
-        Features.setString(this, UNLOCK_SPEED_KEY, now() + "  " + pk + " appeared +" + d + " ms after the unlock");
+        Features.setStringAsync(this, UNLOCK_SPEED_KEY, now() + "  " + pk + " appeared +" + d + " ms after the unlock");   // BG1: apply(), not commit(): this runs the moment the launcher's window appears, on the thread that is about to draw it
     }
 
     private void trackForeground(AccessibilityEvent e) {
