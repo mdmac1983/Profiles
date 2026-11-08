@@ -1256,3 +1256,7 @@
 > - **Still open:** whether the pencil cover shows in the Quickstep lock screen case. The new check reads the cover window's own state at three openings in a row, with an unlocked control.
 > - **Next:** I'll read the `b6` result, then ship v0.8.11 if it's clean.
 <!-- sha:27480e5e0279 -->
+
+## 2026-11-08T20:16:40Z
+> Two independent `b6` samples are running to settle one open point: a `PENCIL cover shown` line appears in the Quickstep phase a few seconds before the panel is opened. The new checks will show whether a cover is sitting on the lock screen with no panel open, which would be a stray white square. I'll read both at about 20:23.
+<!-- sha:1dab2749e491 -->
