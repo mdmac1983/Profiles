@@ -351,6 +351,7 @@ public class ControlActivity extends Activity {
         action("Tablet setup & report", "Every adb to-do item on one screen (permissions, battery, accessibility, helper), a \"Do everything\" button, and a report + copies of the system apps for Claude.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, SetupActivity.class)); } });
         action("adb setup guide", "Every command, step by step, with copy buttons.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, AdbGuideActivity.class)); } });
         note("Last unlock: " + Features.getString(this, TjAccessibilityService.UNLOCK_SPEED_KEY, "(unlock once to measure)"));
+        note("Last unlock, start to finish (BK1c): " + Features.getString(this, TjAccessibilityService.UNLOCK_SUM_KEY, "(unlock once to measure)"));
         note("Lock screen log (newest last):\n" + (LockLog.tail(this, 8).isEmpty() ? "(nothing yet: lock and unlock the tablet once)" : LockLog.tail(this, 8)));
         note("Stray stock home screens sent back: " + Features.getString(this, StrayHomeGuard.COUNT_KEY, "0") + " (last " + Features.getString(this, StrayHomeGuard.LAST_KEY, "never") + ")"
 

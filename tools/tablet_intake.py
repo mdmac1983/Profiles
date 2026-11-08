@@ -293,6 +293,7 @@ def facts_markdown(rep, source, when):
     row("Compiled ahead of time?", "; ".join(x.strip() for x in (rep.get("dexopt") or "").splitlines()[:3]), "dumpsys package ... dexopt")
     row("Quick-settings tiles", "setting=%s; SystemUI has: %s" % (kv.get("quick-settings tiles setting now", "?"), " ".join((rep.get("SystemUIService") or "").split())), "state + SystemUIService")
     row("Last unlock", kv.get("unlock_speed") or kv.get("unlock_pick_last"), "state section (allow-listed)")
+    row("Last unlock, start to finish (BK1c)", kv.get("unlock_sum"), "state section (allow-listed): Enter tap -> custom home on screen, with the cover and the Launcher resume")
     row("Last clean-up", kv.get("reset_last"), "state section")
     logt = rep.get("logcat -d -v time")
     if logt is not None:
