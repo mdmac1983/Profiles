@@ -1,13 +1,13 @@
-# CHECKPOINT 686 — read me first, then TASKS.md
+# CHECKPOINT 687 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T07:22:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2r9ji2` · **builds on:** `f7587be` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T07:43:38Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2r9ji2` · **builds on:** `97af27d` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 n,ac,rb,last, #368 base,x1,e1,o (97905e3); base,legacy@main (W5 diagnostics); pt and pt,last on v0.8.8 and on main (BC2 A/B). Gate story in TASKS BI1c
+EXPERIMENT 07:50 (temporary, debug-only): TjHooks.exp bit mask (Settings.Global tj_exp, written by the scenario from an expN token in the sections list at the start of pt) to find why BC2 closetap reads 6-20 % on main vs 3-6 % on v0.8.8 (rank test p~0.02). REMOVE the exp code before shipping (or keep only if harmless) and re-gate hp + core
 
 ## Do this next
-07:35: find the runs (list emulator.yml workflow_dispatch, created since 07:13), read them by subagent (header, FAIL, hp INFO, W5 before/after, BC2 closetap values); W5: if a RESET ran right before the stock start = BH1e/guard pause, fix the TEST wait or shorten the pause, rerun base,legacy; BC2: compare 3+ samples per side; ship only with W5 understood and BC2 not worse
+add the exp hooks (TjHooks.exp bits 1 no draw listener, 2 onWindowFocus off, 4 onWallpaperOffset off, 8 homeDrew returns, 16 no debug log), the scenario line, compile, push, then dispatch pt with exp1 and exp15 twice each plus one more v0.8.8 baseline; W5 was a flake (passes on main #370 base,legacy 45 PASS with a reset before it): make the test wait 12 s before the stray start
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 n,
 
 ## Last ten checkpoints
 ```
+  b3b55ce ckpt 686: v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 
   5a7e019 ckpt 685: v0.8.9: W5 (stock home redirect, section legacy) failed twice on main but base
   db1c63e ckpt 684: v0.8.9 DELTA GATE 07:14 on 97905e3 (product delta since 9c40e5c = the foreign-
   e5d3cb9 ckpt 683: v0.8.9 gate rerun map 06:58: #359 pt alone 27 PASS 1 FAIL (BC2 closetap) so #3
@@ -25,7 +26,6 @@ v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 n,
   fd738df ckpt 679: v0.8.9 GATE dispatched 05:47 UTC on e60f9ad (product code final, version 0.8.9
   e60f9ad ckpt 678: BI1c: hp FULLY GREEN: run #349 (4d78cfb, id 42451187830) 25 PASS; run #350 (01
   4d78cfb ckpt 677: BI1c: hp run #348 (f78001e, id 42450536427) = 21 PASS 2 FAIL: only HP7 (no dra
-  f78001e ckpt 676: BI1c: hp run #347 (4a34b83) = 19 PASS 4 FAIL: phase C FIXED (rested after rest
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
