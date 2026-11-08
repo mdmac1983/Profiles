@@ -139,7 +139,8 @@ public class HomePatchRulesTest {
         assertTrue(HomePatchRules.sigMatches("42|r0|600x1024", 42, 600, 1024));
         assertTrue(HomePatchRules.sigMatches("42|r1|600x1024", 42, 600, 1024));
         assertFalse("another wallpaper picture", HomePatchRules.sigMatches("41|r0|600x1024", 42, 600, 1024));
-        assertFalse("another display size", HomePatchRules.sigMatches("42|r0|1024x600", 42, 600, 1024));
+        assertTrue("the same display in the other rotation (the metrics swap): its crop must survive", HomePatchRules.sigMatches("42|r1|1024x600", 42, 600, 1024));
+        assertFalse("another display size", HomePatchRules.sigMatches("42|r0|800x1280", 42, 600, 1024));
         assertFalse(HomePatchRules.sigMatches(null, 42, 600, 1024));
         assertFalse(HomePatchRules.sigMatches("garbage", 42, 600, 1024));
     }
