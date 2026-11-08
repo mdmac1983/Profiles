@@ -19,6 +19,7 @@ Two reasons as a bit mask in prefs `tj_anim` (`holds`): RESET (the return reset,
 
 ## Residual risks (stated honestly)
 * A process killed mid-session leaves the scales at 0 until Android restarts it (seconds; the accessibility service is rebound with BIND_AUTO_CREATE). If the lock screen comes up in that gap it runs without animations until the restart; the restart then restores at once (emulator AN9b).
+* A process that was dead during a PLAIN unlock (killed while the tablet was locked) restarts after the unlock with the stored mode still Quickstep: the animations stay off in the custom launcher until `reconcileAfterGap` (1.5 s after the helper reconnects) ends the stale session, the same safety net that fixes the launcher choice itself (`UsageGap`). Rare (the keep-alive service exists to prevent that kill), short, and self-correcting.
 * Uninstalling the launcher in the middle of a Quickstep session leaves the scales at 0 (no uninstall hook). That is what Tj does by hand anyway.
 * The stock Quickstep UI, the power menu and notifications in Quickstep run animation-free: intended.
 * Not testable on the emulator: how much faster the real tablet feels; the real keyguard-gone timing (the two follow-up looks and the heartbeat cover it).
