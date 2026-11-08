@@ -2539,6 +2539,11 @@ ensurehome
 #      the three global scales are 0 ONLY while an unlocked Quickstep session is on screen, and exactly as they were everywhere else. The CI emulator normally runs with animations OFF, so this section sets its own start values.
 beat "before AN"
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+# What an earlier section may have left behind (run #328: AN2 failed ONLY after x1,n,o,ac,bl,rg; the same section passed alone in #326 and every later step of it passed): a tripped / paused crash breaker makes the launcher
+# do nothing in Quickstep BY DESIGN (the animations included), and a dark or locked screen is not an unlocked Quickstep session. Start from a clean, awake, unlocked emulator and say what was found.
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_crash.xml'" >/dev/null 2>&1
+adb shell input keyevent KEYCODE_WAKEUP; sleep 1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
 anscales(){ adb shell "settings get global window_animation_scale; settings get global transition_animation_scale; settings get global animator_duration_scale" 2>/dev/null | tr -d '\r' | tr '\n' ' '; }
 anset(){ local n; for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }
 anwait(){ # anwait "<the three scales as anscales prints them>" <seconds>: polls twice a second; prints the milliseconds it took, or "never"
