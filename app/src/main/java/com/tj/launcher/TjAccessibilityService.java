@@ -496,10 +496,10 @@ public class TjAccessibilityService extends AccessibilityService {
         patchWatching = false;
     }
 
-    /** Called by the launcher (same process) whenever it moves the wallpaper: redraw the patch with the new slice (debounced). */
     /** Called by the launcher (state changes, resume, pause): re-evaluate the patch at once. */
     public void refreshLayersSoon() { handler.removeCallbacks(layerRefresh); handler.post(layerRefresh); }
 
+    /** Called by the launcher (same process) whenever it moves the wallpaper, on the wallpaper interpolator's BACKGROUND looper, not the main thread (so it only posts): redraw the patch with the new slice (debounced) and look again when the page position (the step) changed. */
     public void onWallpaperOffset() {
         handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40);
         // BI1 (emulator run #346, phase C): a NEW wallpaper position is a different crop. After a restart TjHooks.wallpaperX is 0.5 until the Launcher reports its real offset (0 with one page) a moment after the first
