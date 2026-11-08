@@ -1284,3 +1284,7 @@
 ## 2026-11-08T20:49:16Z
 > The local release gate passed everything: handoff self-test, versionCode 36 above every previous ship, unit suite green, commit pushed, next step recorded. I'm not dispatching the GitHub build yet, because publishing a Release is hard to retract and I want the `b6` verdict first. The pair is due about 20:55.
 <!-- sha:27db097c1e48 -->
+
+## 2026-11-08T20:57:19Z
+> The release build is running. I'll read it at about 21:03 and, if it's green, confirm the Release and record it.
+<!-- sha:8c94697d7ee9 -->
