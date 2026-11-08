@@ -1977,7 +1977,9 @@ public class TjAccessibilityService extends AccessibilityService {
                         android.widget.ImageView iv = new android.widget.ImageView(this);
                         iv.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
                         iv.setImageBitmap(pic);
-                        iv.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View view, android.view.MotionEvent ev) { return true; } });   // a tap on the picture is swallowed (once the window is touchable)
+                        iv.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View view, android.view.MotionEvent ev) {   // a tap on the picture is swallowed (once the window is touchable)
+                            if (ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) Log.i(TAG, "RESET curtain swallowed a tap at " + (int) ev.getRawX() + "," + (int) ev.getRawY());   // emulator section cu proves the swallowing with this line
+                            return true; } });
                         v = iv; curtain = true;
                     }
                 }
