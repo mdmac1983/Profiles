@@ -2903,6 +2903,19 @@ hplog | grep "HOMEPATCH" > "$OUT/hp-d-log.txt"
 info "HP D: the new wallpaper was calibrated after $HP_T4 s; crops stored: $(hpcrops); log: $(cut -c25-120 "$OUT/hp-d-log.txt" | tr '\n' '|' | cut -c1-360)"
 check "HP8: a NEW wallpaper picture is calibrated again by itself (a second calibration ended OK)" grep -q "HOMEPATCH calibration end: ok=true" "$OUT/hp-d-log.txt"
 check "HP8: ... and the crop of the old wallpaper is gone (exactly one crop file)" bash -c "[ \"$(hpcrops)\" = 1 ]"
+# ---------------- phase F (code review + audit 2026-11-08: the home patch reuses the lock-screen flag, so a REAL lock cycle with the home patch ON must leave both alone): lock, wake, unlock; the home patch rests again
+#                  by itself, no calibration is started on the way (the crop for this wallpaper is kept), and no home calibration runs while the screen is locked
+sleep 3
+adb logcat -c
+palock
+sleep 2
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2; home
+HP_T5="$(hpwait 'PATCH rest on' 40)"; sleep 2
+hplog | grep -E "HOMEPATCH|PATCH rest|PATCH window|PATCH removed|CAL lock" > "$OUT/hp-f-log.txt"
+info "HP F: after a lock cycle the home patch rested again after $HP_T5 s (never = it did not); status: $(hpstatus | cut -c1-160); log: $(cut -c25-115 "$OUT/hp-f-log.txt" | tail -n 10 | tr '\n' '|' | cut -c1-760)"
+check "HP13: after the lock and the unlock the home patch RESTS again by itself (log 'PATCH rest on')" bash -c "[ '$HP_T5' != never ]"
+check "HP13: ... without a new home calibration (the crop for this wallpaper was kept)" bash -c "! grep -q 'HOMEPATCH calibration starts' $OUT/hp-f-log.txt"
+check "HP13: ... and the crop file is still there (exactly one)" bash -c "[ \"$(hpcrops)\" = 1 ]"
 # ---------------- phase E: the fallbacks
 hpkey home_patch false
 setmode custom; rebind; home; sleep 4
