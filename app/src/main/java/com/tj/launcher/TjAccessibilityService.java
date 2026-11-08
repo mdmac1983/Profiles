@@ -110,7 +110,6 @@ public class TjAccessibilityService extends AccessibilityService {
         if (now - lastEvalMs >= 40) {
             lastEvalMs = now;
             try { evaluate(); } catch (Throwable t) { Log.e(TAG, "evaluate failed", t); removeOverlay(); }
-            if (debuggable()) { long end = android.os.SystemClock.uptimeMillis(); if (end - now >= 15) Log.i(TAG, "PATCH scan took " + (end - now) + " ms t=" + end); }   // BJ1 diagnostic (debug builds only): how long the main thread was blocked, which delays the dialog's own event and the patch's redraw
         }
         if (!pending) { pending = true; handler.postDelayed(debounced, 80); }
     }
