@@ -1171,6 +1171,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (patchView == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(patchView); } catch (Throwable ignored) { }
         closing = false; handler.removeCallbacks(closeFinishRun);   // BC2
+        handler.removeCallbacks(homeBuild); handler.removeCallbacks(homeShowCheck); patchHomeMode = false; homeBuiltAtMs = 0; homeBuiltStep = -1; homeWallBmp = null;   // BI1
         patchView = null; patchAt.setEmpty(); patchRot = -1; patchLockMode = false; patchResting = false; patchRestable = false; touchAwayUntilMs = 0; handler.removeCallbacks(touchBack); handler.removeCallbacks(padBack); patchOpenHome = false; lockShot = null; lockShotFresh = false; patchMaskOpen = null; patchMaskRest = null; patchShotBmp = null; patchTouchable = false; handler.removeCallbacks(touchableOn); handler.removeCallbacks(touchableOff); touchableOnPending = false;
         Log.i(TAG, "PATCH removed");
     }
