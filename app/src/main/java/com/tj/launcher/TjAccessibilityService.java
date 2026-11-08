@@ -445,6 +445,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefWatch = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
             if ("mode".equals(key) || Features.POWER_MODE.equals(key)) { handler.post(layerRefresh); handler.post(lockEval); }
+            if ("mode".equals(key) || Features.POWER_MODE.equals(key) || HomePatchRules.KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { homeCalInterrupted("the mode or the switch changed"); } });   // BI1: a calibration needs the custom home screen, the switch on, hide-Screenshot mode, until its end
             if (PatchShot.CAL_UNTIL_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { try { calibrationChanged(); } catch (Throwable t) { Log.e(TAG, "calibration change failed", t); } } });   // AM1
             if (POWER_CARD_KEY.equals(key)) handler.post(new Runnable() { @Override public void run() { try { removeOverlay(); refreshLayers(); } catch (Throwable t) { Log.e(TAG, "card switch failed", t); } } });   // AM1: the card appears / disappears now
             if (LockQuiet.KEY.equals(key)) { try { LockQuiet.applyNotificationsAsync(getApplicationContext()); } catch (Throwable ignored) { } }   // AK1: the switch changed: hide / put back the lock-screen notification setting now
