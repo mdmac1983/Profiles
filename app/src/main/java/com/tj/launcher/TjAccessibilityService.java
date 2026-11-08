@@ -588,7 +588,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (f.homeShowing) { f.floatingViewOpen = TjHooks.homeFloatingViewOpen(); f.busy = TjHooks.homeBusy(); }
         f.calibrating = homeCalRunning;
         f.rectKnown = cachedCard() != null;
-        f.cropValid = f.rectKnown && homeCropValid(homeStepNow(), homeSig());
+        f.cropValid = f.rectKnown && TjHooks.wallpaperReported && homeCropValid(homeStepNow(), homeSig());   // BI1: before the Launcher reports its wallpaper offset the step is only a placeholder (a crop looked up under it is for the wrong page position)
         return f;
     }
 
