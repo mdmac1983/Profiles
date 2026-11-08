@@ -2640,6 +2640,117 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 anset 0     # the CI emulator's normal state (animations off): the next section expects it
 setfeat; setmode custom; rebind; home
 fi # section an
+if want nq; then # section nq
+ensurehome
+# ---- NQ (BH1; Tj, 2026-11-08 02:29 UTC: "Turn all notifications off for both the lock screen and the custom launcher ... should never show any notification at any time"):
+#      the global pop-up banner setting (heads_up_notifications_enabled) is 0 ONLY while the custom launcher is in front or the screen is dark / locked (any launcher), and exactly as found in an unlocked Quickstep session.
+#      The probe: a HIGH-importance notification of the CI test app (the only kind that pops up as a banner); SystemUI's own dump says how many banners it is showing (the "HeadsUpEntry=" lines of its
+#      HeadsUpManager). The lock screen's own list (lock_screen_show_notifications) is section lq.
+beat "before NQ"
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+NQC=com.tj.testnotifier.ctl
+adb install -r -g testnotifier/build/outputs/apk/ctl/debug/testnotifier-ctl-debug.apk > "$OUT/nq-install.txt" 2>&1
+check "NQ0: the CI test notifier is installed" bash -c "grep -q Success $OUT/nq-install.txt"
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_crash.xml shared_prefs/tj_notif_quiet.xml shared_prefs/tj_notif_seen.xml'" >/dev/null 2>&1
+adb shell input keyevent KEYCODE_WAKEUP; sleep 1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+nqget(){ adb shell settings get global heads_up_notifications_enabled 2>/dev/null | tr -d '\r\n'; }
+nqset(){ adb shell settings put global heads_up_notifications_enabled "$1"; }
+nqwait(){ # nqwait <value> <seconds>: polls twice a second; prints the milliseconds it took, or "never"
+  local want="$1" max="$2" t0 i; t0=$(date +%s%N)
+  for i in $(seq 1 $((max * 2))); do
+    if [ "$(nqget)" = "$want" ]; then echo $(( ( $(date +%s%N) - t0 ) / 1000000 )); return 0; fi
+    sleep 0.5
+  done; echo never; return 1; }
+nqstable(){ # nqstable <value> <seconds>: waits until the setting reads that value THREE times in a row, one second apart (the return reset legitimately takes a few seconds)
+  local want="$1" max="$2" i ok=0 t0; t0=$(date +%s)
+  for i in $(seq 1 "$max"); do
+    if [ "$(nqget)" = "$want" ]; then ok=$((ok + 1)); if [ "$ok" -ge 3 ]; then echo $(( $(date +%s) - t0 )); return 0; fi; else ok=0; fi
+    sleep 1
+  done; echo never; return 1; }
+nqfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"quickstep_animations_off\\\" value=\\\"false\\\" /><boolean name=\\\"quiet_banners\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+nqlog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r'; }
+nqoffs(){ nqlog | grep -c ' QUIET banners OFF' | tr -d ' \r\n'; }
+nqons(){ nqlog | grep -c ' QUIET banners ON again' | tr -d ' \r\n'; }
+nqhun(){ adb shell dumpsys activity service com.android.systemui/.SystemUIService 2>/dev/null | grep -c 'HeadsUpEntry=' | tr -d ' \r\n'; }
+nqpost(){ # a FRESH high-importance notification of the test app; prints the most banners SystemUI reported over the next ~5 s
+  local best=0 i n
+  adb shell am force-stop "$NQC" >/dev/null 2>&1
+  adb shell am start -n "$NQC/com.tj.testnotifier.MainActivity" --ez high true >/dev/null 2>&1
+  for i in 1 2 3 4; do n="$(nqhun)"; if [ "${n:-0}" -gt "$best" ] 2>/dev/null; then best="$n"; fi; sleep 0.5; done
+  echo "$best"; }
+NQ_ORIG="$(nqget)"
+info "NQ: the emulator's own heads_up_notifications_enabled before the section: [$NQ_ORIG]"
+adb shell locksettings set-pin 1234 > "$OUT/nq-setpin.txt" 2>&1
+# NQ1: the custom launcher = quiet
+nqset 1; nqfeat true; setmode custom; rebind; home; sleep 2
+NQ_C="$(nqwait 0 12)"
+info "NQ1: custom launcher: banner setting [$(nqget)] (first 0 after $NQ_C ms of polling); lock log: $(nqlog | grep ' QUIET ' | tail -2 | cut -c1-140 | tr '\n' '|')"
+check "NQ1: in the custom launcher the pop-up banner setting is held at 0" bash -c "[ \"$NQ_C\" != never ]"
+# NQ2: a HIGH notification must not pop up there
+NQ_H0="$(nqpost)"; adb shell input keyevent KEYCODE_HOME; sleep 2
+info "NQ2: custom launcher: the high-importance test notification showed $NQ_H0 banner(s) (SystemUI HeadsUpEntry lines)"
+check "NQ2: in the custom launcher a HIGH-importance notification does not pop up (0 banners)" bash -c "[ \"$NQ_H0\" = 0 ]"
+# NQ3: an unlocked Quickstep session = as found, and the same notification pops up there (so NQ2 means something)
+setmode quickstep; rebind; home
+NQ_Q="$(nqwait 1 12)"
+info "NQ3: Quickstep session: banner setting [$(nqget)] (first 1 after $NQ_Q ms of polling); mode=$(getmode)"
+check "NQ3: in an unlocked Quickstep session the setting is back exactly as it was (1)" bash -c "[ \"$NQ_Q\" != never ]"
+NQ_H1="$(nqpost)"; adb shell input keyevent KEYCODE_HOME; sleep 2
+info "NQ3b: Quickstep session: the same notification showed $NQ_H1 banner(s)"
+check "NQ3b: ... and the same notification DOES pop up in Quickstep (the test premise)" bash -c "[ \"$NQ_H1\" -ge 1 ]"
+# NQ4: the screen goes off in Quickstep = the lock screen is next, in ANY launcher: quiet before it can show
+NQ_O0="$(nqoffs)"; NQ_N0="$(nqons)"
+adb shell input keyevent KEYCODE_POWER
+NQ_D="$(nqwait 0 6)"
+info "NQ4: banners quiet $NQ_D ms after the screen-off key returned"
+check "NQ4: the moment the screen goes off in a Quickstep session the banners are quiet (0), within 2.5 s" bash -c "[ \"$NQ_D\" != never ] && [ \"$NQ_D\" -le 2500 ]"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 3
+NQ_L="$(nqget)"
+info "NQ4b: lock screen of a Quickstep session: banner setting [$NQ_L]; $(adb shell dumpsys window policy 2>/dev/null | grep -io 'showing=[a-z]*' | head -1)"
+check "NQ4b: on the lock screen (the stored mode still says Quickstep) the banners stay quiet (0)" bash -c "[ \"$NQ_L\" = 0 ]"
+# NQ5: a plain PIN = the custom launcher. The stored mode still says Quickstep until the unlock handler answers: the banners must not blink on in between
+adb shell input swipe 300 900 300 300 300; sleep 2
+pad 1 2 3 4 e; sleep 3
+NQ_P="$(nqstable 0 25)"; getmode > "$OUT/nq-mode-plain.txt"; NQ_N1="$(nqons)"
+check "NQ5: a plain PIN ends in the custom launcher with the banners still quiet (0, three reads in a row)" bash -c "grep -q custom $OUT/nq-mode-plain.txt && [ \"$NQ_P\" != never ]"
+check "NQ5b: ... and they never came back on the way (no new 'banners ON again' line since the Quickstep session)" bash -c "[ \"$NQ_N1\" = \"$NQ_N0\" ]"
+# NQ6: the gesture (Delete x2 before the PIN) = Quickstep again: banners as found once the unlock is decided
+lockpad
+pad d d 1 2 3 4 e; sleep 4
+NQ_G="$(nqwait 1 8)"; getmode > "$OUT/nq-mode-gesture.txt"
+check "NQ6: the gesture unlock into Quickstep puts the banners back (1)" bash -c "grep -q quickstep $OUT/nq-mode-gesture.txt && [ \"$NQ_G\" != never ]"
+info "NQ6: back after $NQ_G ms of polling; lock log: $(nqlog | grep ' QUIET ' | tail -3 | cut -c1-120 | tr '\n' '|')"
+# NQ7: the way back (double Home) = custom: quiet again
+adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 3
+NQ_B="$(nqstable 0 25)"; getmode > "$OUT/nq-mode-back.txt"
+check "NQ7: the double-Home return to the custom launcher holds the banners quiet again (0, three reads in a row)" bash -c "grep -q custom $OUT/nq-mode-back.txt && [ \"$NQ_B\" != never ]"
+# NQ8: a kill cannot leave Quickstep without its banners: the next process start decides again from the facts
+adb shell am force-stop "$PKG"; sleep 1
+info "NQ8: right after the kill the setting is [$(nqget)] (a dead process cannot give it back)"
+setmode quickstep; rebind; home
+NQ_K="$(nqwait 1 12)"
+check "NQ8: a launcher process that starts in an unlocked Quickstep session gives the banners back (1)" bash -c "[ \"$NQ_K\" != never ]"
+# NQ9: the sightings: the helper noted WHO posted (the package), never the text
+NQ_SEEN="$(adb shell "run-as $PKG cat shared_prefs/tj_notif_seen.xml" 2>/dev/null | tr -d '\r')"
+echo "$NQ_SEEN" > "$OUT/nq-seen.xml"
+info "NQ9: sightings prefs: $(echo "$NQ_SEEN" | tr '\n' ' ' | cut -c1-380)"
+check "NQ9: the sighting names the posting package (and sets the clean-up flag)" bash -c "grep -q 'com.tj.testnotifier.ctl' $OUT/nq-seen.xml && grep -q 'name=\"dirty\"' $OUT/nq-seen.xml"
+check "NQ9b: ... and never the title or text of the notification" bash -c "! grep -q 'posted when the app was opened' $OUT/nq-seen.xml"
+check "NQ9c: the lock log carries a NOTIF line for it" bash -c "$(declare -f nqlog); PKG='$PKG'; nqlog | grep -q ' NOTIF com.tj.testnotifier.ctl posted a notification'"
+# NQ10: the switch OFF = the held setting goes back at once and nothing is held
+nqfeat true; setmode custom; rebind; home
+NQ_C2="$(nqwait 0 12)"
+nqfeat false; setmode custom; rebind; home
+NQ_S="$(nqwait 1 12)"
+info "NQ10: held in custom ($NQ_C2 ms), then the switch OFF: back after $NQ_S ms"
+check "NQ10: with the switch OFF the setting is put back (1) and stays there in the custom launcher" bash -c "[ \"$NQ_C2\" != never ] && [ \"$NQ_S\" != never ]"
+adb shell locksettings clear --old 1234 > "$OUT/nq-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+if [ -z "$NQ_ORIG" ] || [ "$NQ_ORIG" = null ]; then adb shell settings delete global heads_up_notifications_enabled >/dev/null 2>&1; else nqset "$NQ_ORIG"; fi   # the emulator's own value: the next section expects it
+adb shell am force-stop "$NQC" >/dev/null 2>&1
+setfeat; setmode custom; rebind; home
+fi # section nq
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
