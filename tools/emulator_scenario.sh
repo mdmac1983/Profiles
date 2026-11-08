@@ -2909,8 +2909,10 @@ sleep 3
 adb logcat -c
 palock
 sleep 2
+HP_R0="$(hpcount 'PATCH rest on')"     # the lock screen's own patch can print the same line: only a NEW line after the unlock counts
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2; home
-HP_T5="$(hpwait 'PATCH rest on' 40)"; sleep 2
+HP_T5=never; for HP_I in $(seq 1 40); do if [ "$(hpcount 'PATCH rest on')" -gt "${HP_R0:-0}" ]; then HP_T5=$HP_I; break; fi; sleep 1; done
+sleep 2
 hplog | grep -E "HOMEPATCH|PATCH rest|PATCH window|PATCH removed|CAL lock" > "$OUT/hp-f-log.txt"
 info "HP F: after a lock cycle the home patch rested again after $HP_T5 s (never = it did not); status: $(hpstatus | cut -c1-160); log: $(cut -c25-115 "$OUT/hp-f-log.txt" | tail -n 10 | tr '\n' '|' | cut -c1-760)"
 check "HP13: after the lock and the unlock the home patch RESTS again by itself (log 'PATCH rest on')" bash -c "[ '$HP_T5' != never ]"
