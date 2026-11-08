@@ -45,6 +45,20 @@ public final class ReportState {
         return b.toString();
     }
 
+    /** HLP1: the last 300 lines of the helper's flight recorder file (the launcher's own external files directory), or an empty list. Never throws. */
+    static java.util.List<String> helperLifeLines(Context c) {
+        java.util.ArrayList<String> out = new java.util.ArrayList<>();
+        try {
+            java.io.File d = c.getExternalFilesDir(null);
+            if (d == null) return out;
+            java.io.File f = new java.io.File(d, "helper-life.txt");
+            if (!f.isFile()) return out;
+            java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f));
+            try { String l; while ((l = r.readLine()) != null) { out.add(l); if (out.size() > 300) out.remove(0); } } finally { r.close(); }
+        } catch (Throwable ignored) { }
+        return out;
+    }
+
     private static String yes(boolean v) { return v ? "yes" : "no"; }
 
     /**
@@ -107,6 +121,8 @@ public final class ReportState {
             b.append("gesture unlock returns to the app that was open (AD5): ").append(Features.get(c, ResumeTarget.KEY, true) ? "on" : "off").append('\n');
         } catch (Throwable t) { /* not available */ }
         b.append(costLines(c));
+        try { b.append("process life (BG1, can the launcher be kept in memory?): ").append(ProcessLife.report(c)).append('\n'); } catch (Throwable t) { /* not available */ }
+        try { b.append("shell helper flight recorder (HLP1, why does the helper die?): ").append(HelperLife.summarize(helperLifeLines(c), System.currentTimeMillis())).append('\n'); } catch (Throwable t) { /* not available */ }
         try { b.append("animations (BF1, off only inside the Quickstep session): ").append(AnimationSpeedup.describe(c)).append('\n'); } catch (Throwable t) { /* not available */ }
         b.append("status-bar hiding: switch ").append(ImmersiveProfile.enabled(c) ? "on" : "off").append(", hidden now ").append(yes(ImmersiveProfile.active(c))).append(", policy_control = ").append(setting("global", c, "policy_control")).append('\n');
         b.append("quick-settings tiles setting now: ").append(setting("secure", c, "sysui_qs_tiles")).append('\n');
