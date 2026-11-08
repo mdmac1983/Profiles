@@ -14,7 +14,7 @@ Install: open the Release page, download `Launcher-v0.8.6.apk`, install it over 
 
 ## Try this
 **A. Quickstep feels faster.** Unlock with your gesture into Quickstep, open and close two or three apps, open Recents: no opening / closing animations. Launcher control > Everyday: the line under the new switch says OFF.
-**B. Back on at once on the lock screen.** From Quickstep press the side key, wake the tablet: lock screen, then hold the side key for the power menu: the menu and the patch fade in like before (this is the part that must not change). Launcher control (after a gesture unlock) shows ON for the time you were locked in the log line `ANIM ON again: screen off`.
+**B. Back on at once on the lock screen.** From Quickstep press the side key and wake the tablet: lock screen. Hold the side key for the power menu: the menu and the wallpaper patch must fade in exactly like in v0.8.5 (this is the part that must not change; it needs the real animations). Later, in the tablet report, the lock log has `ANIM ON again: screen off` for that lock.
 **C. Plain PIN.** Unlock with the plain PIN: custom launcher, animations normal (swipe to the drawer, open an app: it animates). The log must show NO new `ANIM OFF` line for that unlock.
 **D. Back to custom.** Gesture into Quickstep, then double Home: custom launcher, animations normal.
 **E. Optional:** Developer options > Window animation scale: set 1x while in Quickstep, lock and unlock with the gesture: the scale stays 1x for that value (your change wins) and the others go back to what they were.
