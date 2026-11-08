@@ -2746,13 +2746,23 @@ check "NQ9: the sightings name the posting package" bash -c "grep -q 'com.tj.tes
 check "NQ9b: ... and never the title or text of the notification" bash -c "! grep -q 'posted when the app was opened' $OUT/nq-seen.xml"
 NQ_NL="$(nqlog | grep -c ' NOTIF com.tj.testnotifier.ctl posted a notification' | tr -d ' \r\n')"
 check "NQ9c: the lock log carries a NOTIF line for it" bash -c "[ \"${NQ_NL:-0}\" -ge 1 ]"
+# NQ8b: the hold is remembered in Settings.Global, not in the app's files: with every preference file gone (what Clear data does) the setting is still put back
+nqfeat true; setmode custom; rebind; home
+NQ_M0="$(nqwait 0 12)"
+adb shell am force-stop "$PKG"; sleep 1
+adb shell "run-as $PKG sh -c 'rm -f shared_prefs/*.xml'" >/dev/null 2>&1
+nqfeat true; setmode quickstep; rebind; home
+NQ_M1="$(nqwait 1 12)"
+info "NQ8b: held in custom ($NQ_M0 ms), all preference files deleted, then a Quickstep session: back after $NQ_M1 ms"
+check "NQ8b: with every preference file of the app gone the held setting is still put back (1)" bash -c "[ \"$NQ_M0\" != never ] && [ \"$NQ_M1\" != never ]"
 # NQ10: the switch OFF = the held setting goes back at once and nothing is held
 nqfeat true; setmode custom; rebind; home
 NQ_C2="$(nqwait 0 12)"
 nqfeat false; setmode custom; rebind; home
 NQ_S="$(nqwait 1 12)"
-info "NQ10: held in custom ($NQ_C2 ms), then the switch OFF: back after $NQ_S ms"
-check "NQ10: with the switch OFF the setting is put back (1) and stays there in the custom launcher" bash -c "[ \"$NQ_C2\" != never ] && [ \"$NQ_S\" != never ]"
+NQ_MK2="$(adb shell settings get global tj_banners_original 2>/dev/null | tr -d '\r\n')"
+info "NQ10: held in custom ($NQ_C2 ms), then the switch OFF: back after $NQ_S ms; the remembered value is [$NQ_MK2]"
+check "NQ10: with the switch OFF the setting is put back (1), stays there in the custom launcher, and nothing is remembered any more" bash -c "[ \"$NQ_C2\" != never ] && [ \"$NQ_S\" != never ] && [ \"$NQ_MK2\" = null ]"
 adb shell locksettings clear --old 1234 > "$OUT/nq-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 if [ -z "$NQ_ORIG" ] || [ "$NQ_ORIG" = null ]; then adb shell settings delete global heads_up_notifications_enabled >/dev/null 2>&1; else nqset "$NQ_ORIG"; fi   # the emulator's own value: the next section expects it
