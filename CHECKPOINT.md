@@ -1,13 +1,13 @@
-# CHECKPOINT 720 — read me first, then TASKS.md
+# CHECKPOINT 721 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T19:57:02Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2ax1r4` · **builds on:** `540e4e5` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T20:15:59Z · **tests:** all 4 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2ax1r4` · **builds on:** `1986107` (this checkpoint is the commit after it)
 
 ## Just done
-scenario-only edits on main 540e4e5: cover_resumes helper (UF2 + CS-B5 cover-aware), pencil_min pixel check + unlocked-Quickstep control for BK1b. Dispatched solo on main ~19:58 UTC: uf, cs, b6 (ids via list_workflow_runs in_progress). Product code unchanged since c4f47b5
+b6 #407 id 42518553791: BK1b lock phases cover shown at 3 openings in BOTH stored modes; control invalid (plain unlock flips stored mode to custom) -> fixed (setmode quickstep first); added stray-cover samples BK_P1/BK_P2 (cover window before the panel opens). 2 samples dispatched ~20:17 UTC (main + branch ref) on 1986107
 
 ## Do this next
-read the 3 runs (~20:04): uf INFO 'UF2 (gate triage)' shows cover life vs stock resumes; cs 'CS-B5 (gate triage)'; b6 'BK1b ... darkest pixel' custom/quickstep + control. If BK1b quickstep pixel < 0.98 = real product bug: fix the pencil follow-up after the lock-screen quiet wait, then rerun b6 + pt/fp/hf
+read both b6 runs (~20:23): need BK1b all PASS incl. 'NO cover before the panel is opened'; if BK_P2 = shown in quickstep = stray white square on the lock screen = product bug (fix, regate b6+pt/fp); if clean: tick TASKS, bash ship.sh 'note', android.yml full_build on claude/new-session-2ax1r4, record-release
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read the 3 runs (~20:04): uf INFO 'UF2 (gate triage)' shows cover life vs stock 
 
 ## Last ten checkpoints
 ```
+  f8e6d37 ckpt 720: scenario-only edits on main 540e4e5: cover_resumes helper (UF2 + CS-B5 cover-a
   6e87f60 ckpt 719: TRIAGE DONE. Solo runs on main: uf #400 (UF2 FAIL, same order as TAG v0.8.10 #
   6e0299f ckpt 718: GATE #397 read: 99 PASS 1 FAIL = UF2 (stock HOME .Launcher resumed after the E
   3d61f3e ckpt 717: GATE READ (head c4f47b5), all 3 runs ended RED at the scenario step: #398 id 4
@@ -25,8 +26,7 @@ read the 3 runs (~20:04): uf INFO 'UF2 (gate triage)' shows cover life vs stock 
   894d06e ckpt 713: BK1c: Recents loop (no helper) fetches the window roots ONCE per look instead 
   203a5b1 ckpt 712: BK1: review fixes in (UNLOCKSUM emitted when the cover goes + Launcher drawn/r
   d9732b2 ckpt 711: BK1: run #392 (b6,fp on 1ffdfa2): FP warm-up line present, warm lock cycles fi
-  1ffdfa2 ckpt 710: BK1: runs #390 (b6,fp on e415cd0) and #391 (cs baseline) read. FP: warm-up wor
 ```
 
-(5 automatic checkpoint(s) since the last deliberate one — the
+(12 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
