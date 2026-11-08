@@ -499,9 +499,9 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-$1-edit.txt"
   local T0 T1 MS; T0="$(grep 'BK1b marker' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"; T1="$(sed -n '/BK1b marker/,$p' "$OUT/pencil-lock-$1-log.txt" | grep 'PENCIL cover shown' | head -1 | awk '{print $2}')"
   MS="$(awk -v a="$T0" -v b="$T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
-  local LOCKED; LOCKED="$(adb shell dumpsys window 2>/dev/null | grep -m2 -E 'mShowingLockscreen|isKeyguardShowing|mKeyguardShowing' | tr -s ' \r\n' ' ' | cut -c1-110)"
+  local LOCKED; LOCKED="$(adb shell dumpsys window policy 2>/dev/null | grep -m3 -i -E 'showing=|keyguardShowing|isKeyguardLocked|mKeyguardDelegate' | tr -s ' \r\n' ' ' | cut -c1-160) | focus: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-100)"
   info "BK1b ($1 mode, locked): stored mode $(getmode); keyguard: $LOCKED; pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover was SHOWN $MS ms after the panel was asked to open"
-  info "BK1b ($1 mode) every PENCIL line of the whole phase, with its time (the log was cleared before the lock cycle; the marker is the moment the panel was asked to open): $(grep -E 'PENCIL|BK1b marker' "$OUT/pencil-lock-$1-log.txt" | sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' | cut -c1-60 | head -n 8 | tr '\n' '|')"
+  info "BK1b ($1 mode) every PENCIL line of the whole phase, with its time (the log was cleared before the lock cycle; the marker is the moment the panel was asked to open): $(grep -E 'PENCIL|BK1b marker' "$OUT/pencil-lock-$1-log.txt" | sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' | cut -c1-80 | head -n 8 | tr '\n' '|')"
   info "BK1b ($1 mode) cover window state: $(adb shell dumpsys window windows 2>/dev/null | grep -A4 'TjPencilCover' | tr -s ' \n' ' ' | cut -c1-300)"
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1

@@ -1908,7 +1908,14 @@ public class TjAccessibilityService extends AccessibilityService {
     private void schedulePencil(AccessibilityEvent e) {
         // N3: Quickstep needs no cover over the pencil. BK1b (Tj, 2026-11-08 18:16 UTC: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the LOCK screen counts as the custom world, exactly as for the
         // power-menu cover (coverWorld, AD7a). Without the shell helper the stored mode stays Quickstep while the tablet is locked after a Quickstep session, so `Mode.isCustom` alone left the pencil uncovered on the lock screen.
-        if (!coverWorld() || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }
+        if (!coverWorld() || !Features.get(this, PEN_KEY, true)) {
+            if (penView != null) removePencil();
+            if (debuggable() && e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName())) {   // debug builds only, once a second: why no cover (emulator section b6 needs it)
+                long up = android.os.SystemClock.uptimeMillis();
+                if (up - penSkipLoggedMs > 1000) { penSkipLoggedMs = up; Log.i(TAG, "PENCIL skipped: custom=" + Mode.isCustom(this) + " locked=" + keyguardLockedFast() + " switch=" + Features.get(this, PEN_KEY, true)); }
+            }
+            return;
+        }
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
         if (!sysui && penView == null) return;   // (an event-less follow-up of a deferred burst does NOT start a search: review 2026-11-08, a 100 ms whole-tree search after every lock-screen burst was too much for what it saved; the next SystemUI event starts it)
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
@@ -1983,6 +1990,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private boolean penShown = false;
+    private long penSkipLoggedMs = 0;
 
     private WindowManager.LayoutParams penParams(Rect r, boolean touchable) {
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(r.width(), r.height(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
