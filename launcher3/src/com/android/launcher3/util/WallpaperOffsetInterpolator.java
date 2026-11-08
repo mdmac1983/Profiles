@@ -234,6 +234,8 @@ public class WallpaperOffsetInterpolator extends BroadcastReceiver {
                         mCurrentOffset = mFinalOffset;
                     }
 
+                    // Tj (BI1): say where the wallpaper is at the FIRST message even when it equals the 0.5 placeholder (which only forces the update when the real offset differs); the home patch must know the position before it looks up or files a crop
+                    if (!mReportedToTj) { mReportedToTj = true; try { com.tj.launcher.TjHooks.onWallpaperOffset(mCurrentOffset); } catch (Throwable ignored) { } }
                     if (Float.compare(mCurrentOffset, oldOffset) != 0) {
                         setOffsetSafely(token);
                         // Force the wallpaper offset steps to be set again, because another app
