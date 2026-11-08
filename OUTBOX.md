@@ -1194,3 +1194,28 @@
 >
 > **Still open from earlier (nothing new from you needed for this one):** your tablet reports for v0.8.5, v0.8.6 and v0.8.9, and where you saw the notification banner.
 <!-- sha:1c91de5e2931 -->
+
+## 2026-11-08T17:53:32Z
+> v0.8.10 is out and fixes the home-screen dimming. I could only test it on the emulator, so please check it on your tablet.
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.10
+>
+> **What was wrong.** On the lock screen the helper waits for the stock menu's own "I opened" signal before doing any heavy checking. On the home screen I had left that wait out, to protect the quick-settings pencil cover. So the helper's slow check ran first and blocked the patch from drawing. On the emulator the patch then stayed bright for the whole dimming and only dropped at the end, up to 24 % lighter than the dimming screen around it. That is your "the dimming speed makes the patch appear".
+>
+> **What I changed.** The home screen now uses the lock screen's wait. The pencil cover is not part of that wait, so it follows every event as before. The wait also ends early if the patch turns out not to be ready, so the old card is never delayed.
+>
+> **Evidence, on the emulator.** I filmed the menu opening frame by frame, 10 openings per build.
+>
+> | | v0.8.9 | v0.8.10 |
+> | :- | :- | :- |
+> | Openings that took the correct fast path | 1 of 10 | 10 of 10 |
+> | Patch's first frame after the dimming started | 267 ms | 5 to 28 ms |
+>
+> The home patch is about as smooth as the lock screen's on the same emulator, and the fade-out also matches in the films not disturbed by an emulator quirk. The lock screen's own tests are unchanged and still pass. I did not change the timing itself.
+>
+> **What I could not check.** Nothing has run on your tablet. A tiny square may still show if the tablet's timing differs a little from the emulator's. If you see one, tell me when (start, middle or end of the dimming) and whether it is lighter or darker than the screen around it. The "Fade timing" setting in Launcher control moves the lock and home timing together, so mention it before changing it.
+>
+> **What to do.** The steps are in `research/TABLET_CHECKLIST_v0.8.10.md`. After installing, press the side key a few times on the home screen and watch where the Screenshot button was. Then send the tablet report. It has a new line, "last fade seen from the patch (BJ1)", which shows whether the fade stalled and what the system animation scale was.
+>
+> Still waiting on you from earlier: the v0.8.5, v0.8.6 and v0.8.9 tablet checks, the three answers about the home screen's menu, and where you saw the notification banner.
+<!-- sha:dfa9f5c8f28a -->
