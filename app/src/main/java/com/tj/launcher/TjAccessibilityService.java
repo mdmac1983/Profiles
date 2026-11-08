@@ -1954,6 +1954,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act) || android.content.Intent.ACTION_SCREEN_ON.equals(act) || android.content.Intent.ACTION_USER_PRESENT.equals(act))
                 LockLog.add(getApplicationContext(), android.content.Intent.ACTION_SCREEN_OFF.equals(act) ? "SCREEN_OFF" : android.content.Intent.ACTION_SCREEN_ON.equals(act) ? "SCREEN_ON" : "USER_PRESENT", "locked=" + keyguardLocked() + " mode=" + Mode.get(getApplicationContext()));
             if (android.content.Intent.ACTION_SCREEN_OFF.equals(act)) {
+                homeCalInterrupted("the screen went off");   // BI1
                 lockShotFresh = false;     // a new lock session: photograph the lock screen again after the next wake (notifications may have changed)
                 qsAppAt = ResumeTarget.refreshedAt(qsApp, fgPkg, qsAppAt, t);   // review RV2: the app still in front when the screen goes off is the one Tj had open: its 6 h clock starts now
                 resumedPkg = null; unlock.onScreen(false, t); preArmedThisLock = false; preCleanedThisLock = false; lastBouncer = false; flurryChange(false, t); updateMotion();
