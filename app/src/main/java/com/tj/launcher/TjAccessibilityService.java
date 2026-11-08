@@ -1792,6 +1792,8 @@ public class TjAccessibilityService extends AccessibilityService {
 
     // ---------------------------------------------------------------- B4: black cover while the reset drives the shade / Recents (never touchable, always removed)
     private View resetCover;
+    private boolean resetCoverIsCurtain;                      // BL1: the cover shows the picture of the home screen (not plain black)
+    private WindowManager.LayoutParams resetCoverLp;          // BL1: kept so the curtain can start swallowing touches at USER_PRESENT
     private final Runnable coverFailsafe = new Runnable() { @Override public void run() { hideResetCover(); } };
 
     /** Full-screen black, untouchable window: hides the shade / Recents flicker. Removed when Solitaire is verified in front, and by a 4.5 s failsafe. */
