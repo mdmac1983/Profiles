@@ -1330,3 +1330,7 @@
 >
 > That map cost about 500k tokens to produce, so before anything else I'll save it, with the design decisions, in `research/` so a compaction or cut-off can't lose it.
 <!-- sha:345863de2695 -->
+
+## 2026-11-08T21:43:45Z
+> The first `cu` run is on CI (due about 21:52). It's the first time the whole curtain runs on the emulator, so I expect to learn something from its INFO lines either way.
+<!-- sha:5af7a38fec7d -->
