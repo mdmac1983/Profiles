@@ -3358,7 +3358,15 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!fading) return 1f;
         long now = android.os.SystemClock.uptimeMillis();
         float p = PatchFade.progressAt(now, fadeStartMs, fadeLeadMs);
-        if (!PatchFade.fading(now, fadeStartMs, fadeLeadMs)) fading = false;   // this frame is the last one: the final brightness
+        // BJ1: per-frame statistics of this fade (one call per drawn frame; a few additions)
+        if (fadeFrames == 0) fadeFirstDrawLateMs = Math.max(0, now - fadeStartMs);
+        else { long gap = now - fadeFrameLastMs; if (gap > fadeWorstGapMs) fadeWorstGapMs = gap; if (gap > 34) fadeSlowFrames++; }
+        fadeFrameLastMs = now; fadeFrames++;
+        if (!PatchFade.fading(now, fadeStartMs, fadeLeadMs)) {   // this frame is the last one: the final brightness
+            fading = false;
+            fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms";
+            Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms t=" + now);
+        }
         return p;
     }
 
