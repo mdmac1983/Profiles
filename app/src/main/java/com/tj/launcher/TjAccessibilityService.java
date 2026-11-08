@@ -601,7 +601,57 @@ public class TjAccessibilityService extends AccessibilityService {
     /** The patch's pixels are still what the home screen shows there: built after the last draw of the Launcher, for the current wallpaper position, no calibration, the plain home on screen. */
     private boolean homeRestable() {
         if (!patchHomeMode || patchShotBmp == null || homeCalRunning || !TjHooks.homeScreenShowing()) return false;
+        if (android.os.SystemClock.uptimeMillis() < homeForeignUntilMs) return false;   // the shade, quick settings, the volume panel or a system dialog was just up (see homeForeignWindow)
+        com.android.launcher3.Launcher l = TjHooks.launcher();
+        if (l == null || !l.hasWindowFocus()) return false;                              // another window has the focus (the shade still open, a dialog): the patch must not paint over it
         return HomePatchRules.compositeFresh(homeBuiltAtMs, TjHooks.lastHomeDrawMs, HomePatchRules.sameStep(homeBuiltStep, homeStepNow()));
+    }
+
+    private long homeForeignUntilMs = 0;
+    private boolean homeOpenShown = false;   // the patch was restable when the menu opened (decided ONCE at the opening, so a draw during the open menu cannot take it away)
+    private long homeRefreshAskedMs = 0;
+    private int homeCropGen = -1; private String homeCropKey = ""; private boolean homeCropOk = false;
+    private boolean homeWallIdKnown = false;
+    private volatile int homeCalGen = 0;
+    private int homeBuildWaits = 0;
+    private static final long HOME_FOREIGN_AWAY_MS = 2500;
+
+    /**
+     * A window of someone else appeared or changed (the notification shade, quick settings, the volume panel, a system dialog): the home patch is a copy of the Launcher's pixels and must not paint over it. It
+     * goes away at once and comes back only after {@link #HOME_FOREIGN_AWAY_MS} AND when the Launcher has the window focus again (the shade can stay open for as long as it likes). The stock power menu's own window
+     * is NOT one of these: its event is handled first, by the fast open path.
+     */
+    private void homeForeignWindow(AccessibilityEvent e) {
+        if (patchView == null || !patchHomeMode || overlayShown) return;
+        int t = e.getEventType();
+        if (t != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && t != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return;
+        CharSequence pk = e.getPackageName(), cn = e.getClassName();
+        if (pk != null && getPackageName().contentEquals(pk)) return;                    // our own windows (the patch itself, the cards, the Launcher)
+        if (cn != null && cn.toString().contains("ActionsDialog")) return;               // the stock power menu
+        homeForeignUntilMs = android.os.SystemClock.uptimeMillis() + HOME_FOREIGN_AWAY_MS;
+        if (patchRestable || patchResting) {
+            patchRestable = false; patchResting = false; patchView.setAlpha(0f);
+            Log.i(TAG, "HOMEPATCH away: another window (" + pk + " " + cn + ")");
+        }
+        handler.removeCallbacks(homeShowCheck); handler.postDelayed(homeShowCheck, HOME_FOREIGN_AWAY_MS + 40);
+    }
+
+    /** TjHooks: the Launcher's window got or lost the focus. Regained: the patch may come back (after a shade, a dialog, the power menu). Lost: nothing here (the dialog's own event must find the patch ready). */
+    void homeFocusChanged(boolean has) {
+        try { if (has && patchView != null && patchHomeMode && !overlayShown) { patchShow(false); scheduleHomeBuild(); } } catch (Throwable t) { Log.e(TAG, "home focus failed", t); }
+    }
+
+    /** "Is there a crop for this wallpaper position?", remembered until a crop is stored or forgotten or the wallpaper or the position changes (the answer is asked on every layer refresh). */
+    private boolean homeCropValid(int step, String sig) {
+        String key = sig + "#" + step;
+        int g = HomeShot.generation();
+        if (g != homeCropGen || !key.equals(homeCropKey)) { homeCropOk = HomeShot.has(this, rotation(), step, sig); homeCropGen = g; homeCropKey = key; }
+        return homeCropOk;
+    }
+
+    /** The calibration is cut short (the Launcher paused, the screen went off, the mode changed): the Launcher is shown again and whatever the screenshot shows is thrown away. */
+    void homeCalInterrupted(String why) {
+        try { if (homeCalRunning) homeCalFinish(false, why); } catch (Throwable t) { Log.e(TAG, "home calibration interrupt failed", t); }
     }
 
     private boolean homeVisibleNow() { return HomePatchRules.visible(homeRestable(), android.os.SystemClock.uptimeMillis(), homeLastTouchMs(), TjHooks.lastHomeDrawMs); }
