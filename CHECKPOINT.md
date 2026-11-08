@@ -1,13 +1,13 @@
-# CHECKPOINT 735 — read me first, then TASKS.md
+# CHECKPOINT 736 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T22:22:14Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `d499fd2` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T22:25:08Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `80d3360` (this checkpoint is the commit after it)
 
 ## Just done
-BM1 README request written into TASKS. Interrupted change 041aa83..HEAD (HomeCurtainRules.stampDue + test) left as is: helper not yet wired into HomeCurtain capture
+BM1 done: README.md rewritten (features, architecture, structure, code map, tests, CI, tooling, safety)
 
 ## Do this next
-BM1a: write README.md from the code; then resume BL1e (wire stampDue into HomeCurtain capture, /code-review high 206b3a8..HEAD)
+resume BL1e: wire HomeCurtainRules.stampDue into HomeCurtain capture (unchanged home renews stamp), then /code-review high 206b3a8..HEAD, versionCode 37 / 0.8.12, gate.sh 206b3a8
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ BM1a: write README.md from the code; then resume BL1e (wire stampDue into HomeCu
 
 ## Last ten checkpoints
 ```
+  4de1d25 ckpt 735: BM1 README request written into TASKS. Interrupted change 041aa83..HEAD (HomeC
   041aa83 ckpt 734: BL1d evidence: cu #419/#420 id 42528148176/#421 id 42528151261 all PASS (3 gre
   559db2a ckpt 733: BL1d cu #419 id 42527552708 (913947f) = 14 PASS 0 FAIL: wall kept 2 s, curtain
   66783a5 ckpt 732: BL1d first cu run #418 id 42526557769 (922d886): 13 PASS 1 FAIL (CU5). Wall ke
@@ -26,8 +27,7 @@ BM1a: write README.md from the code; then resume BL1e (wire stampDue into HomeCu
   631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
   d33c369 ckpt 727: BL1a map + BL1b design done and saved: research/BL1_HOME_CURTAIN_2026-11-08.md
   da3032e ckpt 726: BL1 written into TASKS in Tj's words (21:11 UTC): home-looking curtain instead
-  bf0615b ckpt 725: v0.8.11 RELEASED + RECORDED (android.yml #38 id 42522618674, 206b3a8; https://
 ```
 
-(3 automatic checkpoint(s) since the last deliberate one — the
+(1 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
