@@ -3218,7 +3218,11 @@ public class TjAccessibilityService extends AccessibilityService {
         // AE3: "on" = our cover is up for an open menu (the full, dimmed patch); otherwise the patch RESTS visible over the Screenshot slot if the switch is on and the PIN pad is not up, else it stays invisible
         boolean vis;
         if (on) vis = !pinHide;   // BC5: an open menu gets its patch unless the PIN pad came up over it   // review of v0.8.1: an open menu always gets its patch (PatchRest.visible says so); lockPatchAlways() asks the keyguard over binder, which has no place on the path that must be fastest
-        else {
+        else if (patchHomeMode) {   // BI1: the home patch rests only while its pixels are fresh, no finger went down for TOUCH_AWAY_MS and the Launcher has not drawn for DRAW_QUIET_MS
+            patchRestable = homeRestable();
+            vis = homeVisibleNow();
+            if (patchRestable && !vis) { handler.removeCallbacks(homeShowCheck); handler.postDelayed(homeShowCheck, HomePatchRules.waitMs(android.os.SystemClock.uptimeMillis(), homeLastTouchMs(), TjHooks.lastHomeDrawMs) + 30); }   // come back when the timers allow
+        } else {
             boolean can = PatchRest.visible(false, lockPatchAlways(), true, lastBouncer);
             patchRestable = can;                                                                  // BE1: the fast open path asks THIS, not "is it visible right now"
             long nowMs = android.os.SystemClock.uptimeMillis();
