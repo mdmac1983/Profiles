@@ -995,7 +995,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Runs once per wallpaper / rotation / rectangle: a real screenshot (shell helper) of the lock screen with the menu closed is compared with the wallpaper picture. */
     private void maybeCalibrateLock() {
-        if (!patchLockMode || patchView == null || calBusy || lockBmp == null) return;
+        if (!patchLockMode || patchHomeMode || patchView == null || calBusy || lockBmp == null) return;   // BI1: the home patch reuses patchLockMode; a LOCK calibration must never run on the unlocked home (it would photograph the home screen, flash, and overwrite the lock-screen fit: code review 2026-11-08)
         if (overlayShown) { handler.postDelayed(calTrigger, 2000); return; }   // never photograph the screen while our menu is up
         final Rect r = new Rect(patchAt);
         final String sig = lockCalSigFor(r);
