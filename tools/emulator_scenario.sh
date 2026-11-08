@@ -561,7 +561,9 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   check "BK1b: (stored mode $1) with no panel open NO cover sits anywhere: unlocked, PIN set, lock screen" pen_none "$BK_P0" "$BK_P1" "$BK_P2"
   check "BK1b: (stored mode $1) on the LOCK screen the pencil cover is shown at each of three openings of the panel" pen_all_shown "$BK_O1" "$BK_O2" "$BK_O3"
   adb shell cmd statusbar collapse; sleep 2
-  adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+  b6unlock; BK_U="$(kg_state)"; sleep 2
+  info "BK1b ($1 mode): after the phase the keyguard reports: $BK_U (showing=false = really unlocked)"
+  check "BK1b: (stored mode $1) the phase ends with the device really unlocked (the next phase and the control start from that state)" test "$BK_U" = "showing=false"
   # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
   check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
   if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover. The plain unlock above flipped the stored mode to custom (UF2), so Quickstep is put back first
