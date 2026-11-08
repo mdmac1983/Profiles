@@ -505,9 +505,9 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   info "BK1b ($1 mode) cover window state: $(adb shell dumpsys window windows 2>/dev/null | grep -A4 'TjPencilCover' | tr -s ' \n' ' ' | cut -c1-300)"
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
-  if [ "$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)" -ge 1 ] 2>/dev/null; then
-    check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil after the panel was asked to open (a lingering warm window does not count)" bash -c "sed -n '/BK1b marker/,\$p' $OUT/pencil-lock-$1-log.txt | grep -q 'PENCIL cover shown'"
-  else info "BK1b ($1): no pencil on this emulator's lock-screen panel (or the panel did not open): nothing to cover"; fi
+  # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
+  check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
+  check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil after the panel was asked to open (a lingering warm window does not count)" bash -c "sed -n '/BK1b marker/,\$p' $OUT/pencil-lock-$1-log.txt | grep -q 'PENCIL cover shown'"
 }
 b6lock custom
 b6lock quickstep
