@@ -684,6 +684,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     homeBuildFails = 0;
                     patchShotBmp = comp; patchShotLeft = l; patchShotTop = t; homeBuiltAtMs = reqAt; homeBuiltStep = builtStep;
                     homeStatus("home patch built; " + (homeRestable() ? "fresh" : "stale already, building again"));
+                    Log.i(TAG, "HOMEPATCH patch built, fresh=" + homeRestable() + " step " + builtStep);
                     patchShow(false);
                     patchView.invalidate();
                     if (!homeRestable()) scheduleHomeBuild();
