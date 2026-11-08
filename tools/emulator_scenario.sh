@@ -2737,7 +2737,8 @@ echo "$NQ_SEEN" > "$OUT/nq-seen.xml"
 info "NQ9: sightings prefs: $(echo "$NQ_SEEN" | tr '\n' ' ' | cut -c1-380)"
 check "NQ9: the sighting names the posting package (and sets the clean-up flag)" bash -c "grep -q 'com.tj.testnotifier.ctl' $OUT/nq-seen.xml && grep -q 'name=\"dirty\"' $OUT/nq-seen.xml"
 check "NQ9b: ... and never the title or text of the notification" bash -c "! grep -q 'posted when the app was opened' $OUT/nq-seen.xml"
-check "NQ9c: the lock log carries a NOTIF line for it" bash -c "$(declare -f nqlog); PKG='$PKG'; nqlog | grep -q ' NOTIF com.tj.testnotifier.ctl posted a notification'"
+NQ_NL="$(nqlog | grep -c ' NOTIF com.tj.testnotifier.ctl posted a notification' | tr -d ' \r\n')"
+check "NQ9c: the lock log carries a NOTIF line for it" bash -c "[ \"${NQ_NL:-0}\" -ge 1 ]"
 # NQ10: the switch OFF = the held setting goes back at once and nothing is held
 nqfeat true; setmode custom; rebind; home
 NQ_C2="$(nqwait 0 12)"
