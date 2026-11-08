@@ -205,6 +205,9 @@ public class TjAccessibilityService extends AccessibilityService {
         return true;
     }
 
+    /** BJ1 EXPERIMENT (debug builds only): 0 = the home flavour does all heavy work of a burst's first window event at once (v0.8.9); 1 = the scan, the layer refresh and the lock update wait for the stock dialog's own event like on the lock screen (the pencil does not); 2 = everything waits. */
+    private int homeDeferArm() { return debuggable() ? Features.getInt(this, "home_burst_defer", 0) : 0; }
+
     private long lastEvalMs = 0;
     private long fullScanUntilMs = 0;
     /** AM1: a patch window that was just created re-decides whether it RESTS after 400 ms and 1.6 s (the stored crop, the keyguard and the PIN pad may only be settled by then). */
