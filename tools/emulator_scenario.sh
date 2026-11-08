@@ -2689,10 +2689,15 @@ nqset 1; nqfeat true; setmode custom; rebind; home; sleep 2
 NQ_C="$(nqwait 0 12)"
 info "NQ1: custom launcher: banner setting [$(nqget)] (first 0 after $NQ_C ms of polling); lock log: $(nqlog | grep ' QUIET ' | tail -2 | cut -c1-140 | tr '\n' '|')"
 check "NQ1: in the custom launcher the pop-up banner setting is held at 0" bash -c "[ \"$NQ_C\" != never ]"
+NQ_MK1="$(adb shell settings get global tj_banners_original 2>/dev/null | tr -d '\r\n')"
+check "NQ1b: the value to put back (1) is remembered in Settings.Global, outside the app's own files" bash -c "[ \"$NQ_MK1\" = 1 ]"
 # NQ2: a HIGH notification must not pop up there
 NQ_H0="$(nqpost)"; adb shell input keyevent KEYCODE_HOME; sleep 2
 info "NQ2: custom launcher: the high-importance test notification showed $NQ_H0 banner(s) (SystemUI HeadsUpEntry lines)"
 check "NQ2: in the custom launcher a HIGH-importance notification does not pop up (0 banners)" bash -c "[ \"$NQ_H0\" = 0 ]"
+adb shell "run-as $PKG cat shared_prefs/tj_notif_seen.xml" 2>/dev/null | tr -d '\r' > "$OUT/nq-seen0.xml"
+info "NQ2b: sightings prefs right after the post: $(tr '\n' ' ' < "$OUT/nq-seen0.xml" | cut -c1-300)"
+check "NQ2b: the helper noted who posted it and raised the clean-up flag (dirty=true)" bash -c "grep -q 'com.tj.testnotifier.ctl' $OUT/nq-seen0.xml && grep -q 'name=\"dirty\" value=\"true\"' $OUT/nq-seen0.xml"
 # NQ3: an unlocked Quickstep session = as found, and the same notification pops up there (so NQ2 means something)
 setmode quickstep; rebind; home
 NQ_Q="$(nqwait 1 12)"
