@@ -1,13 +1,13 @@
-# CHECKPOINT 714 — read me first, then TASKS.md
+# CHECKPOINT 715 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T19:17:11Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-dda19ce3-8dl2cy` · **builds on:** `fa43f38` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T19:31:36Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2ax1r4` · **builds on:** `c4f47b5` (this checkpoint is the commit after it)
 
 ## Just done
-BK1 v0.8.11 candidate code complete: warm-up draw (per look kind), pencil via coverWorld (verified: Quickstep-stored-mode lock screen shows the cover, run #395), UNLOCKSUM (+ Launcher drawn/resumed before the keyguard broadcast counted), Recents loop + notification poll share the window roots (cs #396 id 42513499462: UNLOCKSUM 1865 -> 1538 ms, reset 1429 -> 1130 ms, 19 PASS), b6 check = cover shown anywhere in the phase. Next: Tier 0 + gate.sh faf153d
+takeover (old session died 'Prompt is too long'); branch == main == c4f47b5; post-review delta (TjAccessibilityService roots sharing) read = same as old helpers. Gate IN FLIGHT on c4f47b5, dispatched 19:17 UTC by the dead session: #397 id 42514271314, #398 id 42514273811, #399 id 42514276324 (sections per gate.sh faf153d: base,x1,x,ad,pt,uf / o,ac,se,cs,fp,rb,last / e1,b6,n,v,ps,hp,hf; mapping to be confirmed by each run's INFO TIME lines)
 
 ## Do this next
-run bash tools/gradle.sh testDebugUnitTest :app:lintDebug (background), dispatch the gate groups from gate.sh faf153d, read each, then ship v0.8.11 (versionCode 36)
+at ~19:43 UTC read each run (list_workflow_jobs -> get_job_logs tail 60-112); then versionCode 36 + 0.8.11 in app/build.gradle.kts, research/TABLET_CHECKLIST_v0.8.11.md, bash ship.sh, android.yml full_build=true, get_release_by_tag, tools/record-release.sh; answer Tj's BK1 (one short question on BK1c) in the final reply
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ run bash tools/gradle.sh testDebugUnitTest :app:lintDebug (background), dispatch
 
 ## Last ten checkpoints
 ```
+  c4f47b5 ckpt 714: BK1 v0.8.11 candidate code complete: warm-up draw (per look kind), pencil via 
   894d06e ckpt 713: BK1c: Recents loop (no helper) fetches the window roots ONCE per look instead 
   203a5b1 ckpt 712: BK1: review fixes in (UNLOCKSUM emitted when the cover goes + Launcher drawn/r
   d9732b2 ckpt 711: BK1: run #392 (b6,fp on 1ffdfa2): FP warm-up line present, warm lock cycles fi
@@ -25,8 +26,4 @@ run bash tools/gradle.sh testDebugUnitTest :app:lintDebug (background), dispatch
   4c2e2e2 ckpt 707: BK1: measurement built, no product change yet: NEW section fp (films the FIRST
   efee840 ckpt 706: BK1 written into TASKS in Tj's words (18:16 UTC): first lock-screen power-menu
   bc58bb3 ckpt 705: v0.8.10 (code 35) RELEASED 17:51 UTC and RECORDED 17:52 (android.yml run 37 id
-  2eaf030 ckpt 704: v0.8.10 (code 35) RELEASE BUILD triggered 17:49:40 UTC: android.yml full_build
 ```
-
-(2 automatic checkpoint(s) since the last deliberate one — the
-session was still mid-step. `git diff` against it shows what changed.)
