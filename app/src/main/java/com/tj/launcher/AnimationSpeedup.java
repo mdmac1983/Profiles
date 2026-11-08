@@ -213,15 +213,7 @@ public final class AnimationSpeedup {
             if (why.isEmpty()) {   // stage 2: the screen and the lock screen
                 f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : interactive(app);
                 f.lockUp = f.screenOn && (lockUpNow != null ? lockUpNow.booleanValue() : keyguardUp(app));
-                if (lockCycle) {
-                    if (!f.screenOn || f.lockUp) unlockSeenAt = 0;   // still dark or locked: the unlock is still to come
-                    else {
-                        long now = SystemClock.uptimeMillis();
-                        if (unlockSeenAt == 0) unlockSeenAt = now;
-                        if (now - unlockSeenAt > AnimationPolicy.UNDECIDED_MAX_MS) { lockCycle = false; unlockSeenAt = 0; }   // the handler never answered: stop waiting for it
-                        else f.unlockUndecided = true;
-                    }
-                }
+                f.unlockUndecided = unlockUndecided(f.screenOn, f.lockUp);
                 why = AnimationPolicy.why(f);
             }
             final boolean want = why.isEmpty();
