@@ -507,7 +507,14 @@ pen_cover_state(){ # shown | hidden | none: the pencil cover window's own flags 
 kg_state(){ adb shell dumpsys window policy 2>/dev/null | grep -o 'showing=[a-z]*' | head -1; }   # showing=true | showing=false
 # NO uiautomator dump inside the sampling: a UiAutomation session SUPPRESSES (unbinds) the accessibility services while it runs, so every dump would restart the very service that is measured (gate triage 2026-11-08, runs #408 / #409:
 # the 2nd and 3rd opening read 'none' in one phase of each run). Only the window state and the keyguard state are read here; ONE dump is taken at the very end of the phase.
-pen_sample(){ echo "cover=$(pen_cover_state) $(kg_state)"; }
+pen_sample(){ # "cover=<shown|hidden|none> showing=<keyguard> sb=<the StatusBar window's frame>": unlocked, a closed shade is [0,0][600,24] and an open panel is full height, so a cover with a small frame would sit over NOTHING
+  local D blk st sb
+  D="$(adb shell dumpsys window windows 2>/dev/null)"
+  blk="$(echo "$D" | grep -A10 'TjPencilCover}' | head -14)"
+  if [ -z "$blk" ]; then st=none; elif echo "$blk" | grep -q 'NOT_TOUCHABLE'; then st=hidden; else st=shown; fi
+  sb="$(echo "$D" | awk '/u0 StatusBar}/{f=1} f && /frame=\[/ {match($0,/frame=\[[0-9,]*\]\[[0-9,]*\]/); print substr($0,RSTART+6,RLENGTH-6); exit}')"
+  echo "cover=$st $(kg_state) sb=${sb:-?}"
+}
 pen_none(){ local s; for s in "$@"; do case "$s" in cover=shown*) return 1;; esac; done; return 0; }
 pen_all_shown(){ local s; for s in "$@"; do case "$s" in cover=shown*) ;; *) return 1;; esac; done; return 0; }
 pen_control_ok(){ case "$1" in *"showing=false") ;; *) return 1;; esac; case "$1" in cover=shown*) return 1;; esac; return 0; }
