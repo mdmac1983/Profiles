@@ -2866,10 +2866,11 @@ if [ -n "$SLOT" ]; then
   check "HP6: ... and it comes back by itself after the finger (the shifted patch is visible again: MAE > 0.01)" awk -v m="$MA_T" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
 fi
 HP_S0="$(hpcount 'HOMEPATCH stale')"; HP_B0="$(hpcount 'HOMEPATCH patch built')"
-adb shell input swipe 8 700 8 700 900; sleep 2; adb shell input keyevent KEYCODE_BACK; sleep 5     # a long press on the empty home screen opens the Launcher's own popup: the Launcher draws
+adb shell input swipe 8 700 8 700 900; sleep 2; adb shell input keyevent KEYCODE_BACK; sleep 4     # a long press on the empty home screen opens the Launcher's own popup (it may not open on this image: run #348 saw no draw)
+adb shell input swipe 300 900 300 200 400; sleep 2.5; adb shell input keyevent KEYCODE_BACK; sleep 6     # the drawer opens and closes: the Launcher certainly draws
 HP_S1="$(hpcount 'HOMEPATCH stale')"; HP_B1="$(hpcount 'HOMEPATCH patch built')"
-info "HP7: stale lines $HP_S0 -> $HP_S1, built lines $HP_B0 -> $HP_B1"
-info "HP7 log (last lines): $(hplog | grep -E 'HOMEPATCH|PATCH rest|PATCH window' | tail -n 8 | cut -c25-125 | tr '\n' '|' | cut -c1-760)"
+info "HP7: stale lines $HP_S0 -> $HP_S1, built lines $HP_B0 -> $HP_B1, draw bursts seen: $(hpcount 'HOMEPATCH draw burst')"
+info "HP7 log (last lines): $(hplog | grep -E 'HOMEPATCH|PATCH rest|PATCH window|PATCH removed' | tail -n 12 | cut -c25-118 | tr '\n' '|' | cut -c1-1000)"
 check "HP7: a draw of the Launcher makes the built patch stale (log 'HOMEPATCH stale')" bash -c "[ ${HP_S1:-0} -gt ${HP_S0:-0} ]"
 check "HP7: ... and it is built again when the home is quiet (a new 'HOMEPATCH patch built' line)" bash -c "[ ${HP_B1:-0} -gt ${HP_B0:-0} ]"
 # ---------------- phase C2 (code review 2026-11-08): another window over the home screen takes the patch away, and it comes back. homeForeignWindow reacts to NAMED window announcements only (a nameless TYPE_WINDOWS_CHANGED
