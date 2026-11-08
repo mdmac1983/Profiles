@@ -747,7 +747,11 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private final Runnable homeCalTrigger = new Runnable() { @Override public void run() { try { maybeHomeCalibrate("timer"); } catch (Throwable t) { Log.e(TAG, "home calibration trigger failed", t); } } };
     private final Runnable homeCalShoot = new Runnable() { @Override public void run() {
-        try { if (!homeCalRunning) return; Log.i(TAG, "HOMEPATCH asking the system for a screenshot of the plain wallpaper"); homeStatus("taking the screenshot of the plain wallpaper ..."); performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT); } catch (Throwable t) { Log.e(TAG, "home screenshot failed", t); }
+        try {
+            if (!homeCalRunning) return;
+            if (!isScreenOn() || keyguardLocked() || !TjHooks.homeScreenShowing() || !Mode.isCustom(TjAccessibilityService.this)) { homeCalFinish(false, "the screen or the launcher changed before the screenshot"); return; }   // never photograph a lock screen, an app or the Launcher with its icons
+            Log.i(TAG, "HOMEPATCH asking the system for a screenshot of the plain wallpaper"); homeStatus("taking the screenshot of the plain wallpaper ..."); performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT);
+        } catch (Throwable t) { Log.e(TAG, "home screenshot failed", t); }
     } };
     private final Runnable homeCalAbort = new Runnable() { @Override public void run() { try { if (homeCalRunning) homeCalFinish(false, "no screenshot appeared in time"); } catch (Throwable t) { Log.e(TAG, "home calibration abort failed", t); } } };
 
