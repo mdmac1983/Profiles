@@ -2979,10 +2979,11 @@ hfrun(){ local L="$1" W="${2:-warm}"   # one FILMED opening (the menu opens by a
   python3 -I tools/pt_analyze.py "$OUT/hf-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/hf-metrics.txt" > /dev/null
   hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
   [ -n "$(hfget $L onset)" ] && rm -f "$OUT/hf-$L.mp4"; }   # the films are large; the numbers and the curves are in the results (a film the analysis could not read is kept for the artifact)
-hfline(){ local L="$1" sh mx fo sc pc fe   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
+hfline(){ local L="$1" sh mx fo sc pc fe cl   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
   sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"; pc="$(grep -o 'pencil took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
   fe="$(grep -o 'fade end [a-z]* first=[0-9]* ms frames=[0-9]* slow=[0-9]* worst=[0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | tail -1 | sed 's/fade end [a-z]* //; s/ ms//g')"   # the patch's own frame statistics of that fade: first = ms after the stock scrim began, frames drawn, frames later than 34 ms after the one before, worst gap
-  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0} pen=${pc:-0} ${fe:-(no fade end line)}"; }
+  cl="$(hfget $L close_max)"   # the same film also holds the CLOSE (BACK): the worst patch-versus-surround mismatch while the stock fade-OUT runs
+  echo "$L sh=${sh:-?} mx=${mx:-?} close=${cl:-?} fast=${fo:-0} scan=${sc:-0} pen=${pc:-0} ${fe:-(no fade end line)}"; }
 hfmed(){ local t k v; for t in $1; do for k in 1 2 3 4 5; do v="$(hfget ${t}f$k $2)"; [ -n "$v" ] && echo "$v"; done; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }   # median over the films of the given groups
 hfok(){ local t k v n=0; for t in $1; do for k in 1 2 3 4 5; do v="$(hfget ${t}f$k open_shape)"; awk -v f="${v:-9}" 'BEGIN{exit !(f+0 < 0.08)}' && n=$((n+1)); done; done; echo $n; }   # films within 8 % (timing only)
 hffast(){ local t k n=0; for t in $1; do for k in 1 2 3 4 5; do [ "$(grep -c 'PATCH fast open' "$OUT/hf-all-${t}f$k.txt" 2>/dev/null)" -ge 1 ] && n=$((n+1)); done; done; echo $n; }   # films in which the patch opened by the FAST path
@@ -3003,7 +3004,7 @@ hfarm(){ # hfarm <tag>: restart the app, wait for the patch to rest, film five o
   local CV; CV="$(grep "PTSERIES label=${1}f2 " "$OUT/hf-metrics.txt" | tail -1 | sed 's/.*onset) //')"
   info "HF group $1 open curve of film 2, ms:surround/patch/deviation in per mille (a): $(echo "$CV" | cut -c1-330)"
   info "HF group $1 open curve of film 2 (b): $(echo "$CV" | cut -c331-660)"
-  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max)"; }
+  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max); the fade-OUT (BACK) of the same films: median close_max $(hfmed $1 close_max) over $(hfmed $1 close_final) (close_final)"; }
 # ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
 hpinit false
 hpwall
