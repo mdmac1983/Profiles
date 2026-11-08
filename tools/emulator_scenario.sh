@@ -2456,7 +2456,9 @@ pad 1 2 3 4 e; sleep 8
 ufev > "$OUT/uf-after-qs.txt"
 info "UF2 plain PIN after a Quickstep session (Contacts was open): resumed in order: $(ufnames "$OUT/uf-after-qs.txt"); span $(ufspan "$OUT/uf-after-qs.txt") ms; mode now: $(getmode)"
 check "UF2: after a Quickstep session a plain PIN ends in the custom world (mode custom)" bash -c "[ \"$(getmode)\" = custom ]"
-check "UF2: ... neither the stock HOME screen nor the Quickstep app (Contacts) is resumed after the Enter (the stock Recents screen may be, behind the reset's black cover)" bash -c "! grep -qE ' (com.android.launcher3/[.]Launcher|com.android.contacts/)' $OUT/uf-after-qs.txt"
+UF2_OUT="$(cover_resumes "$OUT/uf-after-qs.txt" ' (com.android.launcher3/|com.android.contacts/)')"
+info "UF2 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' "$OUT/cover-times.txt" | tr '\n' '|' | cut -c1-120); every resume with its time: $(sed 's/^[0-9-]* //; s#com.android.launcher3/#STOCK:#; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#' "$OUT/uf-after-qs.txt" | tr '\n' '|' | cut -c1-260); stock / Contacts resumes OUTSIDE the cover: [$(echo "$UF2_OUT" | tr '\n' '|' | cut -c1-200)]"
+check "UF2: ... the stock HOME / Recents screens and the Quickstep app (Contacts) resume only UNDER the reset's black cover, never visible after the Enter (the released v0.8.10 resumes the stock HOME under the cover too: runs #400 / #403)" test -z "$UF2_OUT"
 check "UF2: ... and the last thing resumed is ours" bash -c "tail -1 $OUT/uf-after-qs.txt | grep -q ' com.tj.launcher/'"
 # ---- 3) the Quickstep handshake: the stock launcher is the last thing, our launcher does not flash in after it
 uffeat; setmode custom; rebind; home; sleep 2
