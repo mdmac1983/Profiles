@@ -1005,3 +1005,7 @@
 >
 > Everything is committed and pushed. A new session picks up from `CHECKPOINT.md`.
 <!-- sha:1aff109b986f -->
+
+## 2026-11-08T02:35:54Z
+> Picking up from the cut-off session. The screenshots show it died on "Prompt is too long" right after queuing the v0.8.7 build. First step is installing the hooks, then checking git state and the build run.
+<!-- sha:c09663ff947d -->
