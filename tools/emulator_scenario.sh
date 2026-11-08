@@ -546,8 +546,8 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
   # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
   check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
-  if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover, so 'shown' above is not a constant
-    home; sleep 4; adb shell cmd statusbar expand-settings; sleep 3
+  if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover, so 'shown' above is not a constant. The plain unlock above flipped the stored mode to custom (UF2), so Quickstep is put back first (run #407: the cover WAS wanted there)
+    setmode quickstep; rebind; home; sleep 4; adb shell cmd statusbar expand-settings; sleep 3
     BK_C="$(pen_cover_state)"
     adb shell cmd statusbar collapse; sleep 2
     info "BK1b control (Quickstep, UNLOCKED, no cover wanted): the cover window is: $BK_C"
