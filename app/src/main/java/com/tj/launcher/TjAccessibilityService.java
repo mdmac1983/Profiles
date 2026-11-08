@@ -1033,6 +1033,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             Rect want = patchTarget();
             if (want == null) {
+                if (homeNeedsCal) { handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, HomePatchRules.CAL_DRAW_QUIET_MS + 600); }   // BI1: the home patch has no wallpaper crop for this position yet: calibrate when everything is quiet
                 if (patchView != null) { removeOverlay(); removePatch(); }
                 if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this))) wallpaperBmp = null;
                 if (!keyguardLocked()) lockBmp = null;   // V1: not needed off the lock screen (memory)
