@@ -135,6 +135,15 @@ public class HomePatchRulesTest {
         assertEquals("home_shot_r0_x500", HomePatchRules.metaKey(0, 500));
     }
 
+    @Test public void aStoredSignatureBelongsToThePictureAndTheDisplayWhateverTheRotation() {
+        assertTrue(HomePatchRules.sigMatches("42|r0|600x1024", 42, 600, 1024));
+        assertTrue(HomePatchRules.sigMatches("42|r1|600x1024", 42, 600, 1024));
+        assertFalse("another wallpaper picture", HomePatchRules.sigMatches("41|r0|600x1024", 42, 600, 1024));
+        assertFalse("another display size", HomePatchRules.sigMatches("42|r0|1024x600", 42, 600, 1024));
+        assertFalse(HomePatchRules.sigMatches(null, 42, 600, 1024));
+        assertFalse(HomePatchRules.sigMatches("garbage", 42, 600, 1024));
+    }
+
     // ---------------------------------------------------------------- the calibration by itself
 
     @Test public void everythingQuietStartsTheCalibration() {
