@@ -650,6 +650,10 @@ public class TjAccessibilityService extends AccessibilityService {
         if (pk == null) return;
         if (getPackageName().contentEquals(pk)) return;                                  // our own windows (the patch itself, the cards, the Launcher)
         if (cn != null && cn.toString().contains("ActionsDialog")) return;               // the stock power menu
+        // for the tablet report (BI1): how often does a foreign window take the patch away on THIS tablet, and which ones? (gate runs #356 / #358: a named window a few seconds after the patch first rested made the menu use the card)
+        final String foreignName = pk + " " + cn;
+        homeForeignCount++; homeForeignLast = foreignName; homeForeignLastAtMs = android.os.SystemClock.uptimeMillis();
+        if (homeForeignNames.length() < 260 && !homeForeignNames.contains(foreignName)) homeForeignNames = homeForeignNames.isEmpty() ? foreignName : homeForeignNames + "; " + foreignName;
         homeForeignUntilMs = android.os.SystemClock.uptimeMillis() + HOME_FOREIGN_AWAY_MS;
         if (patchRestable || patchResting) {
             patchRestable = false; patchResting = false; patchView.setAlpha(0f);
