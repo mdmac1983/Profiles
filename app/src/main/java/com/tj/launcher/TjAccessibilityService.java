@@ -548,8 +548,8 @@ public class TjAccessibilityService extends AccessibilityService {
         if (homeWallId >= 0) return homeWallId;
         long id = 0;
         try { id = android.app.WallpaperManager.getInstance(this).getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
-        homeWallId = id;
-        return id;
+        homeWallId = id < 0 ? 0 : id;   // cached whatever it is (an error or "no wallpaper" must not cost a binder call on every layer refresh); the wallpaper receiver clears it
+        return homeWallId;
     }
     private android.util.DisplayMetrics realMetrics() {
         android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
