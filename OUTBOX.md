@@ -1415,3 +1415,19 @@
 > - where you saw the Quickstep notification after unlocking (BH1c)
 > - whether the pencil cover should stay plain white when battery saver turns the dark theme on (BK1b2)
 <!-- sha:d54d7ac26191 -->
+
+## 2026-11-08T22:48:40Z
+> Sure. What would you like to change? List as many as you like in one message. For each one, tell me what you see now and what you want instead.
+>
+> I'll write each request into `TASKS.md` in your words before I touch any code. Then I'll tell you which ones are easy, which ones need the adb permission or the shell helper, and which ones would conflict with a safety rule, such as "a plain PIN always opens the custom launcher" or "never needs a factory reset".
+>
+> Some ideas, using what's already in the app:
+> - **Look:** grid size, icon or label size, the drawer's white tint, wallpaper behaviour. Today it all copies stock Quickstep exactly, on your earlier standing instruction, so tell me if you want to move away from that.
+> - **Unlock and return:** which handshakes or ways back are on by default, their timings, or new ones.
+> - **Which apps show:** the drawer's allowed list, and what new installs do.
+> - **Per-launcher settings:** quick-settings tiles, keyboard, status bar, battery saver, animations, banners.
+> - **Lock screen:** the number, keeping Wi-Fi, Bluetooth and notifications off, the power menu patch.
+> - **Launcher control:** the layout of the settings screen, or new switches.
+>
+> **Your call:** v0.8.12 (the home-looking curtain instead of the black screen) is built and passes on the emulator. It still needs one small fix, a code review and the release gate. I'd finish and release it first, then put your tweaks into v0.8.13. The other way is to fold the tweaks into v0.8.12, which delays the curtain. Which do you prefer?
+<!-- sha:3f60d6706eaa -->
