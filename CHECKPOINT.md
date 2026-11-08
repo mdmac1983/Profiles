@@ -1,13 +1,17 @@
-# CHECKPOINT 687 — read me first, then TASKS.md
+# CHECKPOINT 688 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T07:43:38Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2r9ji2` · **builds on:** `97af27d` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T08:03:19Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2r9ji2` · **builds on:** `5b3d990` (this checkpoint is the commit after it)
 
 ## Just done
-EXPERIMENT 07:50 (temporary, debug-only): TjHooks.exp bit mask (Settings.Global tj_exp, written by the scenario from an expN token in the sections list at the start of pt) to find why BC2 closetap reads 6-20 % on main vs 3-6 % on v0.8.8 (rank test p~0.02). REMOVE the exp code before shipping (or keep only if harmless) and re-gate hp + core
+gated v0.8.9 (code 34) and pushed it: the handoff self-test, the full unit suite + lint
+and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
 
 ## Do this next
-add the exp hooks (TjHooks.exp bits 1 no draw listener, 2 onWindowFocus off, 4 onWallpaperOffset off, 8 homeDrew returns, 16 no debug log), the scenario line, compile, push, then dispatch pt with exp1 and exp15 twice each plus one more v0.8.8 baseline; W5 was a flake (passes on main #370 base,legacy 45 PASS with a reset before it): make the test wait 12 s before the stray start
+TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
+android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
+confirm the Release is published (get_release_by_tag is enough) and then run:
+  bash tools/record-release.sh v0.8.9 "the power menu on the unlocked custom home screen is now the stock one: the Screenshot button is hidden by a patch of your real wallpaper plus the Launcher's own icons, like on the lock screen (the home screen goes blank for about a second and the screen flashes once the first time, per wallpaper and per home page; new switch in Launcher control, and my old card covers the buttons whenever the patch could be wrong); the start-of-session clean-up also looks in the shade when something was posted even if no status-bar icon shows; the tablet report shows the home patch state and which other windows took it away"
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +20,7 @@ add the exp hooks (TjHooks.exp bits 1 no draw listener, 2 onWindowFocus off, 4 o
 
 ## Last ten checkpoints
 ```
+  7a30b64 ckpt 687: EXPERIMENT 07:50 (temporary, debug-only): TjHooks.exp bit mask (Settings.Globa
   b3b55ce ckpt 686: v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 
   5a7e019 ckpt 685: v0.8.9: W5 (stock home redirect, section legacy) failed twice on main but base
   db1c63e ckpt 684: v0.8.9 DELTA GATE 07:14 on 97905e3 (product delta since 9c40e5c = the foreign-
@@ -25,8 +30,7 @@ add the exp hooks (TjHooks.exp bits 1 no draw listener, 2 onWindowFocus off, 4 o
   9c40e5c ckpt 680: v0.8.9: first gate (#351-353 on e60f9ad) CANCELLED at 05:55 UTC on purpose: a 
   fd738df ckpt 679: v0.8.9 GATE dispatched 05:47 UTC on e60f9ad (product code final, version 0.8.9
   e60f9ad ckpt 678: BI1c: hp FULLY GREEN: run #349 (4d78cfb, id 42451187830) 25 PASS; run #350 (01
-  4d78cfb ckpt 677: BI1c: hp run #348 (f78001e, id 42450536427) = 21 PASS 2 FAIL: only HP7 (no dra
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(8 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
