@@ -718,7 +718,9 @@ public class TjAccessibilityService extends AccessibilityService {
     /** TjHooks: the Launcher is about to draw: whatever is under the slot may change, the built patch is stale from now on. Cheap when the patch is already away. */
     private long homeDrawsSeen = 0, homeDrawLoggedMs = 0;
     void homeDrew() {
-        if (debuggable()) {   // emulator diagnostics only (run #348: HP7 saw no draw at all): one line per burst of draws says whether the listener hears the Launcher and what state the patch was in
+        final int expb = TjHooks.exp(this);
+        if ((expb & 8) != 0) return;   // EXPERIMENT (temporary)
+        if (debuggable() && (expb & 16) == 0) {   // emulator diagnostics only (run #348: HP7 saw no draw at all): one line per burst of draws says whether the listener hears the Launcher and what state the patch was in
             homeDrawsSeen++;
             long up = android.os.SystemClock.uptimeMillis();
             if (up - homeDrawLoggedMs > 1000) { homeDrawLoggedMs = up; Log.i(TAG, "HOMEPATCH draw burst (draw " + homeDrawsSeen + ", patch " + (patchView == null ? "none" : patchResting ? "resting" : patchRestable ? "restable" : "away") + ")"); }
