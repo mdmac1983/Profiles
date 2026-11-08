@@ -1,13 +1,13 @@
-# CHECKPOINT 685 — read me first, then TASKS.md
+# CHECKPOINT 686 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T07:21:12Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2r9ji2` · **builds on:** `1cdc6df` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T07:22:57Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2r9ji2` · **builds on:** `f7587be` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.9: W5 (stock home redirect, section legacy) failed twice on main but base,legacy@v0.8.8 (#365) PASSED = candidate regression (BH1e: runReset now opens the shade when something was posted and pauses the stray-home guard 10 s); pt flaky on v0.8.8 too (BA1) but closetap close_max main 11.8/>15/20.3 % vs v0.8.8 3.3 % (1 sample); delta gate #366 hp #367 n,ac,rb,last #368 base,x1,e1,o in flight; W5 diagnostics added, base,legacy@main dispatched 07:21
+v0.8.9 NOT SHIPPED: 8 CI runs in flight 07:13-07:22: delta gate #366 hp, #367 n,ac,rb,last, #368 base,x1,e1,o (97905e3); base,legacy@main (W5 diagnostics); pt and pt,last on v0.8.8 and on main (BC2 A/B). Gate story in TASKS BI1c
 
 ## Do this next
-read the base,legacy@main run (INFO 'W5 before' / 'W5 after' lines): if a RESET ran right before the stock start, BH1e is the cause (decide: test waits for the reset or the guard pause is shortened); then read #366-#368; pt: sample closetap a few times on v0.8.8 vs main before shipping
+07:35: find the runs (list emulator.yml workflow_dispatch, created since 07:13), read them by subagent (header, FAIL, hp INFO, W5 before/after, BC2 closetap values); W5: if a RESET ran right before the stock start = BH1e/guard pause, fix the TEST wait or shorten the pause, rerun base,legacy; BC2: compare 3+ samples per side; ship only with W5 understood and BC2 not worse
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read the base,legacy@main run (INFO 'W5 before' / 'W5 after' lines): if a RESET 
 
 ## Last ten checkpoints
 ```
+  5a7e019 ckpt 685: v0.8.9: W5 (stock home redirect, section legacy) failed twice on main but base
   db1c63e ckpt 684: v0.8.9 DELTA GATE 07:14 on 97905e3 (product delta since 9c40e5c = the foreign-
   e5d3cb9 ckpt 683: v0.8.9 gate rerun map 06:58: #359 pt alone 27 PASS 1 FAIL (BC2 closetap) so #3
   f619254 ckpt 682: v0.8.9 GATE READ 06:40: #356 (b6,n,n6,v,pa,rg,cs2,hp,pf,last) 89 PASS 2 FAIL =
@@ -25,7 +26,6 @@ read the base,legacy@main run (INFO 'W5 before' / 'W5 after' lines): if a RESET 
   e60f9ad ckpt 678: BI1c: hp FULLY GREEN: run #349 (4d78cfb, id 42451187830) 25 PASS; run #350 (01
   4d78cfb ckpt 677: BI1c: hp run #348 (f78001e, id 42450536427) = 21 PASS 2 FAIL: only HP7 (no dra
   f78001e ckpt 676: BI1c: hp run #347 (4a34b83) = 19 PASS 4 FAIL: phase C FIXED (rested after rest
-  4a34b83 ckpt 675: BI1c: takeover; hp run #346 (c69041b) = 18 PASS 5 FAIL, phase C never rested a
 ```
 
 (1 automatic checkpoint(s) since the last deliberate one — the
