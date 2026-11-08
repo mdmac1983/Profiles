@@ -514,11 +514,14 @@ pen_cover_state(){ # shown | hidden | none: the pencil cover window's own flags 
 }
 b6lock(){ # b6lock <stored mode custom|quickstep>
   setmode "$1"; rebind; home
+  # a quiet start (gate triage 2026-11-08, runs #395 / #406): the cover of the QUICKSTEP phase was shown ~6.8 s BEFORE the marker, left over from the previous phase's unlock (the return reset pulls the shade by itself): let the reset finish and close any panel first
+  sleep 6; adb shell cmd statusbar collapse; sleep 2
   adb logcat -c
   adb shell locksettings set-pin 1234 >/dev/null 2>&1
   palock
   adb shell log -t TjA11y "BK1b marker expand"
   adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock-$1
+  BK_S="$(pen_cover_state)"   # the cover window at +3 s of the 1st opening (the others are sampled below, still locked)
   adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-lock-$1-windows.txt" 2>&1
   adb logcat -d -v time -s TjA11y:I > "$OUT/pencil-lock-$1-log.txt" 2>&1
   adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-$1-edit.txt"
@@ -528,25 +531,17 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   info "BK1b ($1 mode, locked): stored mode $(getmode); keyguard: $LOCKED; pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover was SHOWN $MS ms after the panel was asked to open"
   info "BK1b ($1 mode) every PENCIL line of the whole phase, with its time (the log was cleared before the lock cycle; the marker is the moment the panel was asked to open): $(grep -E 'PENCIL|BK1b marker' "$OUT/pencil-lock-$1-log.txt" | sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' | cut -c1-80 | head -n 8 | tr '\n' '|')"
   info "BK1b ($1 mode) cover window state: $(adb shell dumpsys window windows 2>/dev/null | grep -A4 'TjPencilCover' | tr -s ' \n' ' ' | cut -c1-300)"
-  adb shell cmd statusbar collapse; sleep 2
-  adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
-  # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
-  check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
-  # Run #395 (head 203a5b1): in the QUICKSTEP-stored-mode phase the cover was shown 6.6 s BEFORE the marker (the panel was already open when the lock screen came up), so the line is looked for in the WHOLE phase (the log is cleared before
-  # the lock cycle, so no earlier phase can supply it). Stored mode quickstep + locked = the case the old `Mode.isCustom` gate could never cover.
-  # Gate run #399 (head c4f47b5): this check FAILED in the quickstep phase (no 'PENCIL cover shown' line) although a cover window existed: the line is only written when the cover goes from hidden to shown, so a cover that is already up (or merely
-  # follows the panel) writes nothing. What Tj asked is "the pencil is hidden", so that is what is measured now: the darkest pixel inside the pencil's own rectangle (uiautomator dump + the screenshot of the same moment). Under the pure white cover it
-  # is about 1.0; the control below measures the same thing on the UNLOCKED Quickstep panel (no cover is wanted there) and must see the pencil, so a 'covered' result cannot be a measuring accident.
-  # Run #406 (head 540e4e5): the pixel measure read 1.0 in BOTH lock phases AND in the unlocked Quickstep control, so it cannot tell a covered pencil from a glyph that is not drawn dark: it stays as information only. The reliable fact is the
-  # cover window's own state (window flags: showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0), read at +3 s of THREE openings in a row (the first is the one filmed above; 2nd and 3rd are the warm path).
   BK_PM="$(pencil_min "$OUT/54-qs-panel-lock-$1.png" /sdcard/b6l.xml)"
   info "BK1b ($1 mode, locked): (information only) the darkest pixel inside the pencil's rectangle in the screenshot: $BK_PM"
-  BK_S="$BK_S1"
+  # Run #406 (head 540e4e5): the pixel measure read 1.0 in BOTH lock phases AND in the unlocked Quickstep control, so it cannot tell a covered pencil from a glyph that is not drawn dark: it is information only. The reliable fact is the cover window's own
+  # state (showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0), read at +3 s of THREE openings in a row (the 1st is the one filmed above, the 2nd and 3rd are the warm path), all while the lock screen is up.
   for BK_I in 2 3; do adb shell cmd statusbar collapse; sleep 2; adb shell cmd statusbar expand-settings; sleep 3; BK_S="$BK_S $(pen_cover_state)"; done
   info "BK1b ($1 mode, locked): the cover window at +3 s of the 1st / 2nd / 3rd opening of the panel: $BK_S (shown = touchable cover over the pencil)"
   check "BK1b: on the LOCK screen (stored mode $1) the pencil cover is SHOWN at each of three openings of the panel" test "$BK_S" = "shown shown shown"
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+  # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
+  check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
   if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover, so 'shown' above is not a constant
     home; sleep 4; adb shell cmd statusbar expand-settings; sleep 3
     BK_C="$(pen_cover_state)"
