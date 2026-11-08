@@ -76,8 +76,11 @@ public final class TjHooks {
     }
 
     /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
+    /** BK1c: uptime of the Launcher's last onResume (the unlock summary looks at it when the Launcher resumed before the keyguard's broadcast). */
+    public static volatile long lastResumeMs = 0;
+
     public static void onLauncherResumed(final Context c) {
-        launcherResumed = true;
+        launcherResumed = true; lastResumeMs = android.os.SystemClock.uptimeMillis();
         try { if (c instanceof com.android.launcher3.Launcher) { launcherRef = new java.lang.ref.WeakReference<>((com.android.launcher3.Launcher) c); watchHomeDraw((com.android.launcher3.Launcher) c); } } catch (Throwable ignored) { }   // BI1
         try { TjAccessibilityService s0 = TjAccessibilityService.get(); if (launcherHidden && (s0 == null || !s0.homeCalRunning())) setLauncherHidden(false); } catch (Throwable ignored) { }   // BI1: a hidden Launcher without a running calibration is a leftover
         try { if (c instanceof com.android.launcher3.Launcher) launcherNormal = ((com.android.launcher3.Launcher) c).isInState(com.android.launcher3.LauncherState.NORMAL); } catch (Throwable ignored) { }

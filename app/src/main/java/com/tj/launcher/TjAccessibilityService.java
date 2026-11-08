@@ -1229,17 +1229,20 @@ public class TjAccessibilityService extends AccessibilityService {
                 fadeFrameDone(this);   // AZ1
                 if (rest) warmOpenLookOnce(c);
             }
-            private boolean warmed = false;   // per patch window
+            private int warmedKind = 0;   // per patch window: 1 = the generic dim has been drawn once, 2 = the MEASURED look (a colour matrix) has been
             /**
              * BK1a (Tj, 2026-11-08 18:16 UTC: "The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. ... Load it
              * immediately when the screen is turned off or when the screen goes to lock screen ... It could also be the dimmer loading for the first time."): MEASURED (emulator section fp, run #389) in a FRESH process the first
-             * opening dims the patch ~100 ms late (open_shape 0.19, +24 % bright, 3 frames drawn, one gap of 278 ms) while a warm process reads 0.04 - 0.06, because the OPEN look (a colour filter and the open-edge mask in a layer)
-             * had never been drawn before the first real opening. Draw it ONCE, now, in the first resting frame of the window, at 1/255 alpha: invisible (at most 0.2 of one brightness level, in one frame), but the GPU work of the
-             * first real opening is done before anybody can press the side key. The real code path (paintPatch / setOpenLook / the open mask), no copy of it.
+             * opening drew 3 frames with one gap of 278 ms while a warm process reads 0.04 - 0.06, because the OPEN look (a colour filter and the open-edge mask in a layer) had never been drawn before the first real opening.
+             * Draw it ONCE, now, in the first resting frame of the window, at 1/255 alpha: invisible (at most 0.2 of one brightness level, in one frame), but the GPU work of the first real opening is done before anybody can press
+             * the side key. The real code path (paintPatch / setOpenLook / the open mask), no copy of it. Code review 2026-11-08: there are two looks (the generic dim, and the measured colour matrix that appears once the scrim
+             * has been measured), so it is repeated when the kind changes, and a draw that could not happen (no picture, no mask) or threw is not counted.
              */
             private void warmOpenLookOnce(android.graphics.Canvas c) {
-                if (warmed) return;
-                warmed = true;
+                int kind = scrimT != null && Features.get(TjAccessibilityService.this, ScrimMeasure.KEY, ScrimMeasure.defaultOn(debuggable())) ? 2 : 1;
+                if (warmedKind >= kind) return;
+                boolean haveBitmap = patchLockMode && (lockShot != null || patchShotBmp != null) || (patchLockMode ? lockBmp : wallpaperBmp) != null;
+                if (!haveBitmap) return;   // nothing to draw yet: try again at the next resting frame
                 try {
                     int outer = c.saveLayerAlpha(0, 0, getWidth(), getHeight(), 1);
                     try {
@@ -1249,7 +1252,8 @@ public class TjAccessibilityService extends AccessibilityService {
                             try { paintPatch(c, false); c.drawBitmap(mo, 0, 0, maskPaint); } finally { c.restoreToCount(sc); }
                         } else paintPatch(c, false);
                     } finally { c.restoreToCount(outer); }
-                    Log.i(TAG, "PATCH warm-up: the open look was drawn once, invisibly" + (patchHomeMode ? " (home)" : ""));
+                    warmedKind = kind;
+                    Log.i(TAG, "PATCH warm-up: the open look (" + (kind == 2 ? "measured" : "generic") + ") was drawn once, invisibly" + (patchHomeMode ? " (home)" : ""));
                 } catch (Throwable t) { Log.e(TAG, "patch warm-up failed", t); }
             }
             private void paintPatch(android.graphics.Canvas c, boolean rest) {
@@ -1812,6 +1816,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(resetCover); } catch (Throwable ignored) { }
         resetCover = null; sumCoverGoneAt = android.os.SystemClock.uptimeMillis();   // BK1c
         Log.i(TAG, "RESET cover removed");
+        if (sumArmed) { try { sumEmit(false); } catch (Throwable t) { Log.e(TAG, "unlock summary failed", t); } }   // review 2026-11-08: the line is complete the moment the cover goes (the first frame came earlier, behind it)
     }
 
     /** Presses Home (used by the reset when there is no app to open, so Recents / the shade are not left on screen). */
@@ -1905,9 +1910,7 @@ public class TjAccessibilityService extends AccessibilityService {
         // power-menu cover (coverWorld, AD7a). Without the shell helper the stored mode stays Quickstep while the tablet is locked after a Quickstep session, so `Mode.isCustom` alone left the pencil uncovered on the lock screen.
         if (!coverWorld() || !Features.get(this, PEN_KEY, true)) { if (penView != null) removePencil(); return; }
         boolean sysui = e != null && e.getPackageName() != null && "com.android.systemui".contentEquals(e.getPackageName());
-        // e == null is quietWork's follow-up of a burst whose events the lock screen held back (quietBurst): those events were the only ones that would have started the search, so one search is allowed now
-        if (!sysui && e != null && penView == null) return;
-        if (e == null && penView == null && overlayShown) return;   // the follow-up of a POWER-MENU burst: no panel is open, and the fade path must not be followed by a 100 ms search (emulator run #392: 'pencil took 102 ms' at +536 ms)
+        if (!sysui && penView == null) return;   // (an event-less follow-up of a deferred burst does NOT start a search: review 2026-11-08, a 100 ms whole-tree search after every lock-screen burst was too much for what it saved; the next SystemUI event starts it)
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
         int type = e == null ? 0 : e.getEventType();
@@ -2288,7 +2291,13 @@ public class TjAccessibilityService extends AccessibilityService {
         sumPresentAt = n; sumResumedAt = 0; sumFirstDrawAt = 0; sumCoverGoneAt = 0; sumMode = Mode.isCustom(this) ? "custom" : "quickstep"; sumArmed = true;
         if (resetCover == null) sumCoverUpAt = 0;                       // a cover from an earlier, unrelated unlock is gone; one raised at THIS Enter stays counted
         if (sumEnterAt != 0 && n - sumEnterAt > 6000) sumEnterAt = 0;   // an Enter long ago (a wrong PIN) is not this unlock's
+        // review 2026-11-08: a Launcher that was already behind the keyguard (the custom-after-custom case) can resume and draw during the keyguard's exit animation, BEFORE this broadcast arrives, and a static home draws no more: look at the
+        // last times the Launcher reported, so such an unlock is not mistaken for "no custom-Launcher frame"
+        long ld = TjHooks.lastHomeDrawMs, lr = TjHooks.lastResumeMs;
+        if (ld > 0 && n - ld <= 2000) sumFirstDrawAt = ld;
+        if (lr > 0 && n - lr <= 2000) sumResumedAt = lr;
         handler.removeCallbacks(sumTimeout); handler.postDelayed(sumTimeout, 8000);
+        sumEmit(false);   // everything may already be known (no cover, the Launcher already drew)
     }
 
     /** The custom Launcher's onResume (TjHooks). */
@@ -2307,13 +2316,13 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!timeout && (sumFirstDrawAt == 0 || (coverWasUp && sumCoverGoneAt == 0))) return;   // wait for the first frame AND for the cover to go
         sumArmed = false; handler.removeCallbacks(sumTimeout);
         String text;
-        if (sumFirstDrawAt == 0) text = "no custom-Launcher frame within 8 s after the keyguard went away (the unlock went to Quickstep or to an app); mode then: " + sumMode;
+        if (sumFirstDrawAt == 0) text = "no custom-Launcher frame within 8 s after the keyguard went away (the unlock went to Quickstep or to an app); stored mode then: " + sumMode;
         else {
             long visibleAt = Math.max(sumFirstDrawAt, sumCoverGoneAt);
             boolean fromEnter = sumEnterAt > 0;
             text = "custom home on screen " + (visibleAt - (fromEnter ? sumEnterAt : sumPresentAt)) + " ms after " + (fromEnter ? "the Enter tap" : "the keyguard went away")
-                    + " [" + (fromEnter ? "keyguard " + (sumPresentAt - sumEnterAt) + " ms; " : "") + "then Launcher resumed +" + (sumResumedAt > 0 ? sumResumedAt - sumPresentAt : -1) + ", first frame +" + (sumFirstDrawAt - sumPresentAt)
-                    + (coverWasUp ? ", black cover gone +" + (sumCoverGoneAt - sumPresentAt) + " (up " + (sumCoverGoneAt - sumCoverUpAt) + ")" : ", no cover") + " ms]; mode then: " + sumMode;
+                    + " [" + (fromEnter ? "keyguard " + (sumPresentAt - sumEnterAt) + " ms; " : "") + "relative to the keyguard going away: Launcher resumed " + (sumResumedAt > 0 ? (sumResumedAt - sumPresentAt > 0 ? "+" : "") + (sumResumedAt - sumPresentAt) : "?") + ", first frame " + (sumFirstDrawAt - sumPresentAt > 0 ? "+" : "") + (sumFirstDrawAt - sumPresentAt)
+                    + (coverWasUp ? ", black cover gone +" + (sumCoverGoneAt - sumPresentAt) + " (up " + (sumCoverGoneAt - sumCoverUpAt) + ")" : ", no cover") + " ms]; stored mode when the keyguard went away (before the unlock choice is applied): " + sumMode;
         }
         sumCoverUpAt = 0; sumCoverGoneAt = 0; sumEnterAt = 0;
         Log.i(TAG, "UNLOCKSUM " + text);
