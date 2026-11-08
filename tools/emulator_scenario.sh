@@ -2946,6 +2946,103 @@ adb shell wm dismiss-keyguard >/dev/null 2>&1
 adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section hp
+if want hf; then # section hf
+ensurehome
+# ---- HF (BJ1; Tj, 2026-11-08 16:21 UTC, about v0.8.9's patch on the unlocked home screen: "The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except
+#      the dimming speed makes the patch appear"). BI1e said: film it like section pt, do not guess. This FILMS the stock power menu opening on the custom HOME (screenrecord, animations ON: the CI emulator runs with
+#      them OFF and the stock scrim then appears in ONE frame, which hides the whole problem) and measures frame by frame how the patch compares with the screen beside the menu (tools/pt_analyze.py; open_shape = the
+#      timing of the dimming whatever the end level; section pt's yardstick: a film is good when open_shape < 0.08). Phase A: switch OFF, the first menu teaches the app where it sits. Phase B: switch ON, the app
+#      calibrates by itself and the patch rests. Phase C: five filmed openings for each of three treatments of a burst's FIRST window event (debug switch home_burst_defer, see TjAccessibilityService.quietBurst):
+#      0 = v0.8.9 (all heavy work at once), 1 = the node scan / layer refresh / lock update wait for the dialog's own event like on the lock screen (the QS pencil does not), 2 = everything waits. Arm 0 is filmed twice
+#      (first and last) so a drift over the run is visible.
+beat "before HF"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/hf-grant.txt" 2>&1
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+hfanim(){ for n in window_animation_scale transition_animation_scale animator_duration_scale; do adb shell settings put global $n "$1"; done; }
+hfinput(){ adb shell "log -t TjA11y \"PATCH input $1 t=\$(( \$(cut -d' ' -f1 /proc/uptime | tr -d .) * 10 ))\"; $2"; }   # the command, preceded in the SAME shell call by a log line with the device uptime in ms (the clock of the helper's PATCH lines)
+hfget(){ grep "label=$1 " "$OUT/hf-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" | head -1 | cut -d= -f2 | tr -d 's+'; }
+HF_EVRE='HOMEPATCH away: another window|RESET (start|cover|notifications|recents)'
+hfquiet(){ # the home's quiet moment (as in hp): no foreign window and no reset step for 6 s
+  local n m s=0 i; n="$(hplog | grep -cE "$HF_EVRE")"
+  for i in $(seq 1 25); do sleep 2; m="$(hplog | grep -cE "$HF_EVRE")"; if [ "$m" = "$n" ]; then s=$((s+1)); else s=0; n=$m; fi; [ "$s" -ge 3 ] && break; done; }
+hfrun(){ local L="$1" W="${2:-warm}"   # one FILMED opening (the menu opens by a long press of the side key, closes by BACK); W=warm: an unfilmed opening and the quiet wait first (after a restart)
+  if [ "$W" = warm ]; then hpopen; hpclose; hfquiet; else sleep 4; fi
+  adb logcat -c
+  adb shell rm -f /sdcard/hf.mp4 >/dev/null 2>&1
+  ( adb shell screenrecord --time-limit 6 /sdcard/hf.mp4 >/dev/null 2>&1 & )
+  sleep 1.6
+  adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
+  hfinput back "input keyevent KEYCODE_BACK"; sleep 3.4
+  adb pull /sdcard/hf.mp4 "$OUT/hf-$L.mp4" >/dev/null 2>&1
+  python3 -I tools/pt_analyze.py "$OUT/hf-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/hf-metrics.txt" > /dev/null
+  hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
+  [ -n "$(hfget $L onset)" ] && rm -f "$OUT/hf-$L.mp4"; }   # the films are large; the numbers and the curves are in the results (a film the analysis could not read is kept for the artifact)
+hfline(){ local L="$1" sh mx fo sc   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
+  sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
+  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0}"; }
+hfmed(){ local k v; for k in 1 2 3 4 5; do v="$(hfget $1f$k $2)"; [ -n "$v" ] && echo "$v"; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }
+hfok(){ local k v n=0; for k in 1 2 3 4 5; do v="$(hfget $1f$k open_shape)"; awk -v f="${v:-9}" 'BEGIN{exit !(f+0 < 0.08)}' && n=$((n+1)); done; echo $n; }
+hfarm(){ # hfarm <tag> <arm 0|1|2>: restart with that treatment of a burst's first window event, wait for the patch to rest, film five openings
+  hpint home_burst_defer "$2"
+  setmode custom; rebind; adb logcat -c; home
+  local t; t="$(hpwait 'PATCH rest on' 40)"; sleep 3
+  info "HF arm $2 ($1): the patch rested after $t s"
+  hfrun "${1}f1" warm
+  local k; for k in 2 3 4 5; do hfrun "${1}f$k" quick; done
+  info "HF arm $2 ($1) films: $(for k in 1 2 3 4 5; do hfline ${1}f$k; done | tr '\n' '|')"
+  local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/hf-all-${1}f2.txt" 2>&1)"
+  info "HF arm $2 ($1) events of film 2, newest last, ms from the dialog's own window event: $(echo "$EVS" | cut -c1-300)"
+  info "HF arm $2 ($1) events of film 2 (2): $(echo "$EVS" | cut -c301-600)"
+  info "HF arm $2 ($1) events of film 2 (3): $(echo "$EVS" | cut -c601-900)"
+  local CV; CV="$(grep "PTSERIES label=${1}f2 " "$OUT/hf-metrics.txt" | tail -1 | sed 's/.*onset) //')"
+  info "HF arm $2 ($1) open curve of film 2, ms:surround/patch/deviation in per mille (a): $(echo "$CV" | cut -c1-330)"
+  info "HF arm $2 ($1) open curve of film 2 (b): $(echo "$CV" | cut -c331-660)"
+  info "HF arm $2 ($1): within 8 % of the surround (timing only) in $(hfok $1) of 5 films; median open_shape $(hfmed $1 open_shape), median open_max $(hfmed $1 open_max)"; }
+# ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
+hpinit false
+hpwall
+adb logcat -c
+hpopen; hpclose; sleep 2
+hplog | grep "CARD area" > "$OUT/hf-a-log.txt"
+CL="$(tail -1 "$OUT/hf-a-log.txt")"
+set -- $(hpnums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(hpnums "$CL" area); CB=${4:-}
+info "HF A: the stock menu on the home screen sits at [$FL,$FT][$FR,$FB]; its Screenshot spot starts at y=$CB"
+check "HF0: the first menu on the home screen was learned (a CARD line with its rectangle)" bash -c "[ -n '$FL' ] && [ -n '$CB' ]"
+# ---------------- phase B: the switch ON: the calibration by itself, the resting patch
+hpkey home_patch true
+setmode custom; rebind; adb logcat -c; home
+HF_T1="$(hpwait 'HOMEPATCH calibration end' 70)"
+HF_T2="$(hpwait 'PATCH rest on' 40)"
+sleep 3
+info "HF B: calibration ended after $HF_T1 s, resting after $HF_T2 s; status: $(hpstatus | cut -c1-160)"
+check "HF1: the home patch calibrated by itself and RESTS (log 'PATCH rest on')" bash -c "[ '$HF_T1' != never ] && [ '$HF_T2' != never ]"
+if [ -n "$FL" ] && [ -n "$CB" ]; then
+  PX=$(( (FL + FR) / 2 )); PY=$(( (CB + FB) / 2 ))
+  if [ "$FL" -ge 110 ]; then SX=$(( FL - 70 )); else SX=$(( FR + 50 )); fi; SY=$PY
+  if [ "$FL" -ge 200 ]; then SX2=$(( FL - 160 )); else SX2=$(( FR + 120 )); fi   # a second surround box farther from the panel (its shadow darkens the near one for a moment)
+  info "HF: probes: patch at $PX,$PY, surround at $SX,$SY and $SX2,$SY"
+  : > "$OUT/hf-metrics.txt"
+  hfanim 1.0   # ANIMATIONS ON for the films (put back to 0 at the end): only then does the stock scrim fade in over 300 ms like on the tablet
+  # ---------------- phase C: three treatments of the first window event of a burst; arm 0 again at the end
+  hfarm a0 0
+  hfarm a1 1
+  hfarm a2 2
+  hfarm z0 0
+  hfanim 0
+  FRAMES="$(hfget a0f1 frames)"
+  check "HF2: the film worked (more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
+  NSEEN=0; for T in a0 a1 a2 z0; do for K in 1 2 3 4 5; do hfget ${T}f$K onset | grep -q . && NSEEN=$((NSEEN+1)); done; done
+  check "HF3: the menu opening was seen in at least 16 of the 20 films (an onset of the dimming was found)" test "$NSEEN" -ge 16
+  NFAST=0; for T in a0 a1 a2 z0; do for K in 1 2 3 4 5; do [ "$(grep -c 'PATCH fast open' "$OUT/hf-all-${T}f$K.txt" 2>/dev/null)" -ge 1 ] && NFAST=$((NFAST+1)); done; done
+  check "HF4: the patch (not the card) covered the Screenshot spot in at least 16 of the 20 films (log 'PATCH fast open')" test "$NFAST" -ge 16
+  # BJ1: the claim. With the default treatment (arm 0) most of the five films must keep the patch within 8 % of its surround while the menu opens, like section pt's lock-screen films.
+  check "HF5: the home patch follows the stock dimming: within 8 % of its surround (timing only) in at least 4 of 5 films, both runs of the default treatment" bash -c "[ $(hfok a0) -ge 4 ] && [ $(hfok z0) -ge 4 ]"
+else check "HF2: the menu geometry is known" false; fi
+hfanim 0
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section hf
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
