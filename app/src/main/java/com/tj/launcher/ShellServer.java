@@ -21,6 +21,7 @@ public final class ShellServer {
     public static void main(String[] args) throws Exception {
         final int appUid = lookupUid();
         if (appUid < 0) { System.out.println("tj-shell: cannot find the uid of " + ShellProtocol.SELF + " (is it installed?)"); return; }
+        startRecorder();   // HLP1: a helper that dies leaves no trace (its output goes to /dev/null): this writes one
         boolean any = false;
         try {
             final LocalServerSocket server = new LocalServerSocket(ShellProtocol.SOCKET);
@@ -315,6 +316,124 @@ public final class ShellServer {
             } catch (Throwable ignored) { }
         }
         return done;
+    }
+
+    // ---------------------------------------------------------------- HLP1: the flight recorder (never part of any job; every step is guarded, a failure here must not touch the helper)
+
+    private static volatile java.io.File recFile;
+    private static final Object REC_LOCK = new Object();
+    private static volatile long recT0;
+
+    /**
+     * HLP1: the helper is gone a few minutes after it is started on Tj's tablet and nobody knows why. This leaves evidence in a file the launcher can read (its own external files directory; fallback
+     * /data/local/tmp/tj-life.txt for a cable session): START, a BEAT every 30 s (seconds alive, VmRSS, oom_score_adj, usb state), SHUTDOWN (the VM was asked to exit), EXCEPTION, and the kill-related lines
+     * of the system log as they appear. See {@link HelperLife}. A kill by SIGKILL writes nothing at the end: the last BEAT and the LOGCAT lines before it are the answer.
+     */
+    private static void startRecorder() {
+        try {
+            java.io.File f = pickRecFile();
+            if (f == null) return;
+            recFile = f;
+            recT0 = System.currentTimeMillis();
+            rec(HelperLife.line("START", recT0, null, "pid", String.valueOf(android.os.Process.myPid()), "uid", String.valueOf(android.os.Process.myUid()), "file", f.getPath()));
+            final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+            Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() { @Override public void uncaughtException(Thread t, Throwable e) {
+                rec(HelperLife.line("EXCEPTION", System.currentTimeMillis(), t.getName() + ": " + e));
+                if (prev != null) prev.uncaughtException(t, e);
+            } });
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() { @Override public void run() {
+                long now = System.currentTimeMillis();
+                rec(HelperLife.line("SHUTDOWN", now, "the VM was asked to exit (SIGTERM, SIGHUP or SIGINT)", "up", String.valueOf((now - recT0) / 1000L)));
+            } }, "tj-shell-hook"));
+            Thread hb = new Thread(new Runnable() { @Override public void run() {
+                while (true) {
+                    try { Thread.sleep(HelperLife.BEAT_MS); } catch (InterruptedException e) { return; }
+                    long now = System.currentTimeMillis();
+                    rec(HelperLife.line("BEAT", now, null, "up", String.valueOf((now - recT0) / 1000L), "rss", procValue("/proc/self/status", "VmRSS:"), "oom", procFirstLine("/proc/self/oom_score_adj"),
+                            "usb", sysprop("sys.usb.state"), "adbd", sysprop("init.svc.adbd")));
+                }
+            } }, "tj-shell-beat");
+            hb.setDaemon(true);
+            hb.start();
+            Thread lc = new Thread(new Runnable() { @Override public void run() { logcatWatch(); } }, "tj-shell-logcat");
+            lc.setDaemon(true);
+            lc.start();
+        } catch (Throwable t) { System.out.println("tj-shell: flight recorder not started: " + t); }
+    }
+
+    private static java.io.File pickRecFile() {
+        String[] dirs = { "/sdcard/Android/data/" + ShellProtocol.SELF + "/files", "/data/local/tmp" };
+        String[] names = { "helper-life.txt", "tj-life.txt" };
+        for (int i = 0; i < dirs.length; i++) {
+            try {
+                java.io.File d = new java.io.File(dirs[i]);
+                if (!d.isDirectory() && !d.mkdirs()) continue;
+                java.io.File f = new java.io.File(d, names[i]);
+                java.io.FileOutputStream o = new java.io.FileOutputStream(f, true);
+                o.close();
+                return f;
+            } catch (Throwable ignored) { }
+        }
+        return null;
+    }
+
+    private static void rec(String line) {
+        try {
+            java.io.File f = recFile;
+            if (f == null) return;
+            synchronized (REC_LOCK) {
+                java.io.FileOutputStream o = new java.io.FileOutputStream(f, true);
+                try { o.write((line + "\n").getBytes("UTF-8")); } finally { o.close(); }
+                if (f.length() > HelperLife.MAX_FILE_BYTES) {
+                    java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                    java.io.FileInputStream in = new java.io.FileInputStream(f);
+                    try { byte[] buf = new byte[4096]; int n; while ((n = in.read(buf)) > 0) bo.write(buf, 0, n); } finally { in.close(); }
+                    String t = HelperLife.trim(bo.toString("UTF-8"), HelperLife.MAX_FILE_BYTES, HelperLife.KEEP_FILE_BYTES);
+                    java.io.FileOutputStream w = new java.io.FileOutputStream(f, false);
+                    try { w.write(t.getBytes("UTF-8")); } finally { w.close(); }
+                }
+            }
+        } catch (Throwable ignored) { }
+    }
+
+    private static final java.util.regex.Pattern KILLISH = java.util.regex.Pattern.compile("(?i)lmkd|lowmemorykiller|killing |killed|sigkill|sigterm|sighup|libprocessgroup|tj-shell|shellserver|app_process");
+
+    /** Copies the kill-related lines of the system log into the recorder as they appear (at most 400 per run, so a noisy log cannot fill the storage). Ends quietly if logcat cannot be started. */
+    private static void logcatWatch() {
+        Process p = null;
+        try {
+            p = new ProcessBuilder("logcat", "-b", "main", "-b", "system", "-b", "crash", "-v", "threadtime", "-T", "1").redirectErrorStream(true).start();
+            BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String l;
+            int kept = 0;
+            while ((l = r.readLine()) != null) {
+                if (!KILLISH.matcher(l).find()) continue;
+                if (++kept > 400) { rec(HelperLife.line("LOGCAT", System.currentTimeMillis(), "(limit of 400 lines reached for this run)")); break; }
+                rec(HelperLife.line("LOGCAT", System.currentTimeMillis(), l));
+            }
+        } catch (Throwable ignored) {
+        } finally { if (p != null) try { p.destroy(); } catch (Throwable ignored) { } }
+    }
+
+    private static String procFirstLine(String path) {
+        try { BufferedReader r = new BufferedReader(new java.io.FileReader(path)); try { String l = r.readLine(); return l == null ? "?" : l.trim(); } finally { r.close(); } } catch (Throwable t) { return "?"; }
+    }
+
+    private static String procValue(String path, String key) {
+        try {
+            BufferedReader r = new BufferedReader(new java.io.FileReader(path));
+            try { String l; while ((l = r.readLine()) != null) if (l.startsWith(key)) return l.substring(key.length()).trim().replace(" kB", "").replace(' ', '_'); } finally { r.close(); }
+        } catch (Throwable ignored) { }
+        return "?";
+    }
+
+    /** android.os.SystemProperties is hidden API; a shell-started app_process may call it, and anything else answers "?". */
+    private static String sysprop(String key) {
+        try {
+            Class<?> c = Class.forName("android.os.SystemProperties");
+            Object v = c.getMethod("get", String.class, String.class).invoke(null, key, "?");
+            return v == null || String.valueOf(v).isEmpty() ? "-" : String.valueOf(v);
+        } catch (Throwable t) { return "?"; }
     }
 
     private static int lookupUid() {
