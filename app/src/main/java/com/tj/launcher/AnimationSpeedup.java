@@ -214,8 +214,8 @@ public final class AnimationSpeedup {
             String why = AnimationPolicy.why(f);
             if (!why.isEmpty() && !holding) return;   // nothing held and nothing could start
             if (why.isEmpty()) {   // stage 2: the screen and the lock screen
-                f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : interactive(app);
-                f.lockUp = f.screenOn && (lockUpNow != null ? lockUpNow.booleanValue() : keyguardUp(app));
+                f.screenOn = look.screenOn();
+                f.lockUp = look.lockUp();
                 f.unlockUndecided = unlockUndecided(f.screenOn, f.lockUp);
                 why = AnimationPolicy.why(f);
             }
