@@ -78,7 +78,7 @@ public final class TjHooks {
     /** Called by Launcher.onResume. The FIRST resume of each launcher process (boot, or after Android restarted it) puts the target app (Solitaire) in front. */
     public static void onLauncherResumed(final Context c) {
         launcherResumed = true;
-        try { if (c instanceof com.android.launcher3.Launcher) { launcherRef = new java.lang.ref.WeakReference<>((com.android.launcher3.Launcher) c); if ((exp(c) & 1) == 0) watchHomeDraw((com.android.launcher3.Launcher) c); } } catch (Throwable ignored) { }   // BI1
+        try { if (c instanceof com.android.launcher3.Launcher) { launcherRef = new java.lang.ref.WeakReference<>((com.android.launcher3.Launcher) c); watchHomeDraw((com.android.launcher3.Launcher) c); } } catch (Throwable ignored) { }   // BI1
         try { TjAccessibilityService s0 = TjAccessibilityService.get(); if (launcherHidden && (s0 == null || !s0.homeCalRunning())) setLauncherHidden(false); } catch (Throwable ignored) { }   // BI1: a hidden Launcher without a running calibration is a leftover
         try { if (c instanceof com.android.launcher3.Launcher) launcherNormal = ((com.android.launcher3.Launcher) c).isInState(com.android.launcher3.LauncherState.NORMAL); } catch (Throwable ignored) { }
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
@@ -104,22 +104,7 @@ public final class TjHooks {
     public static void onWallpaperOffset(float x) {
         wallpaperX = x;
         wallpaperReported = true;
-        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null && (exp(s) & 4) == 0) s.onWallpaperOffset(); } catch (Throwable ignored) { }
-    }
-
-    /**
-     * EXPERIMENT (2026-11-08, TEMPORARY, debug builds only): a bit mask in Settings.Global tj_exp, written by the emulator scenario from an 'expN' token of the sections list, to find which always-on BI1 hook (if any)
-     * moves the lock-screen close timing (section pt, BC2 closetap read 6-20 % on main against 3-6 % on the v0.8.8 tag). 1 = no draw listener on the Launcher, 2 = onWindowFocus ignored, 4 = onWallpaperOffset ignored,
-     * 8 = homeDrew() returns at once, 16 = no debug draw log. Read once per process; 0 in a release build.
-     */
-    private static volatile int expBits = -1;
-    static int exp(android.content.Context c) {
-        int v = expBits;
-        if (v >= 0) return v;
-        v = 0;
-        try { if ((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) v = android.provider.Settings.Global.getInt(c.getContentResolver(), "tj_exp", 0); } catch (Throwable ignored) { }
-        expBits = v;
-        return v;
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.onWallpaperOffset(); } catch (Throwable ignored) { }
     }
 
     // ---------------------------------------------------------------- AD4: the page-flick entrance watches every single-finger swipe that STARTS on the settled home screen (a passive observer: it never consumes an event)
@@ -172,7 +157,7 @@ public final class TjHooks {
 
     /** The Launcher's window got or lost the focus (a shade or a dialog over the home screen takes it; it comes back when they go). */
     public static void onWindowFocus(boolean has) {
-        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null && (exp(s) & 2) == 0) s.homeFocusChanged(has); } catch (Throwable ignored) { }
+        try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeFocusChanged(has); } catch (Throwable ignored) { }
     }
 
     public static void onLauncherPaused() {
