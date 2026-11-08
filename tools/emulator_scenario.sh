@@ -3004,7 +3004,7 @@ hfarm(){ # hfarm <tag>: restart the app, wait for the patch to rest, film five o
   local CV; CV="$(grep "PTSERIES label=${1}f2 " "$OUT/hf-metrics.txt" | tail -1 | sed 's/.*onset) //')"
   info "HF group $1 open curve of film 2, ms:surround/patch/deviation in per mille (a): $(echo "$CV" | cut -c1-330)"
   info "HF group $1 open curve of film 2 (b): $(echo "$CV" | cut -c331-660)"
-  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max); the fade-OUT (BACK) of the same films: median close_max $(hfmed $1 close_max) over $(hfmed $1 close_final) (close_final)"; }
+  info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max); the fade-OUT (BACK) of the same films: median close_max $(hfmed $1 close_max), median close_final $(hfmed $1 close_final)"; }
 # ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
 hpinit false
 hpwall
