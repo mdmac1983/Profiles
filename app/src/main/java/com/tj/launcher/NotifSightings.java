@@ -14,8 +14,11 @@ import java.util.Map;
  * BH1 (Tj, 2026-11-08 02:29 UTC: "When I unlocked to the custom launcher from the lock screen, there was a notification from a quickstep app"). This Go tablet has no notification listener, so nothing could ever
  * say WHICH app posted a notification or WHEN. Android does send one thing to an accessibility helper: an event {@code TYPE_NOTIFICATION_STATE_CHANGED} (class android.app.Notification) when a notification is
  * first posted. This class notes who (the package, never the title or text), in which state (custom / Quickstep, dark / locked / on) and whether the app is in the custom drawer, in a short ring buffer for the
- * tablet report, and raises a flag "something was posted since the shade was last cleared" that the start-of-session clean-up reads: a SILENT notification has no status-bar icon, so the icon scan alone
- * would skip the shade although it lists it.
+ * tablet report, and raises a flag "something was posted since the shade was last cleared" that the start-of-session clean-up reads: a SILENT (low-importance) notification has no status-bar icon, so the icon
+ * scan alone would skip the shade although it lists it. Limits, said plainly (code review 2026-11-08): Android announces a notification only when its importance is ABOVE the lowest level, so a minimized one
+ * (no icon, collapsed in the shade) sends no event and is still missed; and the flag is cleared by the first shade step after it was raised, so it costs one extra step per batch of arrivals, not one per return.
+ *
+ * The event arrives on the shared Launcher / accessibility main thread, so only the cheap package check happens there; the state lookup, the drawer lookup and every write run on a worker.
  *
  * Privacy: the event also carries the notification itself; nothing of it is read except the package name.
  */
