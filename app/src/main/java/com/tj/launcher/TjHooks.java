@@ -153,6 +153,7 @@ public final class TjHooks {
 
     public static void onLauncherPaused() {
         launcherResumed = false;
+        if (launcherHidden) setLauncherHidden(false);   // BI1: never leave the home screen invisible (a calibration that was cut off by a pause)
         try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.refreshLayersSoon(); } catch (Throwable ignored) { }
         lastLauncherPauseMs = System.currentTimeMillis();
     }
