@@ -872,10 +872,10 @@ public class TjAccessibilityService extends AccessibilityService {
         homeCalGuard = null;
     }
 
-    /** The media store changed while a home calibration runs: is our screenshot in it? Then the capture is over, the Launcher is shown again at once and the crop is cut (worker thread). */
     /** Finishes the calibration of run {@code gen} only if that run is still the current one (a worker thread must never end or save for a run that was aborted). */
     private void homeCalFinishIf(int gen, boolean ok, String msg) { if (gen == homeCalGen && homeCalRunning) homeCalFinish(ok, msg); }
 
+    /** The media store changed while a home calibration runs: is our screenshot in it? Then the capture is over, the Launcher is shown again at once and the crop is cut (worker thread). */
     private void homeShotObserved() {
         if (!homeCalRunning) return;
         final android.content.Context app = getApplicationContext();
