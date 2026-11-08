@@ -2770,6 +2770,129 @@ adb shell settings delete global tj_banners_original >/dev/null 2>&1
 adb shell am force-stop "$NQC" >/dev/null 2>&1
 setfeat; setmode custom; rebind; home
 fi # section nq
+if want hp; then # section hp
+ensurehome
+# ---- HP (BI1; Tj, 2026-11-08: "For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen."):
+#      the REAL-PIXEL patch over the stock menu's Screenshot spot on the unlocked custom home. A finely patterned HOME wallpaper makes a wrong or misplaced crop obvious. Phase A: the switch is OFF, the first menu on the
+#      home screen teaches the app where it sits and a bare screenshot is kept. Phase B: switch ON: the app calibrates BY ITSELF (the Launcher hidden, one system screenshot), builds the patch (the wallpaper crop + the
+#      Launcher's own pixels), the patch RESTS and is invisible (MAE vs the bare screenshot), and with the menu open the slot matches the dimmed home (pb_probe core_mean) on the CARDLESS path (the card of v0.8.8 is not
+#      used). Phase C: a negative control (the composite shifted on purpose must be seen), a finger going down hides it and it comes back, a draw makes it stale and it is built again. Phase D: a new wallpaper is
+#      calibrated again and the old crop is deleted. Phase E: switch off / Quickstep: no patch window.
+beat "before HP"
+adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/hp-grant.txt" 2>&1
+adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+hpinit(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/homeshot_*; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"false\\\" /><boolean name=\\\"scrim_measure\\\" value=\\\"false\\\" /><boolean name=\\\"home_patch\\\" value=\\\"$1\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+hpkey(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<boolean name="%s" value="[a-z]*" />##\ns#</map>#<boolean name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpkey.sed"; local B64; B64="$(base64 -w0 "$OUT/hpkey.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpkey.sed; sed -i -f files/hpkey.sed shared_prefs/tj_features.xml'"; }
+hpint(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<int name="%s" value="[-0-9]*" />##\ns#</map>#<int name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpint.sed"; local B64; B64="$(base64 -w0 "$OUT/hpint.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpint.sed; sed -i -f files/hpint.sed shared_prefs/tj_features.xml'"; }
+hplog(){ adb logcat -d -s TjA11y:I 2>/dev/null; }
+hpcount(){ hplog | grep -c "$1" | tr -d ' \r\n'; }
+hpwait(){ local t0 i; t0=$(date +%s); for i in $(seq 1 "$2"); do if hplog | grep -q "$1"; then echo $(( $(date +%s) - t0 )); return 0; fi; sleep 1; done; echo never; return 1; }
+hpmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+hpnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
+hpstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_patch_status">[^<]*' | cut -d'>' -f2 | tr -d '\r'; }
+hpcrops(){ adb shell "run-as $PKG ls files" 2>/dev/null | tr -d '\r' | grep -c 'homeshot_r0_x.*png$'; }
+hpwall(){ setmode quickstep; rebind; home; adb shell am start -n "$PKG/.SetupActivity" --ez test_home_wallpaper true >/dev/null 2>&1; sleep 6; setmode custom; rebind; home; sleep 3; }
+hpopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; }
+hpclose(){ adb shell input keyevent KEYCODE_BACK; sleep 3; }
+# ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
+hpinit false
+hpwall
+adb logcat -c
+hpopen; hpclose; sleep 2
+hplog | grep "CARD area" > "$OUT/hp-a-log.txt"
+CL="$(tail -1 "$OUT/hp-a-log.txt")"
+set -- $(hpnums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
+set -- $(hpnums "$CL" area); CB=${4:-}
+info "HP A: the stock menu on the home screen sits at [$FL,$FT][$FR,$FB]; its Screenshot spot starts at y=$CB; log: $(tail -1 "$OUT/hp-a-log.txt" | cut -c25-170)"
+check "HP0: the first menu on the home screen was learned (a CARD line with its rectangle)" bash -c "[ -n '$FL' ] && [ -n '$CB' ]"
+shot 160-hp-bare-a
+SLOT=""; PANEL=""
+if [ -n "$FL" ] && [ -n "$CB" ]; then SLOT="$(( FR - FL + 24 ))x$(( FB + 12 - CB ))+$(( FL - 12 ))+$CB"; PANEL="$FL,$FT,$FR,$FB"; fi
+# ---------------- phase B: the switch ON: the calibration by itself, the resting patch, the open look on the cardless path
+hpkey home_patch true
+setmode custom; rebind; adb logcat -c; home
+HP_T1="$(hpwait 'HOMEPATCH calibration end' 70)"
+HP_T2="$(hpwait 'PATCH rest on' 40)"
+sleep 3
+hplog | grep -E "HOMEPATCH|PATCH rest|PATCH window|PATCH removed" > "$OUT/hp-b-log.txt"
+info "HP B: calibration ended after $HP_T1 s, resting after $HP_T2 s; status: $(hpstatus | cut -c1-200); log: $(grep HOMEPATCH $OUT/hp-b-log.txt | cut -c25-130 | tr '\n' '|' | cut -c1-500)"
+check "HP1: the home calibration started BY ITSELF (the Launcher hidden, one system screenshot)" grep -q "HOMEPATCH calibration starts" "$OUT/hp-b-log.txt"
+check "HP1: ... and ended OK (the wallpaper-only crop was stored)" grep -q "HOMEPATCH calibration end: ok=true" "$OUT/hp-b-log.txt"
+check "HP1: ... one crop file for the wallpaper exists in the app's private files" bash -c "[ \"$(hpcrops)\" = 1 ]"
+check "HP2: the patch RESTS on the home screen once its pixels are built (log 'PATCH rest on')" grep -q "PATCH rest on" "$OUT/hp-b-log.txt"
+adb shell dumpsys window windows | grep -A10 TjWallpaperPatch > "$OUT/hp-b-window.txt" 2>&1
+check "HP2: the resting patch window exists and is NOT touchable (it can never block a tap)" bash -c "grep -q TjWallpaperPatch $OUT/hp-b-window.txt && grep -q NOT_TOUCHABLE $OUT/hp-b-window.txt"
+shot 161-hp-rest
+if [ -n "$SLOT" ]; then
+  MA_R="$(hpmae 161-hp-rest 160-hp-bare-a "$SLOT")"
+  info "HP3: the resting patch vs the bare home screen in the slot $SLOT: MAE $MA_R"
+  check "HP3: the resting patch is INVISIBLE: the slot looks exactly like the bare home screen (MAE < 0.01)" awk -v m="$MA_R" 'BEGIN{exit !(m!="" && m+0 < 0.01)}'
+else check "HP3: the slot geometry is known" false; fi
+adb logcat -c
+hpopen
+shot 162-hp-open
+adb shell dumpsys window windows 2>/dev/null | grep -E "^ +Window #" | sed 's/^ *//; s/Window{[0-9a-f]* u0 //; s/}:$//' | cut -c1-80 > "$OUT/hp-open-windows.txt"
+hplog | grep -E "CARD area|PATCH fast|PATCH fade" > "$OUT/hp-open-log.txt"
+info "HP4: log with the menu open: $(cut -c25-150 "$OUT/hp-open-log.txt" | tr '\n' '|' | cut -c1-500)"
+check "HP4: the menu opened on the CARDLESS path (the stock Power off / Restart stay untouched: log 'lockPatch=true stock=true')" grep -q "lockPatch=true stock=true" "$OUT/hp-open-log.txt"
+if [ -n "$PANEL" ]; then
+  python3 -I tools/pb_probe.py hp "$OUT/161-hp-rest.png" "$OUT/162-hp-open.png" --panel "$PANEL" > "$OUT/hp-pb.txt" 2>&1
+  HP_CM="$(grep PBMETRIC "$OUT/hp-pb.txt" | grep -o 'core_mean=[-+0-9.]*' | head -1 | cut -d= -f2)"
+  info "HP4: the open slot vs the dimmed home (pb_probe): $(grep PBMETRIC "$OUT/hp-pb.txt" | head -1 | cut -c1-260)"
+  check "HP4: with the menu open the Screenshot spot looks like the dimmed home screen (slot interior mean deviation within 2 levels)" awk -v c="${HP_CM:-99}" 'BEGIN{exit !((c<0?-c:c) < 2.0)}'
+fi
+hpclose
+# ---------------- phase C: a negative control, the finger, a draw
+hpint home_patch_test_shift 6
+setmode custom; rebind; adb logcat -c; home
+HP_T3="$(hpwait 'PATCH rest on' 40)"; sleep 3
+shot 163-hp-rest-shifted
+if [ -n "$SLOT" ]; then
+  MA_S="$(hpmae 163-hp-rest-shifted 160-hp-bare-a "$SLOT")"
+  info "HP5: the patch shifted by 6 px on purpose vs the bare home screen: MAE $MA_S (resting after $HP_T3 s)"
+  check "HP5: the comparison is SENSITIVE: a patch shifted by 6 px is clearly different from the bare home screen (MAE > 0.01)" awk -v m="$MA_S" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
+fi
+HP_F0="$(hpcount 'HOMEPATCH away: a finger went down')"
+adb shell input tap 8 700; sleep 3.5
+HP_F1="$(hpcount 'HOMEPATCH away: a finger went down')"
+shot 164-hp-after-tap
+check "HP6: a finger going down in the launcher takes the patch away in the same frame (log 'HOMEPATCH away: a finger went down')" bash -c "[ ${HP_F1:-0} -gt ${HP_F0:-0} ]"
+if [ -n "$SLOT" ]; then
+  MA_T="$(hpmae 164-hp-after-tap 160-hp-bare-a "$SLOT")"
+  info "HP6: 3.5 s after the tap the (shifted) patch vs the bare home screen: MAE $MA_T"
+  check "HP6: ... and it comes back by itself after the finger (the shifted patch is visible again: MAE > 0.01)" awk -v m="$MA_T" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
+fi
+HP_S0="$(hpcount 'HOMEPATCH stale')"
+adb shell input swipe 8 700 8 700 900; sleep 2; adb shell input keyevent KEYCODE_BACK; sleep 4     # a long press on the empty home screen opens the Launcher's own popup: the Launcher draws
+HP_S1="$(hpcount 'HOMEPATCH stale')"
+check "HP7: a draw of the Launcher makes the built patch stale (log 'HOMEPATCH stale')" bash -c "[ ${HP_S1:-0} -gt ${HP_S0:-0} ]"
+info "HP7: status after the draw: $(hpstatus | cut -c1-160)"
+check "HP7: ... and it is built again when the home is quiet (status 'home patch built; fresh')" bash -c "hpstatus 2>/dev/null | grep -q 'home patch built; fresh' || true; [ -n \"\$(adb shell \"run-as $PKG cat shared_prefs/tj_features.xml\" 2>/dev/null | grep -o 'home patch built; fresh')\" ]"
+# ---------------- phase D: another wallpaper = calibrated again, the old crop is deleted
+hpint home_patch_test_shift 0
+hpwall
+adb logcat -c; home
+HP_T4="$(hpwait 'HOMEPATCH calibration end' 70)"; sleep 3
+hplog | grep "HOMEPATCH" > "$OUT/hp-d-log.txt"
+info "HP D: the new wallpaper was calibrated after $HP_T4 s; crops stored: $(hpcrops); log: $(cut -c25-120 "$OUT/hp-d-log.txt" | tr '\n' '|' | cut -c1-360)"
+check "HP8: a NEW wallpaper picture is calibrated again by itself (a second calibration ended OK)" grep -q "HOMEPATCH calibration end: ok=true" "$OUT/hp-d-log.txt"
+check "HP8: ... and the crop of the old wallpaper is gone (exactly one crop file)" bash -c "[ \"$(hpcrops)\" = 1 ]"
+# ---------------- phase E: the fallbacks
+hpkey home_patch false
+setmode custom; rebind; home; sleep 4
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/hp-e-off.txt" 2>&1
+adb logcat -c; hpopen; hplog | grep "CARD area" > "$OUT/hp-e-card.txt"; hpclose
+check "HP9: with the switch OFF there is no patch window on the home screen" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/hp-e-off.txt)\" = 0 ]"
+check "HP9: ... and the menu uses the card of v0.8.8 as before (log 'lockPatch=false', no 'stock=true')" bash -c "grep -q 'lockPatch=false' $OUT/hp-e-card.txt && ! grep -q 'stock=true' $OUT/hp-e-card.txt"
+hpkey home_patch true
+setmode quickstep; rebind; home; sleep 4
+adb shell dumpsys window windows | grep -c TjWallpaperPatch > "$OUT/hp-e-qs.txt" 2>&1
+check "HP10: in Quickstep there is no patch window (the home patch belongs to the custom launcher)" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/hp-e-qs.txt)\" = 0 ]"
+adb shell wm dismiss-keyguard >/dev/null 2>&1
+adb logcat -c
+setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
+fi # section hp
 if want rs2; then # section rs2
 ensurehome
 # ---- RESEARCH 2 (info lines only): what may the SHELL user do on Android 10?  (a) StatusBarManager disable flags through the status-bar service (b) the raw power-key events (getevent / sendevent)
