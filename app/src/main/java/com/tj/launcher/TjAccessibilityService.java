@@ -3056,6 +3056,60 @@ public class TjAccessibilityService extends AccessibilityService {
         for (int i = 0; i < n.getChildCount(); i++) collectCards(n.getChild(i), depth + 1, out);
     }
 
+    // ---------------------------------------------------------------- BK1c: ONE fetch of the Recents windows per look
+    // Tj, 2026-11-08 18:16 UTC: "the custom launcher still loads from the lock screen on a delay". Emulator run #393 (section cs, no helper, plain PIN after a Quickstep session): the black cover stayed up 1466 ms after the keyguard went
+    // and about 1050 ms of that was the Recents loop, which looked at the screen three times per iteration (pressInSystemUi, anyTextPresent, findTaskCards), each time asking for every window and fetching every window's root
+    // (an IPC per window, the status bar and the navigation bar included). Same searches, same order, same package rules, but the roots are fetched ONCE per look and shared.
+    private List<AccessibilityNodeInfo> recentsRoots() {
+        List<AccessibilityNodeInfo> out = new java.util.ArrayList<>();
+        List<AccessibilityWindowInfo> windows = getWindows();
+        if (windows == null) return out;
+        for (AccessibilityWindowInfo w : windows) {
+            AccessibilityNodeInfo root = w.getRoot();
+            if (root == null) continue;
+            CharSequence pkg = root.getPackageName();
+            if (pkg != null && (pkg.toString().startsWith("com.android.launcher3") || "com.android.systemui".contentEquals(pkg))) out.add(root); else root.recycle();
+        }
+        return out;
+    }
+
+    private boolean pressInRoots(List<AccessibilityNodeInfo> roots, String label, String... packages) {
+        for (AccessibilityNodeInfo root : roots) {
+            String pkg = root.getPackageName() == null ? "" : root.getPackageName().toString();
+            boolean ok = false;
+            for (String p : packages) if (p.equals(pkg)) ok = true;
+            if (!ok) continue;
+            List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(label);
+            if (hit == null) continue;
+            for (AccessibilityNodeInfo n : hit) {
+                CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
+                if (t == null || !t.toString().trim().toLowerCase(java.util.Locale.ROOT).startsWith(label)) continue;
+                if (clickableAncestor(n).performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean anyTextInRoots(List<AccessibilityNodeInfo> roots, String[] texts, String[] packages) {
+        for (AccessibilityNodeInfo root : roots) {
+            String pkg = root.getPackageName() == null ? "" : root.getPackageName().toString();
+            boolean ok = false;
+            for (String p : packages) if (p.equals(pkg)) ok = true;
+            if (!ok) continue;
+            for (String t : texts) {
+                List<AccessibilityNodeInfo> hit = root.findAccessibilityNodeInfosByText(t);
+                if (hit != null && !hit.isEmpty()) return true;
+            }
+        }
+        return false;
+    }
+
+    private List<AccessibilityNodeInfo> cardsInRoots(List<AccessibilityNodeInfo> roots) {
+        List<AccessibilityNodeInfo> out = new java.util.ArrayList<>();
+        for (AccessibilityNodeInfo root : roots) collectCards(root, 0, out);
+        return out;
+    }
+
     /**
      * BE2/BE3 (clean start, no helper): empties the Recents screen COMPLETELY, whichever way this Recents screen allows. The first CI run of the clean start (emulator run #307) found "Clear all" not reachable in 1.8 s on
      * the AOSP Quickstep screen (the button sits at the far end of the carousel), so nothing was cleared. Every 40 ms: "Clear all" pressable = press it; "No recent items" = done; else EVERY card that offers a "Close" action is
@@ -3071,12 +3125,14 @@ public class TjAccessibilityService extends AccessibilityService {
             // The deadline is checked FIRST, in every branch: the first version returned early after pressing "Close" and could press a card that never went away for ever, starving the main thread
             // (emulator runs #313 / #314: no result line at all, a hung reset). A card is pressed at most three times; only nodes with a description (a card carries its app's name) count as cards.
             final boolean over = android.os.SystemClock.uptimeMillis() >= deadline;
+            List<AccessibilityNodeInfo> roots = null;   // BK1c: fetched once for this whole look, recycled in the finally below
             try {
                 if (!over) {
-                    if (pressInSystemUi("clear all", pk)) { finishRecentsEmpty(t0, done, "Clear all pressed", true, closed[0]); return; }
-                    if (anyTextPresent(new String[] {"no recent items"}, pk)) { finishRecentsEmpty(t0, done, "the list was empty", true, closed[0]); return; }
+                    roots = recentsRoots();
+                    if (pressInRoots(roots, "clear all", pk)) { finishRecentsEmpty(t0, done, "Clear all pressed", true, closed[0]); return; }
+                    if (anyTextInRoots(roots, new String[] {"no recent items"}, pk)) { finishRecentsEmpty(t0, done, "the list was empty", true, closed[0]); return; }
                     boolean pressedOne = false, leftover = false;
-                    for (AccessibilityNodeInfo card : findTaskCards()) {
+                    for (AccessibilityNodeInfo card : cardsInRoots(roots)) {
                         CharSequence d = card.getContentDescription();
                         String key = d == null ? "" : d.toString().trim();
                         if (key.isEmpty()) continue;
@@ -3096,6 +3152,7 @@ public class TjAccessibilityService extends AccessibilityService {
                     }
                 }
             } catch (Throwable t) { Log.e(TAG, "empty recents failed", t); }
+            finally { if (roots != null) for (AccessibilityNodeInfo r : roots) { try { r.recycle(); } catch (Throwable ignored) { } } }
             if (over) { finishRecentsEmpty(t0, done, saw[0] ? "STOPPED after " + closed[0] + " card(s), time ran out: Recents is NOT verified empty" : "no Clear all button and no card with a Close action found: nothing was cleared", false, closed[0]); return; }   // a partial clear never marks Recents clean (code review 2026-11-07): the next return tries again
             handler.postDelayed(this, 40);
         } });
