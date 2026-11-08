@@ -678,7 +678,12 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** TjHooks: the Launcher is about to draw: whatever is under the slot may change, the built patch is stale from now on. Cheap when the patch is already away. */
     void homeDrew() {
-        if (patchView == null || !patchHomeMode || overlayShown || homeCalRunning) return;
+        if (patchView == null) {   // no window (a calibration just ended, a failure removed it, the wallpaper changed): a draw of the Launcher is a sign of life, ask for a layer refresh now and then
+            long up = android.os.SystemClock.uptimeMillis();
+            if (up - homeRefreshAskedMs >= 2000 && !homeCalRunning && homeSwitchOn()) { homeRefreshAskedMs = up; refreshLayersSoon(); }
+            return;
+        }
+        if (!patchHomeMode || overlayShown || homeCalRunning) return;
         if (!patchRestable && !patchResting) return;
         patchRestable = false;
         if (patchResting) { patchResting = false; patchView.setAlpha(0f); }
