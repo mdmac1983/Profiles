@@ -1054,6 +1054,7 @@ public class TjAccessibilityService extends AccessibilityService {
             boolean armed = unlock.armedMethod() != null;
             boolean paused = CrashGuard.automationOff(app);
             LockLog.add(app, "LOCKPREP", why + ": locked=" + locked + " armed=" + armed + " mode=" + Mode.get(app) + (paused ? " PAUSED" : ""));
+            if (locked) ProcessLife.noteLock(app);   // BG1: at what priority does Android hold this process while the tablet is locked? (one sample a minute; the report prints it)
             if (locked && !paused) lockQuietNow(why);   // AK1: on the lock screen Wi-Fi and Bluetooth are off, from any launcher (what was on is remembered for a gesture unlock); AW2: and the quick settings show the rotation tile only
             boolean cleanedNow = false;
             if (locked && !armed && ProfileSession.preCleanAtLock(ProfileSession.preClean(app), Mode.isCustom(app), paused, true, false, ReturnReset.invisibleReady(app), preCleanedThisLock)) {
