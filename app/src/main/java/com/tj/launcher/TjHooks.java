@@ -95,6 +95,10 @@ public final class TjHooks {
     /** Called by Launcher.dispatchTouchEvent before the event is handled as usual. */
     public static void onTouch(android.app.Activity a, MotionEvent ev) {
         try {
+            if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {   // BI1: the finger is down: the real-pixel patch over the Screenshot slot goes away in this very frame (before the press feedback and any scroll), ACTION_OUTSIDE is only the second guard
+                lastHomeTouchMs = android.os.SystemClock.uptimeMillis();
+                try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeTouchDown(); } catch (Throwable ignored) { }
+            }
             switch (ev.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN: downHome = homeScreenShowing() && EntranceWatcher.on(a.getApplicationContext(), SecretEntrances.Method.FLICK); multiTouch = false;   // nothing else is done for a touch while the entrance is off or the home screen is not showing
                     if (downHome) { downX = ev.getRawX(); downY = ev.getRawY(); downAt = ev.getEventTime(); } break;
