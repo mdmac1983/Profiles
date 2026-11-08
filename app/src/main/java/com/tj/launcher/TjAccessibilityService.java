@@ -310,6 +310,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try { KeepAliveService.ensure(this); } catch (Throwable t) { Log.e(TAG, "keep-alive failed", t); }   // AA2: after a restart / update the helper reconnects first: bring the service back
         Log.i(TAG, "connected; power mode=" + Features.powerMode(this) + " custom=" + Mode.isCustom(this));
         LockLog.add(this, "SERVICE", "connected, mode " + Mode.get(this) + (CrashGuard.automationOff(this) ? " PAUSED" : ""));
+        curtainPreloadAsync();   // BL1: the stored home curtain is read into memory now (a worker thread), so the cover at the next Enter tap never waits for a disk read
         handler.postDelayed(new Runnable() { @Override public void run() { reconcileAfterGap("the helper (re)connected"); } }, 1500);   // AC1: was the helper away at an unlock? (after the connect has settled)
         handler.postDelayed(new Runnable() { @Override public void run() { try { if (keyguardLocked() && !CrashGuard.automationOff(getApplicationContext())) lockQuietNow("the helper connected on the lock screen"); } catch (Throwable t) { Log.e(TAG, "connect lock rules failed", t); } } }, 2000);   // AW2 / AW3: the first lock screen after a restart (or after the helper was away) gets the same rules
         try { BatterySaverGuard.start(this); } catch (Throwable t) { Log.e(TAG, "battery saver guard failed", t); }
