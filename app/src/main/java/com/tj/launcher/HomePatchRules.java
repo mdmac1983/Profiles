@@ -161,6 +161,7 @@ public final class HomePatchRules {
         if (!s.permission) return "needs 'Allow wallpaper access' in Launcher control";
         if (s.running) return "a calibration is running";
         if (s.otherCalibration) return "the lock-screen calibration is running";
+        if (!s.positionKnown) return "the wallpaper position is not known yet";   // BEFORE hasCrop: neither "there is a crop" nor "there is none" can be said for a position nobody has reported
         if (s.hasCrop) return "already calibrated for this wallpaper and page";
         if (!s.rectKnown) return "open the power menu once so the menu's place is learned";
         if (!s.homeAtRest) return "the home screen is not at rest";
