@@ -1,0 +1,174 @@
+package com.tj.launcher;
+
+/**
+ * BI1 (Tj, 2026-11-08 ~04:00 UTC: "For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen."). The pure rules (JVM-tested,
+ * no Android classes) of the REAL-PIXEL patch over the stock power menu's Screenshot slot on the UNLOCKED custom home screen. Design and the reasons: {@code research/HOME_PATCH_2026-11-08.md}.
+ *
+ * The lock screen's patch rests over a still picture. The home screen is a live UI (the system wallpaper plus whatever the Launcher draws), so the patch is only correct while nothing under it changes. It is
+ * therefore built from two layers (a calibrated wallpaper-only crop and the Launcher's own pixels), shown ONLY while the home is at rest, and everything else falls back to today's replacement panel.
+ */
+public final class HomePatchRules {
+    private HomePatchRules() {}
+
+    /** The switch in Launcher control (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like the other behaviour switches). */
+    public static final String KEY = "home_patch";
+
+    public static boolean defaultOn(boolean debuggable) { return !debuggable; }
+
+    /** How long after a finger went down the patch stays away: the press feedback and the scroll start follow within ~200 ms; the stock hide ({@code ACTION_OUTSIDE}) comes 60-70 ms after the touch. */
+    public static final long TOUCH_AWAY_MS = 700;
+    /** How long the Launcher's view tree must NOT have drawn before the patch may be visible (a draw means something under it may have changed). */
+    public static final long DRAW_QUIET_MS = 250;
+
+    // ================================================================ is the patch window wanted at all?
+
+    /** Everything the decision reads, by name. All false = nothing is wanted. */
+    public static final class Facts {
+        /** the switch in Launcher control */
+        public boolean switchOn;
+        /** the power-menu mode is "hide_screenshot" (the old "wallpaper" mode keeps its own home patch, "off" and "block" have none) */
+        public boolean coverMode;
+        /** the custom launcher is the active one (not Quickstep) */
+        public boolean customMode;
+        /** the keyguard is gone */
+        public boolean unlocked;
+        public boolean screenOn;
+        /** the Launcher is resumed and in its plain home state (not All Apps, not spring-loaded) */
+        public boolean homeShowing;
+        /** a folder, popup or other floating view is open over the workspace */
+        public boolean floatingViewOpen;
+        /** an icon drag or a state change is running */
+        public boolean busy;
+        /** the stock panel's rectangle was learned (it is shared with the lock screen) */
+        public boolean rectKnown;
+        /** a wallpaper-only crop is stored for the current wallpaper, display size and wallpaper offset */
+        public boolean cropValid;
+        /** the home calibration (screenshot with the Launcher hidden) is running right now */
+        public boolean calibrating;
+        /** the crash breaker tripped or "Restore everything" paused the launcher's automation */
+        public boolean automationOff;
+    }
+
+    /** Why the patch window is NOT wanted now: the first failing condition in plain words, or "" when it is. One function for the decision and the words (Launcher control, the tablet report). */
+    public static String whyNot(Facts f) {
+        if (!f.switchOn) return "switch off";
+        if (!f.coverMode) return "power menu mode is not 'hide Screenshot'";
+        if (f.automationOff) return "automation paused";
+        if (!f.customMode) return "Quickstep";
+        if (!f.unlocked) return "lock screen";
+        if (!f.screenOn) return "screen off";
+        if (!f.homeShowing) return "not on the plain home screen";
+        if (f.floatingViewOpen) return "a folder or popup is open";
+        if (f.busy) return "dragging or changing screen";
+        if (f.calibrating) return "calibrating";
+        if (!f.rectKnown) return "open the power menu once so the menu's place is learned";
+        if (!f.cropValid) return "not calibrated for this wallpaper and page yet";
+        return "";
+    }
+
+    public static boolean wanted(Facts f) { return whyNot(f).isEmpty(); }
+
+    // ================================================================ is the patch's content current, and is it visible?
+
+    /**
+     * Is the built patch current? It was requested at {@code builtAtMs} (uptime ms); any draw of the Launcher's view tree after that moment may have changed the pixels under the slot, so the patch is stale. The
+     * wallpaper crop it was built with must also still be the one for now ({@code keyMatches}: wallpaper, display size, rotation, wallpaper offset step).
+     */
+    public static boolean compositeFresh(long builtAtMs, long lastDrawMs, boolean keyMatches) {
+        return keyMatches && builtAtMs > 0 && builtAtMs >= lastDrawMs;
+    }
+
+    /** Should a new patch be built now? Only when there is none that is fresh, none is being built, and the home has been quiet for {@link #DRAW_QUIET_MS}. */
+    public static boolean buildDue(long now, long lastDrawMs, boolean fresh, boolean building) {
+        if (fresh || building) return false;
+        return lastDrawMs <= 0 || now < lastDrawMs || now - lastDrawMs >= DRAW_QUIET_MS;
+    }
+
+    /**
+     * Is the resting patch visible? Only when it is fresh and wanted ({@code restable}) AND no finger went down for {@link #TOUCH_AWAY_MS} AND the Launcher has not drawn for {@link #DRAW_QUIET_MS}.
+     * (The stock dialog's own window event shows it regardless of the two timers when it is {@code restable}: a fresh patch is correct even a moment after a touch.)
+     */
+    public static boolean visible(boolean restable, long now, long lastTouchDownMs, long lastDrawMs) {
+        if (!restable) return false;
+        boolean touchOk = lastTouchDownMs <= 0 || now < lastTouchDownMs || now - lastTouchDownMs >= TOUCH_AWAY_MS;
+        boolean drawOk = lastDrawMs <= 0 || now < lastDrawMs || now - lastDrawMs >= DRAW_QUIET_MS;
+        return touchOk && drawOk;
+    }
+
+    /** Milliseconds until the two timers allow the patch to show (0 = now), for scheduling the next look. */
+    public static long waitMs(long now, long lastTouchDownMs, long lastDrawMs) {
+        long a = lastTouchDownMs <= 0 || now < lastTouchDownMs ? 0 : TOUCH_AWAY_MS - (now - lastTouchDownMs);
+        long b = lastDrawMs <= 0 || now < lastDrawMs ? 0 : DRAW_QUIET_MS - (now - lastDrawMs);
+        return Math.max(0, Math.max(a, b));
+    }
+
+    // ================================================================ the wallpaper crop: which one is for now
+
+    /**
+     * The wallpaper offset as a step number: the Launcher moves the wallpaper only with two or more pages (offset 0 with one page, steps of 1/(max(4, pages) - 1) otherwise), so offsets that differ by less
+     * than a thousandth are the same position.
+     */
+    public static int step(float wallpaperX) {
+        if (Float.isNaN(wallpaperX)) return 0;
+        return Math.round(Math.max(0f, Math.min(1f, wallpaperX)) * 1000f);
+    }
+
+    /** Two offset steps are the same position (the offset is reported as a float that may differ in its last digits). */
+    public static boolean sameStep(int a, int b) { return Math.abs(a - b) <= 2; }
+
+    /** What a stored wallpaper crop is valid for: one wallpaper picture (system), one rotation, one display size. Same shape as {@link PatchShot#sig}. */
+    public static String sig(long wallpaperId, int rotation, int dispW, int dispH) { return PatchShot.sig(wallpaperId, rotation, dispW, dispH); }
+
+    /** The private file of a crop (per rotation and offset step). */
+    public static String fileName(int rotation, int step) { return "homeshot_r" + rotation + "_x" + step + ".png"; }
+
+    /** The preference that holds a crop's meta ({@code sig#left#top}). */
+    public static String metaKey(int rotation, int step) { return "home_shot_r" + rotation + "_x" + step; }
+
+    // ================================================================ the home calibration: when may it start by itself?
+
+    /** The calibration hides the Launcher's view tree for about a second and the system takes a screenshot (a camera flash): it only starts when nothing could be disturbed. */
+    public static final long CAL_TOUCH_QUIET_MS = 3000, CAL_DRAW_QUIET_MS = 1500, CAL_SCREEN_ON_MS = 5000, CAL_MIN_GAP_MS = 60_000;
+    public static final int CAL_MAX_PER_DAY = 6;
+
+    public static final class CalState {
+        public boolean switchOn, coverMode, customMode, unlocked, screenOn, homeAtRest, rectKnown, hasCrop, running, menuOpen, permission, automationOff, otherCalibration;
+        /** ms since a finger went down / since the Launcher last drew / since the screen came on / since the last calibration start; a huge number = never */
+        public long msSinceTouch = Long.MAX_VALUE, msSinceDraw = Long.MAX_VALUE, msSinceScreenOn = Long.MAX_VALUE, msSinceLastStart = Long.MAX_VALUE;
+        public int startsToday;
+    }
+
+    /** Why the home calibration must NOT start now: the first reason in plain words, or "" = go. Every "not yet" reason is shown in Launcher control. */
+    public static String calDecision(CalState s) {
+        if (!s.switchOn) return "switch off";
+        if (!s.coverMode) return "power menu mode is not 'hide Screenshot'";
+        if (s.automationOff) return "automation paused";
+        if (!s.customMode) return "Quickstep";
+        if (!s.unlocked) return "lock screen";
+        if (!s.screenOn) return "screen off";
+        if (!s.permission) return "needs 'Allow wallpaper access' in Launcher control";
+        if (s.running) return "a calibration is running";
+        if (s.otherCalibration) return "the lock-screen calibration is running";
+        if (s.hasCrop) return "already calibrated for this wallpaper and page";
+        if (!s.rectKnown) return "open the power menu once so the menu's place is learned";
+        if (!s.homeAtRest) return "the home screen is not at rest";
+        if (s.menuOpen) return "the power menu is open";
+        if (s.msSinceTouch < CAL_TOUCH_QUIET_MS) return "touched a moment ago";
+        if (s.msSinceDraw < CAL_DRAW_QUIET_MS) return "the home screen is still moving";
+        if (s.msSinceScreenOn < CAL_SCREEN_ON_MS) return "the screen came on a moment ago";
+        if (s.msSinceLastStart < CAL_MIN_GAP_MS) return "tried a moment ago";
+        if (s.startsToday >= CAL_MAX_PER_DAY) return "tried " + CAL_MAX_PER_DAY + " times today";
+        return "";
+    }
+
+    /**
+     * May the calibration screenshot be accepted? The Launcher was hidden from {@code hiddenAtMs} and shown again at {@code shownAtMs} (uptime ms; 0 = still hidden); the system wrote the screenshot at
+     * {@code shotAtMs}. Only a screenshot taken while the Launcher was hidden, with a little slack at the start (the compositor needs a frame or two to show the hidden state), is wallpaper-only.
+     */
+    public static final long HIDE_SETTLE_MS = 120;
+    public static boolean shotWhileHidden(long hiddenAtMs, long shownAtMs, long shotAtMs) {
+        if (hiddenAtMs <= 0 || shotAtMs <= 0) return false;
+        if (shotAtMs < hiddenAtMs + HIDE_SETTLE_MS) return false;
+        return shownAtMs <= 0 || shotAtMs <= shownAtMs;
+    }
+}
