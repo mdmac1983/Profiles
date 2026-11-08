@@ -2976,11 +2976,11 @@ hfrun(){ local L="$1" W="${2:-warm}"   # one FILMED opening (the menu opens by a
   hfinput back "input keyevent KEYCODE_BACK"; sleep 3.4
   adb pull /sdcard/hf.mp4 "$OUT/hf-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/hf-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/hf-metrics.txt" > /dev/null
-  hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
+  hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
   [ -n "$(hfget $L onset)" ] && rm -f "$OUT/hf-$L.mp4"; }   # the films are large; the numbers and the curves are in the results (a film the analysis could not read is kept for the artifact)
-hfline(){ local L="$1" sh mx fo sc   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
-  sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
-  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0}"; }
+hfline(){ local L="$1" sh mx fo sc pc   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
+  sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"; pc="$(grep -o 'pencil took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
+  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0} pen=${pc:-0}"; }
 hfmed(){ local k v; for k in 1 2 3 4 5; do v="$(hfget $1f$k $2)"; [ -n "$v" ] && echo "$v"; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }
 hfok(){ local k v n=0; for k in 1 2 3 4 5; do v="$(hfget $1f$k open_shape)"; awk -v f="${v:-9}" 'BEGIN{exit !(f+0 < 0.08)}' && n=$((n+1)); done; echo $n; }
 hfarm(){ # hfarm <tag> <arm 0|1|2>: restart with that treatment of a burst's first window event, wait for the patch to rest, film five openings
