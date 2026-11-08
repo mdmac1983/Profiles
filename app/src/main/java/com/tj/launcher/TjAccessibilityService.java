@@ -745,7 +745,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     // ---------------------------------------------------------------- the calibration: the Launcher hidden, one system screenshot of the plain wallpaper
 
-    private final Runnable homeCalTrigger = new Runnable() { @Override public void run() { try { maybeHomeCalibrate("timer", false); } catch (Throwable t) { Log.e(TAG, "home calibration trigger failed", t); } } };
+    private final Runnable homeCalTrigger = new Runnable() { @Override public void run() { try { maybeHomeCalibrate("timer"); } catch (Throwable t) { Log.e(TAG, "home calibration trigger failed", t); } } };
     private final Runnable homeCalShoot = new Runnable() { @Override public void run() {
         try { if (!homeCalRunning) return; Log.i(TAG, "HOMEPATCH asking the system for a screenshot of the plain wallpaper"); homeStatus("taking the screenshot of the plain wallpaper ..."); performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT); } catch (Throwable t) { Log.e(TAG, "home screenshot failed", t); }
     } };
