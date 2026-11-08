@@ -1,13 +1,13 @@
-# CHECKPOINT 649 — read me first, then TASKS.md
+# CHECKPOINT 650 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T01:03:41Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `ccr-da0d2646-5yt029` · **builds on:** `795213d` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T01:10:20Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `ccr-da0d2646-5yt029` · **builds on:** `adb9886` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.6 RELEASED 01:00 UTC (https://github.com/tjshea90/Launcher/releases/tag/v0.8.6, android.yml run 33 id 42432136845 on 9e18849) and RECORDED in BUILDLOG; BF1 (animations off only inside Quickstep) done: TASKS ticked, HANDOFF 0i, research/ANIMATIONS_2026-11-08.md, TABLET_CHECKLIST_v0.8.6.md, CLAUDE.md lessons
+BG1 (fast, invisible prep of the custom launcher from the lock screen, RAM) and BG2 (power menu in the custom launcher: hide Screenshot with no flash, identical to the lock-screen one) written into TASKS.md in Tj's words; nothing coded
 
 ## Do this next
-NOTHING is waiting on Claude except new requests. Waiting on Tj: install v0.8.6 and do research/TABLET_CHECKLIST_v0.8.6.md (BF1i: Quickstep feels faster? lock-screen power menu + patch unchanged? plain PIN animates?), answer BF1j (animations off in the whole Quickstep session, or only on the Quickstep home screen?), BE4 (v0.8.5 checklist). Open from earlier: BB1 / BB3c / BC4 / AU5 / RS1 / CBR2 / AF2.
+research first (read-only): research/RECENTS_AND_UNLOCK_AUDIT_2026-11-07.md, PERF_AUDIT.md, AOSP10_BATTERYSAVER_AND_POWERMENU, grep research for getevent / keytest / RRO / overlay; map the power-menu cover for the custom launcher (PowerMenuRule, PatchRest, PatchFade, PatchShot, evaluate/showOverlay); then answer BG1a / BG2a
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ NOTHING is waiting on Claude except new requests. Waiting on Tj: install v0.8.6 
 
 ## Last ten checkpoints
 ```
+  66f6f86 ckpt 649: v0.8.6 RELEASED 01:00 UTC (https://github.com/tjshea90/Launcher/releases/tag/v
   3894239 ckpt 648: v0.8.6 RELEASE build triggered 00:58 UTC: android.yml run 33 id 42432136845 on
   9e18849 ckpt 647: gated v0.8.6 (code 31) and pushed it: the handoff self-test, the full unit sui
   709626c ckpt 646: BF1 RE-RUNS dispatched 00:46 UTC on 0bded84 (product code = 72f12a6): #331 id 
@@ -25,8 +26,7 @@ NOTHING is waiting on Claude except new requests. Waiting on Tj: install v0.8.6 
   72f12a6 ckpt 642: BF1 v0.8.6 (code 31) candidate: AnimationHolds state machine extracted + 16 te
   a668ab9 ckpt 641: BF1: emulator run #326 id 42428062827 {an} dispatched 00:04 UTC on 24eeab1 (ck
   24eeab1 ckpt 640: BF1 review fixes in (code-review high: 6 findings, all valid): reconcile at pr
-  2063d5d ckpt 639: BF1 built: AnimationPolicy (pure) + holds/level-triggered sync in AnimationSpe
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(3 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
