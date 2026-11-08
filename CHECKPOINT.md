@@ -1,13 +1,13 @@
-# CHECKPOINT 731 — read me first, then TASKS.md
+# CHECKPOINT 732 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T21:42:25Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2ax1r4` · **builds on:** `81688a8` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T21:55:08Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2ax1r4` · **builds on:** `913947f` (this checkpoint is the commit after it)
 
 ## Just done
-BL1d: emulator section cu written (calibrate with home_patch+home_curtain ON, wait CURTAIN picture saved, Quickstep session, no helper, plain PIN, screenshots inside the cover life vs bare home MAE, negative control, swallowed tap, real home at the end) + gate-map line + workflow list; handoff self-test 38/0, unit suite 726/0. First cu run dispatched next
+BL1d first cu run #418 id 42526557769 (922d886): 13 PASS 1 FAIL (CU5). Wall kept 1 s, curtain saved 3 s at 600x1024 (layer = full window, no 2nd flash), cover was curtain, touches switch + 1 swallowed tap OK, real home at end. MAE vs bare: caps 2,4,5 = 0.000884 (static sliver), cap 3 = 0.014 and the 2nd tap NOT swallowed (cover life 3.0 s). Added diagnostics (diff bbox, noise floor, tap times, show_touches), re-dispatched cu ~21:55
 
 ## Do this next
-read the cu run (RESULTS tail ~60; INFO lines 'CU B' / 'CU C'): CU1/CU2 picture kept+saved, CU3 curtain used, CU5 MAE < 0.01, CU8 swallowed tap; fix what the INFO shows; then solo cs, uf, b4 (black path unchanged), then /code-review high
+read the 2nd cu run INFO 'CU C: where the differing pixels sit' + 'CU B: touch indicators': locate the sliver (nav bar? status bar?) and the cap-3 anomaly; fix product or threshold with evidence; then cs, uf, b4 solo (black path), /code-review high, gate, ship v0.8.12
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ read the cu run (RESULTS tail ~60; INFO lines 'CU B' / 'CU C'): CU1/CU2 picture 
 
 ## Last ten checkpoints
 ```
+  922d886 ckpt 731: BL1d: emulator section cu written (calibrate with home_patch+home_curtain ON, 
   3791c9b ckpt 730: BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kep
   b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
   631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
@@ -25,8 +26,7 @@ read the cu run (RESULTS tail ~60; INFO lines 'CU B' / 'CU C'): CU1/CU2 picture 
   cad4ed9 ckpt 724: RELEASE BUILD dispatched ~20:56 UTC: android.yml main full_build=true on 206b3
   38f3671 ckpt 723: gated v0.8.11 (code 36) and pushed it: the handoff self-test, the full unit su
   7ae1ed7 ckpt 722: b6 samples #408 id 42519172669 / #409 id 42519175423 (head 1986107): quickstep
-  f945d11 ckpt 721: b6 #407 id 42518553791: BK1b lock phases cover shown at 3 openings in BOTH sto
 ```
 
-(4 automatic checkpoint(s) since the last deliberate one — the
+(3 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
