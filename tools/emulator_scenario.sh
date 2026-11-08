@@ -512,7 +512,7 @@ pen_sample(){ # "cover=<shown|hidden|none> showing=<keyguard> sb=<the StatusBar 
   D="$(adb shell dumpsys window windows 2>/dev/null)"
   blk="$(echo "$D" | grep -A10 'TjPencilCover}' | head -14)"
   if [ -z "$blk" ]; then st=none; elif echo "$blk" | grep -q 'NOT_TOUCHABLE'; then st=hidden; else st=shown; fi
-  sb="$(echo "$D" | awk '/u0 StatusBar}/{f=1} f && /frame=\[/ {match($0,/frame=\[[0-9,]*\]\[[0-9,]*\]/); print substr($0,RSTART+6,RLENGTH-6); exit}')"
+  sb="$(echo "$D" | awk '/u0 StatusBar}/{f=1} f { l=tolower($0); if (match(l, /m?frame=\[[0-9,]*\]\[[0-9,]*\]/)) { s=substr(l, RSTART, RLENGTH); sub(/^m?frame=/, "", s); print s; exit } }')"
   echo "cover=$st $(kg_state) sb=${sb:-?}"
 }
 pen_none(){ local s; for s in "$@"; do case "$s" in cover=shown*) return 1;; esac; done; return 0; }
