@@ -32,8 +32,10 @@ public final class HomeShot {
         try {
             File f = file(c, rot, step), tmp = new File(f.getPath() + ".tmp");
             FileOutputStream o = new FileOutputStream(tmp);
-            try { crop.compress(Bitmap.CompressFormat.PNG, 100, o); } finally { o.close(); }
-            if (!tmp.renameTo(f)) return false;
+            boolean written;
+            try { written = crop.compress(Bitmap.CompressFormat.PNG, 100, o); } finally { o.close(); }
+            if (!written || tmp.length() <= 0) { tmp.delete(); Log.e(TAG, "the home shot could not be written (disk full?)"); return false; }   // a failed write must never become "the crop" (code review 2026-11-08: has() would say yes, load() null, for ever)
+            if (!tmp.renameTo(f)) { tmp.delete(); return false; }
             Features.setString(c, HomePatchRules.metaKey(rot, step), signature + "#" + left + "#" + top);
             addToIndex(c, rot, step);
             prune(c, wallpaperId, dispW, dispH);
