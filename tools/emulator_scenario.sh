@@ -2863,16 +2863,16 @@ if [ -n "$SLOT" ]; then
   info "HP6: 3.5 s after the tap the (shifted) patch vs the bare home screen: MAE $MA_T"
   check "HP6: ... and it comes back by itself after the finger (the shifted patch is visible again: MAE > 0.01)" awk -v m="$MA_T" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
 fi
-HP_S0="$(hpcount 'HOMEPATCH stale')"
-adb shell input swipe 8 700 8 700 900; sleep 2; adb shell input keyevent KEYCODE_BACK; sleep 4     # a long press on the empty home screen opens the Launcher's own popup: the Launcher draws
-HP_S1="$(hpcount 'HOMEPATCH stale')"
+HP_S0="$(hpcount 'HOMEPATCH stale')"; HP_B0="$(hpcount 'HOMEPATCH patch built')"
+adb shell input swipe 8 700 8 700 900; sleep 2; adb shell input keyevent KEYCODE_BACK; sleep 5     # a long press on the empty home screen opens the Launcher's own popup: the Launcher draws
+HP_S1="$(hpcount 'HOMEPATCH stale')"; HP_B1="$(hpcount 'HOMEPATCH patch built')"
+info "HP7: stale lines $HP_S0 -> $HP_S1, built lines $HP_B0 -> $HP_B1"
 check "HP7: a draw of the Launcher makes the built patch stale (log 'HOMEPATCH stale')" bash -c "[ ${HP_S1:-0} -gt ${HP_S0:-0} ]"
-info "HP7: status after the draw: $(hpstatus | cut -c1-160)"
-check "HP7: ... and it is built again when the home is quiet (status 'home patch built; fresh')" bash -c "hpstatus 2>/dev/null | grep -q 'home patch built; fresh' || true; [ -n \"\$(adb shell \"run-as $PKG cat shared_prefs/tj_features.xml\" 2>/dev/null | grep -o 'home patch built; fresh')\" ]"
+check "HP7: ... and it is built again when the home is quiet (a new 'HOMEPATCH patch built' line)" bash -c "[ ${HP_B1:-0} -gt ${HP_B0:-0} ]"
 # ---------------- phase D: another wallpaper = calibrated again, the old crop is deleted
 hpint home_patch_test_shift 0
+adb logcat -c
 hpwall
-adb logcat -c; home
 HP_T4="$(hpwait 'HOMEPATCH calibration end' 70)"; sleep 3
 hplog | grep "HOMEPATCH" > "$OUT/hp-d-log.txt"
 info "HP D: the new wallpaper was calibrated after $HP_T4 s; crops stored: $(hpcrops); log: $(cut -c25-120 "$OUT/hp-d-log.txt" | tr '\n' '|' | cut -c1-360)"
