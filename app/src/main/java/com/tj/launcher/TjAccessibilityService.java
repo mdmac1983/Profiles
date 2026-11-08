@@ -640,6 +640,7 @@ public class TjAccessibilityService extends AccessibilityService {
         try {
             if (patchView == null || !patchHomeMode || overlayShown || !patchResting) return;
             patchView.setAlpha(0f);
+            Log.i(TAG, "HOMEPATCH away: a finger went down");
             handler.removeCallbacks(homeShowCheck); handler.postDelayed(homeShowCheck, HomePatchRules.TOUCH_AWAY_MS + 30);
         } catch (Throwable t) { Log.e(TAG, "home touch hide failed", t); }
     }
