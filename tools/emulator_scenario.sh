@@ -835,6 +835,9 @@ check "PG3: the intake tool reads the short summary too (exit 0, FACTS.md says i
 info "PG2: report $(wc -c < "$OUT/x-report.txt" 2>/dev/null) bytes, $(wc -l < "$OUT/x-report.txt" 2>/dev/null) lines; keytest: $(grep '^keytest:' "$OUT/x-autorun-done.txt" | cut -c1-330)"
 check "PG2: the report holds the launcher's own state (version, mode, helper, accessibility, crash breaker)" rep_all 'THE LAUNCHER ON THIS TABLET' '^launcher version: ' '^mode: ' '^shell helper reachable: yes' '^accessibility helper bound: ' '^crash breaker tripped: '
 check "AD8: the report shows what the launcher costs here (process memory, start-up time, helper load)" rep_all '^process memory \(AD8\): total PSS [0-9]+ MB, java heap [0-9]+ of [0-9]+ MB' '^start-up \(AD8\): Application\.onCreate [0-9]+ ms, process fork to the end of it [0-9]+ ms' '^accessibility helper load \(AD8\): connected [0-9]+ min, [0-9]+ events'
+check "BG1 / HLP1: the report shows how often the process started and the helper's flight recorder" rep_all '^process life \(BG1, can the launcher be kept in memory\?\): this process is ' '^shell helper flight recorder \(HLP1, why does the helper die\?\): '
+info "BG1: $(grep -E '^process life \(BG1' "$OUT/x-report.txt" | cut -c1-260)"
+info "HLP1: $(grep -A3 -E '^shell helper flight recorder' "$OUT/x-report.txt" | tr '\n' '|' | cut -c1-360)"
 info "AD8: $(grep -E '^(process memory|start-up|accessibility helper load) \(AD8\)' "$OUT/x-report.txt" 2>/dev/null | tr '\n' '|' | cut -c1-420)"
 check "PG2: the report ran the launcher's own readers on this system (PARSER SELF-CHECK: Recents tasks, apps with a notification)" rep_all 'PARSER SELF-CHECK' '^Recents tasks parsed: [0-9]' '^Apps with a notification now'
 check "PG2: the probe list added the samples (notification records, side-key device, policy_control, crash log, the launcher's log)" rep_all 'NotificationRecord\(' 'getevent -pl' 'settings get global policy_control' 'logcat -b crash' 'TjReset:I'
