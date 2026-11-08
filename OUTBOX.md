@@ -1234,3 +1234,14 @@
 >
 > I'll read the gate results, ship v0.8.11 if they're green, and answer your 18:16 message in full then.
 <!-- sha:047da3998255 -->
+
+## 2026-11-08T19:57:28Z
+> The gate did not pass, so v0.8.11 is **not shipped yet**. Here is where the 4 failures stand:
+>
+> - **UF2** is not a regression. v0.8.10 fails it in exactly the same way: the stock home screen resumes under the black cover during the no-helper unlock. The check was stale, so I rewrote it to fail only if that happens outside the cover, where you could see it.
+> - **CS-B5** shows the same effect, and I made it cover-aware the same way.
+> - **CS-A3 and HP4** were flukes of a gate run in which the emulator's native crash occurred. Run alone on the same code, HP4 passed completely and CS-A3 passed.
+> - **The pencil on the lock screen (BK1b) is still open.** The check that failed looked for a log line that is not written when the cover is already up, so it didn't show the pencil was visible. It now measures whether the pencil's rectangle is plain white in the screenshot, with a control on a panel where no cover is wanted. If it still shows the pencil, that is a real bug and I'll fix it.
+>
+> I changed only test code, so the product is unchanged since the gated commit. Three solo runs (`uf`, `cs`, `b6`) are going and should be done around 20:04 UTC. I'll read them and then decide whether to ship.
+<!-- sha:7dcd26a0a569 -->
