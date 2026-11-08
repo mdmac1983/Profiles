@@ -3252,7 +3252,10 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     private void pinPadCameUp(String why) {
         try {
-            if (patchView == null || !patchLockMode || patchHomeMode) return;   // BI1 (audit 2026-11-08): the home patch is only up while UNLOCKED; a keyguard-class event then (a screen-unpinning bouncer, the keyguard's teardown) must not hide it over an open menu, which would show the stock Screenshot entry
+            if (patchView == null || !patchLockMode) return;
+            // BI1 (audit + review 2026-11-08): while the screen is really UNLOCKED the home patch ignores keyguard-class events (a screen-unpinning bouncer, the keyguard's teardown): hiding it over an open menu would show the
+            // stock Screenshot entry. A LOCKED screen whose window is still the home flavour (the layer refresh follows the wake by about 400 ms) is hidden as before: a stale copy of the home screen must never stay over the lock screen.
+            if (patchHomeMode && !keyguardLockedFast()) return;
             long now = android.os.SystemClock.uptimeMillis();
             lastPadSignMs = now;
             pinHiddenUntilMs = Math.max(pinHiddenUntilMs, now + 2500);   // BE1: every sign of the pad pushes the return out (an away patch must not come back over the pad)
