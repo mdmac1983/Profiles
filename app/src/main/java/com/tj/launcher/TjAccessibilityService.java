@@ -197,6 +197,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private final Runnable restRecheck = new Runnable() { @Override public void run() {
         try {
             if (patchView == null || !patchLockMode) return;
+            if (patchHomeMode) { patchShow(overlayShown); scheduleHomeBuild(); return; }   // BI1: nothing of the lock screen's calibration applies
             if (patchShotBmp == null && PatchShot.has(TjAccessibilityService.this, rotation(), shotSig())) loadStoredShot();
             patchShow(overlayShown);
             maybeAutoCalibrate("the patch window settled");   // AW5
