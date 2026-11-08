@@ -484,6 +484,24 @@ adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows-
 adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log2.txt" 2>&1
 check "B6: a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows.txt)\" -ge 1 ]"
 check "B6/D4: when the panel closes the cover is hidden (the window is kept warm for an instant next time)" grep -qE 'PENCIL cover (hidden|removed)' "$OUT/pencil-log2.txt"
+# ---- BK1b (Tj, 2026-11-08 18:16 UTC, about v0.8.10: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the same quick-settings panel on the LOCK screen. A marker line is written to the
+#      log right before the panel is opened, so the delay until the cover appears can be read (the lock screen defers part of the work of a window burst: quietBurst, 120 ms).
+adb shell locksettings set-pin 1234 >/dev/null 2>&1
+palock
+adb logcat -c
+adb shell log -t TjA11y "BK1b marker expand"
+adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock
+adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-lock-windows.txt" 2>&1
+adb logcat -d -v time -s TjA11y:I > "$OUT/pencil-lock-log.txt" 2>&1
+adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-edit.txt"
+B6T0="$(grep 'BK1b marker' "$OUT/pencil-lock-log.txt" | head -1 | awk '{print $2}')"; B6T1="$(grep 'PENCIL cover shown' "$OUT/pencil-lock-log.txt" | head -1 | awk '{print $2}')"
+B6MS="$(awk -v a="$B6T0" -v b="$B6T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
+info "BK1b: lock screen, quick-settings panel opened: pencil nodes on screen $(cat $OUT/pencil-lock-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-windows.txt), the cover appeared $B6MS ms after the panel was asked to open; log: $(grep -E 'PENCIL|PATCH' "$OUT/pencil-lock-log.txt" | sed 's/^.*TjA11y *: //' | cut -c1-60 | head -n 6 | tr '\n' '|')"
+adb shell cmd statusbar collapse; sleep 2
+adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+if [ "$(cat $OUT/pencil-lock-edit.txt 2>/dev/null)" -ge 1 ] 2>/dev/null; then
+  check "BK1b: on the LOCK screen a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-lock-windows.txt)\" -ge 1 ]"
+else info "BK1b: no pencil on this emulator's lock-screen panel (or the panel did not open): nothing to cover"; fi
 fi # section b6
 if want b4; then # section b4
 ensurehome
