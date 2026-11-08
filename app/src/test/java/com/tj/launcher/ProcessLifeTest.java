@@ -33,6 +33,13 @@ public class ProcessLifeTest {
         assertEquals(2, ProcessLife.countSince(s, now, H));
     }
 
+    @Test public void oneLockSamplePerMinuteIsPlenty() {
+        assertTrue(ProcessLife.sampleDue(0, 5 * MIN));
+        assertTrue(ProcessLife.sampleDue(10 * MIN, 11 * MIN));
+        assertTrue("three preparations within one lock: only the first samples", !ProcessLife.sampleDue(10 * MIN, 10 * MIN + 6500));
+        assertTrue("a clock that went backwards samples again", ProcessLife.sampleDue(10 * MIN, 9 * MIN));
+    }
+
     @Test public void agesReadInPlainUnits() {
         assertEquals("12 s", ProcessLife.age(12_000));
         assertEquals("3 min", ProcessLife.age(3 * MIN + 5000));

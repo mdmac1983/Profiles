@@ -48,6 +48,9 @@ public final class ProcessLife {
         return n;
     }
 
+    /** Pure: is a new lock sample due? The lock preparation runs up to three times per lock (screen off + 0.7 s, + 6.5 s, the locked wake): one sample per minute is plenty. */
+    public static boolean sampleDue(long lastAtMs, long nowMs) { return lastAtMs <= 0 || nowMs < lastAtMs || nowMs - lastAtMs >= 60_000L; }
+
     /** Pure: "3 min", "2 h 5 min", "1 d 3 h" for a duration in milliseconds. */
     public static String age(long ms) {
         if (ms < 0) return "?";
@@ -115,6 +118,10 @@ public final class ProcessLife {
     /** Called when the lock preparation runs (the screen has just gone off): samples this process's oom_score_adj and importance. Never throws. */
     public static void noteLock(Context c) {
         try {
+            SharedPreferences sp = p(c);
+            String old = sp.getString(LOCKS, "");
+            String[] parts = old.isEmpty() ? new String[0] : old.split(";");
+            if (parts.length > 0) { String[] lastP = parts[parts.length - 1].split(":"); long lastAt = 0; try { lastAt = Long.parseLong(lastP[0]); } catch (Throwable ignored) { } if (!sampleDue(lastAt, System.currentTimeMillis())) return; }
             int adj = readOomAdj();
             int imp = -1;
             android.app.ActivityManager am = (android.app.ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
@@ -123,9 +130,6 @@ public final class ProcessLife {
                 java.util.List<android.app.ActivityManager.RunningAppProcessInfo> l = am.getRunningAppProcesses();
                 if (l != null) for (android.app.ActivityManager.RunningAppProcessInfo i : l) if (i.pid == me) { imp = i.importance; break; }
             }
-            SharedPreferences sp = p(c);
-            String old = sp.getString(LOCKS, "");
-            String[] parts = old.isEmpty() ? new String[0] : old.split(";");
             int from = Math.max(0, parts.length + 1 - KEEP_LOCKS);
             StringBuilder b = new StringBuilder();
             for (int i = from; i < parts.length; i++) b.append(parts[i]).append(';');
