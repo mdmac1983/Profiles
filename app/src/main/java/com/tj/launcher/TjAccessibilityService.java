@@ -691,10 +691,17 @@ public class TjAccessibilityService extends AccessibilityService {
                     HomeShot.invalidateAll(this);
                 } else { homeWallBmp = l.bmp; homeWallLeft = l.left; homeWallTop = l.top; homeWallStep = HomeShot.findStep(this, rotation(), step, sig); }
             } else if (HomeShot.has(this, rotation(), step, sig)) {
-                // a crop that "exists" but cannot be decoded (a truncated file): forget it, or has() says yes and load() says no for ever and buildHomePatchNow / refreshLayers call each other every ~20 ms (code review 2026-11-08)
-                Log.w(TAG, "HOMEPATCH the stored wallpaper crop cannot be read: it will be calibrated again");
-                homeStatus("the stored wallpaper crop could not be read: calibrating again");
-                HomeShot.invalidateAll(this);
+                // a crop that "exists" but could not be loaded (code review 2026-11-08, twice). REALLY corrupt (an empty file, an unreadable header, judged from the image bounds alone): forget THIS ONE page and calibrate it again,
+                // or has() says yes and load() says no for ever and buildHomePatchNow / refreshLayers call each other every ~20 ms. Otherwise a failure of the moment (low memory on a 2 GB tablet): keep EVERY crop
+                // (a memory spike must never cost the calibration of all pages) and let buildHomePatchNow try again in a few seconds.
+                if (HomeShot.isCorrupt(this, rotation(), step, sig)) {
+                    Log.w(TAG, "HOMEPATCH the stored wallpaper crop of this page is corrupt: it will be calibrated again");
+                    homeStatus("the stored wallpaper crop of this page could not be read: calibrating this page again");
+                    HomeShot.invalidateStep(this, rotation(), step, sig);
+                } else {
+                    Log.w(TAG, "HOMEPATCH the stored wallpaper crop could not be loaded just now (low memory?): trying again in a few seconds");
+                    homeLoadFailed = true;
+                }
             }
         } catch (Throwable t) { Log.e(TAG, "home wall load failed", t); }
         reloadScrim();   // the scrim measured on the lock screen applies to anything under the stock dialog
