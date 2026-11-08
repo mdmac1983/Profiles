@@ -141,7 +141,7 @@ public class NotifQuietPolicyTest {
         assertEquals("1", NotifQuietPolicy.restoreValue("0", "1"));
         assertEquals("1", NotifQuietPolicy.restoreValue(" 0", "1"));
         assertEquals("2", NotifQuietPolicy.restoreValue("0", "2"));
-        assertNull("he turned the banners on again by hand: leave his value", NotifQuietPolicy.restoreValue("1", "1"));
+        assertNull("the banners were turned on again by hand: leave that value", NotifQuietPolicy.restoreValue("1", "1"));
         assertNull("somebody deleted the setting: not ours any more", NotifQuietPolicy.restoreValue(null, "1"));
         assertNull("the original was off itself: there is nothing to put back", NotifQuietPolicy.restoreValue("0", "0"));
         assertNull(NotifQuietPolicy.restoreValue("0", null));
