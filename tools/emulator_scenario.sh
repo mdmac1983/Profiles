@@ -2670,7 +2670,7 @@ nqstable(){ # nqstable <value> <seconds>: waits until the setting reads that val
     if [ "$(nqget)" = "$want" ]; then ok=$((ok + 1)); if [ "$ok" -ge 3 ]; then echo $(( $(date +%s) - t0 )); return 0; fi; else ok=0; fi
     sleep 1
   done; echo never; return 1; }
-nqfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"quickstep_animations_off\\\" value=\\\"false\\\" /><boolean name=\\\"quiet_banners\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+nqfeat(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"quickstep_animations_off\\\" value=\\\"false\\\" /><boolean name=\\\"quiet_banners\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
 nqlog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r'; }
 nqoffs(){ nqlog | grep -c ' QUIET banners OFF' | tr -d ' \r\n'; }
 nqons(){ nqlog | grep -c ' QUIET banners ON again' | tr -d ' \r\n'; }
