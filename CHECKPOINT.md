@@ -1,13 +1,13 @@
-# CHECKPOINT 730 — read me first, then TASKS.md
+# CHECKPOINT 731 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T21:38:32Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2ax1r4` · **builds on:** `1870b64` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T21:42:25Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2ax1r4` · **builds on:** `81688a8` (this checkpoint is the commit after it)
 
 ## Just done
-BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kept in homeShotObserved, hasCrop override = migration flash, scheduleCurtain off homeDrew, buildCurtainNow + worker, showResetCover curtain with black fallback incl. addView failure, curtainSwallowTouches at USER_PRESENT, trim/preload), HomeLayer.composeAt, TjHooks.launcherWindowSize, Control switch + info line, report keys. NOT yet proven on the emulator
+BL1d: emulator section cu written (calibrate with home_patch+home_curtain ON, wait CURTAIN picture saved, Quickstep session, no helper, plain PIN, screenshots inside the cover life vs bare home MAE, negative control, swallowed tap, real home at the end) + gate-map line + workflow list; handoff self-test 38/0, unit suite 726/0. First cu run dispatched next
 
 ## Do this next
-write emulator section cu in tools/emulator_scenario.sh (+ gate-map + workflow sections list): custom home calibrated with the curtain switch ON, wait for 'CURTAIN picture saved', then Quickstep session + plain PIN as cs part B with screencaps during the cover, MAE vs bare home; read unit suite result t2.log first (GRADLE_EXIT)
+read the cu run (RESULTS tail ~60; INFO lines 'CU B' / 'CU C'): CU1/CU2 picture kept+saved, CU3 curtain used, CU5 MAE < 0.01, CU8 swallowed tap; fix what the INFO shows; then solo cs, uf, b4 (black path unchanged), then /code-review high
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ write emulator section cu in tools/emulator_scenario.sh (+ gate-map + workflow s
 
 ## Last ten checkpoints
 ```
+  3791c9b ckpt 730: BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kep
   b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
   631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
   d33c369 ckpt 727: BL1a map + BL1b design done and saved: research/BL1_HOME_CURTAIN_2026-11-08.md
@@ -25,8 +26,7 @@ write emulator section cu in tools/emulator_scenario.sh (+ gate-map + workflow s
   38f3671 ckpt 723: gated v0.8.11 (code 36) and pushed it: the handoff self-test, the full unit su
   7ae1ed7 ckpt 722: b6 samples #408 id 42519172669 / #409 id 42519175423 (head 1986107): quickstep
   f945d11 ckpt 721: b6 #407 id 42518553791: BK1b lock phases cover shown at 3 openings in BOTH sto
-  f8e6d37 ckpt 720: scenario-only edits on main 540e4e5: cover_resumes helper (UF2 + CS-B5 cover-a
 ```
 
-(15 automatic checkpoint(s) since the last deliberate one — the
+(4 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
