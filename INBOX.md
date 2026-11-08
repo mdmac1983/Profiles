@@ -1168,3 +1168,8 @@ Think about how it would be possible to hide the screenshot button without delay
 When I unlocked to the custom launcher from the lock screen, there was a notification from a quickstep app. Turn all notifications off for both the lock screen and the custom launcher. The lock screen (no matter which launcher it was on) and the custom launcher should never show any notification at any time, unless it can safely and without delay or flicker only include notifications from apps that are in the custom launcher app drawer and not hidden 
 Compact this session when possible because context window is over 90%
 ```
+
+## 2026-11-08T03:58:42Z
+```
+For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen. 
+```
