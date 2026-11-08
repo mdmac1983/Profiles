@@ -575,7 +575,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (f.homeShowing) { f.floatingViewOpen = TjHooks.homeFloatingViewOpen(); f.busy = TjHooks.homeBusy(); }
         f.calibrating = homeCalRunning;
         f.rectKnown = cachedCard() != null;
-        f.cropValid = f.rectKnown && HomeShot.has(this, rotation(), homeStepNow(), homeSig());
+        f.cropValid = f.rectKnown && homeCropValid(homeStepNow(), homeSig());
         return f;
     }
 
