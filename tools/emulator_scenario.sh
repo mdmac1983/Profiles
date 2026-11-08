@@ -79,6 +79,20 @@ vfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml ver
 pad(){ # keys: 1 2 3 4 d(delete) e(enter) on the emulator's 600x1024 PIN pad
   for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
 lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+# hp* (sections hp and hf, BI1 / BJ1): the home-patch helpers: init the preferences, set one key, read the log, wait for a line, open / close the stock menu, a patterned home wallpaper
+hpinit(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/homeshot_*; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"false\\\" /><boolean name=\\\"scrim_measure\\\" value=\\\"false\\\" /><boolean name=\\\"home_patch\\\" value=\\\"$1\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
+hpkey(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<boolean name="%s" value="[a-z]*" />##\ns#</map>#<boolean name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpkey.sed"; local B64; B64="$(base64 -w0 "$OUT/hpkey.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpkey.sed; sed -i -f files/hpkey.sed shared_prefs/tj_features.xml'"; }
+hpint(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<int name="%s" value="[-0-9]*" />##\ns#</map>#<int name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpint.sed"; local B64; B64="$(base64 -w0 "$OUT/hpint.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpint.sed; sed -i -f files/hpint.sed shared_prefs/tj_features.xml'"; }
+hplog(){ adb logcat -d -s TjA11y:I 2>/dev/null; }
+hpcount(){ hplog | grep -c "$1" | tr -d ' \r\n'; }
+hpwait(){ local t0 i; t0=$(date +%s); for i in $(seq 1 "$2"); do if hplog | grep -q "$1"; then echo $(( $(date +%s) - t0 )); return 0; fi; sleep 1; done; echo never; return 1; }
+hpmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
+hpnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
+hpstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_patch_status">[^<]*' | cut -d'>' -f2 | tr -d '\r'; }
+hpcrops(){ adb shell "run-as $PKG ls files" 2>/dev/null | tr -d '\r' | grep -c 'homeshot_r0_x.*png$'; }
+hpwall(){ setmode quickstep; rebind; home; adb shell am start -n "$PKG/.SetupActivity" --ez test_home_wallpaper true >/dev/null 2>&1; sleep 6; setmode custom; rebind; home; sleep 3; }
+hpopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; }
+hpclose(){ adb shell input keyevent KEYCODE_BACK; sleep 3; }
 if want base; then # section base
 # ---- the manifest must not contain anything that can touch the lock screen / device policy (L10 rule 1)
 for bad in BIND_DEVICE_ADMIN SYSTEM_ALERT_WINDOW DISABLE_KEYGUARD RECEIVE_BOOT_COMPLETED; do
@@ -2787,19 +2801,6 @@ beat "before HP"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/hp-grant.txt" 2>&1
 adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS >/dev/null 2>&1
 adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
-hpinit(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs files; rm -f files/homeshot_*; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"allow_setup_autorun\\\" value=\\\"true\\\" /><boolean name=\\\"patch_auto_cal\\\" value=\\\"false\\\" /><boolean name=\\\"scrim_measure\\\" value=\\\"false\\\" /><boolean name=\\\"home_patch\\\" value=\\\"$1\\\" /><string name=\\\"power_mode\\\">hide_screenshot</string></map>\" > shared_prefs/tj_features.xml'"; }
-hpkey(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<boolean name="%s" value="[a-z]*" />##\ns#</map>#<boolean name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpkey.sed"; local B64; B64="$(base64 -w0 "$OUT/hpkey.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpkey.sed; sed -i -f files/hpkey.sed shared_prefs/tj_features.xml'"; }
-hpint(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; printf 's#<int name="%s" value="[-0-9]*" />##\ns#</map>#<int name="%s" value="%s" /></map>#\n' "$1" "$1" "$2" > "$OUT/hpint.sed"; local B64; B64="$(base64 -w0 "$OUT/hpint.sed")"; adb shell "run-as $PKG sh -c 'echo $B64 | base64 -d > files/hpint.sed; sed -i -f files/hpint.sed shared_prefs/tj_features.xml'"; }
-hplog(){ adb logcat -d -s TjA11y:I 2>/dev/null; }
-hpcount(){ hplog | grep -c "$1" | tr -d ' \r\n'; }
-hpwait(){ local t0 i; t0=$(date +%s); for i in $(seq 1 "$2"); do if hplog | grep -q "$1"; then echo $(( $(date +%s) - t0 )); return 0; fi; sleep 1; done; echo never; return 1; }
-hpmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()'; }
-hpnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
-hpstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_patch_status">[^<]*' | cut -d'>' -f2 | tr -d '\r'; }
-hpcrops(){ adb shell "run-as $PKG ls files" 2>/dev/null | tr -d '\r' | grep -c 'homeshot_r0_x.*png$'; }
-hpwall(){ setmode quickstep; rebind; home; adb shell am start -n "$PKG/.SetupActivity" --ez test_home_wallpaper true >/dev/null 2>&1; sleep 6; setmode custom; rebind; home; sleep 3; }
-hpopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; }
-hpclose(){ adb shell input keyevent KEYCODE_BACK; sleep 3; }
 # ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
 hpinit false
 hpwall
