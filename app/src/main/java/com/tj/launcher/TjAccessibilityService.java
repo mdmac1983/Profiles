@@ -2937,12 +2937,15 @@ public class TjAccessibilityService extends AccessibilityService {
         final long deadline = android.os.SystemClock.uptimeMillis() + maxMs;
         final int[] tick = {0};
         handler.post(new Runnable() { @Override public void run() {
+            List<AccessibilityNodeInfo> roots = null;   // BK1c: the windows' roots are fetched ONCE per look and shared by both searches (the notification step took 303 ms on the emulator, run #396)
             try {
-                if (pressInSystemUi(label, packages)) { cb.done(PRESSED); return; }
-                if (anyTextPresent(emptyTexts, packages)) { cb.done(EMPTY); return; }
+                roots = recentsRoots();
+                if (pressInRoots(roots, label, packages)) { cb.done(PRESSED); return; }
+                if (emptyTexts != null && emptyTexts.length > 0 && anyTextInRoots(roots, emptyTexts, packages)) { cb.done(EMPTY); return; }
                 tick[0]++;
                 if (scroll && tick[0] % 5 == 0) scrollSomething(packages);
             } catch (Throwable t) { Log.e(TAG, "poll failed", t); }
+            finally { if (roots != null) for (AccessibilityNodeInfo r : roots) { try { r.recycle(); } catch (Throwable ignored) { } } }
             if (android.os.SystemClock.uptimeMillis() >= deadline) { cb.done(TIMEOUT); return; }
             handler.postDelayed(this, 20);
         } });
