@@ -1193,3 +1193,8 @@ Make the home looking curtain instead of the black screen. An identical screensh
 ```
 analyze code and generate a read me of all features and structure of app
 ```
+
+## 2026-11-08T22:47:57Z
+```
+ok now that i have a general idea of what the app does, id like to make some tweeks and customizations
+```
