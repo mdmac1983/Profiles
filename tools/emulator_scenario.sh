@@ -540,6 +540,8 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   for BK_I in 2 3; do adb shell cmd statusbar collapse; sleep 2; adb shell cmd statusbar expand-settings; sleep 3; BK_S="$BK_S $(pen_cover_state)"; done
   info "BK1b ($1 mode, locked): the cover window at +3 s of the 1st / 2nd / 3rd opening of the panel: $BK_S (shown = touchable cover over the pencil)"
   check "BK1b: on the LOCK screen (stored mode $1) the pencil cover is SHOWN at each of three openings of the panel" test "$BK_S" = "shown shown shown"
+  info "BK1b ($1 mode): the cover window right after the PIN was set / on the lock screen BEFORE the panel was opened: $BK_P1 / $BK_P2 (shown there would be a stray white square)"
+  check "BK1b: on the lock screen (stored mode $1) NO cover sits there before the panel is opened (window hidden or absent)" test "$BK_P2" != shown
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
   # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
