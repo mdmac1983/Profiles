@@ -2829,6 +2829,7 @@ if [ -n "$SLOT" ]; then
   info "HP3: the resting patch vs the bare home screen in the slot $SLOT: MAE $MA_R"
   check "HP3: the resting patch is INVISIBLE: the slot looks exactly like the bare home screen (MAE < 0.01)" awk -v m="$MA_R" 'BEGIN{exit !(m!="" && m+0 < 0.01)}'
 else check "HP3: the slot geometry is known" false; fi
+info "HP B tail right before the menu opens (gate run #356: the patch was 'not resting' at the open): $(hplog | grep -E 'HOMEPATCH|PATCH rest|PATCH window|PATCH removed' | tail -n 12 | cut -c25-125 | tr '\n' '|' | cut -c1-1000)"
 adb logcat -c
 hpopen
 shot 162-hp-open
