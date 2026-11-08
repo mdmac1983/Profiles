@@ -83,10 +83,34 @@ public class NotifQuietPolicyTest {
         assertEquals("automation paused", NotifQuietPolicy.why(f));
     }
 
-    @Test public void noAccessibilityHelperIsNeededForTheHold() {
-        // there is no helper fact at all: a process restart must not flip the banners on while the helper binds (it takes a minute or two after a boot)
+    @Test public void theCustomLauncherNeedsNoAccessibilityHelperForTheHold() {
+        // a process restart must not flip the banners on while the helper binds (it takes a minute or two after a boot), and without the helper nothing can change the mode anyway
         NotifQuietPolicy.Facts f = custom();
+        f.helperUp = false;
         assertTrue(NotifQuietPolicy.wanted(f));
+        f.screenOn = false;
+        assertTrue(NotifQuietPolicy.wanted(f));
+    }
+
+    @Test public void aQuickstepSessionWithoutTheHelperNeverHoldsBecauseNothingCouldEndTheHold() {
+        // code review 2026-11-08: a hold taken at the lock with the helper gone would stay for the whole next Quickstep session (nothing hears the unlock)
+        NotifQuietPolicy.Facts f = NotifQuietPolicy.Facts.quickstepSession();
+        f.helperUp = false;
+        assertEquals("accessibility helper not running", NotifQuietPolicy.why(f));
+        f.screenOn = false; assertEquals("accessibility helper not running", NotifQuietPolicy.why(f));
+        f.screenOn = true; f.lockUp = true; assertEquals("accessibility helper not running", NotifQuietPolicy.why(f));
+        f.lockUp = false; f.unlockUndecided = true; assertEquals("accessibility helper not running", NotifQuietPolicy.why(f));
+    }
+
+    @Test public void theHelperFactComesAfterTheSwitchTheGrantAndThePause() {
+        NotifQuietPolicy.Facts f = NotifQuietPolicy.Facts.quickstepSession();
+        f.helperUp = false;
+        f.automationOff = true;
+        assertEquals("automation paused", NotifQuietPolicy.why(f));
+        f.automationOff = false; f.grant = false;
+        assertEquals("no adb permission", NotifQuietPolicy.why(f));
+        f.grant = true; f.switchOn = false;
+        assertEquals("switch off", NotifQuietPolicy.why(f));
     }
 
     @Test public void theSwitchShipsOnInReleaseAndOffInDebug() {
