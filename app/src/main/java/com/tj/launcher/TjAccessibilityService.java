@@ -773,11 +773,10 @@ public class TjAccessibilityService extends AccessibilityService {
         s.msSinceScreenOn = screenOnEpoch > 0 ? Math.max(0, System.currentTimeMillis() - screenOnEpoch) : Long.MAX_VALUE;
         s.msSinceLastStart = since(homeCalLastStartUp);
         s.startsToday = homeCalStartsToday(false);
-        if (manual) { s.msSinceTouch = Long.MAX_VALUE; s.msSinceDraw = Long.MAX_VALUE; s.msSinceScreenOn = Long.MAX_VALUE; s.msSinceLastStart = Long.MAX_VALUE; s.startsToday = 0; }
         String reason = HomePatchRules.calDecision(s);
         if (!reason.isEmpty()) {
             homeStatus("not calibrating yet: " + reason);
-            if (!manual && s.switchOn && s.coverMode && s.customMode && !s.hasCrop && ("touched a moment ago".equals(reason) || "the home screen is still moving".equals(reason) || "the screen came on a moment ago".equals(reason) || "tried a moment ago".equals(reason) || "the home screen is not at rest".equals(reason))) {
+            if (s.switchOn && s.coverMode && s.customMode && !s.hasCrop && ("touched a moment ago".equals(reason) || "the home screen is still moving".equals(reason) || "the screen came on a moment ago".equals(reason) || "tried a moment ago".equals(reason) || "the home screen is not at rest".equals(reason))) {
                 handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, 3000);   // a "not yet" reason: look again
             }
             return reason;
