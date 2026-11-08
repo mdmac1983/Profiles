@@ -514,8 +514,331 @@ public class TjAccessibilityService extends AccessibilityService {
         return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && keyguardLockedFast();   // AD7a: any lock screen, whatever the mode flag says
     }
 
+    // ================================================================ BI1: the real-pixel patch on the UNLOCKED HOME screen (research/HOME_PATCH_2026-11-08.md)
+    // Tj, 2026-11-08: "For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen." The window, its masks, the open / close fade,
+    // the tap on the hidden spot and the scrim are the lock screen's (patchLockMode); only the pixels (a calibrated wallpaper-only crop + the Launcher's own pixels, composed) and the rest rules are new.
+
+    public static final String HOME_STATUS_KEY = "home_patch_status";
+    private android.graphics.Bitmap homeWallBmp;                 // the wallpaper-only crop for the current offset step (decoded)
+    private int homeWallLeft, homeWallTop, homeWallStep = -1;
+    private long homeBuiltAtMs = 0;                               // uptime of the REQUEST of the composite that patchShotBmp holds; 0 = none
+    private int homeBuiltStep = -1;
+    private boolean homeBuilding = false;
+    private int homeBuildFails = 0;
+    private long homeWallId = -1;                                 // the system wallpaper's id, cached until the wallpaper changes
+    private boolean homeNeedsCal = false;
+    private String homeLastStatus = "";
+    private boolean homeCalRunning = false;
+    private long homeCalAskedWall = 0, homeCalLastStartUp = 0;
+    private int homeCalStep = 0;
+    private Rect homeCalWin;
+    private View homeCalGuard;
+
+    boolean homeCalRunning() { return homeCalRunning; }
+    private boolean homeSwitchOn() { return Features.get(this, HomePatchRules.KEY, HomePatchRules.defaultOn(debuggable())); }
+    private void homeStatus(String s) {
+        if (s == null || s.equals(homeLastStatus)) return;
+        homeLastStatus = s;
+        try { Features.setStringAsync(this, HOME_STATUS_KEY, now() + "  " + s); } catch (Throwable ignored) { }
+    }
+
+    private long homeWallpaperId() {
+        if (homeWallId >= 0) return homeWallId;
+        long id = 0;
+        try { id = android.app.WallpaperManager.getInstance(this).getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM); } catch (Throwable ignored) { }
+        homeWallId = id;
+        return id;
+    }
+    private android.util.DisplayMetrics realMetrics() {
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
+        return dm;
+    }
+    private String homeSig() { android.util.DisplayMetrics dm = realMetrics(); return HomePatchRules.sig(homeWallpaperId(), rotation(), dm.widthPixels, dm.heightPixels); }
+    private int homeStepNow() { return HomePatchRules.step(TjHooks.wallpaperX); }
+    private static long since(long upMs) { return upMs <= 0 ? Long.MAX_VALUE : Math.max(0, android.os.SystemClock.uptimeMillis() - upMs); }
+    private long homeLastTouchMs() { return Math.max(TjHooks.lastHomeTouchMs, lastTouchDownMs); }
+
+    /** The facts of the home patch right now. Main thread. */
+    private HomePatchRules.Facts homeFacts() {
+        HomePatchRules.Facts f = new HomePatchRules.Facts();
+        f.switchOn = homeSwitchOn();
+        f.coverMode = Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this));
+        if (!f.switchOn || !f.coverMode) return f;   // nothing else is asked (no binder call) when the feature is off
+        f.automationOff = CrashGuard.automationOff(this);
+        f.customMode = Mode.isCustom(this);
+        f.unlocked = !keyguardLockedFast();
+        f.screenOn = isScreenOn();
+        f.homeShowing = TjHooks.homeScreenShowing();
+        if (f.homeShowing) { f.floatingViewOpen = TjHooks.homeFloatingViewOpen(); f.busy = TjHooks.homeBusy(); }
+        f.calibrating = homeCalRunning;
+        f.rectKnown = cachedCard() != null;
+        f.cropValid = f.rectKnown && HomeShot.has(this, rotation(), homeStepNow(), homeSig());
+        return f;
+    }
+
+    /** The home patch's window rectangle (the lock screen's slot window: the stock panel is the same dialog), or null with the reason in {@link #HOME_STATUS_KEY}. */
+    private Rect homePatchTarget() {
+        homeNeedsCal = false;
+        HomePatchRules.Facts f = homeFacts();
+        if (!f.switchOn || !f.coverMode) return null;
+        String why = HomePatchRules.whyNot(f);
+        if (!why.isEmpty()) {
+            if (f.customMode && f.unlocked && f.homeShowing && f.rectKnown && !f.cropValid && !f.calibrating) homeNeedsCal = true;
+            homeStatus("away: " + why);
+            return null;
+        }
+        Rect r = cachedCard();
+        homeStatus("home screen: patch window wanted");
+        return patchRect(r, true);
+    }
+
+    /** The cardless path may be used on the home screen: the patch exists, its pixels are fresh, and nothing about the calibration is running. */
+    private boolean homePatchReady() { return patchView != null && patchHomeMode && patchRestable && !homeCalRunning; }
+
+    /** The patch's pixels are still what the home screen shows there: built after the last draw of the Launcher, for the current wallpaper position, no calibration, the plain home on screen. */
+    private boolean homeRestable() {
+        if (!patchHomeMode || patchShotBmp == null || homeCalRunning || !TjHooks.homeScreenShowing()) return false;
+        return HomePatchRules.compositeFresh(homeBuiltAtMs, TjHooks.lastHomeDrawMs, HomePatchRules.sameStep(homeBuiltStep, homeStepNow()));
+    }
+
+    private boolean homeVisibleNow() { return HomePatchRules.visible(homeRestable(), android.os.SystemClock.uptimeMillis(), homeLastTouchMs(), TjHooks.lastHomeDrawMs); }
+
+    /** Loads the wallpaper-only crop for the current wallpaper position and checks that it still covers the patch window (the stock panel moved: font size, another entry = calibrate again). */
+    private void loadHomeWall(Rect rect) {
+        homeWallBmp = null; homeWallStep = -1;
+        try {
+            int step = homeStepNow(); String sig = homeSig();
+            PatchShot.Loaded l = HomeShot.load(this, rotation(), step, sig);
+            if (l != null) {
+                if (!PatchShot.covers(l.left, l.top, l.bmp.getWidth(), l.bmp.getHeight(), rect.left, rect.top, rect.right, rect.bottom)) {
+                    Log.i(TAG, "HOMEPATCH the stored wallpaper crop no longer covers the patch window " + rect.toShortString() + ": it will be calibrated again");
+                    homeStatus("the menu moved out of the stored crop: calibrating again");
+                    HomeShot.invalidateAll(this);
+                } else { homeWallBmp = l.bmp; homeWallLeft = l.left; homeWallTop = l.top; homeWallStep = HomeShot.findStep(this, rotation(), step, sig); }
+            }
+        } catch (Throwable t) { Log.e(TAG, "home wall load failed", t); }
+        reloadScrim();   // the scrim measured on the lock screen applies to anything under the stock dialog
+    }
+
+    // ---------------------------------------------------------------- the Launcher's hooks (main thread)
+
+    /** TjHooks: the Launcher is about to draw: whatever is under the slot may change, the built patch is stale from now on. Cheap when the patch is already away. */
+    void homeDrew() {
+        if (patchView == null || !patchHomeMode || overlayShown || homeCalRunning) return;
+        if (!patchRestable && !patchResting) return;
+        patchRestable = false;
+        if (patchResting) { patchResting = false; patchView.setAlpha(0f); }
+        scheduleHomeBuild();
+    }
+
+    /** TjHooks: a finger went down in the Launcher: the patch goes away in this very frame (before the press feedback / a scroll can change what is under it). It stays restable: a tap that changes nothing leaves it fresh. */
+    void homeTouchDown() {
+        try {
+            if (patchView == null || !patchHomeMode || overlayShown || !patchResting) return;
+            patchView.setAlpha(0f);
+            handler.removeCallbacks(homeShowCheck); handler.postDelayed(homeShowCheck, HomePatchRules.TOUCH_AWAY_MS + 30);
+        } catch (Throwable t) { Log.e(TAG, "home touch hide failed", t); }
+    }
+
+    private final Runnable homeShowCheck = new Runnable() { @Override public void run() { try { if (patchHomeMode && patchView != null) patchShow(overlayShown); } catch (Throwable t) { Log.e(TAG, "home show check failed", t); } } };
+    private final Runnable homeBuild = new Runnable() { @Override public void run() { try { buildHomePatchNow(); } catch (Throwable t) { homeBuilding = false; Log.e(TAG, "home patch build failed", t); } } };
+
+    /** Builds a fresh patch after the home has been quiet for {@link HomePatchRules#DRAW_QUIET_MS}. */
+    private void scheduleHomeBuild() {
+        if (patchView == null || !patchHomeMode) return;
+        long quiet = HomePatchRules.waitMs(android.os.SystemClock.uptimeMillis(), 0, TjHooks.lastHomeDrawMs);
+        handler.removeCallbacks(homeBuild);
+        handler.postDelayed(homeBuild, quiet + 20);
+    }
+
+    private void buildHomePatchNow() {
+        if (patchView == null || !patchHomeMode || overlayShown || homeBuilding || homeCalRunning) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        boolean fresh = homeRestable();
+        if (fresh) { patchShow(false); return; }
+        if (!HomePatchRules.buildDue(now, TjHooks.lastHomeDrawMs, fresh, homeBuilding)) { scheduleHomeBuild(); return; }
+        if (!TjHooks.homeScreenShowing() || TjHooks.homeFloatingViewOpen() || TjHooks.homeBusy()) { handler.removeCallbacks(homeBuild); handler.postDelayed(homeBuild, 400); return; }   // not at rest: look again
+        int stepNow = homeStepNow();
+        if (homeWallBmp == null || !HomePatchRules.sameStep(homeWallStep, stepNow)) {   // another page (the wallpaper moved) or nothing loaded: the crop of THIS position, or the calibration of it
+            loadHomeWall(new Rect(patchAt));
+            if (homeWallBmp == null) { patchRestable = false; refreshLayers(); return; }   // no crop for this position: the window goes, the calibration comes (refreshLayers -> homeNeedsCal)
+        }
+        homeBuilding = true;
+        final long reqAt = now; final int builtStep = homeWallStep;
+        final android.graphics.Bitmap wall = homeWallBmp; final int l = homeWallLeft, t = homeWallTop;
+        Rect crop = new Rect(l, t, l + wall.getWidth(), t + wall.getHeight());
+        HomeLayer.copy(crop, handler, new HomeLayer.Done() {
+            @Override public void done(android.graphics.Bitmap layer, String problem) {
+                homeBuilding = false;
+                try {
+                    if (patchView == null || !patchHomeMode || wall != homeWallBmp) { if (layer != null) layer.recycle(); return; }
+                    if (layer == null) { homeBuildFails++; homeStatus("could not read the Launcher's pixels (" + problem + ")"); Log.i(TAG, "HOMEPATCH layer copy failed: " + problem); if (homeBuildFails < 5) { handler.removeCallbacks(homeBuild); handler.postDelayed(homeBuild, 1500); } return; }
+                    android.graphics.Bitmap comp = HomeLayer.compose(wall, layer);
+                    layer.recycle();
+                    if (comp == null) { homeBuildFails++; homeStatus("could not compose the patch"); return; }
+                    homeBuildFails = 0;
+                    patchShotBmp = comp; patchShotLeft = l; patchShotTop = t; homeBuiltAtMs = reqAt; homeBuiltStep = builtStep;
+                    homeStatus("home patch built; " + (homeRestable() ? "fresh" : "stale already, building again"));
+                    patchShow(false);
+                    patchView.invalidate();
+                    if (!homeRestable()) scheduleHomeBuild();
+                } catch (Throwable th) { Log.e(TAG, "home patch apply failed", th); }
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------- the calibration: the Launcher hidden, one system screenshot of the plain wallpaper
+
+    private final Runnable homeCalTrigger = new Runnable() { @Override public void run() { try { maybeHomeCalibrate("timer", false); } catch (Throwable t) { Log.e(TAG, "home calibration trigger failed", t); } } };
+    private final Runnable homeCalShoot = new Runnable() { @Override public void run() {
+        try { if (!homeCalRunning) return; Log.i(TAG, "HOMEPATCH asking the system for a screenshot of the plain wallpaper"); homeStatus("taking the screenshot of the plain wallpaper ..."); performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT); } catch (Throwable t) { Log.e(TAG, "home screenshot failed", t); }
+    } };
+    private final Runnable homeCalAbort = new Runnable() { @Override public void run() { try { if (homeCalRunning) homeCalFinish(false, "no screenshot appeared in time"); } catch (Throwable t) { Log.e(TAG, "home calibration abort failed", t); } } };
+
+    /** Public for Launcher control ("Calibrate the home patch now"): {@code manual} skips the waiting rules but never the safety ones. Returns a sentence for the person. */
+    public String homeCalibrateNow() {
+        String r = maybeHomeCalibrate("Launcher control", true);
+        return r.isEmpty() ? "calibrating: the home screen goes blank for a second and the screen flashes once" : "not now: " + r;
+    }
+
+    /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. */
+    private String maybeHomeCalibrate(String why, boolean manual) {
+        final android.content.Context app = getApplicationContext();
+        HomePatchRules.CalState s = new HomePatchRules.CalState();
+        s.switchOn = homeSwitchOn();
+        s.coverMode = Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this));
+        s.automationOff = CrashGuard.automationOff(this);
+        s.customMode = Mode.isCustom(this);
+        s.unlocked = !keyguardLocked();
+        s.screenOn = isScreenOn();
+        s.permission = checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        s.running = homeCalRunning;
+        s.otherCalibration = calibrating() || scrimStage != 0;
+        s.hasCrop = !manual && HomeShot.has(this, rotation(), homeStepNow(), homeSig());
+        s.rectKnown = cachedCard() != null;
+        s.homeAtRest = TjHooks.homeScreenShowing() && !TjHooks.homeFloatingViewOpen() && !TjHooks.homeBusy();
+        s.menuOpen = overlayShown || since(menuUpAtMs) < 3000;
+        s.msSinceTouch = since(homeLastTouchMs());
+        s.msSinceDraw = since(TjHooks.lastHomeDrawMs);
+        s.msSinceScreenOn = screenOnEpoch > 0 ? Math.max(0, System.currentTimeMillis() - screenOnEpoch) : Long.MAX_VALUE;
+        s.msSinceLastStart = since(homeCalLastStartUp);
+        s.startsToday = homeCalStartsToday(false);
+        if (manual) { s.msSinceTouch = Long.MAX_VALUE; s.msSinceDraw = Long.MAX_VALUE; s.msSinceScreenOn = Long.MAX_VALUE; s.msSinceLastStart = Long.MAX_VALUE; s.startsToday = 0; }
+        String reason = HomePatchRules.calDecision(s);
+        if (!reason.isEmpty()) {
+            homeStatus("not calibrating yet: " + reason);
+            if (!manual && s.switchOn && s.coverMode && s.customMode && !s.hasCrop && ("touched a moment ago".equals(reason) || "the home screen is still moving".equals(reason) || "the screen came on a moment ago".equals(reason) || "tried a moment ago".equals(reason) || "the home screen is not at rest".equals(reason))) {
+                handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, 3000);   // a "not yet" reason: look again
+            }
+            return reason;
+        }
+        Rect win = patchRect(cachedCard(), true);
+        homeCalWin = new Rect(win);
+        homeCalStep = homeStepNow();
+        homeCalStartsToday(true);
+        homeCalRunning = true; homeCalAskedWall = System.currentTimeMillis(); homeCalLastStartUp = android.os.SystemClock.uptimeMillis();
+        Log.i(TAG, "HOMEPATCH calibration starts (" + why + ") window " + win.toShortString() + " step " + homeCalStep);
+        homeStatus("calibrating: the home screen is hidden for a second");
+        try { removeOverlay(); removePatch(); } catch (Throwable ignored) { }   // the resting patch must never be inside the screenshot
+        addHomeCalGuard();
+        if (!TjHooks.setLauncherHidden(true)) { homeCalFinish(false, "the Launcher could not be hidden"); return "the Launcher could not be hidden"; }
+        startShotWatch();
+        handler.removeCallbacks(homeCalShoot); handler.postDelayed(homeCalShoot, HomePatchRules.HIDE_SETTLE_MS);
+        handler.removeCallbacks(homeCalAbort); handler.postDelayed(homeCalAbort, HomePatchRules.HIDE_MAX_MS);
+        return "";
+    }
+
+    private int homeCalStartsToday(boolean add) {
+        try {
+            String day = new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date());
+            String[] p = Features.getString(this, "home_cal_day", "").split(":");
+            int n = p.length == 2 && p[0].equals(day) ? Integer.parseInt(p[1]) : 0;
+            if (add) { n++; Features.setStringAsync(this, "home_cal_day", day + ":" + n); }
+            return n;
+        } catch (Throwable t) { return 0; }
+    }
+
+    /** A transparent window over everything while the Launcher is hidden: a touch must not land on invisible icons; it ends the calibration at once. */
+    private void addHomeCalGuard() {
+        try {
+            removeHomeCalGuard();
+            View g = new View(this);
+            g.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View v, android.view.MotionEvent e) {
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) { handler.post(new Runnable() { @Override public void run() { if (homeCalRunning) homeCalFinish(false, "touched during the calibration"); } }); }
+                return true;
+            } });
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+            lp.setTitle("TjHomeCalGuard");
+            ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(g, lp);
+            homeCalGuard = g;
+        } catch (Throwable t) { Log.e(TAG, "home calibration guard failed", t); }
+    }
+
+    private void removeHomeCalGuard() {
+        if (homeCalGuard == null) return;
+        try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(homeCalGuard); } catch (Throwable ignored) { }
+        homeCalGuard = null;
+    }
+
+    /** The media store changed while a home calibration runs: is our screenshot in it? Then the capture is over, the Launcher is shown again at once and the crop is cut (worker thread). */
+    private void homeShotObserved() {
+        if (!homeCalRunning) return;
+        final android.content.Context app = getApplicationContext();
+        final long asked = homeCalAskedWall; final Rect win = homeCalWin == null ? null : new Rect(homeCalWin); final int rot = rotation(); final int step = homeCalStep; final String sig = homeSig(); final long wid = homeWallpaperId();
+        final android.util.DisplayMetrics dm = realMetrics();
+        new Thread(new Runnable() { @Override public void run() {
+            try {
+                final PatchShot.Shot row = PatchShot.newestShot(app, asked);
+                if (row == null || !HomePatchRules.shotIsOurs(row.addedSec, asked)) return;   // some other image change: keep waiting
+                if (!AutoCalibration.ownerOk(row.owner) && !isSystemPackage(row.owner)) { Log.i(TAG, "HOMEPATCH ignored a screenshot written by " + row.owner); return; }
+                if (lastShotId == android.content.ContentUris.parseId(row.uri)) return;
+                lastShotId = android.content.ContentUris.parseId(row.uri);
+                handler.post(new Runnable() { @Override public void run() { try { if (homeCalRunning) TjHooks.setLauncherHidden(false); removeHomeCalGuard(); } catch (Throwable ignored) { } } });   // the capture is over: the home screen comes back at once
+                if (win == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the menu rectangle is not learned"); } }); return; }
+                android.graphics.Bitmap full = PatchShot.decode(app, row.uri);
+                if (full == null) { handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the screenshot could not be read"); } }); return; }
+                int W = full.getWidth(), H = full.getHeight();
+                if (W != dm.widthPixels || H != dm.heightPixels) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the screenshot has another size than the screen"); } }); return; }
+                long sr = 0, sg = 0, sb = 0; int n = 0;
+                for (int y = Math.max(0, win.top); y < Math.min(H, win.bottom); y += 3) for (int x = Math.max(0, win.left); x < Math.min(W, win.right); x += 3) { int q = full.getPixel(x, y); sr += (q >> 16) & 255; sg += (q >> 8) & 255; sb += q & 255; n++; }
+                if (n > 0 && PatchShot.looksLikeMenu(sr / (double) n, sg / (double) n, sb / (double) n)) { full.recycle(); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "the power menu was in that screenshot"); } }); return; }
+                int[] cr = PatchShot.cropRect(win.left, win.top, win.right, win.bottom, PatchShot.MARGIN_PX, W, H);
+                android.graphics.Bitmap crop = android.graphics.Bitmap.createBitmap(full, cr[0], cr[1], cr[2] - cr[0], cr[3] - cr[1]);
+                final boolean saved = HomeShot.save(app, rot, step, crop, sig, cr[0], cr[1], wid, W, H);
+                final String dims = crop.getWidth() + "x" + crop.getHeight();
+                full.recycle();
+                final boolean deleted = saved && PatchShot.deleteQuietly(app, row.uri);
+                handler.post(new Runnable() { @Override public void run() { homeCalFinish(saved, saved ? "HOME PATCH CALIBRATED (" + dims + ", wallpaper position " + step + ")" + (deleted ? "; the screenshot was removed from the gallery again" : "; the screenshot itself stays in the gallery") : "the crop could not be stored"); } });
+            } catch (Throwable t) { Log.e(TAG, "home shot ingest failed", t); handler.post(new Runnable() { @Override public void run() { homeCalFinish(false, "failed: " + t); } }); }
+        } }, "tj-homeshot").start();
+    }
+
+    private void homeCalFinish(boolean ok, String msg) {
+        handler.removeCallbacks(homeCalShoot); handler.removeCallbacks(homeCalAbort);
+        homeCalRunning = false;
+        try { TjHooks.setLauncherHidden(false); } catch (Throwable ignored) { }
+        removeHomeCalGuard();
+        try { if (!calibrating()) stopShotWatch(); } catch (Throwable ignored) { }
+        homeWallBmp = null; homeWallStep = -1; homeBuiltAtMs = 0;
+        homeStatus((ok ? "" : "calibration did not finish: ") + msg);
+        Log.i(TAG, "HOMEPATCH calibration end: ok=" + ok + " " + msg);
+        logPatch("home calibration " + (ok ? "ok" : "failed") + ": " + msg);
+        try { refreshLayers(); } catch (Throwable ignored) { }
+        if (!ok) { handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, HomePatchRules.CAL_MIN_GAP_MS + 1000); }
+    }
+
+    /** One line for Launcher control and the tablet report. Never throws. */
+    String homePatchInfo() {
+        try {
+            return "switch " + (homeSwitchOn() ? "on" : "off") + ", power menu mode " + Features.powerMode(this) + ", crops stored " + HomeShot.count(this) + ", window " + (patchView != null && patchHomeMode ? (patchResting ? "resting" : "present, away") : "none")
+                    + ", fresh " + homeRestable() + ", calibrating " + homeCalRunning + " | " + Features.getString(this, HOME_STATUS_KEY, "(nothing yet)");
+        } catch (Throwable t) { return "(unreadable)"; }
+    }
+
     private Rect patchTarget() {
-        targetIsLock = false;
+        targetIsLock = false; targetIsHome = false;
         if (keyguardLocked()) {   // V1: the lock screen has its own rules (the wallpaper there may be another picture, and nothing may be painted over the clock / PIN pad)
             if (!Features.get(this, LOCK_PATCH_KEY, true)) { patchStatus("off: lock-screen patch switched off"); return null; }
             if (!Features.isCover(Features.powerMode(this))) { patchStatus("off: lock screen, power menu cover off"); return null; }   // AD7a: no mode condition on the lock screen
