@@ -964,3 +964,44 @@
 >
 > Nothing else is waiting on me. Everything is committed and pushed, so a new session resumes from `CHECKPOINT.md`.
 <!-- sha:d2107a0d7334 -->
+
+## 2026-11-08T01:04:08Z
+> **Yes, it's possible, and I built it and released it as v0.8.6.** It passes my unit tests and emulator checks, but I haven't tried it on your tablet yet.
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.6
+>
+> **What it does:**
+> - **Same setting as the toggle.** The accessibility "Remove animations" setting just sets three animation values to 0. The launcher already has the adb permission for that, so it now does it for you.
+> - **Animations turn off only while you're unlocked in a Quickstep session.** That means the stock home screen and the apps you open from it.
+> - **They come back at once in these cases:**
+>   - The moment the screen goes off, before the lock screen can show.
+>   - On the lock screen and its power menu. The wallpaper patch follows the real 300 ms fade, so it needs real animations.
+>   - After a plain PIN.
+>   - In the custom launcher, including after a double Home.
+> - **Put back exactly as they were.** If you change one yourself in Developer options during a session, your value is left alone.
+> - **Other safety nets:**
+>   - A killed app, a restart, "Restore everything", or the accessibility helper being turned off all put them back.
+>   - The emulator proved the kill case, including a kill followed by the lock screen coming up.
+> - **The switch:** Launcher control > Everyday > "Animations off in Quickstep (faster)". It's on by default and shows the live state underneath.
+>
+> **What's tested:**
+> - 35 new unit tests, 622 in total.
+> - A new emulator test section, `an`, ends green. It covers custom, Quickstep, screen off, lock screen, plain PIN, gesture unlock, double Home, kill and restart.
+> - The rest of the lock-safety checks were rerun on the same code. A few failed along the way, all because of a known emulator crash, the order the tests run in, or leftover state from earlier tests. All of them passed when rerun.
+> - A review before the gate found 6 real bugs in my first version, and I fixed them.
+>
+> **One thing I decided that you should confirm:** I read "inside Quickstep" as the whole Quickstep session, home plus the apps. Opening and closing apps is where the animation time is. If you meant only the Quickstep home screen, tell me. It's a one-line change, but apps would still animate.
+>
+> **One caveat:** the existing double-Home reset (shade and Recents clean-up) still holds animations at 0 for a moment behind its black cover. It now ends the instant the custom home is in front. I can remove it if you want zero exceptions.
+>
+> **What I need from you:** install v0.8.6 and run `research/TABLET_CHECKLIST_v0.8.6.md` (about 5 minutes). Does Quickstep feel faster? Do the lock-screen power menu and patch look and fade exactly like v0.8.5?
+>
+> Still open from earlier:
+> - BE4: the v0.8.5 tablet check.
+> - BB1/BB3c/BC4: the patch's faint line, the Control screenshot, and whether the lock screen still takes screenshots by itself.
+> - AU5: the lighter rectangle when you pull the shade down on the lock screen.
+> - AF2: your decision on the four old lock-screen screenshots in the public repo.
+> - Two items of mine: CBR2 (keeping your settings when the safety breaker trips) and RS1 (the double-Home reset when notification access is off).
+>
+> Everything is committed and pushed. A new session picks up from `CHECKPOINT.md`.
+<!-- sha:1aff109b986f -->
