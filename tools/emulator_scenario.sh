@@ -499,6 +499,14 @@ check "B6/D4: when the panel closes the cover is hidden (the window is kept warm
 # ---- BK1b (Tj, 2026-11-08 18:16 UTC, about v0.8.10: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the same quick-settings panel on the LOCK screen, in BOTH stored modes. Run #389 (head 4c2e2e2):
 #      mode custom = the cover appeared 75 ms after the panel was asked to open. Mode QUICKSTEP while locked is the usual case on the tablet without the shell helper (the lock-time pre-arm only switches the mode WITH the helper),
 #      and schedulePencil asked `Mode.isCustom` alone. A marker line is written to the log right before the panel is opened, so the delay until the cover appears can be read.
+pencil_min(){ # pencil_min <png> <device path of a uiautomator dump taken at the same moment>: the darkest luminance (0..1) inside the 'android:id/edit' node's own rectangle, or "none" (a plain white cover = about 1.0, the pencil's glyph = clearly lower)
+  local bnds X1 Y1 X2 Y2
+  bnds="$(adb shell cat "$2" 2>/dev/null | grep -o 'resource-id="android:id/edit"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | head -1 | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' | sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\1 \2 \3 \4/')"
+  [ -n "$bnds" ] || { echo none; return; }
+  read -r X1 Y1 X2 Y2 <<< "$bnds"
+  [ "$((X2-X1))" -gt 0 ] && [ "$((Y2-Y1))" -gt 0 ] || { echo none; return; }
+  convert "$1" -crop "$((X2-X1))x$((Y2-Y1))+$X1+$Y1" +repage -colorspace Gray -format '%[fx:minima]' info: 2>/dev/null || echo none
+}
 b6lock(){ # b6lock <stored mode custom|quickstep>
   setmode "$1"; rebind; home
   adb logcat -c
