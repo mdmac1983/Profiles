@@ -794,7 +794,6 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. (Launcher control only opens in Quickstep, where no calibration can run: its button forgets the crops, and this starts by itself the next time the custom home screen is quiet.) */
     private String maybeHomeCalibrate(String why) {
-        final android.content.Context app = getApplicationContext();
         HomePatchRules.CalState s = new HomePatchRules.CalState();
         s.switchOn = homeSwitchOn();
         s.coverMode = Features.POWER_HIDE_SCREENSHOT.equals(Features.powerMode(this));
