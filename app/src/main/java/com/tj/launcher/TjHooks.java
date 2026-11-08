@@ -26,6 +26,22 @@ public final class TjHooks {
         return r == null ? null : r.get();
     }
 
+    private static volatile boolean launcherHidden = false;
+
+    /**
+     * Hides / shows the whole Launcher window (its decor view's alpha): the system wallpaper alone shows through. For the home patch's calibration screenshot only; the service always shows it again (the
+     * capture's end, a touch, a timeout), and a resume or a pause of the Launcher does so too. Main thread. Returns false when there is no Launcher window to change.
+     */
+    public static boolean setLauncherHidden(boolean hidden) {
+        try {
+            com.android.launcher3.Launcher l = launcher();
+            if (l == null || l.getWindow() == null || l.getWindow().peekDecorView() == null) { if (!hidden) launcherHidden = false; return false; }
+            l.getWindow().getDecorView().setAlpha(hidden ? 0f : 1f);
+            launcherHidden = hidden;
+            return true;
+        } catch (Throwable t) { android.util.Log.e("TjHooks", "hiding the launcher failed", t); return false; }
+    }
+
     /**
      * A folder, popup or other floating view is open over the workspace (the state stays NORMAL for them). Main thread; false when unknown (the draw timer then keeps the patch away anyway).
      */
