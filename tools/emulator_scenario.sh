@@ -314,10 +314,14 @@ STOCK="$(adb shell cmd package query-activities --brief -a android.intent.action
 echo "stock home component: $STOCK" | tee "$OUT/stock-component.txt"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
+# W5 failed twice on main and passed on the v0.8.8 tag (base,legacy runs #357 / #360 vs #365): the guard is paused 10 s while a RETURN RESET runs (runReset), and since BH1e a reset also opens the shade when a
+# notification was posted. What ran before the stock home was started, and what happened in the 5 s after it?
+info "W5 before: resets and guard lines in the log so far (newest last): $(adb logcat -d -s TjA11y:I | grep -E 'RESET (start|notifications|recents|cover)|STRAY|ROUTER' | sed 's/^.*TjA11y *: //' | cut -c1-44 | tail -n 6 | tr '\n' '|')"
 adb logcat -c
 adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -n "$STOCK" >/dev/null 2>&1; sleep 5
 resumed > "$OUT/resumed-stray.txt"; shot 40-stray-stock-home
 adb logcat -d -s TjA11y:I | grep STRAY > "$OUT/stray-log.txt" 2>&1
+info "W5 after: resumed: $(grep -o 'ActivityRecord{[^}]*}' "$OUT/resumed-stray.txt" | head -1 | cut -c1-90); log in the 5 s: $(adb logcat -d -s TjA11y:I | grep -E 'RESET|STRAY|ROUTER|MODE' | sed 's/^.*TjA11y *: //' | cut -c1-44 | tail -n 8 | tr '\n' '|')"
 if [ -n "$STOCK" ]; then
   check "W5: stock home started without the gesture (custom mode) is sent back to our launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-stray.txt"
   check "W5: the helper logged the redirect" grep -q STRAY "$OUT/stray-log.txt"
