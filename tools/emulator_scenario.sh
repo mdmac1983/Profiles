@@ -2547,6 +2547,12 @@ anwait(){ # anwait "<the three scales as anscales prints them>" <seconds>: polls
     if [ "$(anscales)" = "$want" ]; then echo $(( ( $(date +%s%N) - t0 ) / 1000000 )); return 0; fi
     sleep 0.5
   done; echo never; return 1; }
+anstable(){ # anstable "<scales>" <seconds>: waits until the scales read that text THREE times in a row, one second apart (the return reset keeps them at 0 behind its cover for a few seconds, and between the Quickstep hold ending and the reset starting there is a moment of 1.0: one read proves nothing); prints the seconds it took or "never"
+  local want="$1" max="$2" i ok=0 t0; t0=$(date +%s)
+  for i in $(seq 1 "$max"); do
+    if [ "$(anscales)" = "$want" ]; then ok=$((ok + 1)); if [ "$ok" -ge 3 ]; then echo $(( $(date +%s) - t0 )); return 0; fi; else ok=0; fi
+    sleep 1
+  done; echo never; return 1; }
 anfeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"quickstep_animations_off\\\" value=\\\"$1\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
 anlog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tr -d '\r'; }
 anoffs(){ anlog | grep -c ' ANIM OFF' | tr -d ' \r\n'; }
