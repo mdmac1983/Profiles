@@ -2978,9 +2978,10 @@ hfrun(){ local L="$1" W="${2:-warm}"   # one FILMED opening (the menu opens by a
   python3 -I tools/pt_analyze.py "$OUT/hf-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/hf-metrics.txt" > /dev/null
   hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
   [ -n "$(hfget $L onset)" ] && rm -f "$OUT/hf-$L.mp4"; }   # the films are large; the numbers and the curves are in the results (a film the analysis could not read is kept for the artifact)
-hfline(){ local L="$1" sh mx fo sc pc   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
+hfline(){ local L="$1" sh mx fo sc pc fe   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
   sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"; pc="$(grep -o 'pencil took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
-  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0} pen=${pc:-0}"; }
+  fe="$(grep -o 'fade end [a-z]* first=[0-9]* ms frames=[0-9]* slow=[0-9]* worst=[0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | tail -1 | sed 's/fade end [a-z]* //; s/ ms//g')"   # the patch's own frame statistics of that fade: first = ms after the stock scrim began, frames drawn, frames later than 34 ms after the one before, worst gap
+  echo "$L sh=${sh:-?} mx=${mx:-?} fast=${fo:-0} scan=${sc:-0} pen=${pc:-0} ${fe:-(no fade end line)}"; }
 hfmed(){ local k v; for k in 1 2 3 4 5; do v="$(hfget $1f$k $2)"; [ -n "$v" ] && echo "$v"; done | sort -n | awk '{a[NR]=$1} END{if(NR==0) print "?"; else print a[int((NR+1)/2)]}'; }
 hfok(){ local k v n=0; for k in 1 2 3 4 5; do v="$(hfget $1f$k open_shape)"; awk -v f="${v:-9}" 'BEGIN{exit !(f+0 < 0.08)}' && n=$((n+1)); done; echo $n; }
 hfarm(){ # hfarm <tag> <arm 0|1|2>: restart with that treatment of a burst's first window event, wait for the patch to rest, film five openings
@@ -2990,7 +2991,8 @@ hfarm(){ # hfarm <tag> <arm 0|1|2>: restart with that treatment of a burst's fir
   info "HF arm $2 ($1): the patch rested after $t s"
   hfrun "${1}f1" warm
   local k; for k in 2 3 4 5; do hfrun "${1}f$k" quick; done
-  info "HF arm $2 ($1) films: $(for k in 1 2 3 4 5; do hfline ${1}f$k; done | tr '\n' '|')"
+  info "HF arm $2 ($1) films 1-3: $(for k in 1 2 3; do hfline ${1}f$k; done | tr '\n' '|')"
+  info "HF arm $2 ($1) films 4-5: $(for k in 4 5; do hfline ${1}f$k; done | tr '\n' '|')"
   local EVS; EVS="$(python3 -I tools/pt_analyze.py --events "$OUT/hf-all-${1}f2.txt" 2>&1)"
   info "HF arm $2 ($1) events of film 2, newest last, ms from the dialog's own window event: $(echo "$EVS" | cut -c1-300)"
   info "HF arm $2 ($1) events of film 2 (2): $(echo "$EVS" | cut -c301-600)"
