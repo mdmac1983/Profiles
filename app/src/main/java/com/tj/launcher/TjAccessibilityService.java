@@ -1871,7 +1871,10 @@ public class TjAccessibilityService extends AccessibilityService {
         if (DemoModeProfile.active(this)) { if (penView != null) removePencil(); return; }   // something else already turned the retail flag on (the pencil is gone natively); read only for SystemUI events (AB2)
         long now = android.os.SystemClock.uptimeMillis();
         int type = e == null ? 0 : e.getEventType();
-        if (now - lastPenMs >= 40) { lastPenMs = now; updatePencil(now - lastPenFullMs >= EventNoise.minPencilSearchGapMs(type)); }   // AN1: following a known pencil every 40 ms is cheap; a full tree search is spaced out in a burst of redraws
+        if (now - lastPenMs >= 40) {
+            lastPenMs = now; updatePencil(now - lastPenFullMs >= EventNoise.minPencilSearchGapMs(type));   // AN1: following a known pencil every 40 ms is cheap; a full tree search is spaced out in a burst of redraws
+            if (debuggable()) { long end = android.os.SystemClock.uptimeMillis(); if (end - now >= 15) Log.i(TAG, "PATCH pencil took " + (end - now) + " ms t=" + end); }   // BJ1 diagnostic (debug builds only), see the scan line in leadingEdge
+        }
         if (!penPending) { penPending = true; handler.postDelayed(penEval, 90); }
     }
 
