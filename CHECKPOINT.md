@@ -1,13 +1,13 @@
-# CHECKPOINT 681 — read me first, then TASKS.md
+# CHECKPOINT 682 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T06:05:30Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-2r9ji2` · **builds on:** `9c40e5c` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T06:40:32Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-2r9ji2` · **builds on:** `17cebf9` (this checkpoint is the commit after it)
 
 ## Just done
-v0.8.9 GATE dispatched 06:05 UTC on 9c40e5c (hp alone on it = #354 28 PASS): #355 id 42453270341 base,e1,o,x,se,ae,pt,rt; #356 id 42453272422 b6,n,n6,v,pa,rg,cs2,hp,pf,last; #357 id 42453274982 legacy,x1,y2,b4,ac,ps,uf,cs,nq,rb
+v0.8.9 GATE READ 06:40: #356 (b6,n,n6,v,pa,rg,cs2,hp,pf,last) 89 PASS 2 FAIL = only HP4 (patch 'not resting' at the open in a long run; hp alone passes: foreign window?); #355 (base,e1,o,x,se,ae,pt,rt) 130 PASS 3 FAIL = pt PB checks (patch scale 0.7497 vs stock 0.800 = -6.6 levels) with an INFO NATIVE CRASH line; #357 (legacy,x1,y2,b4,ac,ps,uf,cs,nq,rb) job 128646832646 still running. Reruns: #358 id 42455628922 n,cs2,hp (HP4 diagnostics added), #359 id 42455684349 pt alone, both on 17cebf9
 
 ## Do this next
-about 06:36 UTC read each run (list_workflow_jobs resource_id=run id, get_job_logs job_id tail 48; 404 = not ended; check the INFO sections line); NATIVE CRASH line = known flake: rerun only the sections that failed within 15 s after it; all green: bash ship.sh note, android.yml full_build=true on branch claude/new-session-2r9ji2, get_release_by_tag v0.8.9, tools/record-release.sh v0.8.9, Release link to Tj. No product code (app/ launcher3/) pushes until then
+read #358 and #359 (list_workflow_jobs resource_id=run id, get_job_logs tail 46 for hp, a subagent for pt) and #357 (job 128646832646, tail 60); HP4: if the INFO 'HP B tail' / 'HP4 log' names a foreign window (pkg cls) decide whether the rule should ignore it, else make the test wait longer; pt: pass = flake (native crash), fail = compare against b1399c9 before touching the lock patch; then ship only when every section is green on the final product commit
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ about 06:36 UTC read each run (list_workflow_jobs resource_id=run id, get_job_lo
 
 ## Last ten checkpoints
 ```
+  3d26ef4 ckpt 681: v0.8.9 GATE dispatched 06:05 UTC on 9c40e5c (hp alone on it = #354 28 PASS): #
   9c40e5c ckpt 680: v0.8.9: first gate (#351-353 on e60f9ad) CANCELLED at 05:55 UTC on purpose: a 
   fd738df ckpt 679: v0.8.9 GATE dispatched 05:47 UTC on e60f9ad (product code final, version 0.8.9
   e60f9ad ckpt 678: BI1c: hp FULLY GREEN: run #349 (4d78cfb, id 42451187830) 25 PASS; run #350 (01
@@ -26,3 +27,6 @@ about 06:36 UTC read each run (list_workflow_jobs resource_id=run id, get_job_lo
   4b6180c ckpt 673: BI1b step 5: Launcher control rows (switch + status + Calibrate now + Forget) 
   6005aa2 ckpt 672: BI1b steps 2-4 (compiles, nothing tested on the emulator yet): HomeShot + Home
 ```
+
+(3 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
