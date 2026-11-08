@@ -766,7 +766,14 @@ public class TjAccessibilityService extends AccessibilityService {
         int stepNow = homeStepNow();
         if (homeWallBmp == null || !HomePatchRules.sameStep(homeWallStep, stepNow)) {   // another page (the wallpaper moved) or nothing loaded: the crop of THIS position, or the calibration of it
             loadHomeWall(new Rect(patchAt));
-            if (homeWallBmp == null) { patchRestable = false; refreshLayers(); return; }   // no crop for this position: the window goes, the calibration comes (refreshLayers -> homeNeedsCal)
+            if (homeWallBmp == null) {
+                patchRestable = false;
+                if (homeLoadFailed) {   // the crop exists but could not be loaded just now (low memory): a few tries, 5 s apart, never a tight loop; the card covers the buttons meanwhile
+                    if (++homeLoadFails <= 6) { handler.removeCallbacks(homeBuild); handler.postDelayed(homeBuild, 5000); }
+                } else { refreshLayers(); }   // no crop for this position: the window goes, the calibration comes (refreshLayers -> homeNeedsCal)
+                return;
+            }
+            homeLoadFails = 0;
         }
         homeBuilding = true;
         final long reqAt = now; final int builtStep = homeWallStep;
