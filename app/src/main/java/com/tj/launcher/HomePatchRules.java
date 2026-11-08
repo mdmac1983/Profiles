@@ -162,13 +162,14 @@ public final class HomePatchRules {
     }
 
     /**
-     * May the calibration screenshot be accepted? The Launcher was hidden from {@code hiddenAtMs} and shown again at {@code shownAtMs} (uptime ms; 0 = still hidden); the system wrote the screenshot at
-     * {@code shotAtMs}. Only a screenshot taken while the Launcher was hidden, with a little slack at the start (the compositor needs a frame or two to show the hidden state), is wallpaper-only.
+     * How the calibration screenshot is known to be wallpaper-only: NOT by comparing times (a media-store timestamp has a resolution of one second), but by construction. The Launcher's root view is hidden,
+     * {@link #HIDE_SETTLE_MS} pass (the compositor shows the hidden state within a frame or two), the screenshot is requested, and the Launcher stays hidden until the media store reports the new file (the capture
+     * is over by then) or {@link #HIDE_MAX_MS} pass; a screenshot that arrives after the Launcher was shown again is ignored.
      */
-    public static final long HIDE_SETTLE_MS = 120;
-    public static boolean shotWhileHidden(long hiddenAtMs, long shownAtMs, long shotAtMs) {
-        if (hiddenAtMs <= 0 || shotAtMs <= 0) return false;
-        if (shotAtMs < hiddenAtMs + HIDE_SETTLE_MS) return false;
-        return shownAtMs <= 0 || shotAtMs <= shownAtMs;
+    public static final long HIDE_SETTLE_MS = 150, HIDE_MAX_MS = 4500;
+
+    /** Is a screenshot whose media-store time is {@code addedSec} (epoch seconds) the one asked for at {@code askedAtMs} (epoch ms)? A second of slack for the rounding. */
+    public static boolean shotIsOurs(long addedSec, long askedAtMs) {
+        return askedAtMs > 0 && addedSec * 1000L >= askedAtMs - 2000L;
     }
 }
