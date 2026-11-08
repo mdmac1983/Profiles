@@ -1178,3 +1178,8 @@ For the custom launcher, do the same logic and wallpaper patch that you did for 
 ```
 The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except the dimming speed makes the patch appear
 ```
+
+## 2026-11-08T18:16:25Z
+```
+The home screen power menu looks good now. The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. Is it possible to load it faster? Load it immediately when the screen is turned off or when the screen goes to lock screen so there is never a flicker of the patch? It could also be the dimmer loading for the first time. Can the pencil in the notification panel be hidden on the lock screen? If so, do it. Finally, the custom launcher still loads from the lock screen on a delay, figure it out how to make it load as quickly as possible, ideally immediately, from the lock screen, but without showing wifi or apps from quickstep or notifications etc. 
+```
