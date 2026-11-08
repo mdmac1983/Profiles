@@ -703,7 +703,13 @@ public class TjAccessibilityService extends AccessibilityService {
     // ---------------------------------------------------------------- the Launcher's hooks (main thread)
 
     /** TjHooks: the Launcher is about to draw: whatever is under the slot may change, the built patch is stale from now on. Cheap when the patch is already away. */
+    private long homeDrawsSeen = 0, homeDrawLoggedMs = 0;
     void homeDrew() {
+        if (debuggable()) {   // emulator diagnostics only (run #348: HP7 saw no draw at all): one line per burst of draws says whether the listener hears the Launcher and what state the patch was in
+            homeDrawsSeen++;
+            long up = android.os.SystemClock.uptimeMillis();
+            if (up - homeDrawLoggedMs > 1000) { homeDrawLoggedMs = up; Log.i(TAG, "HOMEPATCH draw burst (draw " + homeDrawsSeen + ", patch " + (patchView == null ? "none" : patchResting ? "resting" : patchRestable ? "restable" : "away") + ")"); }
+        }
         if (patchView == null) {   // no window (a calibration just ended, a failure removed it, the wallpaper changed): a draw of the Launcher is a sign of life, ask for a layer refresh now and then
             long up = android.os.SystemClock.uptimeMillis();
             if (up - homeRefreshAskedMs >= 2000 && !homeCalRunning && homeSwitchOn()) { homeRefreshAskedMs = up; refreshLayersSoon(); }
