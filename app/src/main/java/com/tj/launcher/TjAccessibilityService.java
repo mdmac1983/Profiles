@@ -1423,7 +1423,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 UnlockMethods.Method m = unlock.onEnter(now);
                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
                 LockLog.add(getApplicationContext(), "ENTER", "lag=" + Math.max(0, android.os.SystemClock.uptimeMillis() - e.getEventTime()) + "ms lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
-                if (m == null) coverAtEnter();
+                if (m == null) { sumNoteEnter(); coverAtEnter(); }
             } else unlock.onKey(k, now);
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
     }
@@ -1798,7 +1798,7 @@ public class TjAccessibilityService extends AccessibilityService {
             lp.gravity = Gravity.TOP | Gravity.START;
             lp.setTitle("TjResetCover");
             ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
-            resetCover = v;
+            resetCover = v; if (sumCoverUpAt == 0) sumCoverUpAt = android.os.SystemClock.uptimeMillis();   // BK1c
             handler.removeCallbacks(coverFailsafe);
             handler.postDelayed(coverFailsafe, 4500);
             Log.i(TAG, "RESET cover shown");
@@ -1809,7 +1809,7 @@ public class TjAccessibilityService extends AccessibilityService {
         handler.removeCallbacks(coverFailsafe);
         if (resetCover == null) return;
         try { ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(resetCover); } catch (Throwable ignored) { }
-        resetCover = null;
+        resetCover = null; sumCoverGoneAt = android.os.SystemClock.uptimeMillis();   // BK1c
         Log.i(TAG, "RESET cover removed");
     }
 
@@ -2069,7 +2069,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 handler.postDelayed(lockPrepareLater, 6500);     // ... and after the default 5 s "lock after" delay
             }
             if (android.content.Intent.ACTION_SCREEN_ON.equals(act)) { screenOnEpoch = t; unlock.onScreen(true, t); handler.removeCallbacks(lockPrepareLater); handleLockedWake(); if (calibrating()) { autoShotTries = 0; handler.removeCallbacks(autoShot); handler.postDelayed(autoShot, 2500); } flurryChange(true, t); updateMotion(); handler.postDelayed(layerRefresh, 400); }
-            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
+            if (android.content.Intent.ACTION_USER_PRESENT.equals(act)) { handler.removeCallbacks(lockPrepareLater); startUnlockSpeed(); sumNotePresent(); handler.post(unlockApply); updateMotion(); handler.postDelayed(layerRefresh, 400); }
             if (android.content.Intent.ACTION_POWER_CONNECTED.equals(act) || android.content.Intent.ACTION_POWER_DISCONNECTED.equals(act)) {
                 try { if (keyguardLocked()) unlock.onPower(android.content.Intent.ACTION_POWER_CONNECTED.equals(act), t); } catch (Throwable e) { Log.e(TAG, "power event failed", e); }
                 BatterySaverGuard.onPowerEvent(getApplicationContext(), android.content.Intent.ACTION_POWER_CONNECTED.equals(act));   // BA2: a plug-in resets Android's own saver state: the guard never switches the saver back on from outside after one
@@ -2265,6 +2265,58 @@ public class TjAccessibilityService extends AccessibilityService {
         unlockAtMs = 0; handler.removeCallbacks(unlockSpeedTimeout);
         Log.i(TAG, "UNLOCKSPEED first window after the unlock: " + pk + " +" + d + " ms");
         Features.setStringAsync(this, UNLOCK_SPEED_KEY, now() + "  " + pk + " appeared +" + d + " ms after the unlock");   // BG1: apply(), not commit(): this runs the moment the launcher's window appears, on the thread that is about to draw it
+    }
+
+    // ---------------------------------------------------------------- BK1c: ONE figure for "PIN accepted -> the custom home is on screen"
+    // Tj, 2026-11-08 18:16 UTC: "the custom launcher still loads from the lock screen on a delay, figure it out how to make it load as quickly as possible, ideally immediately". Nothing was ever measured on the tablet
+    // (BG1), and the log had only pieces: 'HOME custom home in front +N ms' counts from the start of settleHome, 'unlock_speed' stops at the first non-SystemUI window. This stamps the Enter tap, the moment the keyguard went away,
+    // the Launcher's resume and its first frame, and the black cover's life, and writes ONE line per unlock (lock log 'UNLOCKSUM' + the report key unlock_sum). Main thread, a few additions per event, nothing on the draw path.
+    public static final String UNLOCK_SUM_KEY = "unlock_sum";
+    private long sumEnterAt = 0, sumPresentAt = 0, sumResumedAt = 0, sumFirstDrawAt = 0, sumCoverUpAt = 0, sumCoverGoneAt = 0;
+    private String sumMode = "";
+    private boolean sumArmed = false;
+    private final Runnable sumTimeout = new Runnable() { @Override public void run() { try { sumEmit(true); } catch (Throwable t) { Log.e(TAG, "unlock summary failed", t); } } };
+
+    /** A plain Enter tap (the PIN is about to be judged). */
+    private void sumNoteEnter() { sumEnterAt = android.os.SystemClock.uptimeMillis(); }
+
+    /** USER_PRESENT: the keyguard is gone. */
+    private void sumNotePresent() {
+        long n = android.os.SystemClock.uptimeMillis();
+        sumPresentAt = n; sumResumedAt = 0; sumFirstDrawAt = 0; sumCoverGoneAt = 0; sumMode = Mode.isCustom(this) ? "custom" : "quickstep"; sumArmed = true;
+        if (resetCover == null) sumCoverUpAt = 0;                       // a cover from an earlier, unrelated unlock is gone; one raised at THIS Enter stays counted
+        if (sumEnterAt != 0 && n - sumEnterAt > 6000) sumEnterAt = 0;   // an Enter long ago (a wrong PIN) is not this unlock's
+        handler.removeCallbacks(sumTimeout); handler.postDelayed(sumTimeout, 8000);
+    }
+
+    /** The custom Launcher's onResume (TjHooks). */
+    void sumNoteResume() { if (sumArmed && sumResumedAt == 0 && android.os.SystemClock.uptimeMillis() >= sumPresentAt) sumResumedAt = android.os.SystemClock.uptimeMillis(); }
+
+    private void sumNoteDraw() {
+        long n = android.os.SystemClock.uptimeMillis();
+        if (n < sumPresentAt) return;
+        sumFirstDrawAt = n;
+        sumEmit(false);
+    }
+
+    private void sumEmit(boolean timeout) {
+        if (!sumArmed) return;
+        boolean coverWasUp = sumCoverUpAt > 0;
+        if (!timeout && (sumFirstDrawAt == 0 || (coverWasUp && sumCoverGoneAt == 0))) return;   // wait for the first frame AND for the cover to go
+        sumArmed = false; handler.removeCallbacks(sumTimeout);
+        String text;
+        if (sumFirstDrawAt == 0) text = "no custom-Launcher frame within 8 s after the keyguard went away (the unlock went to Quickstep or to an app); mode then: " + sumMode;
+        else {
+            long visibleAt = Math.max(sumFirstDrawAt, sumCoverGoneAt);
+            boolean fromEnter = sumEnterAt > 0;
+            text = "custom home on screen " + (visibleAt - (fromEnter ? sumEnterAt : sumPresentAt)) + " ms after " + (fromEnter ? "the Enter tap" : "the keyguard went away")
+                    + " [" + (fromEnter ? "keyguard " + (sumPresentAt - sumEnterAt) + " ms; " : "") + "then Launcher resumed +" + (sumResumedAt > 0 ? sumResumedAt - sumPresentAt : -1) + ", first frame +" + (sumFirstDrawAt - sumPresentAt)
+                    + (coverWasUp ? ", black cover gone +" + (sumCoverGoneAt - sumPresentAt) + " (up " + (sumCoverGoneAt - sumCoverUpAt) + ")" : ", no cover") + " ms]; mode then: " + sumMode;
+        }
+        sumCoverUpAt = 0; sumCoverGoneAt = 0; sumEnterAt = 0;
+        Log.i(TAG, "UNLOCKSUM " + text);
+        LockLog.addAsync(getApplicationContext(), "UNLOCKSUM", text);
+        Features.setStringAsync(this, UNLOCK_SUM_KEY, now() + "  " + text);
     }
 
     private void trackForeground(AccessibilityEvent e) {
