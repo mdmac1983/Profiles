@@ -996,6 +996,7 @@ public class Launcher extends BaseDraggingActivity implements LauncherExterns,
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         mStateManager.onWindowFocusChanged();
+        com.tj.launcher.TjHooks.onWindowFocus(hasFocus);   // Tj (BI1): the home screen's real-pixel patch must not paint over a shade / dialog that has the focus
     }
 
     public interface LauncherOverlay {
