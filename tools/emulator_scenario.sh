@@ -317,6 +317,7 @@ setmode custom; rebind; home
 # W5 failed twice on main and passed on the v0.8.8 tag (base,legacy runs #357 / #360 vs #365): the guard is paused 10 s while a RETURN RESET runs (runReset), and since BH1e a reset also opens the shade when a
 # notification was posted. What ran before the stock home was started, and what happened in the 5 s after it?
 info "W5 before: resets and guard lines in the log so far (newest last): $(adb logcat -d -s TjA11y:I | grep -E 'RESET (start|notifications|recents|cover)|STRAY|ROUTER' | sed 's/^.*TjA11y *: //' | cut -c1-44 | tail -n 6 | tr '\n' '|')"
+sleep 12   # the stray-home guard is paused for 10 s from the START of a return reset (runReset: "never fight the reset"), and a reset runs just before this point (the log line above); since BH1e it also opens the shade. W5 failed in 2 of 3 runs on main and in none on the v0.8.8 tag: a stray stock home inside that pause is rightly not redirected
 adb logcat -c
 adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -n "$STOCK" >/dev/null 2>&1; sleep 5
 resumed > "$OUT/resumed-stray.txt"; shot 40-stray-stock-home
