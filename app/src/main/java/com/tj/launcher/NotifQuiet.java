@@ -13,8 +13,11 @@ import android.util.Log;
  * and is put back exactly as found for an unlocked Quickstep session. Needs WRITE_SECURE_SETTINGS (the one-time adb grant the launcher already holds); without it nothing changes.
  *
  * LEVEL-TRIGGERED, like the animations: {@link #sync} is called from {@link AnimationSpeedup#syncNow} (mode changes, screen off / on, the unlock decision, helper connect / unbind, process start, the 2 Hz
- * window heartbeat in Quickstep, "Restore everything", the switch), re-reads the facts and sets or clears the hold, so no missed event can leave the banners off in Quickstep. The original value is on disk
- * before the first write; the rules are in {@link NotifQuietHold} (JVM-tested).
+ * window heartbeat in Quickstep, "Restore everything", the switch), re-reads the facts and sets or clears the hold, so no missed event can leave the banners off in Quickstep. The original value is saved before
+ * the first write; the rules are in {@link NotifQuietHold} (JVM-tested).
+ *
+ * WHERE THE HOLD IS REMEMBERED (code review 2026-11-08): in {@code Settings.Global} itself, as one private key ({@link #MARKER}) that holds the value to put back, NOT in a preference file. A file dies with
+ * "Clear data" (and a reinstall that clears), which would leave the setting at 0 for good with nothing that remembers it was ours; the key survives both, so the next start can still put the banners back.
  *
  * What this does NOT do (said plainly in TASKS BH1a): it hides no notification that is already in the shade, no status-bar icon and no shade entry. The lock screen's own list is {@link LockQuiet}'s (AK1), the
  * clean-up at the start of a custom session is {@code ReturnReset}'s, and this tablet is a Go device (no notification listener, so nothing can see or cancel a notification before SystemUI shows it).
@@ -22,6 +25,8 @@ import android.util.Log;
 public final class NotifQuiet {
     private static final String TAG = "TjNotifQuiet";
     private static final String PREFS = "tj_notif_quiet";
+    /** Settings.Global key that exists exactly while the hold is on; its value is what to put back. */
+    public static final String MARKER = "tj_banners_original";
 
     private NotifQuiet() {}
 
@@ -32,16 +37,14 @@ public final class NotifQuiet {
 
     private static SharedPreferences p(Context c) { return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 
-    /** The saved state in our preferences. {@code save} throws when the commit failed, so a change is never made without its original on disk. */
-    private static final class PrefsState implements NotifQuietHold.State {
-        private final SharedPreferences sp;
-        PrefsState(SharedPreferences sp) { this.sp = sp; }
-        @Override public boolean held() { return sp.getBoolean("held", false); }
-        @Override public String original() { return sp.getString("orig", null); }
+    /** The saved state: the marker key in Settings.Global. {@code save} throws when the write did not happen, so a change is never made without its original saved. */
+    private static final class MarkerState implements NotifQuietHold.State {
+        private final ContentResolver cr;
+        MarkerState(ContentResolver cr) { this.cr = cr; }
+        @Override public boolean held() { return Settings.Global.getString(cr, MARKER) != null; }
+        @Override public String original() { return Settings.Global.getString(cr, MARKER); }
         @Override public void save(boolean held, String original) {
-            SharedPreferences.Editor e = sp.edit().putBoolean("held", held);
-            if (original != null) e.putString("orig", original); else e.remove("orig");
-            if (!e.commit()) throw new IllegalStateException("could not save the banner state");
+            if (!Settings.Global.putString(cr, MARKER, held ? (original == null ? "1" : original) : null)) throw new IllegalStateException("could not save the banner state");
         }
     }
 
@@ -55,14 +58,16 @@ public final class NotifQuiet {
 
     private static final NotifQuietHold.Sink SINK = new NotifQuietHold.Sink() { @Override public void log(String message) { Log.i(TAG, message); } };
 
-    public static boolean held(Context c) { return p(c).getBoolean("held", false); }
+    public static boolean held(Context c) {
+        try { return Settings.Global.getString(c.getApplicationContext().getContentResolver(), MARKER) != null; } catch (Throwable t) { return false; }
+    }
 
     /**
-     * THE decision. Reads the facts, asks {@link NotifQuietPolicy#why}, sets or clears the hold, and logs a line (lock log + logcat) only when something changed. {@code screenOnNow} / {@code lockUpNow}: what the
-     * caller knows better than a service query, or null to ask. Cheap when there is nothing to do: no binder call and no Settings read unless the hold is on or could start. Only called from
-     * {@link AnimationSpeedup#syncNow} (serialised); never throws.
+     * THE decision. Reads the facts, asks {@link NotifQuietPolicy#why}, sets or clears the hold, and logs a line (lock log + logcat) only when something changed. {@code look}: the screen and lock facts of this
+     * sync (asked of Android at most once, shared with the animation rule); {@code assumeHelper}: the process has just started and its helper is about to connect. Cheap when there is nothing to do: no binder
+     * call unless the hold is on or could start. Only called from {@link AnimationSpeedup#syncNow} (serialised); never throws.
      */
-    static synchronized void sync(Context c, String trigger, Boolean screenOnNow, Boolean lockUpNow) {
+    static synchronized void sync(Context c, String trigger, AnimationSpeedup.Look look, boolean assumeHelper) {
         try {
             final Context app = c.getApplicationContext();
             final boolean before = held(app);
@@ -72,16 +77,19 @@ public final class NotifQuiet {
             f.grant = permitted(app);
             f.automationOff = CrashGuard.automationOff(app);
             f.quickstepMode = Mode.QUICKSTEP.equals(Mode.get(app));
-            // the screen and the lock only matter inside a Quickstep mode: in the custom launcher the answer is "quiet" whatever they say, so no binder call there
-            f.screenOn = true; f.lockUp = false; f.unlockUndecided = false;
+            // the helper, the screen and the lock only matter inside a Quickstep mode: in the custom launcher the answer is "quiet" whatever they say, so no binder call there
+            f.helperUp = true; f.screenOn = true; f.lockUp = false; f.unlockUndecided = false;
             if (f.quickstepMode && f.switchOn && f.grant && !f.automationOff) {
-                f.screenOn = screenOnNow != null ? screenOnNow.booleanValue() : AnimationSpeedup.interactive(app);
-                f.lockUp = f.screenOn && (lockUpNow != null ? lockUpNow.booleanValue() : AnimationSpeedup.keyguardUp(app));
-                f.unlockUndecided = AnimationSpeedup.unlockUndecided(f.screenOn, f.lockUp);
+                f.helperUp = assumeHelper || TjAccessibilityService.get() != null;
+                if (f.helperUp) {
+                    f.screenOn = look.screenOn();
+                    f.lockUp = look.lockUp();
+                    f.unlockUndecided = AnimationSpeedup.unlockUndecided(f.screenOn, f.lockUp);
+                }
             }
             final String why = NotifQuietPolicy.why(f);
             final boolean want = why.isEmpty();
-            final boolean after = NotifQuietHold.set(new PrefsState(p(app)), new GlobalSetting(app.getContentResolver()), f.grant, want, SINK);
+            final boolean after = NotifQuietHold.set(new MarkerState(app.getContentResolver()), new GlobalSetting(app.getContentResolver()), f.grant, want, SINK);
             if (before != after) {
                 String msg = after ? "banners OFF (" + NotifQuietPolicy.quietFor(f) + ", " + trigger + ")" : "banners ON again: " + (why.isEmpty() ? "hold ended" : why) + " (" + trigger + ")";
                 Log.i(TAG, msg);
@@ -95,7 +103,7 @@ public final class NotifQuiet {
     public static synchronized void restoreIfHeld(Context c) {
         try {
             final Context app = c.getApplicationContext();
-            NotifQuietHold.set(new PrefsState(p(app)), new GlobalSetting(app.getContentResolver()), permitted(app), false, SINK);
+            NotifQuietHold.set(new MarkerState(app.getContentResolver()), new GlobalSetting(app.getContentResolver()), permitted(app), false, SINK);
         } catch (Throwable t) { Log.e(TAG, "restore failed", t); }
     }
 
@@ -105,13 +113,14 @@ public final class NotifQuiet {
     public static String describe(Context c) {
         try {
             Context app = c.getApplicationContext();
-            SharedPreferences sp = p(app);
+            ContentResolver cr = app.getContentResolver();
+            String marker = Settings.Global.getString(cr, MARKER);
             StringBuilder b = new StringBuilder();
             b.append("switch ").append(switchOn(app) ? "on" : "off").append(", adb permission ").append(permitted(app) ? "granted" : "MISSING").append(" | now: ");
-            b.append(sp.getBoolean("held", false) ? "pop-up banners OFF (held)" : "pop-up banners as Android has them");
-            b.append(" | ").append(NotifQuietPolicy.SETTING).append(" = ").append(Settings.Global.getString(app.getContentResolver(), NotifQuietPolicy.SETTING));
-            if (sp.getBoolean("held", false)) b.append(" | put back to: ").append(sp.getString("orig", "?"));
-            b.append(" | last change: ").append(sp.getString("last", "(none yet)"));
+            b.append(marker != null ? "pop-up banners OFF (held)" : "pop-up banners as Android has them");
+            b.append(" | ").append(NotifQuietPolicy.SETTING).append(" = ").append(Settings.Global.getString(cr, NotifQuietPolicy.SETTING));
+            if (marker != null) b.append(" | put back to: ").append(marker);
+            b.append(" | last change: ").append(p(app).getString("last", "(none yet)"));
             return b.toString();
         } catch (Throwable t) { return "(unreadable)"; }
     }
