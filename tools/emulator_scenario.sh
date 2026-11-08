@@ -499,59 +499,59 @@ check "B6/D4: when the panel closes the cover is hidden (the window is kept warm
 # ---- BK1b (Tj, 2026-11-08 18:16 UTC, about v0.8.10: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the same quick-settings panel on the LOCK screen, in BOTH stored modes. Run #389 (head 4c2e2e2):
 #      mode custom = the cover appeared 75 ms after the panel was asked to open. Mode QUICKSTEP while locked is the usual case on the tablet without the shell helper (the lock-time pre-arm only switches the mode WITH the helper),
 #      and schedulePencil asked `Mode.isCustom` alone. A marker line is written to the log right before the panel is opened, so the delay until the cover appears can be read.
-pencil_min(){ # pencil_min <png> <device path of a uiautomator dump taken at the same moment>: the darkest luminance (0..1) inside the 'android:id/edit' node's own rectangle, or "none" (a plain white cover = about 1.0, the pencil's glyph = clearly lower)
-  local bnds X1 Y1 X2 Y2
-  bnds="$(adb shell cat "$2" 2>/dev/null | grep -o 'resource-id="android:id/edit"[^>]*bounds="\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]"' | head -1 | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' | sed -E 's/\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]/\1 \2 \3 \4/')"
-  [ -n "$bnds" ] || { echo none; return; }
-  read -r X1 Y1 X2 Y2 <<< "$bnds"
-  [ "$((X2-X1))" -gt 0 ] && [ "$((Y2-Y1))" -gt 0 ] || { echo none; return; }
-  convert "$1" -crop "$((X2-X1))x$((Y2-Y1))+$X1+$Y1" +repage -colorspace Gray -format '%[fx:minima]' info: 2>/dev/null || echo none
-}
 pen_cover_state(){ # shown | hidden | none: the pencil cover window's own flags (showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0): needs no glyph and no pixels
   local blk; blk="$(adb shell dumpsys window windows 2>/dev/null | grep -A10 'TjPencilCover}' | head -14)"
   [ -n "$blk" ] || { echo none; return; }
   if echo "$blk" | grep -q 'NOT_TOUCHABLE'; then echo hidden; else echo shown; fi
 }
+kg_state(){ adb shell dumpsys window policy 2>/dev/null | grep -o 'showing=[a-z]*' | head -1; }   # showing=true | showing=false
+# NO uiautomator dump inside the sampling: a UiAutomation session SUPPRESSES (unbinds) the accessibility services while it runs, so every dump would restart the very service that is measured (gate triage 2026-11-08, runs #408 / #409:
+# the 2nd and 3rd opening read 'none' in one phase of each run). Only the window state and the keyguard state are read here; ONE dump is taken at the very end of the phase.
+pen_sample(){ echo "cover=$(pen_cover_state) $(kg_state)"; }
+pen_none(){ local s; for s in "$@"; do case "$s" in cover=shown*) return 1;; esac; done; return 0; }
+pen_all_shown(){ local s; for s in "$@"; do case "$s" in cover=shown*) ;; *) return 1;; esac; done; return 0; }
+pen_control_ok(){ case "$1" in *"showing=false") ;; *) return 1;; esac; case "$1" in cover=shown*) return 1;; esac; return 0; }
 b6lock(){ # b6lock <stored mode custom|quickstep>
   setmode "$1"; rebind; home
-  # a quiet start (gate triage 2026-11-08, runs #395 / #406): the cover of the QUICKSTEP phase was shown ~6.8 s BEFORE the marker, left over from the previous phase's unlock (the return reset pulls the shade by itself): let the reset finish and close any panel first
+  # a quiet start: the previous phase's unlock starts a return reset that pulls the shade by itself; let it finish and close any panel first
   sleep 6; adb shell cmd statusbar collapse; sleep 2
+  BK_P0="$(pen_sample)"       # unlocked, no panel open
   adb logcat -c
   adb shell locksettings set-pin 1234 >/dev/null 2>&1
-  BK_P1="$(pen_cover_state)"   # the cover window right after the PIN was set, before the power key (run #407: a 'PENCIL cover shown' line came ~5 s BEFORE the marker in the Quickstep phase: is a stray cover sitting there with no panel open?)
+  BK_P1="$(pen_sample)"       # PIN set, still unlocked, no panel open
   palock
-  BK_P2="$(pen_cover_state)"   # the lock screen is up, the panel has NOT been opened yet
+  BK_P2="$(pen_sample)"       # the lock screen is up, the panel has NOT been opened yet
   adb shell log -t TjA11y "BK1b marker expand"
   adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock-$1
-  BK_S="$(pen_cover_state)"   # the cover window at +3 s of the 1st opening (the others are sampled below, still locked)
+  BK_O1="$(pen_sample)"       # 1st opening, +3 s
+  for BK_I in 2 3; do adb shell cmd statusbar collapse; sleep 2; adb shell cmd statusbar expand-settings; sleep 3; eval "BK_O$BK_I=\"\$(pen_sample)\""; done
   adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-lock-$1-windows.txt" 2>&1
   adb logcat -d -v time -s TjA11y:I > "$OUT/pencil-lock-$1-log.txt" 2>&1
+  # the ONE dump, at the very end (it unbinds the service while it runs): is the panel really open after the 3rd opening?
   adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-$1-edit.txt"
   local T0 T1 MS; T0="$(grep 'BK1b marker' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"; T1="$(sed -n '/BK1b marker/,$p' "$OUT/pencil-lock-$1-log.txt" | grep 'PENCIL cover shown' | head -1 | awk '{print $2}')"
   MS="$(awk -v a="$T0" -v b="$T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
   local LOCKED; LOCKED="$(adb shell dumpsys window policy 2>/dev/null | grep -m3 -i -E 'showing=|keyguardShowing|isKeyguardLocked|mKeyguardDelegate' | tr -s ' \r\n' ' ' | cut -c1-160) | focus: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-100)"
   info "BK1b ($1 mode, locked): stored mode $(getmode); keyguard: $LOCKED; pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover was SHOWN $MS ms after the panel was asked to open"
   info "BK1b ($1 mode) every PENCIL line of the whole phase, with its time (the log was cleared before the lock cycle; the marker is the moment the panel was asked to open): $(grep -E 'PENCIL|BK1b marker' "$OUT/pencil-lock-$1-log.txt" | sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' | cut -c1-80 | head -n 8 | tr '\n' '|')"
-  info "BK1b ($1 mode) cover window state: $(adb shell dumpsys window windows 2>/dev/null | grep -A4 'TjPencilCover' | tr -s ' \n' ' ' | cut -c1-300)"
-  BK_PM="$(pencil_min "$OUT/54-qs-panel-lock-$1.png" /sdcard/b6l.xml)"
-  info "BK1b ($1 mode, locked): (information only) the darkest pixel inside the pencil's rectangle in the screenshot: $BK_PM"
-  # Run #406 (head 540e4e5): the pixel measure read 1.0 in BOTH lock phases AND in the unlocked Quickstep control, so it cannot tell a covered pencil from a glyph that is not drawn dark: it is information only. The reliable fact is the cover window's own
-  # state (showPencil = touchable, hidePencil = NOT_TOUCHABLE + alpha 0), read at +3 s of THREE openings in a row (the 1st is the one filmed above, the 2nd and 3rd are the warm path), all while the lock screen is up.
-  for BK_I in 2 3; do adb shell cmd statusbar collapse; sleep 2; adb shell cmd statusbar expand-settings; sleep 3; BK_S="$BK_S $(pen_cover_state)"; done
-  info "BK1b ($1 mode, locked): the cover window at +3 s of the 1st / 2nd / 3rd opening of the panel: $BK_S (shown = touchable cover over the pencil)"
-  check "BK1b: on the LOCK screen (stored mode $1) the pencil cover is SHOWN at each of three openings of the panel" test "$BK_S" = "shown shown shown"
-  info "BK1b ($1 mode): the cover window right after the PIN was set / on the lock screen BEFORE the panel was opened: $BK_P1 / $BK_P2 (shown there would be a stray white square)"
-  check "BK1b: on the lock screen (stored mode $1) NO cover sits there before the panel is opened (window hidden or absent)" test "$BK_P2" != shown
+  info "BK1b ($1 mode): NO panel open, unlocked / PIN set / lock screen: $BK_P0 / $BK_P1 / $BK_P2"
+  info "BK1b ($1 mode): panel opened on the lock screen, 1st / 2nd / 3rd time: $BK_O1 / $BK_O2 / $BK_O3; pencil nodes on screen after the 3rd: $(cat $OUT/pencil-lock-$1-edit.txt)"
+  BK_LL="$(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | grep -E ' (SERVICE|RESET|ROUTER|PROFILE|LOCKPREP|HOME|SWEEP) ' | tail -10 | cut -c1-62 | tr -d '\r')"
+  info "BK1b ($1 mode): what the app logged in the lock log (older half): $(echo "$BK_LL" | head -5 | tr '\n' '|')"
+  info "BK1b ($1 mode): what the app logged in the lock log (newer half): $(echo "$BK_LL" | tail -5 | tr '\n' '|')"
+  check "BK1b: (stored mode $1) with no panel open NO cover sits anywhere: unlocked, PIN set, lock screen" pen_none "$BK_P0" "$BK_P1" "$BK_P2"
+  check "BK1b: (stored mode $1) on the LOCK screen the pencil cover is shown at each of three openings of the panel" pen_all_shown "$BK_O1" "$BK_O2" "$BK_O3"
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
   # review 2026-11-08: a test that finds no pencil must FAIL, not pass: the pencil being on screen is itself checked (it was found in every run so far, both modes)
   check "BK1b: the quick-settings panel opened on the lock screen and shows the pencil (stored mode $1; uiautomator found the edit node)" bash -c "[ \"\$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)\" -ge 1 ]"
-  if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover, so 'shown' above is not a constant. The plain unlock above flipped the stored mode to custom (UF2), so Quickstep is put back first (run #407: the cover WAS wanted there)
-    setmode quickstep; rebind; home; sleep 4; adb shell cmd statusbar expand-settings; sleep 3
-    BK_C="$(pen_cover_state)"
+  if [ "$1" = quickstep ]; then   # control: the UNLOCKED Quickstep panel (N3: no cover wanted there) must NOT show the cover. The plain unlock above flipped the stored mode to custom (UF2), so Quickstep is put back first
+    setmode quickstep; rebind; home; sleep 4
+    adb shell cmd statusbar expand-settings; sleep 3
+    BK_C="$(pen_sample)"
     adb shell cmd statusbar collapse; sleep 2
-    info "BK1b control (Quickstep, UNLOCKED, no cover wanted): the cover window is: $BK_C"
-    check "BK1b control: on the UNLOCKED Quickstep panel the cover is NOT shown (window hidden or absent)" test "$BK_C" != shown
+    info "BK1b control (stored mode quickstep, after the unlock, panel open): $BK_C (showing=false = really unlocked)"
+    check "BK1b control: the device is really unlocked (showing=false) and the open panel shows NO cover (N3)" pen_control_ok "$BK_C"
   fi
 }
 b6lock custom
