@@ -87,6 +87,39 @@ public final class HomeShot {
         generation.incrementAndGet();
     }
 
+    /**
+     * Is the stored crop that serves {@code step} really CORRUPT (an empty file or an unreadable header), as opposed to merely not loadable right now (a memory spike on a 2 GB tablet)? Reads only the image
+     * BOUNDS, so no bitmap is allocated and low memory cannot make a good file look bad. In doubt: not corrupt (nothing is ever deleted on a guess). Code review 2026-11-08.
+     */
+    public static boolean isCorrupt(Context c, int rot, int step, String signature) {
+        try {
+            int s = findStep(c, rot, step, signature);
+            if (s < 0) return false;
+            File f = file(c, rot, s);
+            if (f.length() <= 0) return true;
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(f.getPath(), o);
+            return o.outWidth <= 0 || o.outHeight <= 0;
+        } catch (Throwable t) { return false; }
+    }
+
+    /** Forgets the ONE stored crop that serves {@code step} (a corrupt file): the other pages keep theirs. */
+    public static void invalidateStep(Context c, int rot, int step, String signature) {
+        try {
+            int s = findStep(c, rot, step, signature);
+            if (s >= 0) {
+                file(c, rot, s).delete();
+                Features.remove(c, HomePatchRules.metaKey(rot, s));
+                String drop = entry(rot, s);
+                StringBuilder b = new StringBuilder();
+                for (String e : index(c)) { if (e.equals(drop)) continue; if (b.length() > 0) b.append(','); b.append(e); }
+                Features.setString(c, INDEX_KEY, b.toString());
+            }
+        } catch (Throwable t) { Log.e(TAG, "forgetting one home shot failed", t); }
+        generation.incrementAndGet();
+    }
+
     /** Deletes the crops whose signature is not this wallpaper picture and display size any more. */
     private static void prune(Context c, long wallpaperId, int dispW, int dispH) {
         try {
