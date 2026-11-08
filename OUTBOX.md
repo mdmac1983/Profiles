@@ -1179,3 +1179,18 @@
 > - **Photos:** keep them out of the repo, as agreed.
 > - **Still waiting on you:** the v0.8.5 and v0.8.6 checklists, the three answers to my earlier question about the home screen's menu, and where you saw the notification banner.
 <!-- sha:908934cad0f1 -->
+
+## 2026-11-08T16:40:48Z
+> The reset hold is released the moment the custom home is in front, so scale-at-zero isn't the likely culprit for a settled home. That leaves the first-event scan as the lead suspect, and the film will confirm or refute it. Everything is checkpointed (run id and next step are in `CHECKPOINT.md`). I'll stop here and pick the run up when the timer fires.
+>
+> **Where this stands**
+>
+> - **Your report** (home patch looks right, but the dimming speed makes it appear): I wrote it into `TASKS.md` as BJ1 in your words. It is the case my notes (BI1e) flagged as unmeasured on the home screen.
+> - **Lead suspect, not yet proven:** on the lock screen the first window event of a menu opening *defers* its heavy node scan so the dialog's own event is handled first. On the home screen that deferral was left out on purpose, to protect the quick-settings pencil. A blocking scan would keep the patch bright while the real scrim darkens, which would look like what you describe.
+> - **How I'm checking instead of guessing:** a new emulator section `hf` films the menu opening on the home screen frame by frame, like the lock screen's `pt` section does. It compares today's behaviour with a lock-style deferral inside one build. Run #382 started at 16:35 UTC and should end around 16:52.
+> - **Also added:** debug-only timing for the scan and pencil, plus per-opening frame statistics in the tablet report (first-frame lateness, slow frames, worst gap). If the emulator doesn't show the problem, your next report will.
+>
+> **Next:** read run #382, pick the fix from the numbers, test it, then ship it as v0.8.10.
+>
+> **Still open from earlier (nothing new from you needed for this one):** your tablet reports for v0.8.5, v0.8.6 and v0.8.9, and where you saw the notification banner.
+<!-- sha:1c91de5e2931 -->
