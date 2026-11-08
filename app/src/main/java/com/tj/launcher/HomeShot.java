@@ -82,6 +82,7 @@ public final class HomeShot {
             }
             Features.remove(c, INDEX_KEY);
         } catch (Throwable t) { Log.e(TAG, "forgetting the home shots failed", t); }
+        generation++;
     }
 
     /** Deletes the crops whose signature is not this wallpaper picture and display size any more. */
