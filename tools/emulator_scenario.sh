@@ -484,24 +484,31 @@ adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-windows-
 adb logcat -d -s TjA11y:I | grep PENCIL > "$OUT/pencil-log2.txt" 2>&1
 check "B6: a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-windows.txt)\" -ge 1 ]"
 check "B6/D4: when the panel closes the cover is hidden (the window is kept warm for an instant next time)" grep -qE 'PENCIL cover (hidden|removed)' "$OUT/pencil-log2.txt"
-# ---- BK1b (Tj, 2026-11-08 18:16 UTC, about v0.8.10: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the same quick-settings panel on the LOCK screen. A marker line is written to the
-#      log right before the panel is opened, so the delay until the cover appears can be read (the lock screen defers part of the work of a window burst: quietBurst, 120 ms).
-adb shell locksettings set-pin 1234 >/dev/null 2>&1
-palock
-adb logcat -c
-adb shell log -t TjA11y "BK1b marker expand"
-adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock
-adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-lock-windows.txt" 2>&1
-adb logcat -d -v time -s TjA11y:I > "$OUT/pencil-lock-log.txt" 2>&1
-adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-edit.txt"
-B6T0="$(grep 'BK1b marker' "$OUT/pencil-lock-log.txt" | head -1 | awk '{print $2}')"; B6T1="$(grep 'PENCIL cover shown' "$OUT/pencil-lock-log.txt" | head -1 | awk '{print $2}')"
-B6MS="$(awk -v a="$B6T0" -v b="$B6T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
-info "BK1b: lock screen, quick-settings panel opened: pencil nodes on screen $(cat $OUT/pencil-lock-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-windows.txt), the cover appeared $B6MS ms after the panel was asked to open; log: $(grep -E 'PENCIL|PATCH' "$OUT/pencil-lock-log.txt" | sed 's/^.*TjA11y *: //' | cut -c1-60 | head -n 6 | tr '\n' '|')"
-adb shell cmd statusbar collapse; sleep 2
-adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
-if [ "$(cat $OUT/pencil-lock-edit.txt 2>/dev/null)" -ge 1 ] 2>/dev/null; then
-  check "BK1b: on the LOCK screen a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-lock-windows.txt)\" -ge 1 ]"
-else info "BK1b: no pencil on this emulator's lock-screen panel (or the panel did not open): nothing to cover"; fi
+# ---- BK1b (Tj, 2026-11-08 18:16 UTC, about v0.8.10: "Can the pencil in the notification panel be hidden on the lock screen? If so, do it."): the same quick-settings panel on the LOCK screen, in BOTH stored modes. Run #389 (head 4c2e2e2):
+#      mode custom = the cover appeared 75 ms after the panel was asked to open. Mode QUICKSTEP while locked is the usual case on the tablet without the shell helper (the lock-time pre-arm only switches the mode WITH the helper),
+#      and schedulePencil asked `Mode.isCustom` alone. A marker line is written to the log right before the panel is opened, so the delay until the cover appears can be read.
+b6lock(){ # b6lock <stored mode custom|quickstep>
+  setmode "$1"; rebind; home
+  adb shell locksettings set-pin 1234 >/dev/null 2>&1
+  palock
+  adb logcat -c
+  adb shell log -t TjA11y "BK1b marker expand"
+  adb shell cmd statusbar expand-settings; sleep 3; shot 54-qs-panel-lock-$1
+  adb shell dumpsys window windows | grep -c TjPencilCover > "$OUT/pencil-lock-$1-windows.txt" 2>&1
+  adb logcat -d -v time -s TjA11y:I > "$OUT/pencil-lock-$1-log.txt" 2>&1
+  adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-$1-edit.txt"
+  local T0 T1 MS; T0="$(grep 'BK1b marker' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"; T1="$(grep 'PENCIL cover shown' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"
+  MS="$(awk -v a="$T0" -v b="$T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
+  info "BK1b ($1 mode, locked): pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover appeared $MS ms after the panel was asked to open; log: $(grep -E 'PENCIL|PATCH' "$OUT/pencil-lock-$1-log.txt" | sed 's/^.*TjA11y *: //' | cut -c1-60 | head -n 5 | tr '\n' '|')"
+  adb shell cmd statusbar collapse; sleep 2
+  adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
+  if [ "$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)" -ge 1 ] 2>/dev/null; then
+    check "BK1b: on the LOCK screen (stored mode $1) a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt)\" -ge 1 ]"
+  else info "BK1b ($1): no pencil on this emulator's lock-screen panel (or the panel did not open): nothing to cover"; fi
+}
+b6lock custom
+b6lock quickstep
+setmode custom; rebind; home
 fi # section b6
 if want b4; then # section b4
 ensurehome
@@ -3140,8 +3147,10 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   : > "$OUT/fp-metrics.txt"
   fpanim 1.0   # animations ON for the films (put back to 0 at the end)
   # ---- A: a FRESH PROCESS (nothing warmed up in it), one lock cycle, the FIRST opening, then the second one of the same cycle
-  adb shell am force-stop "$PKG"; sleep 1; setmode custom; rebind
-  fpwake 1; fprun coldA; fprun coldB
+  adb shell am force-stop "$PKG"; sleep 1; adb logcat -c; setmode custom; rebind
+  fpwake 1; adb logcat -d -s TjA11y:I 2>/dev/null | grep -E 'PATCH warm-up|PATCH window created|PATCH rest on' | sed 's/^.*TjA11y *: //' > "$OUT/fp-warm-log.txt"
+  info "FP: the fresh process before the first press: $(cut -c1-70 "$OUT/fp-warm-log.txt" | head -n 6 | tr '\n' '|')"
+  fprun coldA; fprun coldB
   # ---- B: the process is warm; four lock cycles, in each the first and then the second opening
   for K in 1 2 3 4; do fpwake 1; fprun w${K}A; fprun w${K}B; done
   fpanim 0
@@ -3159,6 +3168,9 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   check "FP1: the film worked (more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
   NSEEN=0; for L in coldA coldB w1A w1B w2A w2B w3A w3B w4A w4B; do fpget $L onset | grep -q . && NSEEN=$((NSEEN+1)); done
   check "FP2: the menu opening was seen in at least 9 of the 10 films" test "$NSEEN" -ge 9
+  # BK1a: the FIRST opening in a FRESH process must not be the bad one (run #389 before the warm-up draw: open_shape 0.194, +24 % bright, 3 frames, one gap of 278 ms; the warm ones read 0.04 - 0.06)
+  check "FP3: the first opening in a fresh process follows the stock dimming (open_shape below 0.12, section pt's yardstick is 0.08)" awk -v f="$(fpget coldA open_shape)" 'BEGIN{exit !(f != "" && f+0 < 0.12)}'
+  check "FP4: the patch opened by the warm-up draw once per window ('PATCH warm-up' in the log of the first opening's process)" bash -c "grep -q 'PATCH warm-up' $OUT/fp-warm-log.txt"
 else check "FP1: the menu geometry is known" false; fi
 fpanim 0
 adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
