@@ -2829,7 +2829,13 @@ if [ -n "$SLOT" ]; then
   info "HP3: the resting patch vs the bare home screen in the slot $SLOT: MAE $MA_R"
   check "HP3: the resting patch is INVISIBLE: the slot looks exactly like the bare home screen (MAE < 0.01)" awk -v m="$MA_R" 'BEGIN{exit !(m!="" && m+0 < 0.01)}'
 else check "HP3: the slot geometry is known" false; fi
-info "HP B tail right before the menu opens (gate run #356: the patch was 'not resting' at the open): $(hplog | grep -E 'HOMEPATCH|PATCH rest|PATCH window|PATCH removed' | tail -n 12 | cut -c25-125 | tr '\n' '|' | cut -c1-1000)"
+# Gate runs #356 and #358 (a longer run: sections n / cs2 first): the menu opened while the patch was 'not resting'. The patch is deliberately away for 2.5 s after ANY foreign window (the shade, a dialog), and the
+# clean-up of a custom session opens the shade when a notification of an earlier section is still posted. This is the home's quiet moment: no foreign window and no reset step for 6 s. Newest events first, short (the
+# results block cuts a line at about 330 characters).
+HP_EVRE='HOMEPATCH away: another window|RESET (start|cover|notifications|recents)'
+HP_QN="$(hplog | grep -cE "$HP_EVRE")"; HP_QS=0; HP_Q0=$(date +%s)
+for HP_I in $(seq 1 25); do sleep 2; HP_QM="$(hplog | grep -cE "$HP_EVRE")"; if [ "$HP_QM" = "$HP_QN" ]; then HP_QS=$((HP_QS+1)); else HP_QS=0; HP_QN=$HP_QM; fi; [ "$HP_QS" -ge 3 ] && break; done
+info "HP B: waited $(( $(date +%s) - HP_Q0 )) s for a quiet home (no foreign window, no reset step for 6 s) before the menu; events newest first: $(hplog | grep -E "HOMEPATCH away|HOMEPATCH stale|PATCH rest on|PATCH window created|PATCH removed|RESET (start|cover|notifications|recents)" | sed 's/^.*TjA11y *: //' | cut -c1-34 | tail -n 9 | tac | tr '\n' '|')"
 adb logcat -c
 hpopen
 shot 162-hp-open
