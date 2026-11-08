@@ -119,6 +119,15 @@ public final class HomePatchRules {
     /** What a stored wallpaper crop is valid for: one wallpaper picture (system), one rotation, one display size. Same shape as {@link PatchShot#sig}. */
     public static String sig(long wallpaperId, int rotation, int dispW, int dispH) { return PatchShot.sig(wallpaperId, rotation, dispW, dispH); }
 
+    /**
+     * Does a stored crop's signature ({@code id|r<rotation>|WxH}, any rotation) still belong to this wallpaper picture and display size? Used to delete the crops of an old wallpaper when a new one is stored.
+     */
+    public static boolean sigMatches(String sig, long wallpaperId, int dispW, int dispH) {
+        if (sig == null) return false;
+        String[] p = sig.split("\\|");
+        return p.length == 3 && p[0].equals(String.valueOf(wallpaperId)) && p[2].equals(dispW + "x" + dispH);
+    }
+
     /** The private file of a crop (per rotation and offset step). */
     public static String fileName(int rotation, int step) { return "homeshot_r" + rotation + "_x" + step + ".png"; }
 
