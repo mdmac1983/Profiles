@@ -125,7 +125,8 @@ public final class HomePatchRules {
     public static boolean sigMatches(String sig, long wallpaperId, int dispW, int dispH) {
         if (sig == null) return false;
         String[] p = sig.split("\\|");
-        return p.length == 3 && p[0].equals(String.valueOf(wallpaperId)) && p[2].equals(dispW + "x" + dispH);
+        // the display size swaps in landscape (the real metrics of that rotation): a crop of the OTHER rotation of the same display must survive (code review 2026-11-08)
+        return p.length == 3 && p[0].equals(String.valueOf(wallpaperId)) && (p[2].equals(dispW + "x" + dispH) || p[2].equals(dispH + "x" + dispW));
     }
 
     /** The private file of a crop (per rotation and offset step). */
