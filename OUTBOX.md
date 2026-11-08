@@ -1380,3 +1380,38 @@
 >
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
 <!-- sha:4131a101ebcc -->
+
+## 2026-11-08T22:25:27Z
+> I rewrote `README.md`, replacing the old 12-line version, from the code itself (the classes, the manifest, the Gradle files and `launcher3/PATCHES.md`). A script checked that every class name it mentions exists as a `.java` file in the repo. It's committed and pushed, and `main` is at the same commit.
+>
+> The README has 11 sections:
+> 1. **Features:** everything the app does, grouped by area:
+>    - the two launchers behind one Home button, and the crash breaker
+>    - the look that matches stock Quickstep (5×8 grid, no dock)
+>    - hidden apps and a clean Recents list
+>    - the 16 unlock handshakes, the master failsafes, and the ways back to custom with the reset (including the new home curtain)
+>    - the lock screen being kept quiet (radios, banners, the number, the pencil cover)
+>    - hiding the power menu's Screenshot entry on the lock screen and the home screen
+>    - per-launcher settings (tiles, keyboard, status bar, battery saver, animations)
+>    - the wallpaper picker, the shell helper, and the setup and report screens
+> 2. **How it fits together:** a diagram of the router, Launcher3, the accessibility service and the shell helper, plus the design rules the code follows.
+> 3. **Repository structure:** every top-level folder and Gradle module, the toolchain and the dependencies.
+> 4. **Code map:** all 90 classes in `com.tj.launcher`, grouped by area, and the manifest entries.
+> 5. **Launcher3 port:** where AOSP Launcher3 hooks into our code.
+> 6. **Permissions:** what the one-time adb grant unlocks.
+> 7. **Tests:** 59 JVM test classes, the emulator sections and the tiered gate, the shell self-tests and the tablet checklists.
+> 8. **Build, CI and release:** the commands and the three workflows.
+> 9. **Tooling and the session handoff system.**
+> 10. **Safety rules.**
+> 11. **Where to read more.**
+>
+> Two other things:
+> - **`BRIEF.md` is out of date.** It says the app is written in Kotlin, but the code is all Java (no `.kt` files at all). The README says Java; I haven't changed `BRIEF.md`.
+> - **The home-curtain work is unfinished.** The previous session stopped partway through a home-curtain fix. It had added the rule that renews a home picture's timestamp when the home hasn't changed, plus its test, but nothing calls that rule yet. I left it alone. The checkpoint now names it as the next step, followed by the code review, the v0.8.12 version bump and the gate.
+>
+> Still open from earlier, all waiting on you:
+> - tablet checklists for v0.8.9 to v0.8.11
+> - three answers about hiding the power menu's Screenshot entry on the home screen and in the drawer (BG2b)
+> - where you saw the Quickstep notification after unlocking (BH1c)
+> - whether the pencil cover should stay plain white when battery saver turns the dark theme on (BK1b2)
+<!-- sha:d54d7ac26191 -->
