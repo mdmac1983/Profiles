@@ -3369,10 +3369,17 @@ public class TjAccessibilityService extends AccessibilityService {
         fadeFrameLastMs = now; fadeFrames++;
         if (!PatchFade.fading(now, fadeStartMs, fadeLeadMs)) {   // this frame is the last one: the final brightness
             fading = false;
-            fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms";
-            Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms t=" + now);
+            String scale = animScaleText();   // read on the LAST frame only, never on the critical first ones
+            fadeSummary = (fadeHomeFlavour ? "home" : "lock") + ": the first frame was drawn " + fadeFirstDrawLateMs + " ms after the stock scrim began, " + fadeFrames + " frames, " + fadeSlowFrames + " later than 34 ms after the one before, worst gap " + fadeWorstGapMs + " ms, animator scale " + scale;
+            Log.i(TAG, "PATCH fade end " + (fadeHomeFlavour ? "home" : "lock") + " first=" + fadeFirstDrawLateMs + " ms frames=" + fadeFrames + " slow=" + fadeSlowFrames + " worst=" + fadeWorstGapMs + " ms scale=" + scale + " t=" + now);
         }
         return p;
+    }
+
+    /** BJ1: the system's animator duration scale as it is now. The stock fade runs 300 ms x this; at 0 ("Remove animations") the stock scrim appears in ONE frame, which a 300 ms patch fade would not match. For the report and the log only. */
+    private String animScaleText() {
+        try { return String.valueOf(android.provider.Settings.Global.getFloat(getContentResolver(), android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)); }
+        catch (Throwable t) { return "?"; }
     }
 
     private void patchShow(boolean on) {
