@@ -1288,3 +1288,28 @@
 ## 2026-11-08T20:57:19Z
 > The release build is running. I'll read it at about 21:03 and, if it's green, confirm the Release and record it.
 <!-- sha:8c94697d7ee9 -->
+
+## 2026-11-08T21:05:13Z
+> **v0.8.11 is out.** Install it over the old one (same key). The adb helper does not survive an install.
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.11
+>
+> The last chat died on "Prompt is too long" just after starting the final tests. Nothing was lost: I read its results from the repo and finished the job. Nothing of v0.8.11 has run on your tablet yet. Everything below is from the emulator.
+>
+> **Your 18:16 message**
+>
+> 1. **First lock-screen press flickers.** I reproduced it. It only happens the first time after the app process starts, because the patch had to draw the "menu open" look for the first time. Now it draws that look once, invisibly, as soon as the lock screen is up. On the emulator the first fade now has 8 frames with a worst gap of 79 ms. Before it had 3 frames and a 278 ms gap.
+> 2. **Pencil on the lock screen is hidden.** It works in both modes (custom launcher, and after a Quickstep session) at every opening, about 85 ms after the panel opens. The unlocked Quickstep panel still shows the pencil, as before. One catch: the cover is plain white, so with the battery saver on (dark theme) it may stand out more than the pencil did. The emulator can't show that, so please look.
+> 3. **Faster unlock: only partly.** After a Quickstep session with no helper, the black cover stays up while the clean-up (Recents, notifications) hides Wi-Fi and Quickstep apps. That is the delay, about 1–2 s on the emulator. It can't be instant while that clean-up has to stay hidden. I removed redundant work from it, but I can't say how much it saves: the same unlock measured anywhere from 0.9 to 2.2 s between emulator runs. Every unlock is now timed start to finish ("Last unlock, start to finish" in Launcher control and the tablet report), so your tablet can tell us.
+>
+> **About the tests.** The final run went red on four checks, and none was a product bug. One fails on v0.8.10 in exactly the same way. Two were flukes that pass when run alone. The pencil check was measuring the wrong thing. I fixed those tests and re-ran them, and the app itself is unchanged since the tested version except the version number.
+>
+> **What I need from you**
+> - Try `research/TABLET_CHECKLIST_v0.8.11.md`, then send the tablet report.
+> - Which unlock is slow (after the custom launcher or after Quickstep), what do you see during the wait, and about how many seconds?
+> - Yes or no: a home-looking curtain during that clean-up would make the unlock look instant, but touches during that second would be swallowed. I won't build it without your answer.
+>
+> Still open from before: the v0.8.5, v0.8.6 and v0.8.9 tablet checks, the three answers about the home screen's power menu, and where you saw the notification banner.
+>
+> Handoff ready: a new session resumes from CHECKPOINT.md.
+<!-- sha:866417ed5b0b -->
