@@ -804,6 +804,7 @@ public class TjAccessibilityService extends AccessibilityService {
         s.startsToday = homeCalStartsToday(false);
         String reason = HomePatchRules.calDecision(s);
         if (!reason.isEmpty()) {
+            if (s.hasCrop && s.switchOn && s.coverMode && s.customMode && patchView == null) refreshLayersSoon();   // BI1: the look that posted this timer found no crop (the wallpaper position was not known yet after a restart); this one finds it: look again (one shot: the timer is re-posted only while there is no crop)
             homeStatus("not calibrating yet: " + reason);
             if (s.switchOn && s.coverMode && s.customMode && !s.hasCrop && ("touched a moment ago".equals(reason) || "the home screen is still moving".equals(reason) || "the screen came on a moment ago".equals(reason) || "tried a moment ago".equals(reason) || "the home screen is not at rest".equals(reason))) {
                 handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, 3000);   // a "not yet" reason: look again
