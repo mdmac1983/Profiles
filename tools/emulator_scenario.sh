@@ -2062,6 +2062,10 @@ adb logcat -c
 setfeat; setmode custom; adb shell am force-stop "$PKG"; ensurehome; rebind; home
 fi # section pa
 if want pt; then # section pt
+# EXPERIMENT (2026-11-08, TEMPORARY): BC2 closetap read 6-20 % on main against 3-6 % on the v0.8.8 tag. An 'expN' token in the sections list (e.g. pt,exp15) sets the debug-only bit mask Settings.Global tj_exp that
+# switches the always-on BI1 hooks off (TjHooks.exp: 1 draw listener, 2 focus hook, 4 wallpaper-offset hook, 8 homeDrew, 16 its debug log). Without a token the mask is 0 (everything on).
+EXPBITS=0; for EXPT in ${SECTIONS//,/ }; do case "$EXPT" in exp[0-9]*) EXPBITS="${EXPT#exp}";; esac; done
+adb shell settings put global tj_exp "$EXPBITS"; info "PT experiment mask tj_exp=$EXPBITS (0 = every hook on)"
 ensurehome
 # ---- AZ1 (Tj, 2026-11-06 20:40: "a slight flicker when I press the side key to open the power menu ... can the darkening ... be faster or fade"). This section FILMS the stock power menu opening and closing on the lock screen
 #      (screenrecord) and measures, frame by frame, how the patch's brightness compares with the brightness of the lock screen beside the menu (tools/pt_analyze.py: dev = (patch / surround) / (the same ratio before the menu) - 1;
