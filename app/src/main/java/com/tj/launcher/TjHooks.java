@@ -65,13 +65,13 @@ public final class TjHooks {
         try {
             java.lang.ref.WeakReference<com.android.launcher3.Launcher> w = drawWatchedFor;
             if (w != null && w.get() == l) return;
-            drawWatchedFor = new java.lang.ref.WeakReference<>(l);
             l.getDragLayer().getViewTreeObserver().addOnDrawListener(new android.view.ViewTreeObserver.OnDrawListener() {
                 @Override public void onDraw() {
                     lastHomeDrawMs = android.os.SystemClock.uptimeMillis();
                     try { TjAccessibilityService s = TjAccessibilityService.get(); if (s != null) s.homeDrew(); } catch (Throwable ignored) { }
                 }
             });
+            drawWatchedFor = new java.lang.ref.WeakReference<>(l);   // only AFTER the listener is in (code review 2026-11-08): a registration that threw (the observer not alive yet) is tried again at the next resume; marked first it would never be, lastHomeDrawMs would stay 0 and every built patch would count as fresh for ever
         } catch (Throwable t) { android.util.Log.e("TjHooks", "home draw watch failed", t); }
     }
 
