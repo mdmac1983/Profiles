@@ -1009,3 +1009,27 @@
 ## 2026-11-08T02:35:54Z
 > Picking up from the cut-off session. The screenshots show it died on "Prompt is too long" right after queuing the v0.8.7 build. First step is installing the hooks, then checking git state and the build run.
 <!-- sha:c09663ff947d -->
+
+## 2026-11-08T03:22:42Z
+> The `Everyday` group is open by default, which matches the checklist. Nothing more to do until the gate runs finish (~03:41 UTC), so this is where I give Tj a status; the timer will wake me for the release steps.
+>
+> **Status for Tj**
+>
+> - **v0.8.7 is out and recorded.** The session that built it died on "Prompt is too long" one step before writing it down, so I picked it up. The build was green and the Release is published, signed and certificate-verified:
+>
+>   https://github.com/tjshea90/Launcher/releases/tag/v0.8.7
+>
+>   It only measures things: it writes the lock log in the background so the unlock waits less, and it adds the process-life and helper-flight-recorder lines to the report. Nothing looks different.
+>
+> - **Your 02:29 message (notifications off) is being built as v0.8.8.** The lock screen part already existed since v0.7.x (`lock_screen_show_notifications = 0`, from any launcher). What was missing was a notification that arrives while the custom launcher is in front or the tablet is dark or locked. Built:
+>   - **Pop-up banners off** in the custom launcher, and on the dark or locked screen in any launcher. They are back exactly as they were in an unlocked Quickstep session. New switch: Launcher control > Everyday > "No pop-up notifications outside Quickstep".
+>   - **A record of which app posted a notification**, when, and in which state (package name only, never the text). This goes into the tablet report so the next report can name the culprit.
+>   - **The clean-up when the custom launcher starts** now also looks in the shade when something was posted since the last clean-up, even if no status-bar icon shows (a silent notification has no icon but is listed in the shade).
+> - **Proof so far:** 681 unit tests, 0 failures, and lint is clean. On the emulator, section `nq` passed 23 of 23: 0 banners in the custom launcher, 1 banner for the same notification in an unlocked Quickstep session. The tiered gate (three parallel runs) is running now.
+> - **What this cannot do:** hide the status-bar icon or the shade list of a notification that has already arrived, or show only the drawer apps' notifications without flicker. This Go tablet has no notification listener, so nothing in the app can see or cancel a notification before the system shows it. Every lever and its verdict is in `research/NOTIFICATIONS_QUIET_2026-11-08.md`.
+> - **Your "compact this session" line:** the old session died before it could. This new one resumed from `CHECKPOINT.md` with nothing lost.
+>
+> **One question that decides what comes next:** where exactly did you see the Quickstep app's notification: a banner at the top, a small icon in the status bar, in the pulled-down shade, or on the lock screen? The tablet report will also say which app.
+>
+> I'll release v0.8.8 as soon as the gate is green and send the Release link.
+<!-- sha:3f6af2ba6b7d -->
