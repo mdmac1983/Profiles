@@ -11,6 +11,15 @@ import org.junit.Test;
  * stored (the test lines carry no title or text because the class has no way to take one).
  */
 public class NotifSightingsTest {
+    @Test public void theShadeStepFollowsTheIconsOrTheFlagButNeverWhenTheSwitchIsOff() {
+        assertTrue("an icon", NotifSightings.shadeStepWanted(true, Boolean.TRUE, false));
+        assertTrue("unknown (the bar is hidden): look", NotifSightings.shadeStepWanted(true, null, false));
+        assertFalse("no icon, nothing posted: skip", NotifSightings.shadeStepWanted(true, Boolean.FALSE, false));
+        assertTrue("BH1e: no icon but something was posted (a silent notification): open the shade", NotifSightings.shadeStepWanted(true, Boolean.FALSE, true));
+        assertFalse("the Clear notifications switch is off", NotifSightings.shadeStepWanted(false, Boolean.TRUE, true));
+        assertFalse(NotifSightings.shadeStepWanted(false, null, true));
+    }
+
     @Test public void aNotificationOfAnOrdinaryAppCounts() {
         assertTrue(NotifSightings.counts("org.telegram.messenger", "com.tj.launcher"));
     }
