@@ -3214,6 +3214,7 @@ public class TjAccessibilityService extends AccessibilityService {
         fadeStartMs = now - lag;
         fading = on && PatchFade.fading(now, fadeStartMs, fadeLeadMs);
         fadeLagLast = lag;
+        fadeFrameLastMs = 0; fadeWorstGapMs = 0; fadeFirstDrawLateMs = -1; fadeFrames = 0; fadeSlowFrames = 0; fadeHomeFlavour = patchHomeMode;   // BJ1: a new opening, new frame statistics
         Log.i(TAG, "PATCH fade " + (fading ? "start" : "none") + " lag=" + lag + " ms t=" + now + " lead=" + fadeLeadMs);
     }
 
