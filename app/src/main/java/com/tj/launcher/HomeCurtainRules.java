@@ -22,6 +22,14 @@ public final class HomeCurtainRules {
     /** A picture older than this is not used (the data does not live for ever; a changed home is re-captured long before). */
     public static final long MAX_AGE_MS = 30L * 24 * 60 * 60 * 1000;
 
+    /**
+     * A capture that finds the home UNCHANGED confirms that the stored picture is still right: once it is older than this, its time stamp is renewed (the meta only, no picture is written). Without it a home that
+     * is never rearranged would turn "too old" after {@link #MAX_AGE_MS} and the black cover would come back for good (code review 2026-11-08).
+     */
+    public static final long STAMP_AFTER_MS = 24L * 60 * 60 * 1000;
+
+    public static boolean stampDue(long ageMs) { return ageMs > STAMP_AFTER_MS && ageMs <= MAX_AGE_MS * 4; }
+
     public static final class UseFacts {
         public boolean switchOn, hasPicture;
         /** The picture's own signature (wallpaper id | rotation | display size) and the signature of the screen as it is now. */
