@@ -10,8 +10,9 @@ package com.tj.launcher;
  * is the global setting {@link #SETTING}; {@link NotifQuiet} writes it (adb grant WRITE_SECURE_SETTINGS) and puts it back; THIS class decides WHEN it must be off.
  *
  * It is the exact complement of {@link AnimationPolicy}: banners are quiet EVERYWHERE except inside an unlocked, decided Quickstep session (the stock home and the apps opened there). The lock screen counts as the
- * custom world (a Quickstep session that is locked or dark is quiet too: "the lock screen, no matter which launcher it was on"). No accessibility helper is required: without it nothing can change the mode, so a
- * hold taken in the custom launcher stays right, and a process restart must not flip the banners on for the minute or two the helper needs to bind.
+ * custom world (a Quickstep session that is locked or dark is quiet too: "the lock screen, no matter which launcher it was on"). The custom launcher needs no accessibility helper: without it nothing can change
+ * the mode, so a hold taken there stays right, and a process restart must not flip the banners on for the minute or two the helper needs to bind. A QUICKSTEP session does need it (code review 2026-11-08): it is
+ * what hears the lock screen go away, so with the helper gone nothing could ever end a hold taken at the lock, and the safe direction is "banners as Android has them".
  */
 public final class NotifQuietPolicy {
     private NotifQuietPolicy() {}
