@@ -3114,6 +3114,8 @@ check "CU4: at least one screenshot was taken while the cover was up (so the com
 check "CU5: while the curtain is up the screen equals the bare home screen (worst MAE over the whole display < 0.01)" awk -v m="$CU_MAX" -v n="$CU_IN" 'BEGIN{exit !(n+0 >= 1 && m+0 < 0.01)}'
 CU_NEG="$(cu_mae 170-cu-bare 172-cu-quickstep)"
 info "CU C: negative control, the Quickstep screen against the bare home: MAE $CU_NEG"
+cu_mean(){ convert "$OUT/$1.png" -crop "$2" +repage -scale 1x1 -depth 8 txt:- 2>/dev/null | tail -1 | grep -o '([0-9, ]*)' | head -1 | tr -d '() '; }
+info "CU C: the top band (600x24+0+0): MAE bare vs a capture inside the life: $(for k in 2 3 4 5; do printf '%s ' "$(compare -metric MAE -extract 600x24+0+0 "$OUT/170-cu-bare.png" "$OUT/171-cu-during-$k.png" null: 2>&1 | grep -o '([0-9.e+-]*)' | tr -d '()')"; done); mean colour bare $(cu_mean 170-cu-bare 600x24+0+0) vs capture-3 $(cu_mean 171-cu-during-3 600x24+0+0); the middle (600x900+0+60) bare $(cu_mean 170-cu-bare 600x900+0+60) vs capture-3 $(cu_mean 171-cu-during-3 600x900+0+60)"
 check "CU6: negative control: the measure SEES a difference (the Quickstep screen is not the home screen: MAE > 0.03)" awk -v m="$CU_NEG" 'BEGIN{exit !(m+0 > 0.03)}'
 CU_SWNOW="$(echo "$CULOG" | grep -c 'RESET curtain swallows touches now')"; CU_SW="$(echo "$CULOG" | grep -c 'RESET curtain swallowed a tap')"
 info "CU C: 'swallows touches now' lines $CU_SWNOW; swallowed taps $CU_SW; the cover lines: $(echo "$CULOG" | grep -E 'RESET (cover|curtain)' | sed 's/I.TjA11y *([ 0-9]*): //' | cut -c1-90 | tr '\n' '|' | cut -c1-420)"
