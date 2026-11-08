@@ -1260,3 +1260,7 @@
 ## 2026-11-08T20:16:40Z
 > Two independent `b6` samples are running to settle one open point: a `PENCIL cover shown` line appears in the Quickstep phase a few seconds before the panel is opened. The new checks will show whether a cover is sitting on the lock screen with no panel open, which would be a stray white square. I'll read both at about 20:23.
 <!-- sha:1dab2749e491 -->
+
+## 2026-11-08T20:30:43Z
+> The two redesigned `b6` samples are running, due about 20:36. This version avoids `uiautomator` inside the sampling, which unbinds the service, and records the keyguard state and the status-bar frame at each sample. I'll read them as soon as they land.
+<!-- sha:9b25101d9838 -->
