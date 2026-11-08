@@ -34,6 +34,8 @@ public class SetupActivity extends Activity {
     public static final String PREF_ALLOW_AUTORUN = "allow_setup_autorun";
     /** Emulator test only (same guard as the autorun): sets a recognisable picture as the LOCK-screen wallpaper so the lock-screen patch can be compared against it. */
     public static final String EXTRA_TEST_LOCK_WALLPAPER = "test_lock_wallpaper";
+    /** Emulator test only (same guard): sets a FINELY patterned picture (2-px checkerboard on a gradient, twice the screen wide like the launcher's scrolling wallpaper) as the HOME wallpaper, so a wrong or misplaced home-patch crop shows. BI1. */
+    public static final String EXTRA_TEST_HOME_WALLPAPER = "test_home_wallpaper";
 
     private void setTestLockWallpaper() {
         try {
