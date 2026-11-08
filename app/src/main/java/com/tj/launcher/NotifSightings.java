@@ -99,21 +99,33 @@ public final class NotifSightings {
 
     private static final Map<String, Long> LAST_LOGGED = new HashMap<>();
 
+    /** One worker, in order: the drawer lookup can query the package manager and commit a preference the first time, which the main thread (the Launcher's first frame) must never wait for. */
+    private static final java.util.concurrent.ExecutorService BG = java.util.concurrent.Executors.newSingleThreadExecutor(new java.util.concurrent.ThreadFactory() {
+        @Override public Thread newThread(Runnable r) { Thread t = new Thread(r, "tj-notif-seen"); t.setDaemon(true); return t; }
+    });
+
     /**
-     * The accessibility helper calls this for every TYPE_NOTIFICATION_STATE_CHANGED event whose class is android.app.Notification (it is delivered on the main thread, a few times an hour: cheap, preferences are
-     * written with apply()). Never throws.
+     * The accessibility helper calls this for every TYPE_NOTIFICATION_STATE_CHANGED event whose class is android.app.Notification (delivered on the main thread): a package check, then everything else on the
+     * worker with the time of the event. Never throws.
      */
-    public static void onNotification(Context c, CharSequence packageName) {
+    public static void onNotification(final Context c, CharSequence packageName) {
         try {
             final Context app = c.getApplicationContext();
             final String pkg = packageName == null ? null : packageName.toString();
             if (!counts(pkg, app.getPackageName())) return;
+            final long now = System.currentTimeMillis();
+            BG.execute(new Runnable() { @Override public void run() { record(app, pkg, now); } });
+        } catch (Throwable t) { Log.e(TAG, "sighting failed", t); }
+    }
+
+    /** The worker's half: the state of the tablet at the time, the drawer membership, the ring buffer, the flag and the (rate-limited) lock-log line. */
+    private static void record(Context app, String pkg, long now) {
+        try {
             final boolean quickstep = Mode.QUICKSTEP.equals(Mode.get(app));
             final boolean on = AnimationSpeedup.interactive(app);
             final boolean lock = on && AnimationSpeedup.keyguardUp(app);
             final String state = stateWords(quickstep, on, lock);
             final boolean drawer = HiddenApps.isPackageShown(app, pkg);
-            final long now = System.currentTimeMillis();
             final String line = new SimpleDateFormat("MM-dd HH:mm:ss", Locale.US).format(new Date(now)) + " " + pkg + " " + state + " " + (drawer ? "drawer" : "hidden");
             SharedPreferences sp = p(app);
             synchronized (NotifSightings.class) {
