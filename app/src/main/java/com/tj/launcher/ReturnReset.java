@@ -200,7 +200,7 @@ public final class ReturnReset {
             // B4: look first. Nothing in the status bar = no shade step; Recents untouched since the last clear = no Recents step. Both skipped = the home at once, nothing else on screen.
             Boolean icons = notif ? svc.hasNotificationIcons() : Boolean.FALSE;
             final boolean seen = notif && NotifSightings.dirty(app);   // BH1: something was posted since the shade was last cleared; a SILENT notification has no status-bar icon but the shade lists it
-            final boolean doShade = notif && (icons == null || icons.booleanValue() || seen);
+            final boolean doShade = NotifSightings.shadeStepWanted(notif, icons, seen);
             if (doShade) NotifSightings.clearDirty(app);   // whatever arrives from here on sets it again
             // D5: only apps opened from QUICKSTEP are closed; apps opened from the custom launcher stay. First run after install (untracked) clears everything once.
             // BE3 (clean start): complete clear = Recents "Clear all", whenever anything was used since the last clear (no label matching: nothing can be mis-matched or missed)
