@@ -497,7 +497,15 @@ public class TjAccessibilityService extends AccessibilityService {
     /** Called by the launcher (state changes, resume, pause): re-evaluate the patch at once. */
     public void refreshLayersSoon() { handler.removeCallbacks(layerRefresh); handler.post(layerRefresh); }
 
-    public void onWallpaperOffset() { handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40); }
+    public void onWallpaperOffset() {
+        handler.removeCallbacks(patchRedraw); handler.postDelayed(patchRedraw, 40);
+        // BI1 (emulator run #346, phase C): a NEW wallpaper position is a different crop. After a restart TjHooks.wallpaperX is 0.5 until the Launcher reports its real offset (0 with one page) a moment after the first
+        // evaluation, and that first look judged "no crop for step 500" and nothing looked again. Level-triggered: whenever the reported step changes, look again once it has settled (a page scroll = one look at its end).
+        int st = homeStepNow();
+        if (st != homeOffsetStep) { homeOffsetStep = st; handler.removeCallbacks(homeOffsetSettled); handler.postDelayed(homeOffsetSettled, 200); }
+    }
+    private volatile int homeOffsetStep = -1;
+    private final Runnable homeOffsetSettled = new Runnable() { @Override public void run() { try { if (homeSwitchOn()) refreshLayersSoon(); } catch (Throwable t) { Log.e(TAG, "home offset refresh failed", t); } } };
 
     private void scheduleLayerRefresh() {
         if (!Features.POWER_WALLPAPER.equals(Features.powerMode(this)) && patchView == null && !lockPatchWanted()) return;   // not in this mode and nothing to clean up: free
