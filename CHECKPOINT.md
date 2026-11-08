@@ -1,13 +1,13 @@
-# CHECKPOINT 672 — read me first, then TASKS.md
+# CHECKPOINT 673 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T04:38:21Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/new-session-yhyifc` · **builds on:** `7264324` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T04:39:56Z · **tests:** all 3 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/new-session-yhyifc` · **builds on:** `15d4ee8` (this checkpoint is the commit after it)
 
 ## Just done
-BI1b steps 2-4 (compiles, nothing tested on the emulator yet): HomeShot + HomeLayer + TjHooks (launcherRef, draw listener, touch, hide/show Launcher) + TAS home patch section (facts, target, fresh/restable, build via PixelCopy, calibration with the Launcher hidden + a touch guard, cardWanted, patchShow/addPatch/refresh/remove, quietBurst exempt on home)
+BI1b step 5: Launcher control rows (switch + status + Calibrate now + Forget) + tablet report line + BH1e fixed (NotifSightings.shadeStepWanted used by ReturnReset and runReset) + tests (NotifSightingsTest 11, HomePatchRulesTest 20)
 
 ## Do this next
-BI1b step 5: Launcher control (switch home_patch + status line + 'Calibrate the home patch now' button -> TjAccessibilityService.get().homeCalibrateNow()), tablet report line, BH1e fix (runReset force flag), then emulator section hp (gate-map + emulator.yml text), full unit suite, /code-review high, gate
+BI1c: emulator section hp (model: section ae in tools/emulator_scenario.sh; helpers to reuse: how ae opens the menu, reads the CARD area log line, takes bare/open screenshots, measures with tools/pb_probe.py); then gate-map + emulator.yml text; then /code-review high; then the tiered gate
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -16,6 +16,7 @@ BI1b step 5: Launcher control (switch home_patch + status line + 'Calibrate the 
 
 ## Last ten checkpoints
 ```
+  6005aa2 ckpt 672: BI1b steps 2-4 (compiles, nothing tested on the emulator yet): HomeShot + Home
   703bf5a ckpt 671: BI1b step 1: HomePatchRules (pure) + HomePatchRulesTest 19 green
   1a97981 ckpt 670: BI1a design written (research/HOME_PATCH_2026-11-08.md: wallpaper-only calibra
   1ca0e18 ckpt 669: Tj's 04:00 message written as TASKS BI1 (his go for BG2b (1): the lock-screen 
@@ -25,8 +26,7 @@ BI1b step 5: Launcher control (switch home_patch + status line + 'Calibrate the 
   a3bc971 ckpt 665: v0.8.8 GATE read 03:41 UTC (head 73e65ff, product code final): #342 id 4244234
   0037ea5 ckpt 664: v0.8.8 GATE dispatched 03:21 UTC on 73e65ff (product code final, nq alone #341
   e09cc2b ckpt 663: BH1: v0.8.8 candidate (versionCode 33): version bump, research/NOTIFICATIONS_Q
-  f7b6ee0 ckpt 662: BH1 review fixes (8 findings: helper fact in Quickstep, hold state in a Settin
 ```
 
-(26 automatic checkpoint(s) since the last deliberate one — the
+(9 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
