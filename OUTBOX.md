@@ -1272,3 +1272,7 @@
 ## 2026-11-08T20:40:40Z
 > It's 20:40, and the real timer fires at 20:44:30. I'm waiting for that one before reading anything.
 <!-- sha:b6a5dcfca044 -->
+
+## 2026-11-08T20:44:45Z
+> The two samples are still finishing; I'll read them at about 20:46:30.
+<!-- sha:a02576f0abd4 -->
