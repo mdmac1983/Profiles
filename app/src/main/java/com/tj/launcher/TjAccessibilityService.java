@@ -688,6 +688,11 @@ public class TjAccessibilityService extends AccessibilityService {
                     homeStatus("the menu moved out of the stored crop: calibrating again");
                     HomeShot.invalidateAll(this);
                 } else { homeWallBmp = l.bmp; homeWallLeft = l.left; homeWallTop = l.top; homeWallStep = HomeShot.findStep(this, rotation(), step, sig); }
+            } else if (HomeShot.has(this, rotation(), step, sig)) {
+                // a crop that "exists" but cannot be decoded (a truncated file): forget it, or has() says yes and load() says no for ever and buildHomePatchNow / refreshLayers call each other every ~20 ms (code review 2026-11-08)
+                Log.w(TAG, "HOMEPATCH the stored wallpaper crop cannot be read: it will be calibrated again");
+                homeStatus("the stored wallpaper crop could not be read: calibrating again");
+                HomeShot.invalidateAll(this);
             }
         } catch (Throwable t) { Log.e(TAG, "home wall load failed", t); }
         reloadScrim();   // the scrim measured on the lock screen applies to anything under the stock dialog
