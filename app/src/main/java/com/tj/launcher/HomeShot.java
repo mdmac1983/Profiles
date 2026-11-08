@@ -39,7 +39,7 @@ public final class HomeShot {
             Features.setString(c, HomePatchRules.metaKey(rot, step), signature + "#" + left + "#" + top);
             addToIndex(c, rot, step);
             prune(c, wallpaperId, dispW, dispH);
-            generation++;
+            generation.incrementAndGet();
             return true;
         } catch (Throwable t) { Log.e(TAG, "saving the home shot failed", t); return false; }
     }
