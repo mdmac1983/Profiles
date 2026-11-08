@@ -187,17 +187,19 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** AZ1: true while the heavy per-event work of the current window burst waits ({@link #deferWork}); the first window event of a burst on a resting lock-screen patch starts the wait ({@link #FAST_WAIT_MS}). */
     private boolean quietBurst(long now, AccessibilityEvent event) {
-        // BI1: on the home screen the heavy per-event work includes the quick-settings pencil cover, which must follow every SystemUI event within ~40 ms (B6): no NEW wait is started there. The wait that the power menu's
-        // OWN open event set (fastMenuOpen: deferWork / deferScan) IS honoured, like on the lock screen: the patch is redrawn every frame of the stock 300 ms fade and no layer refresh / pencil work may block that thread
-        // meanwhile (code review 2026-11-08). No QS pencil is on screen while the power menu is open.
+        // BI1: the wait that the power menu's OWN open event set (fastMenuOpen: deferWork / deferScan) is honoured on the home screen like on the lock screen: the patch is redrawn every frame of the stock 300 ms fade and no
+        // layer refresh / pencil work may block that thread meanwhile (code review 2026-11-08). No QS pencil is on screen while the power menu is open.
+        // BJ1 (Tj, 2026-11-08 16:21 UTC: "The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except the dimming speed makes the patch appear"): v0.8.9 started NO wait
+        // on the home screen for the FIRST window event of a burst (to keep the QS pencil's 40 ms rule, B6), so the node scan (56 ms, then 207 ms on the CI emulator) ran before the dialog's own event, which then waited in the
+        // queue (age 234 ms) while the second scan found the menu itself: the patch opened by the SLOW path 267 ms late and stayed at full brightness while the scrim darkened (+24 %; emulator run #382, section hf: the fast
+        // path was used in 1 of 10 films, median open_shape 0.20). The lock screen's wait fixes that (fast path in 10 of 10 films, median 0.054). It is only started when the fast path will be taken, ends after FAST_WAIT_MS
+        // at the latest (fail-open: then the scan runs as before), and the pencil is NOT part of it: it follows every event, as before.
         if (patchHomeMode) {
-            if (overlayShown) return now < quietUntilMs;   // only while OUR open-menu patch is up (second review 2026-11-08): with the menu closed no event is ever deferred, so the shade / QS pencil keep their 40 ms rule
-            int arm = homeDeferArm();   // BJ1 EXPERIMENT (debug builds only; 0 everywhere else = exactly v0.8.9): section hf compares the three ways of treating the FIRST window event of a burst
-            if (arm == 0) return false;
-            if (now < quietUntilMs) { if (arm == 1) schedulePencil(event); return true; }
-            if (event == null || !EventNoise.windowsJustChanged(event.getEventType()) || fastDecline() != null) return false;
-            if (arm == 1) schedulePencil(event);   // arm 1: the pencil cover keeps its 40 ms rule, only the scan / layer refresh / lock update wait for the dialog's own event
-            deferWork(now, FAST_WAIT_MS);
+            boolean ready = !overlayShown && now >= quietUntilMs && event != null && EventNoise.windowsJustChanged(event.getEventType()) && fastDecline() == null;   // fastDecline() is asked only when it can matter
+            int t = HomePatchRules.burstTreatment(overlayShown, now, quietUntilMs, ready);
+            if (t == HomePatchRules.BURST_NORMAL) return false;   // with the menu closed and no wait running no event is deferred, so the shade / QS pencil keep their 40 ms rule
+            if (!overlayShown) schedulePencil(event);             // a wait on the closed home: the pencil cover still follows every SystemUI event
+            if (t == HomePatchRules.BURST_START) deferWork(now, FAST_WAIT_MS);
             return true;
         }
         if (now < quietUntilMs) return true;
