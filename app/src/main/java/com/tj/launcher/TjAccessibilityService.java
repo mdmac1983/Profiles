@@ -1860,6 +1860,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** From {@link #homeDrew} (every draw of the Launcher): look at the curtain picture again once the home has been quiet. At most ONE posted runnable; nothing else on the draw path. */
     private void scheduleCurtain() {
+        if (curtainBuilding && since(curtainLastStartUp) > 30_000) { curtainBuilding = false; curtainCaptureNote = "a capture never reported back (30 s): the next one may start"; }   // a lost callback must not stop every later capture
         if (curtainPending || curtainBuilding) return;
         if (!curtainSwitchOn()) return;
         curtainPending = true;
