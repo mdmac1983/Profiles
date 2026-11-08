@@ -2967,17 +2967,17 @@ HF_EVRE='HOMEPATCH away: another window|RESET (start|cover|notifications|recents
 hfquiet(){ # the home's quiet moment (as in hp): no foreign window and no reset step for 6 s
   local n m s=0 i; n="$(hplog | grep -cE "$HF_EVRE")"
   for i in $(seq 1 25); do sleep 2; m="$(hplog | grep -cE "$HF_EVRE")"; if [ "$m" = "$n" ]; then s=$((s+1)); else s=0; n=$m; fi; [ "$s" -ge 3 ] && break; done; }
-hfrun(){ local L="$1" W="${2:-warm}"   # one FILMED opening (the menu opens by a long press of the side key, closes by BACK); W=warm: an unfilmed opening and the quiet wait first (after a restart)
+hfrun(){ local L="$1" W="${2:-warm}" M="${3:-back}"   # one FILMED opening (the menu opens by a long press of the side key; M closes it: back = the BACK key, tap = a tap in the empty middle of the screen); W=warm: an unfilmed opening and the quiet wait first (after a restart)
   if [ "$W" = warm ]; then hpopen; hpclose; hfquiet; else sleep 4; fi
   adb logcat -c
   adb shell rm -f /sdcard/hf.mp4 >/dev/null 2>&1
   ( adb shell screenrecord --time-limit 6 /sdcard/hf.mp4 >/dev/null 2>&1 & )
   sleep 1.6
   adb shell input keyevent --longpress KEYCODE_POWER; sleep 2.4
-  hfinput back "input keyevent KEYCODE_BACK"; sleep 3.4
+  case "$M" in tap) hfinput tap "input tap 150 700";; *) hfinput back "input keyevent KEYCODE_BACK";; esac; sleep 3.4
   adb pull /sdcard/hf.mp4 "$OUT/hf-$L.mp4" >/dev/null 2>&1
   python3 -I tools/pt_analyze.py "$OUT/hf-$L.mp4" "$L" --disp 600x1024 --p "$PX,$PY" --s "$SX,$SY;$SX2,$SY" 2>&1 | tee -a "$OUT/hf-metrics.txt" > /dev/null
-  hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
+  hplog | grep -E 'PATCHEV|PATCH (fast|fade|close|pin|input|menu closed|rest|scan|pencil|hold|away|stale|built)' | sed 's/^.*TjA11y *: //' > "$OUT/hf-all-$L.txt"
   [ -n "$(hfget $L onset)" ] && rm -f "$OUT/hf-$L.mp4"; }   # the films are large; the numbers and the curves are in the results (a film the analysis could not read is kept for the artifact)
 hfline(){ local L="$1" sh mx fo sc pc fe cl   # one film in a few characters: timing, worst mismatch, was the patch used (fast open), the longest node scan (>= 15 ms) that blocked the thread
   sh="$(hfget $L open_shape)"; mx="$(hfget $L open_max)"; fo="$(grep -c 'PATCH fast open' "$OUT/hf-all-$L.txt" 2>/dev/null)"; sc="$(grep -o 'scan took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"; pc="$(grep -o 'pencil took [0-9]*' "$OUT/hf-all-$L.txt" 2>/dev/null | grep -o '[0-9]*' | sort -n | tail -1)"
@@ -3005,12 +3005,31 @@ hfarm(){ # hfarm <tag>: restart the app, wait for the patch to rest, film five o
   info "HF group $1 open curve of film 2, ms:surround/patch/deviation in per mille (a): $(echo "$CV" | cut -c1-330)"
   info "HF group $1 open curve of film 2 (b): $(echo "$CV" | cut -c331-660)"
   info "HF group $1: the patch opened by the fast path in $(hffast $1) of 5 films; within 8 % of the surround (timing only) in $(hfok $1) of 5; median open_shape $(hfmed $1 open_shape) over $(hfcount $1) films, median open_max $(hfmed $1 open_max); the fade-OUT (BACK) of the same films: median close_max $(hfmed $1 close_max), median close_final $(hfmed $1 close_final)"; }
+hfcl(){ # hfcl <tag> <back|tap>: restart, five films CLOSED that way; reports the CLOSE (BJ1: "must match the dimming just as the lock screen did" - section pt judges the TAP close within 15 %, the BACK close is information only)
+  setmode custom; rebind; adb logcat -c; home
+  hpwait 'PATCH rest on' 40 > /dev/null; sleep 3
+  hfrun "${1}f1" warm "$2"
+  local k; for k in 2 3 4 5; do hfrun "${1}f$k" quick "$2"; done
+  info "HF close by $2 ($1) per film: $(for k in 1 2 3 4 5; do echo "f$k max=$(hfget ${1}f$k close_max) at=$(hfget ${1}f$k close_at) final=$(hfget ${1}f$k close_final) fast=$(grep -c 'PATCH fast open' "$OUT/hf-all-${1}f$k.txt" 2>/dev/null)"; done | tr '\n' '|')"
+  info "HF close by $2 ($1): median close_max $(hfmed $1 close_max) over $(hfcount $1) films, median close_final $(hfmed $1 close_final)"
+  info "HF close by $2 ($1) helper lines of film 2: $(grep -E 'PATCH (close|menu closed|rest|input|away|stale|built)' "$OUT/hf-all-${1}f2.txt" | sed 's/PATCH //' | tr '\n' '|' | cut -c1-320)"
+  local EVT; EVT="$(python3 -I tools/pt_analyze.py --events "$OUT/hf-all-${1}f2.txt" 2>&1 | tail -c 990)"
+  info "HF close by $2 ($1) timeline end of film 2 (1): ${EVT:0:330}"; info "HF close by $2 ($1) timeline end of film 2 (2): ${EVT:330:330}"; info "HF close by $2 ($1) timeline end of film 2 (3): ${EVT:660:330}"
+  local CC; CC="$(grep "PTCLOSE label=${1}f2 " "$OUT/hf-metrics.txt" | tail -1 | sed 's/.*surround) //')"
+  info "HF close by $2 ($1) close curve of film 2, ms from the half-recovery of the surround, surround/patch/deviation (a): $(echo "$CC" | cut -c1-330)"
+  info "HF close by $2 ($1) close curve of film 2 (b): $(echo "$CC" | cut -c331-660)"; }
 # ---------------- phase A: a patterned home wallpaper; the switch OFF (the card path) learns where the stock menu sits
 hpinit false
 hpwall
-adb logcat -c
-hpopen; hpclose; sleep 2
-hplog | grep "CARD area" > "$OUT/hf-a-log.txt"
+# Gate run #386 (head 783b81a, chain base,x1,ac,hf,rb): in a long chain the first menu was never learned (no CARD line; the same phase passed in 'hp,hf' #387). The home must be quiet first (the reset of an earlier section can still be
+# running), and the menu is opened up to three times; a miss prints what the helper and the window manager saw.
+hfquiet
+HF_TRY=0; : > "$OUT/hf-a-log.txt"
+while [ "$HF_TRY" -lt 3 ] && ! grep -q "CARD area" "$OUT/hf-a-log.txt"; do
+  HF_TRY=$((HF_TRY+1)); adb logcat -c; hpopen; hpclose; sleep 2
+  hplog | grep "CARD area" > "$OUT/hf-a-log.txt"
+  grep -q "CARD area" "$OUT/hf-a-log.txt" || { info "HF A try $HF_TRY: no CARD line; helper log: $(hplog | tail -n 6 | cut -c25-120 | tr '\n' '|'); accessibility: $(adb shell settings get secure enabled_accessibility_services | tr -d '\r' | cut -c1-90); focus: $(adb shell dumpsys window | grep -m1 mCurrentFocus | cut -c1-110)"; hfquiet; }
+done
 CL="$(tail -1 "$OUT/hf-a-log.txt")"
 set -- $(hpnums "$CL" full); FL=${1:-}; FT=${2:-}; FR=${3:-}; FB=${4:-}
 set -- $(hpnums "$CL" area); CB=${4:-}
@@ -3034,6 +3053,8 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   # ---------------- phase C: two groups of five filmed openings
   hfarm g1
   hfarm g2
+  # ---------------- phase D (BJ1, information only until the first numbers are read): the same films closed by a TAP in the empty middle of the screen, the way section pt judges the lock screen's fade-out (BC2)
+  hfcl t1 tap
   hfanim 0
   FRAMES="$(hfget g1f1 frames)"
   check "HF2: the film worked (more than 100 frames)" awk -v f="${FRAMES:-0}" 'BEGIN{exit !(f+0 > 100)}'
