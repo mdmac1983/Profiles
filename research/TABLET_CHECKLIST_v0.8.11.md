@@ -9,7 +9,7 @@ What changed since v0.8.10 and what to do. Install: Release page, `Launcher-v0.8
 
 ## Do this
 **A. First press (BK1a).** Install, then restart the tablet once (that is the "fresh" case). Unlock, lock, wake it, and press the side key ONCE on the lock screen. Did the patch flicker? Press again, and a third time. Photograph or film the first press if it still flickers.
-**B. Pencil (BK1b).** On the lock screen, pull the notification panel down. The little pencil (edit) button should be hidden under a white cover. Do it after a Quickstep session (use the stock launcher a minute, lock, wake, pull down) and after a custom-launcher session.
+**B. Pencil (BK1b).** On the lock screen, pull the notification panel down. The little pencil (edit) button should be hidden under a white cover. Do it after a Quickstep session (use the stock launcher a minute, lock, wake, pull down) and after a custom-launcher session. **Then do it once with the battery saver ON** (the dark theme): the cover is plain white and the emulator cannot switch to the dark theme, so on a dark panel the white square may stand out MORE than the pencil did. If it does, say so and I will make the cover match the panel.
 **C. Unlock (BK1c).** Unlock with the PIN twice: once coming from the custom launcher, once coming from a Quickstep session. For each: about how many seconds from the last PIN tap until the custom home is usable, and what is on the screen in between (black, the stock launcher, Wi-Fi icons, notifications)?
 
 ## Send back
