@@ -710,7 +710,7 @@ public class TjAccessibilityService extends AccessibilityService {
             return;
         }
         if (!patchHomeMode || overlayShown || homeCalRunning) return;
-        if (!patchRestable && !patchResting) return;
+        if (!patchRestable && !patchResting) { scheduleHomeBuild(); return; }   // BI1: already away, but a draw says the home screen is changing: a build follows the LAST draw by DRAW_QUIET_MS. The bounded retries of buildHomePatchNow can run out while a popup stays open for long, and nothing else would ask again when it closes
         patchRestable = false;
         if (patchResting) { patchResting = false; patchView.setAlpha(0f); }
         Log.i(TAG, "HOMEPATCH stale: the Launcher drew (the patch is away until it is built again)");
