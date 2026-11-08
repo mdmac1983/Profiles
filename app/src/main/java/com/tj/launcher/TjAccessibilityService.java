@@ -1104,7 +1104,7 @@ public class TjAccessibilityService extends AccessibilityService {
         lp.format = targetIsLock ? PixelFormat.TRANSLUCENT : PixelFormat.OPAQUE;   // V1: an OPAQUE window ignores alpha 0 (run 71: the lock patch stayed visible over the notifications and was even photographed by the calibration); TRANSLUCENT can really be hidden. The home patch keeps OPAQUE (v0.7.5 behaviour)
         lp.setTitle("TjWallpaperPatch");
         ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
-        patchLockMode = targetIsLock; patchTouchable = false;
+        patchLockMode = targetIsLock; patchHomeMode = targetIsHome; patchTouchable = false;
         v.setOnTouchListener(new View.OnTouchListener() {   // AM1: the window is NOT_TOUCHABLE except while the stock menu is open: then a tap on the hidden Screenshot spot closes the menu (like a tap outside) instead of taking a screenshot
             @Override public boolean onTouch(View view, android.view.MotionEvent e) {
                 if (e.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) { onOutsideTouch(); return false; }   // BE1
