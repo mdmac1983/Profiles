@@ -88,7 +88,7 @@ public final class NotifQuietPolicy {
         try { return Integer.parseInt(v.trim()) == 0; } catch (NumberFormatException e) { return true; }
     }
 
-    /** Does this value need a write to switch the banners off? Not when they already are (Tj's own permanent setting stays his). */
+    /** Does this value need a write to switch the banners off? Not when they already are (a permanent setting of Tj's own is left alone). */
     public static boolean needsZero(String current) { return !isOff(current); }
 
     /**
