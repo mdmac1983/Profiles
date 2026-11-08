@@ -1183,3 +1183,8 @@ The home screen also must match the dimming just as the lock screen did. Right n
 ```
 The home screen power menu looks good now. The first time I press the side key for the power menu on the lock screen, the patch flickers. Every subsequent press looks fine. I think it just needs to load once. Is it possible to load it faster? Load it immediately when the screen is turned off or when the screen goes to lock screen so there is never a flicker of the patch? It could also be the dimmer loading for the first time. Can the pencil in the notification panel be hidden on the lock screen? If so, do it. Finally, the custom launcher still loads from the lock screen on a delay, figure it out how to make it load as quickly as possible, ideally immediately, from the lock screen, but without showing wifi or apps from quickstep or notifications etc. 
 ```
+
+## 2026-11-08T21:11:41Z
+```
+Make the home looking curtain instead of the black screen. An identical screenshot of the current home screen 
+```
