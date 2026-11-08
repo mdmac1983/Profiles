@@ -64,6 +64,10 @@ public class TjAccessibilityService extends AccessibilityService {
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         evSeen++;
+        if (event != null && event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {   // BH1: a notification (or a toast) was posted: note WHO posted it (the package, never the title or text) and stop; nothing below is about it (no power-menu scan, no pencil search)
+            try { CharSequence cn = event.getClassName(); if (cn != null && "android.app.Notification".contentEquals(cn)) NotifSightings.onNotification(getApplicationContext(), event.getPackageName()); } catch (Throwable t) { Log.e(TAG, "notification sighting failed", t); }
+            return;
+        }
         try { diagEvent(event); } catch (Throwable ignored) { }
         try { if (event != null && EventNoise.windowsJustChanged(event.getEventType())) { noteWindowEvent(event.getEventTime()); fastMenuOpen(event); } } catch (Throwable t) { Log.e(TAG, "fast menu check failed", t); }   // AZ1: FIRST, before any other work of this event
         try { if (event != null) fastMenuClose(event); } catch (Throwable t) { Log.e(TAG, "fast menu close check failed", t); }   // BC2: a click in the stock dialog starts the fade-out, the removal of its window ends it
