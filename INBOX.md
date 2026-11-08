@@ -1173,3 +1173,8 @@ Compact this session when possible because context window is over 90%
 ```
 For the custom launcher, do the same logic and wallpaper patch that you did for the lock screen, but implement it for the unlocked home screen. 
 ```
+
+## 2026-11-08T16:21:39Z
+```
+The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except the dimming speed makes the patch appear
+```
