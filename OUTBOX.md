@@ -1338,3 +1338,45 @@
 ## 2026-11-08T21:55:16Z
 > The second `cu` run, with the localization diagnostics, is on CI (due in about five minutes). The first run's findings are checkpointed.
 <!-- sha:8264e1a0eacb -->
+
+## 2026-11-08T22:03:04Z
+> The second `cu` run passed all 14 checks. With the curtain up, the screen matches the bare home to MAE 0.000888 against a noise floor of 1e-7. The only difference is one 582×16 px band in the status-bar row at the top. Three later taps on the curtain were swallowed. The first tap came before the unlock was confirmed and passed through, as designed. The first run's one-off glitch (a screenshot off by 0.014, and a tap not swallowed) did not recur, but I can't explain it yet.
+>
+> Five more runs are going and are due about 22:11: two more `cu` samples to look for that glitch, plus `cs`, `uf` and `b4` to prove the black-cover path is unchanged. If they are clean, I'll review the diff, run the gate and ship v0.8.12.
+>
+> 📌 **Chat checkpoint: 🔴 Red**
+>
+> **Goal:** Tj's Android 10 Go launcher (`com.tj.launcher`, Java, sideloaded). Current job BL1: replace the black unlock cover with an identical picture of the home screen, then ship v0.8.12.
+>
+> **Decisions made:**
+> - The curtain is the real wallpaper screenshot (kept per wallpaper step by the home calibration) plus the Launcher's own pixels (`PixelCopy`), composed into one stored picture and shown from memory at the Enter tap. Any doubt falls back to black.
+> - Touches pass through until `USER_PRESENT`, then are swallowed.
+> - Switch `home_curtain`: release ON, debug OFF.
+>
+> **Changed / rejected:**
+> - "The black cover swallows touches": it never did (`NOT_TOUCHABLE`).
+> - Pixel and `uiautomator` checks for the pencil: replaced by the cover window's state, because `uiautomator dump` unbinds the service.
+>
+> **Key details:**
+> - v0.8.11 is released and recorded (android.yml run #38, id 42522618674).
+> - Branch `claude/new-session-2ax1r4`; `main` mirrors it.
+> - Research doc: `research/BL1_HOME_CURTAIN_2026-11-08.md`.
+> - `cu` runs: #418 13/14, #419 (id 42527552708) 14/14.
+> - Unit suite 726/0; handoff self-test 38/0.
+>
+> **Done so far:** map, design, build steps 1–6, section `cu`, first green run.
+>
+> **Open / next steps:**
+> 1. Read the five runs (timer 22:10:40).
+> 2. `/code-review high`, then `bash tools/gate.sh 206b3a8`, ship v0.8.12 with `TABLET_CHECKLIST_v0.8.12.md`.
+> 3. Tick BL1 in TASKS.md and tell Tj about the one extra flash after the update.
+> 4. Waiting on Tj: BK1d, BK1e (1), older tablet checks.
+>
+> **Rules to remember:** answer every Tj message; new requests go into TASKS.md first; `ckpt` after each step with short text; one Gradle at a time via `tools/gradle.sh`; GitHub MCP only; no secrets or photos in the repo; release link as plain text on its own line; refer to Tj by name, no gendered pronouns.
+>
+> 🔴 **Health:** The chat is very long with many large log dumps. I made no repeat mistakes from lost track; the one mis-read was a truncated log tail, which I caught. The repo's `CHECKPOINT.md` is current, so a fresh chat can resume from it.
+>
+> 🔴 I'd move to a fresh chat now. Run `/amhandoff` and I'll write a file that brings the new chat fully up to speed.
+>
+> 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
+<!-- sha:4131a101ebcc -->
