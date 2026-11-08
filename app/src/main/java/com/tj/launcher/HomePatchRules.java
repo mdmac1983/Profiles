@@ -189,4 +189,29 @@ public final class HomePatchRules {
     public static boolean shotIsOurs(long addedSec, long askedAtMs) {
         return askedAtMs > 0 && addedSec * 1000L >= askedAtMs - 1000L;
     }
+
+    // ================================================================ BJ1: the FIRST window event of a power-menu burst
+    // Tj, 2026-11-08 16:21 UTC, about v0.8.9: "The home screen also must match the dimming just as the lock screen did. Right now the patch looks correct except the dimming speed makes the patch appear".
+    // MEASURED (emulator section hf, run #382, animations on, 5 films per treatment): v0.8.9 ran the node scan, the layer refresh and the pencil search on the burst's FIRST window event (56 ms, then 207 ms) on the
+    // thread the patch is drawn on. The second scan found the menu itself, so the patch opened by the SLOW path (fade lag 267 ms), the dialog's own event waited 234 ms in the queue and the fast path declined
+    // ("already open"); the patch stayed at full brightness for the whole stock fade and dimmed only at its end: +24 % brighter than the darkening surround (open_shape 0.20 against the 0.08 of the lock screen,
+    // the fast path used in 1 of 10 films). With the lock screen's deferral the fast path was used in 10 of 10 films and the median fell to 0.054.
+
+    /** The treatment of a window event while the home patch rests or its menu is open. */
+    public static final int BURST_NORMAL = 0, BURST_QUIET = 1, BURST_START = 2;
+
+    /**
+     * What to do with the heavy per-event work (node scan, layer refresh, lock update) of a window event on the home screen:
+     * {@link #BURST_QUIET} = it waits (a wait is running: the one the first event of the burst started, or the one the open menu's own event set); {@link #BURST_START} = this is the first window event of a burst
+     * and the stock dialog's own event will open the patch at once (the patch is ready), so start the wait and let that event come first; {@link #BURST_NORMAL} = do the work now, as before.
+     *
+     * @param menuOpen   our open-menu patch is up (the dialog's own event has been handled)
+     * @param now        uptime ms
+     * @param quietUntilMs the end of the wait that is running (0 or in the past = none)
+     * @param startReady this event can mean "a new window appeared" AND the fast open path is possible (the service's {@code fastDecline() == null}); the caller asks only when the answer can matter
+     */
+    public static int burstTreatment(boolean menuOpen, long now, long quietUntilMs, boolean startReady) {
+        if (now < quietUntilMs) return BURST_QUIET;
+        return !menuOpen && startReady ? BURST_START : BURST_NORMAL;
+    }
 }
