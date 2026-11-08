@@ -611,7 +611,6 @@ public class TjAccessibilityService extends AccessibilityService {
     /** The cardless path may be used on the home screen: the patch exists, its pixels are fresh, and nothing about the calibration is running. */
     private boolean homePatchReady() { return patchView != null && patchHomeMode && patchRestable && !homeCalRunning; }
 
-    /** The patch's pixels are still what the home screen shows there: built after the last draw of the Launcher, for the current wallpaper position, no calibration, the plain home on screen. */
     /** The built patch is still what the home screen shows there (built after the last draw of the Launcher, for the current wallpaper position). Says nothing about whether it may be SEEN now. */
     private boolean homeCompositeFresh() {
         if (!patchHomeMode || patchShotBmp == null) return false;
