@@ -679,8 +679,9 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean homeVisibleNow() { return HomePatchRules.visible(homeRestable(), android.os.SystemClock.uptimeMillis(), homeLastTouchMs(), TjHooks.lastHomeDrawMs); }
 
     /** Loads the wallpaper-only crop for the current wallpaper position and checks that it still covers the patch window (the stock panel moved: font size, another entry = calibrate again). */
+    private boolean homeLoadFailed = false; private int homeLoadFails = 0;
     private void loadHomeWall(Rect rect) {
-        homeWallBmp = null; homeWallStep = -1;
+        homeWallBmp = null; homeWallStep = -1; homeLoadFailed = false;
         try {
             int step = homeStepNow(); String sig = homeSig();
             PatchShot.Loaded l = HomeShot.load(this, rotation(), step, sig);
