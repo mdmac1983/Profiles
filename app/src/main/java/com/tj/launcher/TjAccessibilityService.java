@@ -355,6 +355,12 @@ public class TjAccessibilityService extends AccessibilityService {
         if (lastWinEventMs == 0 || eventTime - lastWinEventMs > 250 || eventTime < lastWinEventMs) winBurstStartMs = eventTime;
         lastWinEventMs = eventTime;
     }
+    // BJ1 (Tj, 2026-11-08 16:21 UTC: on the HOME screen "the dimming speed makes the patch appear"): what the last fade-in really looked like from the patch's side, per frame. The film (section hf) sees it on the
+    // emulator; the tablet report (perfLine) is how Tj's tablet tells us. A frame later than 34 ms after the one before is a missed vsync or more = the patch's brightness stood still while the stock scrim moved.
+    private long fadeFrameLastMs = 0, fadeWorstGapMs = 0, fadeFirstDrawLateMs = -1;
+    private int fadeFrames = 0, fadeSlowFrames = 0;
+    private boolean fadeHomeFlavour = false;
+    private String fadeSummary = "";
     private boolean fading = false;                    // AZ1: the open-menu brightness is still following the stock fade (main thread only)
     private long fadeStartMs = 0, fadeLagLast = -1, fadeLeadMs = PatchFade.LEAD_MS;    // AZ1: uptime ms at which the stock scrim began (estimated); the lag the last fade started with (the tablet report)
     // BC2 (Tj, 2026-11-07: "when the power menu is open, and I press in the middle of the screen to close it, or pull up from the bottom to type the pin, the wallpaper patch flickers for a split second"): the stock
