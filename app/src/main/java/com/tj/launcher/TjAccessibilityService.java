@@ -627,6 +627,7 @@ public class TjAccessibilityService extends AccessibilityService {
     }
 
     private long homeForeignUntilMs = 0;
+    private volatile int homeForeignCount = 0; private volatile long homeForeignLastAtMs = 0; private volatile String homeForeignNames = "", homeForeignLast = "";
     private boolean homeOpenShown = false;   // the patch was restable when the menu opened (decided ONCE at the opening, so a draw during the open menu cannot take it away)
     private long homeRefreshAskedMs = 0;
     private int homeCropGen = -1; private String homeCropKey = ""; private boolean homeCropOk = false;
