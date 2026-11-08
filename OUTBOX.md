@@ -1280,3 +1280,7 @@
 ## 2026-11-08T20:48:18Z
 > The local release gate is running in the background, and the `b6` pair is still on CI (due about 20:55). I'll read both when they land.
 <!-- sha:8153ac2760f7 -->
+
+## 2026-11-08T20:49:16Z
+> The local release gate passed everything: handoff self-test, versionCode 36 above every previous ship, unit suite green, commit pushed, next step recorded. I'm not dispatching the GitHub build yet, because publishing a Release is hard to retract and I want the `b6` verdict first. The pair is due about 20:55.
+<!-- sha:27db097c1e48 -->
