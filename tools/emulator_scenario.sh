@@ -499,11 +499,13 @@ b6lock(){ # b6lock <stored mode custom|quickstep>
   adb shell uiautomator dump /sdcard/b6l.xml >/dev/null 2>&1; adb shell cat /sdcard/b6l.xml 2>/dev/null | grep -o 'resource-id="android:id/edit"' | wc -l | tr -d ' \r\n' > "$OUT/pencil-lock-$1-edit.txt"
   local T0 T1 MS; T0="$(grep 'BK1b marker' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"; T1="$(grep 'PENCIL cover shown' "$OUT/pencil-lock-$1-log.txt" | head -1 | awk '{print $2}')"
   MS="$(awk -v a="$T0" -v b="$T1" 'BEGIN{ if (a=="" || b=="") { print "none"; exit } split(a,x,"[:.]"); split(b,y,"[:.]"); print int((((y[1]*60+y[2])*60+y[3])*1000+y[4]) - (((x[1]*60+x[2])*60+x[3])*1000+x[4])) }')"
-  info "BK1b ($1 mode, locked): pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover appeared $MS ms after the panel was asked to open; log: $(grep -E 'PENCIL|PATCH' "$OUT/pencil-lock-$1-log.txt" | sed 's/^.*TjA11y *: //' | cut -c1-60 | head -n 5 | tr '\n' '|')"
+  local LOCKED; LOCKED="$(adb shell dumpsys window 2>/dev/null | grep -m2 -E 'mShowingLockscreen|isKeyguardShowing|mKeyguardShowing' | tr -s ' \r\n' ' ' | cut -c1-110)"
+  info "BK1b ($1 mode, locked): stored mode $(getmode); keyguard: $LOCKED; pencil nodes on screen $(cat $OUT/pencil-lock-$1-edit.txt), cover windows $(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt), the cover was SHOWN $MS ms after the panel was asked to open"
+  info "BK1b ($1 mode) every service log line after the marker: $(sed -n '/BK1b marker/,$p' "$OUT/pencil-lock-$1-log.txt" | sed 's/^.*TjA11y *: //' | cut -c1-72 | sed -n '2,15p' | tr '\n' '|')"
   adb shell cmd statusbar collapse; sleep 2
   adb shell locksettings clear --old 1234 >/dev/null 2>&1; adb shell wm dismiss-keyguard >/dev/null 2>&1
   if [ "$(cat $OUT/pencil-lock-$1-edit.txt 2>/dev/null)" -ge 1 ] 2>/dev/null; then
-    check "BK1b: on the LOCK screen (stored mode $1) a cover window sits over the pencil while the panel is open" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/pencil-lock-$1-windows.txt)\" -ge 1 ]"
+    check "BK1b: on the LOCK screen (stored mode $1) the cover was SHOWN over the pencil after the panel was asked to open (a lingering warm window does not count)" bash -c "sed -n '/BK1b marker/,\$p' $OUT/pencil-lock-$1-log.txt | grep -q 'PENCIL cover shown'"
   else info "BK1b ($1): no pencil on this emulator's lock-screen panel (or the panel did not open): nothing to cover"; fi
 }
 b6lock custom
@@ -3169,7 +3171,11 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   NSEEN=0; for L in coldA coldB w1A w1B w2A w2B w3A w3B w4A w4B; do fpget $L onset | grep -q . && NSEEN=$((NSEEN+1)); done
   check "FP2: the menu opening was seen in at least 9 of the 10 films" test "$NSEEN" -ge 9
   # BK1a: the FIRST opening in a FRESH process must not be the bad one (run #389 before the warm-up draw: open_shape 0.194, +24 % bright, 3 frames, one gap of 278 ms; the warm ones read 0.04 - 0.06)
-  check "FP3: the first opening in a fresh process follows the stock dimming (open_shape below 0.12, section pt's yardstick is 0.08)" awk -v f="$(fpget coldA open_shape)" 'BEGIN{exit !(f != "" && f+0 < 0.12)}'
+  # The film number of the FIRST opening also carries the stock scrim's own jitter (run #389: the scrim was ahead of the patch, run #390: the patch was ahead of a scrim that sat still for 133 ms), so FP3 judges what the patch itself did:
+  # run #389 before the warm-up: 3 frames drawn, one gap of 278 ms; run #390 with it: 8 frames, worst gap 107 ms; the warm openings draw 8 - 13 frames with gaps of 40 - 83 ms
+  FPCF="$(grep -o 'fade end [a-z]* first=[0-9]* ms frames=[0-9]* slow=[0-9]* worst=[0-9]*' "$OUT/fp-all-coldA.txt" 2>/dev/null | tail -1)"; FPCFR="$(echo "$FPCF" | grep -o 'frames=[0-9]*' | cut -d= -f2)"; FPCWO="$(echo "$FPCF" | grep -o 'worst=[0-9]*' | cut -d= -f2)"
+  info "FP: the fresh process's first fade, patch statistics: ${FPCF:-(none)}"
+  check "FP3: the patch's first fade in a fresh process is smooth (at least 6 frames drawn, no gap above 180 ms; before the warm-up: 3 frames, 278 ms)" awk -v f="${FPCFR:-0}" -v w="${FPCWO:-999}" 'BEGIN{exit !(f+0 >= 6 && w+0 <= 180)}'
   check "FP4: the patch opened by the warm-up draw once per window ('PATCH warm-up' in the log of the first opening's process)" bash -c "grep -q 'PATCH warm-up' $OUT/fp-warm-log.txt"
 else check "FP1: the menu geometry is known" false; fi
 fpanim 0
