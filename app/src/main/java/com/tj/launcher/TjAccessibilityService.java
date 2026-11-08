@@ -1802,18 +1802,47 @@ public class TjAccessibilityService extends AccessibilityService {
             if (resetCover != null) return;
             android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
             ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay().getRealMetrics(dm);
-            View v = new View(this);
-            v.setBackgroundColor(Color.BLACK);
+            // BL1 (Tj, 2026-11-08 21:11 UTC: "Make the home looking curtain instead of the black screen. An identical screenshot of the current home screen"): the picture of the home screen when there is a valid one IN MEMORY
+            // (never a disk read here: this runs at the Enter tap on the main thread), the plain black view as before on ANY doubt, so the curtain is never worse than the cover it replaces.
+            View v = null; boolean curtain = false; String why = "";
+            try {
+                HomeCurtainRules.UseFacts uf = curtainUseFacts(dm);
+                why = HomeCurtainRules.whyNotUse(uf);
+                if (why.isEmpty()) {
+                    android.graphics.Bitmap pic = HomeCurtain.cachedFor(uf.rotation, uf.currentSig);
+                    if (pic == null) { why = "the picture is not in memory yet"; curtainPreloadAsync(); }
+                    else {
+                        android.widget.ImageView iv = new android.widget.ImageView(this);
+                        iv.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
+                        iv.setImageBitmap(pic);
+                        iv.setOnTouchListener(new View.OnTouchListener() { @Override public boolean onTouch(View view, android.view.MotionEvent ev) { return true; } });   // a tap on the picture is swallowed (once the window is touchable)
+                        v = iv; curtain = true;
+                    }
+                }
+            } catch (Throwable t) { Log.e(TAG, "curtain picture failed", t); why = "failed: " + t; v = null; curtain = false; }
+            if (v == null) { v = new View(this); v.setBackgroundColor(Color.BLACK); }
+            // A cover raised at the ENTER tap must not swallow touches before the unlock is confirmed (a wrong PIN has to stay retypable; the black cover never swallowed any touch): it becomes touchable at USER_PRESENT.
+            boolean touchable = curtain && HomeCurtainRules.unlockConfirmed(android.os.SystemClock.uptimeMillis(), lastUnlockUptime);
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(dm.widthPixels, dm.heightPixels, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | (touchable ? 0 : WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                     PixelFormat.OPAQUE);
             lp.gravity = Gravity.TOP | Gravity.START;
             lp.setTitle("TjResetCover");
-            ((WindowManager) getSystemService(WINDOW_SERVICE)).addView(v, lp);
-            resetCover = v; if (sumCoverUpAt == 0) sumCoverUpAt = android.os.SystemClock.uptimeMillis();   // BK1c
+            WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+            try { wm.addView(v, lp); }
+            catch (Throwable addFailed) {
+                Log.e(TAG, "cover window failed", addFailed);
+                if (!curtain) { resetCover = null; return; }   // the black view failing is the old, handled failure: no cover, the reset runs without one
+                why = "the picture window failed: " + addFailed; curtain = false; touchable = false;   // never worse than before: the same window with the plain black view
+                v = new View(this); v.setBackgroundColor(Color.BLACK);
+                lp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                wm.addView(v, lp);
+            }
+            resetCover = v; resetCoverIsCurtain = curtain; resetCoverLp = lp; if (sumCoverUpAt == 0) sumCoverUpAt = android.os.SystemClock.uptimeMillis();   // BK1c
             handler.removeCallbacks(coverFailsafe);
             handler.postDelayed(coverFailsafe, 4500);
-            Log.i(TAG, "RESET cover shown");
+            curtainNoteUse(curtain, why, touchable);
+            Log.i(TAG, "RESET cover shown" + (curtain ? " (curtain)" : ""));
         } catch (Throwable t) { Log.e(TAG, "cover failed", t); resetCover = null; }
     }
 
