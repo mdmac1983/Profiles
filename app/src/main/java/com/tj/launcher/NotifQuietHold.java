@@ -4,9 +4,9 @@ package com.tj.launcher;
  * BH1: the hold bookkeeping of {@link NotifQuiet} as a pure state machine (JVM-tested, no Android classes): what to remember FIRST, when to write the zero and when to put the original back, so that no
  * trigger, crash or half-failed write can leave Tj's pop-up banners off in Quickstep or on in the custom launcher. {@link NotifQuiet} adapts SharedPreferences and Settings.Global to the two small interfaces.
  *
- * Rules (each one is a test): the original goes to disk BEFORE the first write; a setting that already reads "off" (his own permanent choice, or our zero still there) is left alone and nothing is held;
- * a hold that is already on and still at our zero rewrites nothing; ending the hold puts the original back only while the setting is STILL our zero (a value changed by hand meanwhile is his), and the
- * stored hold is cleared only AFTER that write; without the permission a hold is neither taken nor ended (the saved original waits for the next start with it); a write that fails while TAKING the hold is
+ * Rules (each one is a test): the original goes to disk BEFORE the first write; a setting that already reads "off" (a permanent choice of Tj's, or our zero still there) is left alone and nothing is held;
+ * a hold that is already on and still at our zero rewrites nothing; ending the hold puts the original back only while the setting is STILL our zero (a value changed by hand meanwhile is not ours to touch),
+ * and the stored hold is cleared only AFTER that write; without the permission a hold is neither taken nor ended (the saved original waits for the next start with it); a write that fails while TAKING the hold is
  * undone, one that fails while ENDING it leaves the hold so the next trigger tries again.
  */
 public final class NotifQuietHold {
