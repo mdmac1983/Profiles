@@ -639,10 +639,14 @@ public class TjAccessibilityService extends AccessibilityService {
      */
     private void homeForeignWindow(AccessibilityEvent e) {
         if (patchView == null || !patchHomeMode || overlayShown) return;
-        int t = e.getEventType();
-        if (t != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && t != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return;
+        // ONLY a window that announces itself: TYPE_WINDOWS_CHANGED carries no package and no class, so it cannot be told from the stock power menu's own burst, from our own patch window being added or from the
+        // Launcher's popup. Emulator run #347 (section hp): it took the patch away at the FIRST event of every power-menu burst (the dialog's own event, 19 ms later, found "the patch is not resting" and the card
+        // came: HP4) and during the Launcher's own long-press popup (no 'stale', no rebuild: HP7). The shade and the volume panel announce themselves with a named TYPE_WINDOW_STATE_CHANGED; the Launcher's loss of
+        // focus (homeRestable) is the second guard.
+        if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence pk = e.getPackageName(), cn = e.getClassName();
-        if (pk != null && getPackageName().contentEquals(pk)) return;                    // our own windows (the patch itself, the cards, the Launcher)
+        if (pk == null) return;
+        if (getPackageName().contentEquals(pk)) return;                                  // our own windows (the patch itself, the cards, the Launcher)
         if (cn != null && cn.toString().contains("ActionsDialog")) return;               // the stock power menu
         homeForeignUntilMs = android.os.SystemClock.uptimeMillis() + HOME_FOREIGN_AWAY_MS;
         if (patchRestable || patchResting) {
