@@ -1,13 +1,13 @@
-# CHECKPOINT 736 — read me first, then TASKS.md
+# CHECKPOINT 737 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T22:25:08Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `80d3360` (this checkpoint is the commit after it)
+**Written:** 2026-11-08T22:48:27Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `c254f12` (this checkpoint is the commit after it)
 
 ## Just done
-BM1 done: README.md rewritten (features, architecture, structure, code map, tests, CI, tooling, safety)
+BN1 written: Tj wants tweaks/customizations, none named yet; asked him which
 
 ## Do this next
-resume BL1e: wire HomeCurtainRules.stampDue into HomeCurtain capture (unchanged home renews stamp), then /code-review high 206b3a8..HEAD, versionCode 37 / 0.8.12, gate.sh 206b3a8
+wait for Tj's list of tweaks -> one [ ] box each under BN1; meanwhile BL1e still pending (wire HomeCurtainRules.stampDue into HomeCurtain capture, /code-review high 206b3a8..HEAD)
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ resume BL1e: wire HomeCurtainRules.stampDue into HomeCurtain capture (unchanged 
 
 ## Last ten checkpoints
 ```
+  f6a978f ckpt 736: BM1 done: README.md rewritten (features, architecture, structure, code map, te
   4de1d25 ckpt 735: BM1 README request written into TASKS. Interrupted change 041aa83..HEAD (HomeC
   041aa83 ckpt 734: BL1d evidence: cu #419/#420 id 42528148176/#421 id 42528151261 all PASS (3 gre
   559db2a ckpt 733: BL1d cu #419 id 42527552708 (913947f) = 14 PASS 0 FAIL: wall kept 2 s, curtain
@@ -26,8 +27,7 @@ resume BL1e: wire HomeCurtainRules.stampDue into HomeCurtain capture (unchanged 
   b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
   631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
   d33c369 ckpt 727: BL1a map + BL1b design done and saved: research/BL1_HOME_CURTAIN_2026-11-08.md
-  da3032e ckpt 726: BL1 written into TASKS in Tj's words (21:11 UTC): home-looking curtain instead
 ```
 
-(1 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
