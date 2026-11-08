@@ -1033,3 +1033,48 @@
 >
 > I'll release v0.8.8 as soon as the gate is green and send the Release link.
 <!-- sha:3f6af2ba6b7d -->
+
+## 2026-11-08T03:52:03Z
+> **v0.8.8 is released.**
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.8
+>
+> Install it over the old one. The accessibility service restarts by itself, but switch it on again if Android asks. The adb helper needs its start line again, as after every install.
+>
+> **For your 02:29 message (notifications off)**
+> - **Pop-up banners are off** while the custom launcher is in front and while the tablet is dark or locked, in either launcher. In an unlocked Quickstep session they work as before. The switch is Launcher control > Everyday > "No pop-up notifications outside Quickstep".
+> - **The lock screen's own notification list** was already hidden from either launcher (since v0.7.x). The tablet report line "lock screen quiet" shows whether that took effect on your tablet.
+> - **The report now names the app** that posted a notification, when, and in which state (package name only, never the text).
+> - **The clean-up when the custom launcher starts** now also looks in the shade when something was posted since the last clean-up, even if no status-bar icon shows.
+> - **Checked:** 681 unit tests, lint, and three parallel emulator runs. On the emulator the same notification pops up in Quickstep and does not in the custom launcher. One known emulator crash failed two checks in one run, and that section passed when re-run alone. Nothing is measured on your tablet yet.
+>
+> **What it cannot do**
+> - It cannot hide the status-bar icon or the shade list of a notification that has already arrived.
+> - It cannot show only the drawer apps' notifications without flicker. This Go tablet has no notification listener, so nothing in the app can see or cancel a notification before the system shows it.
+> - The options for the rest are in `research/NOTIFICATIONS_QUIET_2026-11-08.md`: the existing "hide the status bar in custom" switch, a helper that hides new ones, or a permanent helper.
+>
+> **One question decides what comes next:** where did you see the Quickstep app's notification? A banner at the top, a small status-bar icon, the pulled-down shade, or the lock screen itself? The tablet report will also name the app. The short checklist is in `research/TABLET_CHECKLIST_v0.8.8.md`.
+>
+> **v0.8.7 (the one you never got a link for, measurement only):**
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.7
+>
+> **Your 01:04 questions, in short**
+> - **Preparing the custom launcher while locked:** it is already prepared invisibly. The custom home sits behind the lock screen from screen-off, and with the helper the clean-up happens at the lock. A first PIN digit would add nothing.
+> - **Keeping it in RAM:** "Keep the launcher in memory" exists in Launcher control > Battery, radios & speed, so try it for a day.
+> - **Power menu on home and in apps:** it can't look identical to the lock screen's yet. On the lock screen the real stock menu is kept and only its bottom third is patched. On home and in apps the app draws its own replacement panel. My recommendation is to use the lock-screen mechanism on home and the drawer.
+>
+> **Waiting on you:**
+> - Go or no-go for that home patch (it costs one more camera flash per wallpaper).
+> - One cable session: start the helper, leave it an hour, then send the report.
+> - Optionally, turn on "Keep the launcher in memory" and send a report after a day.
+>
+> **Other open items:**
+> - The v0.8.5 to v0.8.8 tablet checks.
+> - The patch's faint line, the Control screenshot, and the lock screen taking screenshots by itself.
+> - The lighter rectangle when you pull the shade down on the lock screen.
+> - Your decision on the four old lock-screen screenshots in the public repo.
+> - Two of mine: keeping your settings when the safety breaker trips, and the double-Home reset without notification access.
+>
+> Everything is committed and pushed. A new session resumes from `CHECKPOINT.md`.
+<!-- sha:626686f75073 -->
