@@ -43,6 +43,16 @@ public final class NotifSightings {
         return !pkg.equals(ownPackage) && !ANDROID.equals(pkg) && !SYSTEM_UI.equals(pkg);
     }
 
+    /**
+     * Pure (BH1e, found 2026-11-08 while reading runReset): does the clean-up open the shade and press "Clear all"? {@code notifOn} = the "Clear notifications" switch; {@code icons} = whether the status bar
+     * shows a notification icon (null = unknown); {@code seen} = a notification was posted since the shade was last cleared. A SILENT notification has no icon, so the icons alone would skip the shade
+     * although it lists the notification: the flag decides then. Used by BOTH {@code ReturnReset} (the plan) and {@code TjAccessibilityService.runReset} (the step): v0.8.8 had the rule only in the first, and the
+     * second skipped the step again.
+     */
+    public static boolean shadeStepWanted(boolean notifOn, Boolean icons, boolean seen) {
+        return notifOn && (icons == null || icons.booleanValue() || seen);
+    }
+
     /** Pure: should this sighting also get a lock-log line? The first one of its kind, or {@link #LOG_GAP_MS} after the last. A clock that went backwards counts as "log it". */
     public static boolean shouldLog(long lastLoggedMs, long nowMs) {
         return lastLoggedMs <= 0 || nowMs < lastLoggedMs || nowMs - lastLoggedMs >= LOG_GAP_MS;
