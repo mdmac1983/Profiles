@@ -454,7 +454,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
     };
     private final android.content.BroadcastReceiver wallpaperReceiver = new android.content.BroadcastReceiver() {
-        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; lockShot = null; lockShotFresh = false; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { wallpaperBmp = null; lockBmp = null; lockCalSig = ""; lockShot = null; lockShotFresh = false; homeWallId = -1; homeWallBmp = null; homeBuiltAtMs = 0; handler.post(new Runnable() { @Override public void run() { removeOverlay(); removePatch(); refreshLayers(); } }); }
     };
 
     /**
