@@ -2872,6 +2872,27 @@ info "HP7: stale lines $HP_S0 -> $HP_S1, built lines $HP_B0 -> $HP_B1"
 info "HP7 log (last lines): $(hplog | grep -E 'HOMEPATCH|PATCH rest|PATCH window' | tail -n 8 | cut -c25-125 | tr '\n' '|' | cut -c1-760)"
 check "HP7: a draw of the Launcher makes the built patch stale (log 'HOMEPATCH stale')" bash -c "[ ${HP_S1:-0} -gt ${HP_S0:-0} ]"
 check "HP7: ... and it is built again when the home is quiet (a new 'HOMEPATCH patch built' line)" bash -c "[ ${HP_B1:-0} -gt ${HP_B0:-0} ]"
+# ---------------- phase C2 (code review 2026-11-08): another window over the home screen takes the patch away, and it comes back. homeForeignWindow reacts to NAMED window announcements only (a nameless TYPE_WINDOWS_CHANGED
+#                  also fires in every power-menu burst, run #347): the notification shade must still be caught by that rule, or the resting patch would paint a rectangle of the home screen over the shade.
+HP_W0="$(hpcount 'HOMEPATCH away: another window')"
+adb shell cmd statusbar expand-notifications >/dev/null 2>&1; sleep 2.5
+HP_W1="$(hpcount 'HOMEPATCH away: another window')"
+shot 165-hp-shade
+adb shell cmd statusbar collapse >/dev/null 2>&1; sleep 6
+shot 166-hp-after-shade
+info "HP11: 'away: another window' lines $HP_W0 -> $HP_W1 with the shade down; log: $(hplog | grep -E 'HOMEPATCH away|PATCH rest' | tail -n 4 | cut -c25-130 | tr '\n' '|' | cut -c1-420)"
+check "HP11: the notification shade over the home screen takes the patch away (log 'HOMEPATCH away: another window')" bash -c "[ ${HP_W1:-0} -gt ${HP_W0:-0} ]"
+if [ -n "$SLOT" ]; then
+  MA_W="$(hpmae 166-hp-after-shade 160-hp-bare-a "$SLOT")"
+  info "HP11: 6 s after the shade closed the (shifted) patch vs the bare home screen: MAE $MA_W"
+  check "HP11: ... and the patch is back by itself once the shade is gone (the shifted patch is visible again: MAE > 0.01)" awk -v m="$MA_W" 'BEGIN{exit !(m!="" && m+0 > 0.01)}'
+fi
+# the volume panel is data only (INFO): it may not announce itself on this image; the line tells whether the rule can see it at all
+HP_V0="$(hpcount 'HOMEPATCH away: another window')"
+adb shell input keyevent KEYCODE_VOLUME_UP; sleep 1.5
+HP_V1="$(hpcount 'HOMEPATCH away: another window')"
+info "HP12 (data only): the volume panel: 'away: another window' lines $HP_V0 -> $HP_V1"
+sleep 4
 # ---------------- phase D: another wallpaper = calibrated again, the old crop is deleted
 hpint home_patch_test_shift 0
 adb logcat -c
