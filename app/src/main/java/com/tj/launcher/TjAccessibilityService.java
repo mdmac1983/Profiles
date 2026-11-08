@@ -600,19 +600,25 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean homePatchReady() { return patchView != null && patchHomeMode && patchRestable && !homeCalRunning; }
 
     /** The patch's pixels are still what the home screen shows there: built after the last draw of the Launcher, for the current wallpaper position, no calibration, the plain home on screen. */
+    /** The built patch is still what the home screen shows there (built after the last draw of the Launcher, for the current wallpaper position). Says nothing about whether it may be SEEN now. */
+    private boolean homeCompositeFresh() {
+        if (!patchHomeMode || patchShotBmp == null) return false;
+        return HomePatchRules.compositeFresh(homeBuiltAtMs, TjHooks.lastHomeDrawMs, HomePatchRules.sameStep(homeBuiltStep, homeStepNow()));
+    }
+
+    /** The patch may rest over the slot: its pixels are fresh AND nothing else is on top of the home screen. */
     private boolean homeRestable() {
-        if (!patchHomeMode || patchShotBmp == null || homeCalRunning || !TjHooks.homeScreenShowing()) return false;
+        if (!homeCompositeFresh() || homeCalRunning || !TjHooks.homeScreenShowing()) return false;
         if (android.os.SystemClock.uptimeMillis() < homeForeignUntilMs) return false;   // the shade, quick settings, the volume panel or a system dialog was just up (see homeForeignWindow)
         com.android.launcher3.Launcher l = TjHooks.launcher();
         if (l == null || !l.hasWindowFocus()) return false;                              // another window has the focus (the shade still open, a dialog): the patch must not paint over it
-        return HomePatchRules.compositeFresh(homeBuiltAtMs, TjHooks.lastHomeDrawMs, HomePatchRules.sameStep(homeBuiltStep, homeStepNow()));
+        return true;
     }
 
     private long homeForeignUntilMs = 0;
     private boolean homeOpenShown = false;   // the patch was restable when the menu opened (decided ONCE at the opening, so a draw during the open menu cannot take it away)
     private long homeRefreshAskedMs = 0;
     private int homeCropGen = -1; private String homeCropKey = ""; private boolean homeCropOk = false;
-    private boolean homeWallIdKnown = false;
     private volatile int homeCalGen = 0;
     private int homeBuildWaits = 0;
     private static final long HOME_FOREIGN_AWAY_MS = 2500;
@@ -716,7 +722,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private void buildHomePatchNow() {
         if (patchView == null || !patchHomeMode || overlayShown || homeBuilding || homeCalRunning) return;
         long now = android.os.SystemClock.uptimeMillis();
-        boolean fresh = homeRestable();
+        boolean fresh = homeCompositeFresh();
         if (fresh) { patchShow(false); return; }
         if (!HomePatchRules.buildDue(now, TjHooks.lastHomeDrawMs, fresh, homeBuilding)) { scheduleHomeBuild(); return; }
         if (!TjHooks.homeScreenShowing() || TjHooks.homeFloatingViewOpen() || TjHooks.homeBusy()) {   // not at rest: look again a few times (the draws that end a folder / a drag start a new wish anyway)
@@ -743,11 +749,11 @@ public class TjAccessibilityService extends AccessibilityService {
                     if (comp == null) { homeBuildFails++; homeStatus("could not compose the patch"); return; }
                     homeBuildFails = 0;
                     patchShotBmp = comp; patchShotLeft = l; patchShotTop = t; homeBuiltAtMs = reqAt; homeBuiltStep = builtStep;
-                    homeStatus("home patch built; " + (homeRestable() ? "fresh" : "stale already, building again"));
-                    Log.i(TAG, "HOMEPATCH patch built, fresh=" + homeRestable() + " step " + builtStep);
+                    homeStatus("home patch built; " + (homeCompositeFresh() ? "fresh" : "stale already, building again"));
+                    Log.i(TAG, "HOMEPATCH patch built, fresh=" + homeCompositeFresh() + " step " + builtStep);
                     patchShow(false);
                     patchView.invalidate();
-                    if (!homeRestable()) scheduleHomeBuild();
+                    if (!homeCompositeFresh()) scheduleHomeBuild();
                 } catch (Throwable th) { Log.e(TAG, "home patch apply failed", th); }
             }
         });
