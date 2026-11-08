@@ -1151,3 +1151,31 @@
 > 💡 This chat is getting long. Consider `/amhandoff` at the next good stopping point.
 > 💡 The code word is off in this chat. Type `/amcodeword` and I'll start every reply with 'Yes Boss!', so you'll notice if I start losing track.
 <!-- sha:ceeb9a34649d -->
+
+## 2026-11-08T08:13:54Z
+> **v0.8.9 is released and recorded.** It installs over your current version (same signing key):
+>
+> https://github.com/tjshea90/Launcher/releases/tag/v0.8.9
+>
+> **What it does for you**
+> - **Home-screen power menu:** the power menu on the unlocked custom home screen is now the stock one, with the Screenshot button hidden the way the lock screen does it. The patch is made of your real wallpaper plus the home screen's own icons. If anything is moving or another window (the shade, the volume panel) is on screen, my old card covers the buttons as before.
+> - **The first calibration:** the first time (and once per wallpaper and per home page) the home screen goes blank for about a second and the screen flashes once. There is a new switch in Launcher control.
+> - **Notification clean-up:** the start-of-session clean-up now also looks in the shade for a silent notification (no status-bar icon).
+> - **Tablet report:** it now also counts which other windows took the patch away, by name.
+>
+> **What I checked**
+> - **Home patch on the emulator:** the home-patch test section passes 28/28 on the final code, including a real lock/unlock cycle and the notification shade.
+> - **Unit suite and lint:** 702 tests and lint are green.
+> - **Code review:** two reviews and an audit of the code the home patch shares with the lock screen found real bugs, now fixed. Examples: a lock calibration that could run on the home screen, and a stored wallpaper crop that could be wiped by a memory spike.
+> - **Failures in the longer CI runs:** each is explained.
+>   - The lock-screen timing section also fails on the released v0.8.8, so it is noisy on this CI.
+>   - A stock-home redirect check was a race, and the test now waits.
+>   - One home-patch check was test timing.
+>   - I turned off the home-patch hooks one by one to look for a lock-screen timing difference and found none.
+> - **Not measured:** nothing has run on your real tablet. I also did not measure the fade-in of the power menu on the home screen; the lock screen has that measurement, the home screen doesn't. If you see a light block when the menu opens, tell me and I'll film it.
+>
+> **Next steps**
+> - **For you:** follow `research/TABLET_CHECKLIST_v0.8.9.md` and send the tablet report. If it asks, "Allow wallpaper access" is in Launcher control.
+> - **Photos:** keep them out of the repo, as agreed.
+> - **Still waiting on you:** the v0.8.5 and v0.8.6 checklists, the three answers to my earlier question about the home screen's menu, and where you saw the notification banner.
+<!-- sha:908934cad0f1 -->
