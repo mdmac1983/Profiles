@@ -1082,3 +1082,19 @@
 ## 2026-11-08T03:59:22Z
 > Tj's message is the "go" for the home-screen patch from BG2b. Per the project rules, his words go into TASKS.md and get a checkpoint before any code. I'll look at the open BG2 items and the research note's design sections first, so the task entry is accurate.
 <!-- sha:c1f3fde2be45 -->
+
+## 2026-11-08T06:05:55Z
+> The three gate runs are in flight on `9c40e5c` and should finish around 06:35 UTC. I'll read each result when the timer fires, and if all three are green I'll ship v0.8.9.
+>
+> **Progress since the cut-off session**
+> - **Took over.** The earlier session died on "Prompt is too long". Its work was all in the repo, so nothing was lost.
+> - **Phase C bug.** After a restart the patch never rested. `TjHooks.wallpaperX` starts at a 0.5 placeholder, the Launcher reports its real offset a moment later, and nothing re-evaluated. I made the evaluation level-triggered.
+> - **Regression found.** The earlier session's review fix treated every nameless window event as a foreign window. That dropped the patch at the first event of every power-menu burst. I traced it from the log, not by guesswork.
+> - **Reviews.** I ran `/code-review high` twice and had a read-only subagent audit every use of the shared `patchLockMode` flag. The real findings are fixed. They include a lock calibration that could run on the home screen, a stale crop that could wipe all pages, and a keyguard event that could expose the stock Screenshot entry.
+> - **Proof.** Section `hp` on the final code is 28 PASS, 0 FAIL. It now covers the notification shade, the volume panel and a real lock/unlock cycle. The full JVM suite (702 tests) and lint are green.
+> - **Not measured.** The open-menu fade on the home screen is not measured, because only the lock screen has a frame-by-frame measurement. The checklist asks Tj to watch for a flash there.
+>
+> **Waiting on Tj, not this release:** the v0.8.5/0.8.6 tablet checklists, and the notification question (which app, and where it showed).
+>
+> `research/TABLET_CHECKLIST_v0.8.9.md` is written, and nothing in this release has run on the real tablet yet.
+<!-- sha:d0bf629909aa -->
