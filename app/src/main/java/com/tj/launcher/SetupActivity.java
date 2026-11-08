@@ -100,6 +100,10 @@ public class SetupActivity extends Activity {
             getIntent().removeExtra(EXTRA_TEST_LOCK_WALLPAPER);
             setTestLockWallpaper();
         }
+        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_TEST_HOME_WALLPAPER, false) && Features.get(this, PREF_ALLOW_AUTORUN, false)) {
+            getIntent().removeExtra(EXTRA_TEST_HOME_WALLPAPER);
+            setTestHomeWallpaper();
+        }
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_AUTORUN, false) && Features.get(this, PREF_ALLOW_AUTORUN, false)) {
             getIntent().removeExtra(EXTRA_AUTORUN);
             autorun();
