@@ -1810,3 +1810,31 @@
 ## 2026-11-09T03:54:27Z
 > The local release gate passed, and GitHub is building and signing v1.1 now (about 5 minutes). I'll confirm the Release and send the link when it lands.
 <!-- sha:f53feb48c186 -->
+
+## 2026-11-09T04:01:11Z
+> Profiles v1.1 is released in your repo, signed with your key. Every emulator test section passed on the final code.
+>
+> https://github.com/mdmac1983/Profiles/releases/tag/v1.1
+>
+> **What's new:**
+> - **Three profiles:**
+>   - **Owner** is the stock launcher, and settings only open there.
+>   - **FBOP** is what a plain PIN always opens.
+>   - **Rental** has its own apps and settings, and starts as a copy of FBOP.
+> - **Handshakes:** each one has an "Opens:" choice (Owner, FBOP or Rental). At least one always opens Owner, so you can't lock yourself out.
+> - **Per-profile settings:** visible apps, home-screen layout, gestures, pop-up notifications, Wi-Fi/Bluetooth rule, status bar and quick-settings tiles. Choose FBOP or Rental at the top of Profiles settings.
+> - **8 new handshakes:** PIN rhythm, long-press Delete, slow start (8 seconds), Delete before Enter, hold Volume Up while tapping Enter, Volume Up right after waking, slow wake count, and Volume Down ×3 then the side key. All start off.
+> - **Rental restrictions**, each with its own switch: no Settings, no Play Store, no uninstalling apps.
+> - **Home-screen gestures** per profile: swipe down, double tap and two-finger swipe down. Swipe up stays the app drawer, and no gesture opens Owner.
+> - **User guide and Features pages** cover all of the above.
+>
+> **Install it with the in-app updater.** You already have v1.0, so open Profiles settings, go to **Updates**, tap **Check for updates**, then **Install v1.1**. This is the first real test of the updater on your tablet; if it fails, tell me what the status line says. Downloading the APK from the link above also works, and it installs over v1.0 without losing settings.
+>
+> **What the emulator tests can't cover, so please check on the tablet:**
+> - **Double tap:** the gesture is detected, but I couldn't confirm the lock on the emulator because its taps are too slow.
+> - **The new key handshakes:** the emulator's keys don't reach the accessibility helper.
+>
+> **Still waiting on you:**
+> 1. **Per-profile wallpaper:** do you want it? Each profile switch would cost one screenshot flash while the power-menu patch recalibrates. The alternative is one shared wallpaper.
+> 2. **The extra ideas you weren't sure about:** app locks, time-based profile switching, usage limits, folders, a profile tile, settings export/import and a switch log.
+<!-- sha:5508385af44b -->
