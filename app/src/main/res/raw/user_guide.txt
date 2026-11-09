@@ -6,7 +6,7 @@ Your PIN is the tablet's normal lock-screen PIN. Profiles never reads or stores 
 - Type just the PIN: the custom home screen opens. This always works.
 - Do a handshake first, then type the PIN: Owner (Quickstep) opens.
 The default handshake is "Double erase": on the empty PIN pad tap Delete twice, then type your PIN. A short buzz tells you the handshake counted.
-Choose your handshakes under "Unlock into Quickstep (secret handshakes)". You can switch several on; at least one always stays on.
+Choose your handshakes, and which profile each one opens, under "Unlock into Quickstep (Owner) or a profile". You can switch several on; at least one always stays on.
 Locking the tablet ends an Owner session. The next plain PIN opens the custom home screen again.
 
 # Going back to the custom home screen from Owner
