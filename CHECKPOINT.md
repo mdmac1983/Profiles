@@ -1,17 +1,13 @@
-# CHECKPOINT 763 — read me first, then TASKS.md
+# CHECKPOINT 764 — read me first, then TASKS.md
 
-**Written:** 2026-11-09T03:54:10Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `c7310bd` (this checkpoint is the commit after it)
+**Written:** 2026-11-09T04:00:53Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `54b0c89` (this checkpoint is the commit after it)
 
 ## Just done
-gated v1.1 (code 38) and pushed it: the handoff self-test, the full unit suite + lint
-and the versionCode check all passed here. NOT yet built - GitHub has not been asked.
+v1.1 RELEASED + RECORDED (7d4fbfe; https://github.com/mdmac1983/Profiles/releases/tag/v1.1)
 
 ## Do this next
-TRIGGER THE BUILD: mcp__github__actions_run_trigger, method run_workflow, workflow
-android.yml, ref main, inputs {"full_build": "true"}. When that run is green,
-confirm the Release is published (get_release_by_tag is enough) and then run:
-  bash tools/record-release.sh v1.1 "v1.1: profiles Owner/FBOP/Rental, handshake->profile, 8 new handshakes, Rental restrictions, per-profile layout, gestures"
+wait for user: per-profile wallpaper (flash per switch) yes/no; tablet test of v1.1 incl. in-app update from 1.0
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -20,6 +16,7 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
 
 ## Last ten checkpoints
 ```
+  7d4fbfe ckpt 763: gated v1.1 (code 38) and pushed it: the handoff self-test, the full unit suite
   c7310bd ckpt 762: pre-ship: v1.1: profiles Owner/FBOP/Rental, handshake->profile, 8 new handshak
   d5a034e ckpt 761: gate round 2: run17 only CU5 (known first-frame flake), run18 GE2 (lock action
   1cbd88b ckpt 760: gate v1.1 round 1 (32ed08f): run10 CS-A3/A4 (known flake), run11 UF1/UF2 (plai
@@ -29,5 +26,7 @@ confirm the Release is published (get_release_by_tag is enough) and then run:
   1f90cf8 ckpt 756: v1.1 = profiles + the 8 new handshakes (BT1b folded in): UnlockMethods RHYTHM/
   df36d74 ckpt 755: v1.1 built: ProfileRules(+test)/Profiles, per-profile apps/tiles/status bar/ra
   c870ebf ckpt 754: BT1 written: build v1.1..v1.5
-  aa7af8f ckpt 753: v1.0 RELEASED + RECORDED (android.yml #2 id 42548773723, 9ebe111; https://gith
 ```
+
+(1 automatic checkpoint(s) since the last deliberate one — the
+session was still mid-step. `git diff` against it shows what changed.)
