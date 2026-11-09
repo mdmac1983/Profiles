@@ -1762,3 +1762,7 @@
 ## 2026-11-09T02:44:27Z
 > Five emulator runs are in progress: the three v1.1 gate runs, a run for the Rental restrictions, and a run for gestures and the per-profile layout. I'll read them all around 03:02 UTC.
 <!-- sha:b6adac9e744c -->
+
+## 2026-11-09T03:05:31Z
+> I'm waiting on the solo `uf`/`cs` re-run (around 03:12 UTC) and the full v1.1 gate re-run (around 03:33). I'll read both when they land.
+<!-- sha:eebc16fa50fd -->
