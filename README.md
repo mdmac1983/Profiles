@@ -1,4 +1,4 @@
-# Launcher (`com.tj.launcher`)
+# Profiles (`app.orionmd.profiles`)
 
 A home-screen launcher for **one specific tablet**: an Alps 711 (`tb8168p1_bsp`, MediaTek MT8168B, 32-bit ARM, 2 GB RAM,
 600 x 1024, 170 dpi) running **Android 10 (API 29) Go edition**, with the stock **Quickstep v10** launcher installed. It is
@@ -9,7 +9,7 @@ The idea in one sentence: the tablet behaves like **two user accounts on one And
 (the stock launcher, untouched) is the private world, reachable only through a secret handshake at the lock screen.
 Going back cleans up after Quickstep: its apps, Recents cards, notifications and radios.
 
-> Version at the time of writing: **0.8.11** (versionCode 36), with **0.8.12** (the home curtain, BL1) in progress.
+> **Fork, 2026-11-09:** renamed to **Profiles**, app ID `app.orionmd.profiles` (the Java package stays `com.tj.launcher`), versions restart at **1.0** (+0.1 per update; versionCode keeps rising from 37), releases only in `mdmac1983/Profiles`, signed with the owner's own key (GitHub secret `SIGNING_KEYSTORE_BASE64`). New in 1.0: in-app updates (`UpdateRules`, `Updater`, `UpdateReceiver`, `UpdateStatusReceiver`) and the User guide / Features pages (`HelpActivity`, `res/raw/`). Planned: 1.1 profiles Owner / FBOP / Rental with a handshake map (TASKS BR1/BS1).
 > Written from the code on 2026-11-08 (TASKS BM1). For day-to-day work, read `HANDOFF.md` → `CLAUDE.md` → `CHECKPOINT.md`.
 
 ---
