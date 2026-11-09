@@ -107,7 +107,7 @@ public final class NotifQuiet {
         } catch (Throwable t) { Log.e(TAG, "restore failed", t); }
     }
 
-    // ================================================================ what Launcher control and the tablet report show
+    // ================================================================ what Profiles settings and the tablet report show
 
     /** One line: the switch, the grant, whether the banners are held off right now, the setting, what will be put back, and the last change. Never throws. */
     public static String describe(Context c) {

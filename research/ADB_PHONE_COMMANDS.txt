@@ -39,7 +39,7 @@ why: Must print 1. If it does, UNPLUG the cable now and go to PART 3: the helper
 cmd: ps -A -o ARGS | grep -c '[S]hellServer'
 ## PART 3: AFTER unplugging, on the TABLET (about 5 minutes, only buttons)
 @ Open the setup screen
-why: Open Launcher control (it exists only while the tablet is in Quickstep mode) and tap "Tablet setup & report". The top line must say "Shell helper: RUNNING". If it says NOT running, go back to PART 2 and start the helper again.
+why: Open Profiles settings (it exists only while the tablet is in Quickstep mode) and tap "Tablet setup & report". The top line must say "Shell helper: RUNNING". If it says NOT running, go back to PART 2 and start the helper again.
 @ Tap "1. Do everything that is missing"
 why: It does by itself everything the by-hand cards at the bottom do: the permissions, the background and battery settings, the accessibility helper and the speed compile. Wait until the list turns green (about a minute).
 @ Tap "2. Collect the tablet report"
@@ -164,5 +164,5 @@ cmd: settings delete secure sysui_qs_tiles
 why: Optional, and not needed for safety (a compiled app only starts faster). Puts the launcher back to the light "verify" state a fresh install has; installing the launcher again does the same. Android 10 refuses the shorter "compile --reset" to the shell user (the emulator run said: Only the system can clear all profile data).
 cmd: cmd package compile -m verify -f app.orionmd.profiles
 @ Take the permissions back
-why: One undo line per permission is on the cards in FALLBACK; the launcher keeps working without them, those features just switch off. Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
+why: One undo line per permission is on the cards in FALLBACK; the launcher keeps working without them, those features just switch off. Also available inside the launcher: Profiles settings > Restore everything puts back every setting the launcher changed.
 note: Accessibility: switch the helper off in the tablet's Settings > Accessibility.

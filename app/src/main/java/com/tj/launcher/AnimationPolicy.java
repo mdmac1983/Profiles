@@ -13,7 +13,7 @@ package com.tj.launcher;
 public final class AnimationPolicy {
     private AnimationPolicy() {}
 
-    /** The switch in Launcher control (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like clean_start). */
+    /** The switch in Profiles settings (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like clean_start). */
     public static final String KEY = "quickstep_animations_off";
 
     /** The two reasons the scales may be held at 0. Stored as a bit mask, so each one can end without touching the other. */
@@ -24,7 +24,7 @@ public final class AnimationPolicy {
 
     /** Everything the decision reads, by name (eight booleans in a row are an invitation to swap two). All false = nothing is wanted. */
     public static final class Facts {
-        /** the switch in Launcher control */
+        /** the switch in Profiles settings */
         public boolean switchOn;
         /** WRITE_SECURE_SETTINGS (the one-time adb grant) */
         public boolean grant;
@@ -50,7 +50,7 @@ public final class AnimationPolicy {
     }
 
     /**
-     * Why the Quickstep hold is NOT wanted right now: the FIRST failing condition in plain words, or "" when it is wanted. One function for the decision and for the words (log, Launcher control), so they
+     * Why the Quickstep hold is NOT wanted right now: the FIRST failing condition in plain words, or "" when it is wanted. One function for the decision and for the words (log, Profiles settings), so they
      * can never disagree. Order = most informative first.
      */
     public static String why(Facts f) {

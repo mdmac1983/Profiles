@@ -18,7 +18,7 @@ public final class ProfileSession {
     public static final String RADIOS_KEY = "profile_radios_off";            // custom account: Wi-Fi and Bluetooth are switched off again if something turns them on, default ON
     public static final String PRECLEAN_KEY = "profile_preclean";            // O4: closing/locking from Quickstep closes its apps + notifications AT LOCK (needs the adb helper), default ON
     public static final String BUZZ_KEY = "unlock_buzz";                     // a short buzz when a handshake is accepted, default ON
-    public static final String PREARM_REPORT_KEY = "profile_last";           // what the last lock-screen switch did (shown in Launcher control)
+    public static final String PREARM_REPORT_KEY = "profile_last";           // what the last lock-screen switch did (shown in Profiles settings)
 
     private ProfileSession() {}
 

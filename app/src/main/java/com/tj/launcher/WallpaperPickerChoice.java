@@ -135,7 +135,7 @@ public final class WallpaperPickerChoice {
         }
     }
 
-    /** One line for Launcher control and the tablet report. */
+    /** One line for Profiles settings and the tablet report. */
     public static String summary(Context c) {
         Result r = resolve(c);
         return (r.component == null ? "NONE (the long-press entry shows a message and opens nothing)" : r.component.flattenToShortString() + "  <- " + r.why) + "   [answering SET_WALLPAPER: " + r.candidates + "]";

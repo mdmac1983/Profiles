@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * V2: stock keyboard while the custom launcher is on, Microsoft SwiftKey while Quickstep is on. Needs WRITE_SECURE_SETTINGS, which only adb can grant
- * (`bash tools/adb-grant.sh keyboard`); without it nothing changes and Launcher control says so. Default OFF. Snapshot first (RestoreStore), write, read back, undo on mismatch.
+ * (`bash tools/adb-grant.sh keyboard`); without it nothing changes and Profiles settings says so. Default OFF. Snapshot first (RestoreStore), write, read back, undo on mismatch.
  * Never touches anything lock-screen related; only switches to a keyboard that is already enabled.
  */
 public final class KeyboardSwitch {

@@ -34,7 +34,7 @@ public final class HelperStatus {
         return false;
     }
 
-    /** The plain words for Launcher control and the tablet report. */
+    /** The plain words for Profiles settings and the tablet report. */
     public static String describe(int state) {
         switch (state) {
             case CONNECTED: return "ON";

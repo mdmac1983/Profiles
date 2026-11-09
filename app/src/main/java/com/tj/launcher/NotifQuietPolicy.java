@@ -17,7 +17,7 @@ package com.tj.launcher;
 public final class NotifQuietPolicy {
     private NotifQuietPolicy() {}
 
-    /** The switch in Launcher control (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like clean_start and quickstep_animations_off). */
+    /** The switch in Profiles settings (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like clean_start and quickstep_animations_off). */
     public static final String KEY = "quiet_banners";
 
     /** Settings.Global: any non-zero number = pop-up (heads-up) notifications on, 0 = off. SystemUI reads a missing or unreadable value as off. */
@@ -28,7 +28,7 @@ public final class NotifQuietPolicy {
 
     /** Everything the decision reads, by name. All false = nothing is wanted ("switch off"). */
     public static final class Facts {
-        /** the switch in Launcher control */
+        /** the switch in Profiles settings */
         public boolean switchOn;
         /** WRITE_SECURE_SETTINGS (the one-time adb grant) */
         public boolean grant;
@@ -54,7 +54,7 @@ public final class NotifQuietPolicy {
     }
 
     /**
-     * Why the quiet hold is NOT wanted right now: the FIRST failing condition in plain words, or "" when it is wanted. One function for the decision and for the words (log, Launcher control), so they can
+     * Why the quiet hold is NOT wanted right now: the FIRST failing condition in plain words, or "" when it is wanted. One function for the decision and for the words (log, Profiles settings), so they can
      * never disagree.
      */
     public static String why(Facts f) {

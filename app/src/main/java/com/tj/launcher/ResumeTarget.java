@@ -6,7 +6,7 @@ package com.tj.launcher;
  * stock home as before. Pure rules, JVM-tested; {@link TjAccessibilityService} remembers the app and starts it.
  */
 public final class ResumeTarget {
-    public static final String KEY = "resume_qs_app";   // switch in Launcher control, default ON
+    public static final String KEY = "resume_qs_app";   // switch in Profiles settings, default ON
     /** An app remembered longer ago than this is not brought back (its task is probably gone; the stock home is the honest answer). */
     public static final long MAX_AGE_MS = 6L * 60 * 60 * 1000;
 

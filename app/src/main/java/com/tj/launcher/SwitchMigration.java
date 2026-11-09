@@ -7,7 +7,7 @@ import java.util.Map;
  * v0.7.3 (found while answering Tj's AC1/AC8, 2026-11-05): the crash-breaker reset of v0.7.1 (12:48 on the real tablet) did not only turn the launcher's Two-profiles switches off, it WROTE "false" for
  * "Prepare the custom launcher behind the lock screen", "No Wi-Fi or Bluetooth in the custom launcher" and "Close Quickstep's apps at lock" (code default: ON). Those explicit values survive an update, so the
  * custom launcher would stay without them until someone found the switches. If ALL THREE are explicitly false (the signature of that reset: nobody turns all three off on purpose) they are removed once, so the
- * defaults (ON) apply again, and Launcher control says so. A single switch Tj set himself never matches.
+ * defaults (ON) apply again, and Profiles settings says so. A single switch Tj set himself never matches.
  */
 public final class SwitchMigration {
     static final String DONE_KEY = "migrated_wipe_073";

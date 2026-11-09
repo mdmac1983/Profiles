@@ -4,7 +4,7 @@ import android.content.Context;
 import java.util.ArrayDeque;
 
 /**
- * N4 (Tj, 2026-11-04): several ways from Quickstep BACK to the custom launcher (the "kill switch"), besides double Home. Each has its own switch in Launcher control (Quickstep mode).
+ * N4 (Tj, 2026-11-04): several ways from Quickstep BACK to the custom launcher (the "kill switch"), besides double Home. Each has its own switch in Profiles settings (Quickstep mode).
  * They only act while Quickstep is the active launcher, so none of them can be done "by accident" from the custom launcher.
  *   HOME2    press Home twice quickly                              (the original; handled by the router)
  *   ICON     tap the "Back to custom" icon in Quickstep's app drawer / home   (an app icon that acts as the kill switch)

@@ -322,13 +322,13 @@ public class TjAccessibilityService extends AccessibilityService {
     // ---------------------------------------------------------------- W3b: wallpaper patch under the replacement card (Tj: permanent, custom launcher only)
     public static final String PATCH_STATUS_KEY = "wallpaper_patch_status";
     public static final String PATCH_DX_KEY = "patch_dx", PATCH_DY_KEY = "patch_dy", PATCH_SCALE_KEY = "patch_scale_pct";   // alignment nudges in px / percent
-    /** AC6: brightness nudge of the lock-screen patch in percent points (Launcher control). The wallpaper MODEL is drawn darker by {@link #DIM_KEYGUARD} because the real keyguard darkens its wallpaper. */
+    /** AC6: brightness nudge of the lock-screen patch in percent points (Profiles settings). The wallpaper MODEL is drawn darker by {@link #DIM_KEYGUARD} because the real keyguard darkens its wallpaper. */
     public static final String PATCH_DIM_KEY = "patch_dim_pct";
     /** AC6: how much of its brightness the real lock screen keeps: MEASURED on the Android 10 emulator (run 74: (173,96,20) on screen vs (229,122,26) in the wallpaper = 0.755 / 0.787 / 0.77). A first estimate for the tablet's MtkSystemUI. */
     static final float DIM_KEYGUARD = 0.77f;
     /** AC6 / V5: how much brightness the screen around the open stock power menu keeps (the dialog's own scrim). MEASURED on the Android 10 emulator, run 136: the strip next to the menu keeps 0.791 / 0.791 / 0.789 of the closed lock screen. Our patch sits ABOVE that scrim, so it is dimmed the same. */
     static final float DIM_OPEN = 0.80f;   // AZ1c (Tj: "the darkened patch may be slightly too dark"): was 0.79. The AOSP source says the stock scrim is alpha 0.2 of a black-ish colour = exactly 0.80 (ScrimController.GRADIENT_SCRIM_ALPHA); emulator run 242 section v measured R 0.795 / G 0.800 / B 0.798
-    /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Launcher control) scales it. */
+    /** The brightness factor of the lock-screen patch: the photo already has the keyguard's dim (only the dialog's scrim is missing), the wallpaper MODEL has neither. Tj's nudge (Profiles settings) scales it. */
     private float lockPatchDim(boolean photo) {
         float open = openScrim();
         float k = (photo ? open : DIM_KEYGUARD * open) * (1f + (Features.getInt(this, PATCH_DIM_KEY, 0) + (photo ? 0 : PatchProfile.lockDimPct(android.os.Build.DEVICE))) / 100f);   // v0.7.6 AH3: + the per-device lift of the MODEL (not of a photo)
@@ -341,7 +341,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean patchLockMode, targetIsLock;
     /** BI1: the cardless real-pixel patch (patchLockMode) is ALSO used on the unlocked custom home screen; these two say that this window / target is the home flavour (the pixels come from {@link HomeShot} + {@link HomeLayer}, the rest rules from {@link HomePatchRules}). Everything lock-specific stays keyed on the keyguard. */
     private boolean patchHomeMode, targetIsHome;
-    /** AE3 / AD7b: the resting state of the lock-screen patch (see {@link PatchRest}): visible over the Screenshot slot while the lock screen is up and the menu is closed; the switch is in Launcher control, default OFF. */
+    /** AE3 / AD7b: the resting state of the lock-screen patch (see {@link PatchRest}): visible over the Screenshot slot while the lock screen is up and the menu is closed; the switch is in Profiles settings, default OFF. */
     /** AH1: Tj's nudge (percent points) of how much the stock dialog's scrim darkens the screen around the OPEN menu; the patch is dimmed the same (lock and home). */
     public static final String PATCH_SCRIM_KEY = "patch_scrim_pct";
     private volatile boolean patchOpenHome = false;   // AH1: the HOME-screen patch is dimmed like the dialog's scrim only while the menu is open (closed = invisible seam)
@@ -412,7 +412,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private int autoShotTries = 0;
     private boolean autoShotDone = false;
     private android.graphics.Bitmap patchMaskOpen, patchMaskRest;   // AH3: the soft-edge masks of the slot patch (menu open: hard top under the card; resting: soft top); null = the old hard-edged drawing
-    /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Launcher control and in the tablet report. */
+    /** What kind of wallpaper the lock screen shows ("still picture" / "LIVE wallpaper <component>"): an animated wallpaper cannot be matched exactly by a still patch. Shown in Profiles settings and in the tablet report. */
     public static final String WALLPAPER_KIND_KEY = "wallpaper_kind";
     /**
      * AM1: cardless only on the LOCK screen, where the real-pixel patch hides the Screenshot spot. The HOME screen has no patch in "hide_screenshot" mode (the card stretched over the whole panel is what hides the
@@ -432,7 +432,7 @@ public class TjAccessibilityService extends AccessibilityService {
      * and never while a calibration screenshot is being taken. Without them it stays hidden at rest (a model patch is a visible block: Tj's photo of 2026-11-06).
      */
     private String lastRestInfo = "";
-    /** AM1: the inputs of the resting decision, newest only, kept in a preference (Launcher control / tablet report / emulator INFO): why does the patch rest, or not? */
+    /** AM1: the inputs of the resting decision, newest only, kept in a preference (Profiles settings / tablet report / emulator INFO): why does the patch rest, or not? */
     private void restInfo(String what) {
         try {
             String v = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + what + " [always=" + lockPatchAlways() + " switch=" + Features.get(this, PatchRest.KEY, true) + " wanted=" + lockPatchWanted() + " calibrating=" + calibrating() + " shot=" + (patchShotBmp != null) + " bouncer=" + lastBouncer + "]";
@@ -548,7 +548,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!s.equals(Features.getString(this, PATCH_STATUS_KEY, ""))) Features.setString(this, PATCH_STATUS_KEY, s);
     }
 
-    /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Launcher control. */
+    /** All the reasons NOT to cover the system menu with a wallpaper patch; null = go. Each reason is shown in Profiles settings. */
     private boolean lockPatchWanted() {
         return Features.get(this, LOCK_PATCH_KEY, true) && Features.isCover(Features.powerMode(this)) && keyguardLockedFast();   // AD7a: any lock screen, whatever the mode flag says
     }
@@ -843,7 +843,7 @@ public class TjAccessibilityService extends AccessibilityService {
     } };
     private final Runnable homeCalAbort = new Runnable() { @Override public void run() { try { if (homeCalRunning) homeCalFinish(false, "no screenshot appeared in time"); } catch (Throwable t) { Log.e(TAG, "home calibration abort failed", t); } } };
 
-    /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. (Launcher control only opens in Quickstep, where no calibration can run: its button forgets the crops, and this starts by itself the next time the custom home screen is quiet.) */
+    /** Starts the calibration when the rules say so. Returns "" when it started, else the reason. (Profiles settings only opens in Quickstep, where no calibration can run: its button forgets the crops, and this starts by itself the next time the custom home screen is quiet.) */
     private String maybeHomeCalibrate(String why) {
         HomePatchRules.CalState s = new HomePatchRules.CalState();
         s.switchOn = homeSwitchOn();
@@ -981,7 +981,7 @@ public class TjAccessibilityService extends AccessibilityService {
         if (!ok) { handler.removeCallbacks(homeCalTrigger); handler.postDelayed(homeCalTrigger, HomePatchRules.CAL_MIN_GAP_MS + 1000); }
     }
 
-    /** One line for Launcher control and the tablet report. Never throws. */
+    /** One line for Profiles settings and the tablet report. Never throws. */
     String homePatchInfo() {
         try {
             return "switch " + (homeSwitchOn() ? "on" : "off") + ", power menu mode " + Features.powerMode(this) + ", crops stored " + HomeShot.count(this) + ", window " + (patchView != null && patchHomeMode ? (patchResting ? "resting" : "present, away") : "none")
@@ -998,7 +998,7 @@ public class TjAccessibilityService extends AccessibilityService {
             if (!Features.isCover(Features.powerMode(this))) { patchStatus("off: lock screen, power menu cover off"); return null; }   // AD7a: no mode condition on the lock screen
             Rect r = cachedCard();
             if (r == null) { patchStatus("waiting: open the power menu once on the lock screen so the helper learns where it sits"); return null; }
-            if (!PatchShot.has(this, rotation(), shotSig()) && loadLockWallpaper() == null) { patchStatus("waiting: the lock-screen wallpaper could not be read (Launcher control > Allow wallpaper access)"); return null; }   // BE1: real pixels stored = no full wallpaper decode on the main thread at every lock
+            if (!PatchShot.has(this, rotation(), shotSig()) && loadLockWallpaper() == null) { patchStatus("waiting: the lock-screen wallpaper could not be read (Profiles settings > Allow wallpaper access)"); return null; }   // BE1: real pixels stored = no full wallpaper decode on the main thread at every lock
             targetIsLock = true;
             patchStatus("lock screen: patch window wanted at " + r.toShortString());
             return patchRect(r, true);
@@ -1072,7 +1072,7 @@ public class TjAccessibilityService extends AccessibilityService {
         }
         android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
         if (pm == null || !pm.isInteractive()) return;
-        if (!ShellHelper.reachable()) { calStatus("no photo of the lock screen: start the adb helper (Launcher control > Tablet setup); the wallpaper model is used meanwhile"); return; }
+        if (!ShellHelper.reachable()) { calStatus("no photo of the lock screen: start the adb helper (Profiles settings > Tablet setup); the wallpaper model is used meanwhile"); return; }
         if (android.os.SystemClock.elapsedRealtime() - lastShotTry < 4000) { handler.postDelayed(calTrigger, 4000); return; }   // never a screenshot storm if a photo keeps failing
         lastShotTry = android.os.SystemClock.elapsedRealtime();
         calBusy = true;
@@ -1127,11 +1127,11 @@ public class TjAccessibilityService extends AccessibilityService {
     private android.graphics.Bitmap loadLockWallpaper() {
         if (lockBmp != null) return lockBmp;
         if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            patchStatus("needs permission: Launcher control > Allow wallpaper access"); return null;
+            patchStatus("needs permission: Profiles settings > Allow wallpaper access"); return null;
         }
         try {
             android.app.WallpaperManager wm = android.app.WallpaperManager.getInstance(this);
-            try {   // AE3 / AE8: is the wallpaper an animated LIVE wallpaper? A still patch can never match one exactly (the specks and streaks move). Shown in Launcher control and in the tablet report (Features dump).
+            try {   // AE3 / AE8: is the wallpaper an animated LIVE wallpaper? A still patch can never match one exactly (the specks and streaks move). Shown in Profiles settings and in the tablet report (Features dump).
                 android.app.WallpaperInfo wi = wm.getWallpaperInfo();
                 String kind = wi == null ? "still picture" : "LIVE wallpaper " + wi.getComponent().flattenToShortString() + " (animated: a still patch cannot match it exactly)";
                 if (!kind.equals(Features.getString(this, WALLPAPER_KIND_KEY, ""))) Features.setString(this, WALLPAPER_KIND_KEY, kind);
@@ -1169,7 +1169,7 @@ public class TjAccessibilityService extends AccessibilityService {
     private android.graphics.Bitmap loadWallpaper() {
         if (wallpaperBmp != null) return wallpaperBmp;
         if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            patchStatus("needs permission: Launcher control > Allow wallpaper access"); return null;
+            patchStatus("needs permission: Profiles settings > Allow wallpaper access"); return null;
         }
         try {
             android.graphics.drawable.Drawable d = android.app.WallpaperManager.getInstance(this).getDrawable();
@@ -1277,7 +1277,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 // How Android 10's wallpaper engine places the picture: scaled to COVER the display, centred vertically, shifted sideways by the launcher's offset.
                 float s = Math.max((float) dm.heightPixels / b.getHeight(), (float) dm.widthPixels / b.getWidth());
                 float dw = b.getWidth() * s, dh = b.getHeight() * s;
-                float cal = 1f + Features.getInt(TjAccessibilityService.this, PATCH_SCALE_KEY, 0) / 100f;   // Tj's alignment nudges (Launcher control)
+                float cal = 1f + Features.getInt(TjAccessibilityService.this, PATCH_SCALE_KEY, 0) / 100f;   // Tj's alignment nudges (Profiles settings)
                 if (patchLockMode) cal *= testSkew() * lockCalM;                                           // V4: the measured fit (1 until calibrated)
                 s *= cal; dw = b.getWidth() * s; dh = b.getHeight() * s;
                 m.setScale(s, s);
@@ -1835,7 +1835,7 @@ public class TjAccessibilityService extends AccessibilityService {
         } }, "tj-curtain-load").start();
     }
 
-    /** What the cover did, for Launcher control, the tablet report and the lock log (written off the main thread). */
+    /** What the cover did, for Profiles settings, the tablet report and the lock log (written off the main thread). */
     private void curtainNoteUse(boolean curtain, String why, boolean touchable) {
         try {
             String line = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  "
@@ -1941,7 +1941,7 @@ public class TjAccessibilityService extends AccessibilityService {
         } });
     }
 
-    /** One line for Launcher control: is the curtain ready, and if not why the black cover is used. */
+    /** One line for Profiles settings: is the curtain ready, and if not why the black cover is used. */
     public String curtainInfo() {
         try {
             if (!curtainSwitchOn()) return "off (the black cover is used)";
@@ -2441,7 +2441,7 @@ public class TjAccessibilityService extends AccessibilityService {
         return n;
     }
 
-    // ---------------------------------------------------------------- D3: how fast is the card? (measured, shown in Launcher control)
+    // ---------------------------------------------------------------- D3: how fast is the card? (measured, shown in Profiles settings)
     // There is NO earlier signal on Android 10: the side key is consumed before the key filter (never reaches a service), and PhoneWindowManager no longer broadcasts
     // ACTION_CLOSE_SYSTEM_DIALOGS("globalactions") when it opens the power menu (checked in the android-10.0.0_r47 source; only the shutdown path still does).
     // The first thing an accessibility service can see is the menu window itself, so speed comes from the pre-built (warm) card.
@@ -3901,7 +3901,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /**
      * AW5: on a plain lock screen without a valid crop, open a short calibration window by ourselves; the existing machinery ({@link #calibrationChanged}: hide the resting patch, ask the system for a
-     * screenshot when the lock screen is plain, {@link #ingestShot}) does the rest. The pure policy is {@link AutoCalibration#decision}; every "not yet" reason is shown in Launcher control.
+     * screenshot when the lock screen is plain, {@link #ingestShot}) does the rest. The pure policy is {@link AutoCalibration#decision}; every "not yet" reason is shown in Profiles settings.
      */
     private void maybeAutoCalibrate(String why) {
         android.content.Context app = getApplicationContext();
@@ -4036,7 +4036,7 @@ public class TjAccessibilityService extends AccessibilityService {
         return st;
     }
 
-    /** Starts the measurement when {@link ScrimMeasure#decision} says go; every "not yet" reason is shown in Launcher control, and a "waiting" one is looked at again in a moment. */
+    /** Starts the measurement when {@link ScrimMeasure#decision} says go; every "not yet" reason is shown in Profiles settings, and a "waiting" one is looked at again in a moment. */
     private void maybeMeasureScrim(String why) {
         if (scrimStage != 0) return;
         android.content.Context app = getApplicationContext();
@@ -4248,7 +4248,7 @@ public class TjAccessibilityService extends AccessibilityService {
         } catch (Throwable t) { Log.e(TAG, "auto screenshot failed", t); }
     } };
 
-    /** The calibration window opened or closed (Launcher control, the end of the window, a service connect): hide / bring back the resting patch, watch the media store, schedule the screenshot. */
+    /** The calibration window opened or closed (Profiles settings, the end of the window, a service connect): hide / bring back the resting patch, watch the media store, schedule the screenshot. */
     private void calibrationChanged() {
         if (calibrating()) {
             startShotWatch();
@@ -4277,10 +4277,10 @@ public class TjAccessibilityService extends AccessibilityService {
         shotObserver = null;
     }
 
-    /** A screenshot appeared while calibrating: crop the patch window out of it (worker thread) and keep the crop. Every refusal says why in Launcher control. */
+    /** A screenshot appeared while calibrating: crop the patch window out of it (worker thread) and keep the crop. Every refusal says why in Profiles settings. */
     private void ingestShot() {
         if (!calibrating()) return;
-        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) { shotStatus(now() + "  needs permission: Launcher control > Allow wallpaper access"); return; }
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) { shotStatus(now() + "  needs permission: Profiles settings > Allow wallpaper access"); return; }
         final android.content.Context app = getApplicationContext();
         final long start = calibrationStartMs();
         final boolean locked = keyguardLockedFast();

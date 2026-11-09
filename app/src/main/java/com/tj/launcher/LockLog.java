@@ -96,7 +96,7 @@ public final class LockLog {
         } catch (Throwable t) { return ""; }
     }
 
-    /** The last {@code n} lines (for the report and Launcher control); "" when there is no log. */
+    /** The last {@code n} lines (for the report and Profiles settings); "" when there is no log. */
     public static String tail(Context c, int n) {
         synchronized (LOCK) { return tailLines(read(c.getApplicationContext().getFileStreamPath(FILE)), n); }
     }

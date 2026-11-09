@@ -106,9 +106,9 @@ public final class BatterySaverGuard {
     private static final long[] restores = new long[BatterySaverPolicy.MAX_RESTORES];
     private static int restoreIdx = 0;
 
-    /** Launcher control: the lock screen always has the saver off (any launcher). Default ON. */
+    /** Profiles settings: the lock screen always has the saver off (any launcher). Default ON. */
     public static boolean lockOffEnabled(Context c) { return Features.get(c, BatterySaverPolicy.LOCK_OFF_KEY, true); }
-    /** Launcher control: a gesture unlock into Quickstep brings Quickstep's own saver state back. Default ON. */
+    /** Profiles settings: a gesture unlock into Quickstep brings Quickstep's own saver state back. Default ON. */
     public static boolean lockRestoreEnabled(Context c) { return Features.get(c, BatterySaverPolicy.LOCK_RESTORE_KEY, true); }
 
     private static long bootEpoch() { return System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime(); }
@@ -302,7 +302,7 @@ public final class BatterySaverGuard {
         try { if (connected && Features.get(c, BatterySaverPolicy.HELD_KEY, false)) Features.setStringAsync(c, BatterySaverPolicy.PLUG_SEEN_KEY, "1"); } catch (Throwable ignored) { }
     }
 
-    /** One line for Launcher control and the tablet report. */
+    /** One line for Profiles settings and the tablet report. */
     public static String lockStatus(Context c) {
         try {
             return BatterySaverPolicy.describe(Features.getString(c, BatterySaverPolicy.QS_ON_KEY, ""), Features.get(c, BatterySaverPolicy.HELD_KEY, false), "1".equals(Features.getString(c, BatterySaverPolicy.PLUG_SEEN_KEY, "0")))

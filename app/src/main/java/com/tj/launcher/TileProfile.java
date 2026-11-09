@@ -16,7 +16,7 @@ public final class TileProfile {
     public static final String QUICKSTEP_KEY = "qs_tiles_quickstep";     // default "wifi,bt,rotation"
     public static final String SETTING = "sysui_qs_tiles";
     public static final String DEFAULT_CUSTOM = "rotation", DEFAULT_QUICKSTEP = "wifi,bt,rotation";
-    /** The built-in tile names Tj can pick from in Launcher control. */
+    /** The built-in tile names Tj can pick from in Profiles settings. */
     public static final String[] CHOICES = { "wifi", "bt", "rotation", "flashlight", "airplane", "dnd", "location", "battery", "cast", "hotspot", "cell", "inversion", "night", "custom(app.orionmd.profiles/com.tj.launcher.ReturnTile)" };
 
     private TileProfile() {}

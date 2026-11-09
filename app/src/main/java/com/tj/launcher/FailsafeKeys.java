@@ -9,7 +9,7 @@ import android.content.Context;
  *  3. the hidden Solitaire hotspot: five quick taps then a hold on an invisible square in a corner of Solitaire ({@link TapCode}),
  *  4. helper OFF: three quick Home presses ({@link ProfileSession#homeFailsafe}),
  *  5. Android's own: Settings > Apps > Default apps > Home app; Safe mode (stock launcher only); adb `cmd package set-home-activity`.
- * Switches live in Launcher control (Quickstep mode).
+ * Switches live in Profiles settings (Quickstep mode).
  */
 public final class FailsafeKeys {
     public static final String KONAMI_KEY = "failsafe_konami";        // default ON

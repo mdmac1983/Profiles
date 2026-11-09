@@ -249,13 +249,13 @@
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="Apps shown in the custom launcher" />
 
-        <!-- Tj: "Launcher control" icon; reachable from the stock launcher too (switch back, restore everything). -->
+        <!-- Tj: "Profiles settings" icon; reachable from the stock launcher too (switch back, restore everything). -->
         <activity
             android:name="com.tj.launcher.ControlActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
-            android:label="Launcher control">
+            android:label="Profiles settings">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -297,7 +297,7 @@
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="Tablet setup and report" />
 
-        <!-- C2: the in-app adb setup guide (opens only in Quickstep mode, from Launcher control). -->
+        <!-- C2: the in-app adb setup guide (opens only in Quickstep mode, from Profiles settings). -->
         <activity
             android:name="com.tj.launcher.AdbGuideActivity"
             android:excludeFromRecents="true"

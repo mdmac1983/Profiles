@@ -7,7 +7,7 @@ import java.util.ArrayDeque;
  * The tablet has ONE lock credential, so the PIN cannot choose the launcher. What the accessibility helper CAN do is notice a SECRET HANDSHAKE done on the lock screen.
  * No handshake = the plain PIN opens the custom launcher (the default). Quickstep exists only behind a handshake.
  *
- * Six independent methods, each with its own switch (Launcher control > Lock screen). Every one is anchored to a quiet lock screen and needs a shape nobody produces by accident:
+ * Six independent methods, each with its own switch (Profiles settings > Lock screen). Every one is anchored to a quiet lock screen and needs a shape nobody produces by accident:
  *   ERASE2     on the EMPTY PIN pad tap Delete twice, then type the PIN                       (the original; a typo correction never counts: a digit came first)
  *   TAP_ERASE  on the empty pad tap any digit and erase it, three times, then type the PIN      (digit, Delete, digit, Delete, digit, Delete)
  *   VOLUME     press Volume Up, Up, Down, Down within 6 seconds on the lock screen, then the PIN (nets out to the same volume)

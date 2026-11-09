@@ -153,6 +153,6 @@ public final class HomeShot {
         Features.setString(c, INDEX_KEY, b.toString());
     }
 
-    /** How many crops are stored (Launcher control and the tablet report). */
+    /** How many crops are stored (Profiles settings and the tablet report). */
     public static int count(Context c) { return index(c).size(); }
 }

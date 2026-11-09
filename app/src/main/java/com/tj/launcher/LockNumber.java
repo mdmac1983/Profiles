@@ -21,7 +21,7 @@ public final class LockNumber {
     public static final float BASELINE_PER_HEIGHT = 0.916f;
     /**
      * Font weight. v0.7.6: the stock strokes are heavier than Regular: after removing the camera blur (calibrated on our own Light number) the vertical stem of a '1' is about 3.5-4.1 px at em 28, against Roboto
-     * Regular 2.6, Medium 3.3, Bold 3.9 px: Medium about 55-60 %, Bold 30 %, Regular 10 %. (The v0.3.3 "Light" came from an alpha-mass comparison with the old overlap photo.) Tj can nudge it in Launcher control.
+     * Regular 2.6, Medium 3.3, Bold 3.9 px: Medium about 55-60 %, Bold 30 %, Regular 10 %. (The v0.3.3 "Light" came from an alpha-mass comparison with the old overlap photo.) Tj can nudge it in Profiles settings.
      */
     public static final int WEIGHT = 500;
     /** Brightness. The stock number peaks at about the same value as ours (camera saturated: not resolved better than +/- 25 %); heavier strokes already look brighter, so only a small step up from 186. */
@@ -30,7 +30,7 @@ public final class LockNumber {
     public static final float X_NUDGE_PER_WIDTH = -0.0007f;
 
     /**
-     * v0.7.6 (Tj, 2026-11-06: "the accessibility one you built is slightly smaller than the correct size and font"): Tj's own nudges (Launcher control) on top of the measured look, so a photo-based calibration
+     * v0.7.6 (Tj, 2026-11-06: "the accessibility one you built is slightly smaller than the correct size and font"): Tj's own nudges (Profiles settings) on top of the measured look, so a photo-based calibration
      * can be corrected on the tablet without a new release. All are plain integers, default 0 = the measured look above.
      */
     public static final String SIZE_KEY = "lock_text_size_pct";            // percent of the text size

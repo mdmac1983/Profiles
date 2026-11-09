@@ -7,7 +7,7 @@ package com.tj.launcher;
  * {@link TjAccessibilityService} draws it.
  */
 public final class PatchRest {
-    /** Launcher control switch, default ON (since v0.8.0; OFF = the patch is only drawn while the menu is open). */
+    /** Profiles settings switch, default ON (since v0.8.0; OFF = the patch is only drawn while the menu is open). */
     public static final String KEY = "lock_patch_always";
 
     private PatchRest() {}
@@ -65,7 +65,7 @@ public final class PatchRest {
      * stock shadow inside the same stored crop: at 170 dpi the core reaches 2 + 26 = 28 px below the panel, the window 32 px (the crop allows 35, minus the slack).
      */
     public static final float EXTRA_BOTTOM_DP = 24f, BOTTOM_FEATHER_DP = 4f;
-    /** The hidden preferences (dp): the extension and the width of the bottom fringe. Not in Launcher control: the emulator section {@code pt} (phase D) sets them to compare geometries. */
+    /** The hidden preferences (dp): the extension and the width of the bottom fringe. Not in Profiles settings: the emulator section {@code pt} (phase D) sets them to compare geometries. */
     public static final String EXTRA_KEY = "patch_extra_dp", BOTTOM_FEATHER_KEY = "patch_bfeather_dp";
     /** px of slack kept inside the stored crop: the learned panel's bottom can wobble by a pixel between scans, and the crop must still cover the window. */
     public static final int CROP_SLACK_PX = 3;

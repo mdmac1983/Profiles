@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Tj (2026-11-02): double Home back to the custom launcher "automatically and immediately closes all apps and clears all notifications and turns off all
  * connections ... and automatically and immediately opens the solitaire app". Each step is isolated (a failure in one never blocks the next), uses only normal
- * permissions (no secure settings, no lock-screen code), and the whole thing has a master switch in Launcher control.
+ * permissions (no secure settings, no lock-screen code), and the whole thing has a master switch in Profiles settings.
  */
 public final class ReturnReset {
     private static final String TAG = "TjReset";
@@ -359,7 +359,7 @@ public final class ReturnReset {
         return ris;
     }
 
-    /** Label of the app we would open, or null if none is installed (used by Launcher control's status line). */
+    /** Label of the app we would open, or null if none is installed (used by Profiles settings's status line). */
     public static String findAppLabel(Context c) {
         String pkg = targetPackage(c);
         if (pkg == null) return null;

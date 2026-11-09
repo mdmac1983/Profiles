@@ -12,7 +12,7 @@ package com.tj.launcher;
 public final class HomeCurtainRules {
     private HomeCurtainRules() {}
 
-    /** The switch in Launcher control (shipped default ON, debug builds OFF so the older emulator sections keep seeing the black cover, like clean_start / home_patch). */
+    /** The switch in Profiles settings (shipped default ON, debug builds OFF so the older emulator sections keep seeing the black cover, like clean_start / home_patch). */
     public static final String KEY = "home_curtain";
 
     public static boolean defaultOn(boolean debuggable) { return !debuggable; }
@@ -39,7 +39,7 @@ public final class HomeCurtainRules {
         public long ageMs = Long.MAX_VALUE;
     }
 
-    /** Why the stored picture must NOT be used as the cover now (plain words, shown in Launcher control), or "" = use it. The first reason wins. */
+    /** Why the stored picture must NOT be used as the cover now (plain words, shown in Profiles settings), or "" = use it. The first reason wins. */
     public static String whyNotUse(UseFacts f) {
         if (!f.switchOn) return "switch off";
         if (!f.hasPicture) return "no picture yet";

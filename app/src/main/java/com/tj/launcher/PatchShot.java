@@ -21,7 +21,7 @@ import java.util.Locale;
  * exactly what the lock screen shows there (proved on the emulator by section ae: resting patch vs bare lock screen MAE 3e-6). Valid for one wallpaper picture and one display size; a changed wallpaper
  * invalidates it (the signature) and the patch simply stays hidden at rest until Tj calibrates again.
  *
- * Flow: Launcher control "Calibrate the patch" opens a {@link #WINDOW_MS} window (the resting patch is hidden meanwhile); Tj locks and wakes the tablet and takes a screenshot (Power + Volume Down), or the
+ * Flow: Profiles settings "Calibrate the patch" opens a {@link #WINDOW_MS} window (the resting patch is hidden meanwhile); Tj locks and wakes the tablet and takes a screenshot (Power + Volume Down), or the
  * helper asks the system for one; a MediaStore observer hands the newest "Screenshot..." image of the window to {@link TjAccessibilityService}, which crops and stores it here. Only a crop of the wallpaper is
  * kept (no owner info, no clock), never the whole screenshot, and the screenshot itself is left alone.
  */
@@ -29,7 +29,7 @@ public final class PatchShot {
     private static final String TAG = "TjPatchShot";
     /** The calibration window: epoch ms as text; while it runs the resting patch is hidden so it can never be inside the screenshot. */
     public static final String CAL_UNTIL_KEY = "patch_cal_until";
-    /** What happened last (Launcher control and the tablet report). */
+    /** What happened last (Profiles settings and the tablet report). */
     public static final String STATUS_KEY = "patch_shot_status";
     public static final long WINDOW_MS = 4 * 60_000L;
     /** Pixels kept around the patch window, so a window that moves a few pixels later still lies inside the crop. */
@@ -202,7 +202,7 @@ public final class PatchShot {
         return sig(id, rot, w, h);
     }
 
-    /** One line for Launcher control: which rotations hold a crop, and (review AU7) whether the one for the CURRENT lock screen is still valid for the current wallpaper and screen. */
+    /** One line for Profiles settings: which rotations hold a crop, and (review AU7) whether the one for the CURRENT lock screen is still valid for the current wallpaper and screen. */
     public static String summary(Context c) {
         StringBuilder b = new StringBuilder();
         String[] names = { "portrait", "landscape", "portrait (upside down)", "landscape (other way)" };

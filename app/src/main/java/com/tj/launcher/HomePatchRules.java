@@ -10,7 +10,7 @@ package com.tj.launcher;
 public final class HomePatchRules {
     private HomePatchRules() {}
 
-    /** The switch in Launcher control (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like the other behaviour switches). */
+    /** The switch in Profiles settings (shipped default ON, debug builds OFF so the older emulator sections keep their premises, like the other behaviour switches). */
     public static final String KEY = "home_patch";
 
     public static boolean defaultOn(boolean debuggable) { return !debuggable; }
@@ -24,7 +24,7 @@ public final class HomePatchRules {
 
     /** Everything the decision reads, by name. All false = nothing is wanted. */
     public static final class Facts {
-        /** the switch in Launcher control */
+        /** the switch in Profiles settings */
         public boolean switchOn;
         /** the power-menu mode is "hide_screenshot" (the old "wallpaper" mode keeps its own home patch, "off" and "block" have none) */
         public boolean coverMode;
@@ -49,7 +49,7 @@ public final class HomePatchRules {
         public boolean automationOff;
     }
 
-    /** Why the patch window is NOT wanted now: the first failing condition in plain words, or "" when it is. One function for the decision and the words (Launcher control, the tablet report). */
+    /** Why the patch window is NOT wanted now: the first failing condition in plain words, or "" when it is. One function for the decision and the words (Profiles settings, the tablet report). */
     public static String whyNot(Facts f) {
         if (!f.switchOn) return "switch off";
         if (!f.coverMode) return "power menu mode is not 'hide Screenshot'";
@@ -150,7 +150,7 @@ public final class HomePatchRules {
         public int startsToday;
     }
 
-    /** Why the home calibration must NOT start now: the first reason in plain words, or "" = go. Every "not yet" reason is shown in Launcher control. */
+    /** Why the home calibration must NOT start now: the first reason in plain words, or "" = go. Every "not yet" reason is shown in Profiles settings. */
     public static String calDecision(CalState s) {
         if (!s.switchOn) return "switch off";
         if (!s.coverMode) return "power menu mode is not 'hide Screenshot'";
@@ -158,7 +158,7 @@ public final class HomePatchRules {
         if (!s.customMode) return "Quickstep";
         if (!s.unlocked) return "lock screen";
         if (!s.screenOn) return "screen off";
-        if (!s.permission) return "needs 'Allow wallpaper access' in Launcher control";
+        if (!s.permission) return "needs 'Allow wallpaper access' in Profiles settings";
         if (s.running) return "a calibration is running";
         if (s.otherCalibration) return "the lock-screen calibration is running";
         if (!s.positionKnown) return "the wallpaper position is not known yet";   // BEFORE hasCrop: neither "there is a crop" nor "there is none" can be said for a position nobody has reported

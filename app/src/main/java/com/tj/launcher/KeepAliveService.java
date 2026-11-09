@@ -19,7 +19,7 @@ import com.android.launcher3.R;
  * Cost, said honestly: the process stays in RAM (about what it uses now) and ONE silent notification ("Launcher is kept ready") sits in the shade. MEASURED (emulator run 79): Android raises a foreground-service
  * notification to at least LOW importance whatever the channel asks for, so it gets a status-bar slot; its icon is fully transparent (tj_ic_blank) and the accessibility helper's "are there notifications to clear"
  * look ignores it by its title, so the reset still skips the shade when nothing else is there. Effect on priority, MEASURED: with the accessibility helper bound the process already sat at oom_score_adj 100
- * (visible) and survived `am kill-all`; with the service it is 50. The gain on the real tablet (MediaTek's own memory cleaner) can only be seen there ("Last unlock" in Launcher control). Switch in Launcher control; "Restore everything" turns it off and stops it. It does no work, holds no wake lock and never touches the lock screen.
+ * (visible) and survived `am kill-all`; with the service it is 50. The gain on the real tablet (MediaTek's own memory cleaner) can only be seen there ("Last unlock" in Profiles settings). Switch in Profiles settings; "Restore everything" turns it off and stops it. It does no work, holds no wake lock and never touches the lock screen.
  * KA1 (v0.7.2): OFF by default; a PNG icon; a crash fuse (see {@link KeepAlivePolicy}) because on the real tablet the notification crash-looped the launcher.
  */
 public final class KeepAliveService extends Service {
@@ -76,7 +76,7 @@ public final class KeepAliveService extends Service {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {
             NotificationChannel ch = new NotificationChannel(CHANNEL, "Launcher kept ready", KeepAlivePolicy.IMPORTANCE_MIN);
-            ch.setDescription("Keeps the launcher in memory so it opens faster after an unlock. Switch it off in Launcher control.");
+            ch.setDescription("Keeps the launcher in memory so it opens faster after an unlock. Switch it off in Profiles settings.");
             ch.setShowBadge(false);
             ch.setLockscreenVisibility(KeepAlivePolicy.VISIBILITY_SECRET);
             nm.createNotificationChannel(ch);
@@ -89,7 +89,7 @@ public final class KeepAliveService extends Service {
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(icon)     // invisible: Android floors this notification at LOW importance, which would otherwise show an icon in the status bar
                 .setContentTitle(KeepAlivePolicy.TITLE)
-                .setContentText("Faster unlock. Turn off in Launcher control.")
+                .setContentText("Faster unlock. Turn off in Profiles settings.")
                 .setOngoing(true)
                 .setShowWhen(false)
                 .setCategory(Notification.CATEGORY_SERVICE)

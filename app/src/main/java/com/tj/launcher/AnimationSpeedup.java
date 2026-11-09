@@ -266,7 +266,7 @@ public final class AnimationSpeedup {
         try { KeyguardManager km = (KeyguardManager) app.getSystemService(Context.KEYGUARD_SERVICE); return km == null || km.isKeyguardLocked(); } catch (Throwable t) { return true; }
     }
 
-    // ================================================================ what Launcher control and the tablet report show
+    // ================================================================ what Profiles settings and the tablet report show
 
     /** One line: the switch, the grant, whether the animations are held right now (and why), the three scales, what will be put back, and the last change. Never throws. */
     public static String describe(Context c) {

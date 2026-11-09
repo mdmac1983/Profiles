@@ -22,7 +22,7 @@ import java.util.Set;
 final class RecentsFilter {
     private static final String TAG = "TjRecentsFilter";
     static final String KEY = "recents_drawer_only";        // switch, default ON
-    static final String STATUS_KEY = "recents_guard_status"; // what the guard did last (Launcher control and the tablet report)
+    static final String STATUS_KEY = "recents_guard_status"; // what the guard did last (Profiles settings and the tablet report)
     private static final long LABELS_TTL_MS = 60_000;
 
     private final TjAccessibilityService svc;

@@ -9,12 +9,12 @@ package com.tj.launcher;
  * turns it on himself) - that one crash is not counted toward the 3-crash breaker, so nothing else of Tj's setup is lost.
  */
 public final class KeepAlivePolicy {
-    public static final String KEY = "keep_alive";       // switch in Launcher control, default OFF since v0.7.2 (KA1)
+    public static final String KEY = "keep_alive";       // switch in Profiles settings, default OFF since v0.7.2 (KA1)
     /** KA1: the default of the switch. It stays false until keep-alive has run on the real tablet without a crash and Tj has decided. */
     public static final boolean DEFAULT_ON = false;
-    /** KA1: set by the crash fuse (and by nothing else); cleared only when Tj switches keep-alive on again in Launcher control. */
+    /** KA1: set by the crash fuse (and by nothing else); cleared only when Tj switches keep-alive on again in Profiles settings. */
     public static final String BLOCKED_KEY = "keep_alive_blocked";
-    /** KA1: when and why the fuse blew (shown in the report and in Launcher control). */
+    /** KA1: when and why the fuse blew (shown in the report and in Profiles settings). */
     public static final String BLOCKED_WHY_KEY = "keep_alive_blocked_why";
     /** KA1, EMULATOR TEST ONLY (an int, default 0 = off, like patch_test_skew): 1 makes the service use an icon that does not exist, 2 no icon at all, so Android crashes the app the way it did on the tablet and the fuse can be proven end to end. */
     public static final String TEST_BAD_ICON_KEY = "keep_alive_test_bad_icon";

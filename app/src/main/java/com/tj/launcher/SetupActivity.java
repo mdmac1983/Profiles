@@ -27,7 +27,7 @@ import java.util.List;
  * S2 (Tj, 2026-11-04: "Make the adb probe an app ... Make it so i can do everything in one session with adb"): the whole adb to-do list as one screen. Each row shows whether it is DONE;
  * "Do everything" applies the missing ones through the shell helper (only ids on ShellProtocol's fixed list), "Collect report" writes the tablet report + copies the system apps
  * (Settings, SystemUI, stock launcher, framework) into the share folder for {@code adb pull}. The only adb line needed first is the one that starts the helper.
- * Opens only in Quickstep mode (like the rest of Launcher control).
+ * Opens only in Quickstep mode (like the rest of Profiles settings).
  */
 public class SetupActivity extends Activity {
     public static final String EXTRA_AUTORUN = "autorun";          // emulator test: do everything + collect, then write probe/autorun-done.txt (only if the pref below is set)

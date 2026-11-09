@@ -5,7 +5,7 @@ package com.tj.launcher;
  * MediaTek tablet ({@code Build.DEVICE} "tb8168p1_bsp") the patch showed the wrong piece of the wallpaper and too green a tone (Tj, 2026-11-06: "I think it is simply the wrong piece of wallpaper copied for the patch").
  * Side-by-side photos of the stock tablet and ours (same camera, same light) were compared: our patch content came from about 90 px (range 60-130, three independent true-wallpaper sources, one sharp minimum)
  * FURTHER LEFT than the truth on the 600 px wide screen, and after that shift it is still a few percent too dark (red most). The emulator and every other device keep the generic model (both values 0).
- * Pure, JVM-tested. The values are only DEFAULTS: Tj's own nudges in Launcher control (patch left / right, patch brightness) add on top.
+ * Pure, JVM-tested. The values are only DEFAULTS: Tj's own nudges in Profiles settings (patch left / right, patch brightness) add on top.
  */
 public final class PatchProfile {
     private PatchProfile() {}

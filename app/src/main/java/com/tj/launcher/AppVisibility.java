@@ -7,7 +7,7 @@ import java.util.Set;
  * Pure rule for which apps the custom launcher shows (JVM-testable).
  * Model: an "allowed" set of packages. At the very first run the allowed set is every app already installed ("baseline"), so nothing Tj already has disappears;
  * after that an app is shown ONLY if it is allowed, so anything installed later stays hidden until Tj allows it, one by one. Hiding = removing from the set.
- * Our own package is never shown (Launcher control must not be visible in the custom launcher), except components in {@link #ALWAYS_SHOWN_OWN_COMPONENTS}.
+ * Our own package is never shown (Profiles settings must not be visible in the custom launcher), except components in {@link #ALWAYS_SHOWN_OWN_COMPONENTS}.
  */
 public final class AppVisibility {
     /** Own components that DO appear in the custom drawer (later: the Settings clone). */

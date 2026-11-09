@@ -8,11 +8,11 @@ package com.tj.launcher;
  * {@link TjAccessibilityService} does the Android side.
  */
 public final class ScrimMeasure {
-    /** Launcher control switch. Default ON in the app, OFF in a debuggable build (the emulator sections that do not test this must not see a power menu open by itself). */
+    /** Profiles settings switch. Default ON in the app, OFF in a debuggable build (the emulator sections that do not test this must not see a power menu open by itself). */
     public static final String KEY = "scrim_measure";
     /** The epoch ms of the recent starts, comma separated (the cap per day; {@link AutoCalibration#addTry} keeps the list). */
     public static final String TRIES_KEY = "scrim_tries";
-    /** What happened last, in plain words (Launcher control, the tablet report). */
+    /** What happened last, in plain words (Profiles settings, the tablet report). */
     public static final String NOTE_KEY = "scrim_note";
     /** The stored measurement of one rotation: {@code VALUE_PREFIX + rotation} ({@link ScrimFit#encode}). */
     public static final String VALUE_PREFIX = "patch_scrim_r";
@@ -77,14 +77,14 @@ public final class ScrimMeasure {
         return sig + "#" + (night ? "n" : "d") + "#" + (failures(stored, sig, night) + 1);
     }
 
-    /** Pure: why NOT to start now ("" = go). The reasons are shown in Launcher control, so they are plain words. */
+    /** Pure: why NOT to start now ("" = go). The reasons are shown in Profiles settings, so they are plain words. */
     public static String decision(State s) {
         if (!s.switchOn) return "measuring the menu dimming is switched off";
         if (s.paused) return "paused (Restore everything / the crash breaker)";
         if (!s.coverOn || !s.lockPatchOn) return "the lock-screen patch is switched off";
-        if (!s.permitted) return "needs permission: Launcher control > Allow wallpaper access";
+        if (!s.permitted) return "needs permission: Profiles settings > Allow wallpaper access";
         if (s.haveMeasurement) return "";   // nothing to do; callers treat haveMeasurement separately
-        if (s.failures >= MAX_FAILURES) return "gave up for this lock screen after " + s.failures + " measurements that could not be fitted (see the last note); a new wallpaper, rotation or theme, or 'Measure again' in Launcher control, tries again";
+        if (s.failures >= MAX_FAILURES) return "gave up for this lock screen after " + s.failures + " measurements that could not be fitted (see the last note); a new wallpaper, rotation or theme, or 'Measure again' in Profiles settings, tries again";
         if (s.calibrating || s.stageRunning) return "a calibration or a measurement is already running";
         if (!s.validCrop) return "waiting: the patch has no real-pixel picture yet (the automatic calibration comes first)";
         if (!s.geometryKnown) return "waiting: hold the side key once on the lock screen so the menu's place is known";
@@ -113,7 +113,7 @@ public final class ScrimMeasure {
      */
     public static String valueKey(int rotation, boolean night) { return VALUE_PREFIX + rotation + (night ? "n" : ""); }
 
-    /** Why the helper last started a measurement, in plain words (written when it starts; shown in Launcher control and in the tablet report). */
+    /** Why the helper last started a measurement, in plain words (written when it starts; shown in Profiles settings and in the tablet report). */
     public static final String WHY_KEY = "scrim_why";
 
     // ---------------------------------------------------------------- the sampling grid

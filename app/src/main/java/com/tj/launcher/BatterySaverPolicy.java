@@ -17,10 +17,10 @@ package com.tj.launcher;
  *  - a saver that v0.7.5 - v0.8.0 forced ON (state machine OFF, saver ON: it cannot be turned off by hand) is cleared once ({@link #unstickWanted}).
  */
 public final class BatterySaverPolicy {
-    public static final String KEY = "profile_battery_saver_off";   // switch in Launcher control, default ON (Tj asked for it)
+    public static final String KEY = "profile_battery_saver_off";   // switch in Profiles settings, default ON (Tj asked for it)
     public static final String SETTING = "low_power";               // Settings.Global: 1 = battery saver on
     public static final String STICKY_SETTING = "low_power_sticky"; // Settings.Global: Android keeps it on until the battery recovers; cleared together with the main flag
-    public static final String LAST_KEY = "battery_saver_last";     // what the guard did last (shown in Launcher control and the report)
+    public static final String LAST_KEY = "battery_saver_last";     // what the guard did last (shown in Profiles settings and the report)
     /** At most this many switch-offs per window: a ROM that turns it on again by itself is never fought in a loop. */
     public static final int MAX_WRITES = 4;
     public static final long WINDOW_MS = 60_000;
@@ -35,7 +35,7 @@ public final class BatterySaverPolicy {
      * AN1 (Tj, 2026-11-06: "the battery saver tile sometimes works. But it is mostly unresponsive"). Between launcher changes the tile and Settings are the boss: the guard acts only at a REAL change
      * (Quickstep ends = the custom launcher begins, the first start after a boot, a Control switch turned on). The opt-in "strict" switch also undoes a saver that is turned ON while the custom launcher is active.
      */
-    public static final String STRICT_KEY = "profile_battery_saver_strict";   // switch in Launcher control, default OFF
+    public static final String STRICT_KEY = "profile_battery_saver_strict";   // switch in Profiles settings, default OFF
     /** Only the first minutes after a boot re-apply the rule at process start (the setting survives a reboot); a later restart of our process must never undo a tap on the tile. */
     public static final long BOOT_GRACE_MS = 3 * 60_000;
 
@@ -120,7 +120,7 @@ public final class BatterySaverPolicy {
     // The decisions are pure and JVM-tested here; {@link BatterySaverGuard} does the Android side.
     // ================================================================================================================================================================================
 
-    /** Launcher control switches, both default ON: the lock screen keeps the saver off (any launcher); a gesture unlock into Quickstep brings Quickstep's own saver state back. */
+    /** Profiles settings switches, both default ON: the lock screen keeps the saver off (any launcher); a gesture unlock into Quickstep brings Quickstep's own saver state back. */
     public static final String LOCK_OFF_KEY = "profile_battery_saver_lock_off";
     public static final String LOCK_RESTORE_KEY = "profile_battery_saver_lock_restore";
     /** Quickstep's own saver state the last time it had the tablet: "1" on, "0" off, "" unknown. */
@@ -134,7 +134,7 @@ public final class BatterySaverPolicy {
     public static final String LEVEL_KEY = "bs_last_level";      // the battery level (percent) at the last lock / unlock event
     public static final String PLUG_SEEN_KEY = "bs_plug_seen";   // "1": a plug-in (or a rise of the battery level) was seen while held
     public static final String RESTORES_KEY = "bs_restores";     // how many times the restore acted (the tablet report)
-    public static final String NOTE_KEY = "bs_lock_note";        // what the lock rules did last, in plain words (Launcher control, report)
+    public static final String NOTE_KEY = "bs_lock_note";        // what the lock rules did last, in plain words (Profiles settings, report)
     /** The keep-off while locked is a safety net, not a loop: at most this many writes per window (it is the observer's reaction to something turning the saver on again). */
     public static final int MAX_LOCK_WRITES = 6;
     public static final long LOCK_WINDOW_MS = 60_000;
@@ -222,7 +222,7 @@ public final class BatterySaverPolicy {
         return "";
     }
 
-    /** Pure: one line for Launcher control and the tablet report. */
+    /** Pure: one line for Profiles settings and the tablet report. */
     public static String describe(String qsOn, boolean held, boolean plugSeen) {
         String qs = "1".equals(qsOn) ? "ON" : "0".equals(qsOn) ? "off" : "unknown";
         return "Quickstep's saver the last time: " + qs + "; the launcher is holding it off: " + (held ? "yes" : "no") + (held && plugSeen ? " (plugged in meanwhile: it will not be switched on again)" : "");

@@ -18,7 +18,7 @@ public final class CrashGuard {
     /** CBR1: the versionCode that tripped the breaker (absent = tripped by a version older than this logic). */
     static final String TRIP_VERSION_KEY = "trip_version";
 
-    /** CBR1: shown in Launcher control after an automatic clear (kept in the crash preferences, which "Restore everything" does not touch). */
+    /** CBR1: shown in Profiles settings after an automatic clear (kept in the crash preferences, which "Restore everything" does not touch). */
     static final String CLEARED_NOTE_KEY = "cleared_note";
 
     private CrashGuard() {}

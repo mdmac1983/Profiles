@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class RecentsSweep {
     private static final String TAG = "TjSweep";
-    /** Launcher control switch. Shipped default ON; debug builds default OFF (the older emulator sections count tasks of apps they never put in the drawer and set what they test explicitly). */
+    /** Profiles settings switch. Shipped default ON; debug builds default OFF (the older emulator sections count tasks of apps they never put in the drawer and set what they test explicitly). */
     public static final String KEY = "recents_sweep";
     public static final int HIDDEN_ONLY = 0, ALL = 1;
     /** A sanity bound for one sweep (Android keeps far fewer tasks); the remainder is counted in {@link Plan#deferred} and the caller must NOT call the result complete. */
@@ -129,7 +129,7 @@ public final class RecentsSweep {
         Request(Context app, String why, int policy, Set<String> skip) { this.app = app; this.why = why; this.policy = policy; this.skip = skip; }
     }
 
-    /** What the last sweep did (Launcher control / the tablet report). */
+    /** What the last sweep did (Profiles settings / the tablet report). */
     public static String lastResult() { return lastResult; }
 
     /**

@@ -2,13 +2,13 @@ package com.tj.launcher;
 
 /**
  * AW5 (Tj, 2026-11-06 evening, chose A: "I choose A) auto calibrate the screenshot"). The lock-screen patch needs ONE real screenshot of the plain lock screen (see {@link PatchShot}); until now Tj had to start that
- * by hand (Launcher control > Calibrate the patch, lock, wake). Now the helper does it by itself on the first PLAIN lock screen that has no valid crop (a new wallpaper, rotation or screen size makes the stored crop
+ * by hand (Profiles settings > Calibrate the patch, lock, wake). Now the helper does it by itself on the first PLAIN lock screen that has no valid crop (a new wallpaper, rotation or screen size makes the stored crop
  * invalid), so there is no step for Tj and no grey cover block. Every automatic calibration leaves one screenshot in the tablet's gallery (Tj accepted that by choosing A; the helper tries to delete it again).
  * This class is the pure part (JVM-tested): when to start, how often, and which screenshots are refused (review AU2: a screenshot taken with the power menu open or the PIN pad up must never be stored).
  * {@link TjAccessibilityService} does the Android side.
  */
 public final class AutoCalibration {
-    /** Launcher control switch, default ON. OFF = only the manual "Calibrate the patch" button. */
+    /** Profiles settings switch, default ON. OFF = only the manual "Calibrate the patch" button. */
     public static final String KEY = "patch_auto_cal";
     /** A short window: the resting patch is hidden while it runs (it must not be inside the screenshot), so it must not stay open for minutes. */
     public static final long WINDOW_MS = 25_000;
@@ -38,12 +38,12 @@ public final class AutoCalibration {
         public int startsThisLock, startsToday;
     }
 
-    /** Pure: why NOT to start an automatic calibration now ("" = go). The reasons are shown in Launcher control, so they are plain words. */
+    /** Pure: why NOT to start an automatic calibration now ("" = go). The reasons are shown in Profiles settings, so they are plain words. */
     public static String decision(State s) {
         if (!s.switchOn) return "automatic calibration is switched off";
         if (!s.coverOn || !s.lockPatchOn) return "the lock-screen patch is switched off";
         if (s.paused) return "paused (Restore everything / the crash breaker)";
-        if (!s.permitted) return "needs permission: Launcher control > Allow wallpaper access";
+        if (!s.permitted) return "needs permission: Profiles settings > Allow wallpaper access";
         if (s.validCrop) return "";   // nothing to do is not a reason to show: callers treat "" + validCrop separately
         if (s.calibrating) return "a calibration is already running";
         if (!s.geometryKnown) return "waiting: hold the side key once on the lock screen so the menu's place is known";

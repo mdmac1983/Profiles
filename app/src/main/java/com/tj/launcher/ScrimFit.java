@@ -175,7 +175,7 @@ public final class ScrimFit {
     }
 
     /**
-     * Pure: why a measurement is needed now, in plain words: {@code stored} is the slot of the CURRENT theme. Shown in Launcher control, so that "why did the tablet take a screenshot of the lock screen again?" has
+     * Pure: why a measurement is needed now, in plain words: {@code stored} is the slot of the CURRENT theme. Shown in Profiles settings, so that "why did the tablet take a screenshot of the lock screen again?" has
      * an answer on the tablet itself.
      */
     public static String reasonMissing(String stored, String sig, boolean night) {
@@ -190,14 +190,14 @@ public final class ScrimFit {
         return "the stored measurement for " + theme + " is not valid any more";
     }
 
-    /** A line for Launcher control / the tablet report. */
+    /** A line for Profiles settings / the tablet report. */
     public static String describe(Transform t) {
         if (t == null) return "not measured for this lock screen (the patch uses the generic 0.80)";
         return "scale " + f3(t.s[0]) + " / " + f3(t.s[1]) + " / " + f3(t.s[2]) + ", offset " + String.format(Locale.US, "%.1f / %.1f / %.1f", t.o[0], t.o[1], t.o[2]) + " (R/G/B; " + t.n + " samples, rms " + String.format(Locale.US, "%.1f", t.rms) + ")";
     }
 
     /**
-     * A line for the report / Launcher control from whatever is stored, WITHOUT checking that it is valid for the current lock screen (that is what {@link #decode} is for): what was measured, for which lock screen
+     * A line for the report / Profiles settings from whatever is stored, WITHOUT checking that it is valid for the current lock screen (that is what {@link #decode} is for): what was measured, for which lock screen
      * and when. "none" for an empty / unreadable record. Never throws.
      */
     public static String describeStored(String stored) {

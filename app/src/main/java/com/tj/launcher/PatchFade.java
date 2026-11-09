@@ -19,7 +19,7 @@ public final class PatchFade {
      * Added to the elapsed time of every frame (the patch darkens that much EARLIER). Theory: the dialog's window-state event is created in the first traversal of its window, the same frame in which the scrim animation
      * starts, and both the patch and the scrim are composed through the same pipeline, so about 0 (a vsync at most). Measured on the Android 10 emulator, section "pt" (run 249, animations on, the event handled
      * 2-15 ms after its creation; worst patch-vs-surround mismatch while the menu opens): lead -25 ms: 3.3 % (patch a little late), 0: 2.8 % (late), 25: 4.2 % (early, then late), 50: 5.6 % (early), 80: 7.7 % (early);
-     * the old one-step dim: 26 %. 10 sits between the two best; Launcher control has a +-100 ms nudge for a tablet that differs.
+     * the old one-step dim: 26 %. 10 sits between the two best; Profiles settings has a +-100 ms nudge for a tablet that differs.
      */
     public static final long LEAD_MS = 10;
     /** A window event older than this is not the one that opened the menu: its scrim is complete, so there is nothing to follow (the patch goes straight to its final brightness, as before). */

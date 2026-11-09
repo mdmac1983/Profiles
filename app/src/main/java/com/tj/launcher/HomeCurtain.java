@@ -114,7 +114,7 @@ public final class HomeCurtain {
         Features.setString(c, WALL_INDEX_KEY, b.toString());
     }
 
-    /** How many wallpaper pictures are stored (Launcher control and the tablet report). */
+    /** How many wallpaper pictures are stored (Profiles settings and the tablet report). */
     public static int wallCount(Context c) { return wallIndex(c).size(); }
 
     // ================================================================ the composed curtain

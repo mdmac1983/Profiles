@@ -22,7 +22,7 @@ import android.widget.Toast;
 /**
  * C2 (Tj, 2026-11-04): "in the app tell me a step by step guide of what adb commands to enter". Every adb line (same list as research/ADB_COMMANDS.txt), a tick for what is
  * already granted, a Copy button per step and one for everything. Android 10 has no way for an app to give itself these permissions, so a computer + USB cable is needed once.
- * Only opens in Quickstep mode (like the rest of Launcher control).
+ * Only opens in Quickstep mode (like the rest of Profiles settings).
  */
 public class AdbGuideActivity extends Activity {
     private static final String PKG = "app.orionmd.profiles";

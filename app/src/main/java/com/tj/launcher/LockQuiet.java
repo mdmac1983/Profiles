@@ -19,10 +19,10 @@ import android.util.Log;
  */
 public final class LockQuiet {
     private static final String TAG = "TjLockQuiet";
-    public static final String KEY = "lock_quiet";                      // switch in Launcher control, default ON (Tj asked)
+    public static final String KEY = "lock_quiet";                      // switch in Profiles settings, default ON (Tj asked)
     public static final String RESTORE_KEY = "lock_quiet_restore";      // switch: a gesture unlock into Quickstep puts the radios back, default ON
     public static final String PREV_KEY = "lq_prev";                    // what was on before this lock, e.g. "w1b0"
-    public static final String LAST_KEY = "lq_last";                    // what it did last (Launcher control, report)
+    public static final String LAST_KEY = "lq_last";                    // what it did last (Profiles settings, report)
     public static final String SHOW = "lock_screen_show_notifications";
     public static final String PRIVATE = "lock_screen_allow_private_notifications";
     /**
