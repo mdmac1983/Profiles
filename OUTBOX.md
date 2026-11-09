@@ -1720,3 +1720,7 @@
 ## 2026-11-09T02:01:59Z
 > The local release gate is running (handoff self-test, unit tests, lint, version check). When it finishes I'll start the signed release build on GitHub.
 <!-- sha:9ef066e66338 -->
+
+## 2026-11-09T02:03:43Z
+> The local gate passed, and the signed v1.0 release build is now running on GitHub (about 9 minutes). I'll check it when it finishes.
+<!-- sha:1e46e0c4b7d1 -->
