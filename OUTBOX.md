@@ -1431,3 +1431,44 @@
 >
 > **Your call:** v0.8.12 (the home-looking curtain instead of the black screen) is built and passes on the emulator. It still needs one small fix, a code review and the release gate. I'd finish and release it first, then put your tweaks into v0.8.13. The other way is to fold the tweaks into v0.8.12, which delays the curtain. Which do you prefer?
 <!-- sha:3f60d6706eaa -->
+
+## 2026-11-09T00:22:13Z
+> I've written all five requests into `TASKS.md` (BO1a–BO1f) and built nothing. Here is what each one involves and what I need you to decide.
+>
+> ## Your four changes
+>
+> **1. Package name → `app.orionmd.profiles`**
+> - **Easy in code:** the old name appears in about 212 files: the manifest, the emulator tests, the phone-guide steps, the adb scripts and the tablet report tools.
+> - **The catch:** Android treats a new package name as a different app. It installs next to the old launcher instead of updating it. Every setting, the allowed-apps list and all the patch calibrations start from zero. You'd also redo the adb grant, turning on accessibility, choosing it as the default Home, and the helper start line.
+> - **Before uninstalling the old app,** you must run its **Restore everything**. If you don't, the tiles, banners, keyboard and status bar stay at the values it set, with nothing left that knows to put them back.
+> - **Recommendation:** change only the app ID Android sees, and keep the internal Java package `com.tj.launcher`. It looks the same to you and is far less churn.
+>
+> **2. App name → "Profiles"**
+> - Simple. The home-screen label is "Launcher" today. I can also rename the "Launcher control" screen to something like "Profiles settings".
+>
+> **3. Gesture customizations**
+> - **Proposal:** a gesture → action table in the settings screen.
+> - **Gestures:** swipe down, swipe up, double tap, two-finger swipe, pinch, long press.
+> - **Actions:** open the app drawer, notifications, quick settings, lock the screen, Recents, open a chosen app, or nothing.
+> - **One rule I'd keep:** no gesture opens Quickstep. That was a deliberate safety decision; the handshake and the failsafes stay the only ways in.
+>
+> **4. Several profiles, each with its own PIN**
+> - **The limit:** Android 10 has only **one** real lock-screen PIN, and today the app deliberately never reads which digits you type. A different real PIN per profile isn't possible. The options are:
+>   - **A. Profile PIN after the unlock** *(recommended)*. You unlock as normal, then a PIN pad that looks like the lock screen's picks the profile. It's safe and simple, but you type two PINs.
+>   - **B. Profile code on the real pad.** You type the profile's code, erase it, then type the real PIN. It's one screen, but the app would have to read the digits you type on the lock screen, including your real PIN. It never stores them, but it's a privacy trade-off.
+>   - **C. Real Android users.** Each gets a true separate PIN. This was ruled out earlier: Go tablets usually allow one user, switching is slow, and every app has to be set up twice.
+> - **What a profile contains is up to you.** It could have its own visible apps, home layout, wallpaper, quick-settings tiles, keyboard, Wi-Fi/Bluetooth rules and gestures.
+>
+> ## Other customizations you could add
+> 1. **Per-profile home layout:** each profile gets its own icon arrangement.
+> 2. **Per-profile wallpaper.**
+> 3. **Look options:** grid size, icon and label size, hidden labels, how strong the drawer t
+> [... 733 characters omitted ...]
+> ything is built
+> 1. **Who are you to this project?** This repo, `mdmac1983/Profiles`, is a copy of a project built for "Tj" and one specific Alps tablet, and its committed signing key is Tj's. Are you Tj on that same tablet, or a separate fork for a different device? If it's a fork, it should get its own signing key, and the device-specific calibrations may not fit.
+> 2. **Package rename:** change only the app ID (my recommendation), or the Java package too?
+> 3. **Profiles:** option A, B or C? How many profiles, and what should differ between them? Does Quickstep stay as one of them?
+> 4. **Gestures:** which gestures and actions from the list? Any to add?
+> 5. **Which of the extra suggestions do you want?**
+> 6. **Still open from before:** finish and release v0.8.12 (the home-screen curtain) first, then do these changes? I recommend that, because the package rename resets everything on the device.
+<!-- sha:926a313f4b55 -->
