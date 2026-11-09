@@ -1,13 +1,13 @@
-# CHECKPOINT 737 — read me first, then TASKS.md
+# CHECKPOINT 738 — read me first, then TASKS.md
 
-**Written:** 2026-11-08T22:48:27Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `c254f12` (this checkpoint is the commit after it)
+**Written:** 2026-11-09T00:21:49Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `b50ce7d` (this checkpoint is the commit after it)
 
 ## Just done
-BN1 written: Tj wants tweaks/customizations, none named yet; asked him which
+BO1 written (package rename, gestures, multi-profile PINs, app name, suggestions); nothing built per user
 
 ## Do this next
-wait for Tj's list of tweaks -> one [ ] box each under BN1; meanwhile BL1e still pending (wire HomeCurtainRules.stampDue into HomeCurtain capture, /code-review high 206b3a8..HEAD)
+wait for answers to BO1a-f questions; do not build until user says so; BL1e still pending
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ wait for Tj's list of tweaks -> one [ ] box each under BN1; meanwhile BL1e still
 
 ## Last ten checkpoints
 ```
+  7f3f7d7 ckpt 737: BN1 written: Tj wants tweaks/customizations, none named yet; asked him which
   f6a978f ckpt 736: BM1 done: README.md rewritten (features, architecture, structure, code map, te
   4de1d25 ckpt 735: BM1 README request written into TASKS. Interrupted change 041aa83..HEAD (HomeC
   041aa83 ckpt 734: BL1d evidence: cu #419/#420 id 42528148176/#421 id 42528151261 all PASS (3 gre
@@ -26,7 +27,6 @@ wait for Tj's list of tweaks -> one [ ] box each under BN1; meanwhile BL1e still
   3791c9b ckpt 730: BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kep
   b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
   631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
-  d33c369 ckpt 727: BL1a map + BL1b design done and saved: research/BL1_HOME_CURTAIN_2026-11-08.md
 ```
 
 (2 automatic checkpoint(s) since the last deliberate one — the
