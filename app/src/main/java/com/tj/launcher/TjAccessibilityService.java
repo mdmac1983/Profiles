@@ -1436,7 +1436,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 UnlockMethods.Method m = unlock.onEnter(now);
                 Log.i(TAG, "UNLOCKPICK enter tapped, handshake=" + (m == null ? "none" : m.id));
                 LockLog.add(getApplicationContext(), "ENTER", "lag=" + Math.max(0, android.os.SystemClock.uptimeMillis() - e.getEventTime()) + "ms lead=" + (lead.isEmpty() ? "-" : lead) + " handshake=" + (m == null ? "none" : m.id) + (m == null && unlock.armedMethod() != null ? " (earlier gesture kept for this retry: " + unlock.armedMethod().id + ")" : ""));
-                if (m == null) { sumNoteEnter(); coverAtEnter(); }
+                if (m == null || Profiles.target(getApplicationContext(), m).custom()) { sumNoteEnter(); coverAtEnter(); }   // BT1a: a handshake into FBOP / Rental ends an Owner session like a plain PIN: the same cover at the Enter tap
             } else unlock.onKey(k, now);
         } catch (Throwable t) { Log.e(TAG, "unlock key tracking failed", t); }
     }
