@@ -1087,3 +1087,9 @@ Tj, 2026-11-07 ~06:05 UTC (verbatim): "The battery saver tests work. But the loc
 - [ ] BS1h GATE v1.0 (2026-11-09, main): emulator runs #1 #2 #4 #6 green on 3af5ec5; #5 hp 4 FAIL = scenario bug ($PKG/.SetupActivity under the new app ID: test wallpaper never set) fixed + test_handoff guard, rerun #7 (base,hp) green on ef09827. LEGACY FLAKE (to fix, opt section only): #3 failed reset2 + W3b, rerun #8 passed both but failed W5 (stray home redirect not logged within 5 s), which had passed in #3 on the same product code.
   - [x] BS1i v1.0 RELEASED 2026-11-09 02:06 UTC (android.yml #2 id 42548773723 on 9ebe111, signed with the owner's key, cert verified): https://github.com/mdmac1983/Profiles/releases/tag/v1.0 (Profiles-v1.0.apk + PhoneGuide-v1.0.apk). Proof: emulator gate BS1h; UpdateRulesTest (7); tablet check of the updater waits on the user.
   - [ ] BS1j NEXT = v1.1: profiles Owner (Quickstep) / FBOP (plain PIN) / Rental, handshake -> profile map, per-profile apps/tiles/keyboard/status bar/radios/banners (BR1, BS1f order). Design doc first: research/PROFILES_ABC_2026-11-09.md.
+- [ ] BT1 User, 2026-11-09 (verbatim): "build remaining updates" = v1.1 .. v1.5 in the BS1f order, one tested release each:
+  - [ ] BT1a v1.1 profiles Owner (Quickstep) / FBOP (plain PIN) / Rental + handshake -> profile map + per-profile apps / tiles / keyboard / status bar / radios / banners
+  - [ ] BT1b v1.2 the 8 new pad/key handshakes (BQ1a), default OFF, slow start 8 s
+  - [ ] BT1c v1.3 Rental restrictions with switches (hide Settings app, hide Play Store, block uninstall)
+  - [ ] BT1d v1.4 per-profile home layout (Rental starts as a copy of FBOP) + per-profile HOME wallpaper (lock wallpaper shared)
+  - [ ] BT1e v1.5 gestures (FBOP + Rental: swipe down = notifications, swipe up = drawer, double tap = lock screen, each changeable; none opens Owner)
