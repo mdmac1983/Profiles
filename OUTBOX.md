@@ -1472,3 +1472,38 @@
 > 5. **Which of the extra suggestions do you want?**
 > 6. **Still open from before:** finish and release v0.8.12 (the home-screen curtain) first, then do these changes? I recommend that, because the package rename resets everything on the device.
 <!-- sha:926a313f4b55 -->
+
+## 2026-11-09T00:26:31Z
+> There is **one PIN**: the tablet's normal Android lock-screen PIN. The app never sets, stores or checks a PIN of its own. What decides which launcher opens is **how** you type that PIN.
+>
+> ## What happens at each unlock
+>
+> **1. Screen on, lock screen showing.** While you're still on the lock screen, the app quietly puts the custom home screen in front behind it. That's why a normal unlock lands on the custom launcher with no delay.
+>
+> **2. You type on the PIN pad.** The accessibility helper watches the pad, but it only sees **which kind of key** you tap: a digit, Delete or Enter. It never sees which digit, never sees how long the PIN is, and nothing is saved. It recognises the keys by their on-screen button IDs, not by reading their numbers.
+>
+> **3. You tap Enter.** Android checks the PIN itself, exactly as it would without this app. A wrong PIN fails like normal. Then the app looks at what came before the PIN:
+>
+> | How you entered it | Result |
+> | :- | :- |
+> | **Just the PIN** | **Custom launcher, always.** If a Quickstep session was still open, it ends here: Quickstep's apps are closed and its notifications cleared. A cover hides this clean-up; it is black, or a picture of your home screen in the upcoming v0.8.12. |
+> | **A secret handshake, then the PIN** | **Quickstep.** The default handshake is **tapping Delete twice on the empty pad**, then typing the PIN. A short buzz confirms that the handshake counted. |
+>
+> **4. Locking the tablet ends a Quickstep session,** like logging out. The next plain PIN is the custom launcher again.
+>
+> ## The handshakes
+> There are 16 of them, and you can turn several on in Launcher control. At least one always stays on, so Quickstep can never become unreachable. Examples:
+> - **On the pad:** Delete twice; digit-then-Delete three times; pulling the PIN pad up and pushing it away three times.
+> - **Keys:** a volume-key code such as Up, Up, Down, Down; pressing the side key 4 times quickly.
+> - **Sensors:** unplugging and replugging the charger; rotating the tablet back and forth; a shake or a knock.
+>
+> The handshake doesn't change the PIN at all. It's a signal you give just before typing it, which is why Android never counts it as a wrong attempt.
+>
+> ## Safety nets
+> - **Late Enter:** if the Enter tap reaches the app late, a pad tap within 3 seconds before the unlock still counts.
+> - **Helper killed:** if the helper's process died during the lock, a plain PIN still goes to the custom launcher (`UsageGap` catches this).
+> - **Lock log:** every unlock is written to a lock log, so a wrong choice can be traced afterwards.
+>
+> ## What this means for "a custom PIN per profile"
+> Because Android has only one real PIN and the app deliberately never reads digits, a different real PIN per profile isn't possible without changing that design. It's why I suggested a profile PIN pad shown **after** the normal unlock (option A), or reading a profile code typed and erased on the real pad (option B).
+<!-- sha:eff9f0fc9a31 -->
