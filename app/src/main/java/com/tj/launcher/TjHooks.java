@@ -153,7 +153,8 @@ public final class TjHooks {
                 : act == GestureRules.Action.QUICK_SETTINGS ? android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
                 : act == GestureRules.Action.RECENTS ? android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
                 : android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN;
-        s.performGlobalAction(ga);
+        boolean ok = s.performGlobalAction(ga);
+        android.util.Log.i("TjHooks", "GESTURE action " + act.title + " -> " + ok);
     }
 
     /** Called by Launcher.dispatchTouchEvent before the event is handled as usual. */

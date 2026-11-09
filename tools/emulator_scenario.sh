@@ -556,9 +556,9 @@ check "GE1: a swipe down on the home screen opens the notification panel (the st
 check "GE1: ... and the hook logged the gesture" grep -q "GESTURE Swipe down -> Notifications" "$OUT/ge-log.txt"
 adb shell input keyevent KEYCODE_BACK; sleep 1; home; sleep 3
 adb logcat -c; adb shell "input tap 300 470; input tap 300 470"; sleep 3
-GE_KG="$(ge_kg)"; adb logcat -d -s TjHooks:I | grep GESTURE > "$OUT/ge-log2.txt" 2>&1
-info "GE2 (data only: each 'input tap' starts a new process on the emulator, so two taps are rarely within the 0.35 s of a double tap; the timing is proven by GestureRulesTest): after two taps: $GE_KG; log: $(cut -c25-120 "$OUT/ge-log2.txt" | tr '\n' '|')"
-if grep -q "GESTURE Double tap" "$OUT/ge-log2.txt"; then check "GE2: when the two taps WERE a double tap, the screen locked" bash -c "[ '$GE_KG' = showing=true ]"; fi
+GE_KG="$(ge_kg)"; GE_WAKE="$(adb shell dumpsys power 2>/dev/null | grep -o 'mWakefulness=[A-Za-z]*' | head -1)"; adb logcat -d -s TjHooks:I | grep GESTURE > "$OUT/ge-log2.txt" 2>&1
+info "GE2 (data only: each 'input tap' starts a new process on the emulator, so two taps are rarely within the 0.35 s of a double tap; the timing is proven by GestureRulesTest): after two taps: $GE_KG $GE_WAKE; log: $(cut -c25-120 "$OUT/ge-log2.txt" | tr '\n' '|')"
+if grep -q "GESTURE Double tap" "$OUT/ge-log2.txt"; then check "GE2: when the two taps WERE a double tap, the screen locked (keyguard showing, or the screen went to sleep)" bash -c "[ '$GE_KG' = showing=true ] || [ '$GE_WAKE' != mWakefulness=Awake ]"; fi
 adb shell input keyevent KEYCODE_WAKEUP; sleep 1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2
 gefeat none none
 setmode custom; rebind; home; sleep 3
@@ -810,6 +810,7 @@ ensurehome
 # ---- O1 / O3 / O4 (v0.5.0): more lock-screen methods, closing at lock, instant unlock to custom
 beat "before O"
 setfeat3(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"true\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_m_ladder\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_charger\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_peek5\\\" value=\\\"true\\\" /><string name=\\\"return_app_label\\\">Calendar</string></map>\" > shared_prefs/tj_features.xml'"; }
+adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1   # a running app keeps its in-memory preferences and would ignore setfeat3 (run 18 on v1.1: O1 failed after section ge)
 setfeat3; setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/o-setpin.txt" 2>&1
 # O1: erase ladder = Delete, digit, Delete, digit, Delete, digit, then the PIN
@@ -2607,7 +2608,7 @@ ufev(){ adb logcat -b events -d -v time 2>/dev/null | grep am_resume_activity | 
 ufspan(){ awk '{split($2,a,":"); ms=int((((a[1]*60)+a[2])*60+a[3])*1000+0.5); if (NR==1) f=ms; l=ms} END {if (NR>0) printf "%d", l-f; else printf "0"}' "$1"; }
 ufnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#app.orionmd.profiles/com.android.launcher3.Launcher#CUSTOM#g'; }
 # ---- 1) a plain PIN in a custom session: our launcher, never the stock one
-uffeat; setmode custom; rebind; home; sleep 2
+adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; uffeat; setmode custom; rebind; home; sleep 2
 lockpad; adb logcat -b events -c
 pad 1 2 3 4 e; sleep 5
 ufev > "$OUT/uf-custom.txt"
@@ -2615,7 +2616,7 @@ info "UF1 plain PIN, custom session: resumed in order: $(ufnames "$OUT/uf-custom
 check "UF1: a plain PIN in a custom session ends on our launcher" bash -c "tail -1 $OUT/uf-custom.txt | grep -q 'app.orionmd.profiles/'"
 check "UF1: ... and the stock launcher / Recents was NEVER resumed on the way (no flash of Quickstep)" bash -c "! grep -q ' com.android.launcher3/' $OUT/uf-custom.txt"
 # ---- 2) a plain PIN after a Quickstep session (an app open in Quickstep): no Quickstep item may appear after the Enter
-uffeat; setmode quickstep; rebind; home; sleep 2
+adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; uffeat; setmode quickstep; rebind; home; sleep 2
 adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
 lockpad; adb logcat -b events -c
 pad 1 2 3 4 e; sleep 8
@@ -2627,7 +2628,7 @@ info "UF2 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 
 check "UF2: ... the stock HOME / Recents screens and the Quickstep app (Contacts) resume only UNDER the reset's black cover, never visible after the Enter (the released v0.8.10 resumes the stock HOME under the cover too: runs #400 / #403)" test -z "$UF2_OUT"
 check "UF2: ... and the last thing resumed is ours" bash -c "tail -1 $OUT/uf-after-qs.txt | grep -q ' app.orionmd.profiles/'"
 # ---- 3) the Quickstep handshake: the stock launcher is the last thing, our launcher does not flash in after it
-uffeat; setmode custom; rebind; home; sleep 2
+adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; uffeat; setmode custom; rebind; home; sleep 2
 lockpad; adb logcat -b events -c
 pad d d 1 2 3 4 e; sleep 6
 ufev > "$OUT/uf-qs.txt"
