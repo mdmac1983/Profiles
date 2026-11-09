@@ -9,6 +9,14 @@ The default handshake is "Double erase": on the empty PIN pad tap Delete twice, 
 Choose your handshakes, and which profile each one opens, under "Unlock into Quickstep (Owner) or a profile". You can switch several on; at least one always stays on.
 Locking the tablet ends an Owner session. The next plain PIN opens the custom home screen again.
 
+# Profiles: Owner, FBOP, Rental
+- Owner is this stock launcher. Settings only open here.
+- FBOP is the custom home screen a plain PIN always opens.
+- Rental is a second custom home screen with its own apps and settings. The first time, it is a copy of FBOP.
+Pick which profile each handshake opens: in the handshake list, tap "Opens:" under a handshake. At least one selected handshake always opens Owner; if none does, Double erase opens Owner.
+Pick the profile you are editing at the top of settings (FBOP or Rental). These settings are per profile: the apps shown, no pop-up notifications, no Wi-Fi or Bluetooth, the hidden status bar and the quick-settings tiles.
+Switching between FBOP and Rental at the unlock closes the other profile's apps and starts with an empty Recents list.
+
 # Going back to the custom home screen from Owner
 Use any way that is switched on under "Return to the custom launcher": press Home twice, tap the "Back to custom" icon or quick-settings tile, a volume-key code, or simply lock the tablet. The apps opened in Owner are closed and their notifications cleared.
 
