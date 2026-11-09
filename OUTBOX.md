@@ -1708,3 +1708,7 @@
 >
 > **Still open:** you said "not sure yet" about the extra suggestions, such as app locks, time-based profile switching and settings export/import. Tell me when you decide.
 <!-- sha:c3e64ae8633c -->
+
+## 2026-11-09T01:36:22Z
+> Two runs are still going, plus the two re-runs. I'll read them all when the timer fires around 01:59 UTC.
+<!-- sha:363db13df635 -->
