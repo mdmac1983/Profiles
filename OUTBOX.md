@@ -1758,3 +1758,7 @@
 ## 2026-11-09T02:27:37Z
 > The emulator test of the three profiles (base, e1, pr) is running. I'll read the result when the timer fires around 02:36 UTC.
 <!-- sha:7cb67b572d29 -->
+
+## 2026-11-09T02:44:27Z
+> Five emulator runs are in progress: the three v1.1 gate runs, a run for the Rental restrictions, and a run for gestures and the per-profile layout. I'll read them all around 03:02 UTC.
+<!-- sha:b6adac9e744c -->
