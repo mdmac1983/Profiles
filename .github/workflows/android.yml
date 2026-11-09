@@ -134,14 +134,14 @@ jobs:
           VNAME=$(grep -m1 -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE '"[^"]+"' | tr -d '"')
           VCODE=$(grep -m1 -oE 'versionCode *= *[0-9]+' app/build.gradle.kts | grep -oE '[0-9]+')
           if [ "${{ steps.mode.outputs.release }}" = "true" ]; then
-            cp app/build/outputs/apk/release/app-release.apk "Launcher-v${VNAME}.apk"
+            cp app/build/outputs/apk/release/app-release.apk "Profiles-v${VNAME}.apk"
             cp phoneguide/build/outputs/apk/release/phoneguide-release.apk "PhoneGuide-v${VNAME}.apk"
           else
-            cp app/build/outputs/apk/debug/app-debug.apk "Launcher-v${VNAME}-preview.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "Profiles-v${VNAME}-preview.apk"
           fi
           echo "vname=$VNAME" >> "$GITHUB_OUTPUT"
           echo "vcode=$VCODE" >> "$GITHUB_OUTPUT"
-          echo "Built Launcher v$VNAME (versionCode $VCODE)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built Profiles v$VNAME (versionCode $VCODE)" >> "$GITHUB_STEP_SUMMARY"
 
       # GitHub creates the tag itself (`gh release create --target`): a tag PUSH from a Claude
       # container is refused (403), only branch pushes are allowed.
@@ -150,14 +150,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ steps.v.outputs.vname }}
-          APK: Launcher-v${{ steps.v.outputs.vname }}.apk
+          APK: Profiles-v${{ steps.v.outputs.vname }}.apk
           GUIDE: PhoneGuide-v${{ steps.v.outputs.vname }}.apk
         run: |
           NOTES="versionCode ${{ steps.v.outputs.vcode }}, built and signed by GitHub Actions. The certificate was verified on this APK, so it installs over an existing install as an in-place update."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" "$GUIDE" --clobber
           else
-            gh release create "$TAG" "$APK" "$GUIDE" --target "$GITHUB_SHA" --title "Launcher $TAG" --notes "$NOTES"
+            gh release create "$TAG" "$APK" "$GUIDE" --target "$GITHUB_SHA" --title "Profiles $TAG" --notes "$NOTES"
           fi
           echo "Published $TAG -> $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
 
@@ -165,8 +165,8 @@ jobs:
         if: steps.mode.outputs.full == 'true' && steps.mode.outputs.release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: launcher-preview-apk
-          path: Launcher-*-preview.apk
+          name: profiles-preview-apk
+          path: Profiles-*-preview.apk
           retention-days: 14
 
       - name: Keep the APK for inspection (failed signed runs only)
@@ -174,7 +174,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unpublished-apk
-          path: Launcher-v*.apk
+          path: Profiles-v*.apk
           retention-days: 7
           if-no-files-found: ignore
 

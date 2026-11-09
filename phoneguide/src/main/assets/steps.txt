@@ -7,8 +7,8 @@ plan: PART 2, with the CABLE (about 2 minutes): connect the phone, then type ONE
 plan: PART 3, on the TABLET again (about 5 minutes, only buttons): "Do everything", "Collect the tablet report", send the file to Claude.
 plan: FALLBACK, EXTRAS and UNDO at the bottom are closed. Open them only if a step above failed, Claude asks, or something looks odd.
 ## PART 1: BEFORE the cable, on the TABLET (about 3 minutes, no cable needed)
-@ Install the newest launcher
-why: On the tablet open the browser and go to https://github.com/tjshea90/Launcher/releases/latest . Tap the file called Launcher-v....apk (NOT the one called PhoneGuide), open it and tap Install. Then Settings > Accessibility > Launcher power-menu helper: switch it OFF and ON once.
+@ Install the newest Profiles
+why: On the tablet open the browser and go to https://github.com/mdmac1983/Profiles/releases/latest . Tap the file called Profiles-v....apk (NOT the one called PhoneGuide), open it and tap Install. Then Settings > Accessibility > Profiles helper: switch it OFF and ON once.
 note: Skip the install if the newest version is already on the tablet. Do it BEFORE you plug in: the helper line in PART 2 starts the version that is installed.
 @ Allow USB debugging
 why: Settings > About tablet > tap "Build number" 7 times > go back > System > Developer options > turn "USB debugging" ON.

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tj_accessibility_description">Launcher helper: hides the Screenshot button (or the whole power menu) while the custom launcher is active, presses Clear all when you return, and sends you back to the custom launcher if the stock home screen appears without an unlock handshake. On the lock screen it notices secret unlock handshakes (which type of PIN key was tapped, volume-key presses, side-key presses). It never reads which digits you type. It notes which app posted a notification and when, never what the notification says. Turn it off here at any time.</string>
-    <string name="tj_accessibility_label">Launcher power-menu helper</string>
+    <string name="tj_accessibility_label">Profiles helper</string>
 </resources>

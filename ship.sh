@@ -106,8 +106,8 @@ if [ "$LOCAL" -eq 1 ]; then
     exit 1
   fi
   mkdir -p releases
-  cp "$APK_OUT" "releases/Launcher-v${VNAME}.apk"
-  echo "  OK    apk at releases/Launcher-v${VNAME}.apk"
+  cp "$APK_OUT" "releases/Profiles-v${VNAME}.apk"
+  echo "  OK    apk at releases/Profiles-v${VNAME}.apk"
   bash tools/record-release.sh "$TAG" "$NOTE (built locally)"
   echo
   echo "== released v$VNAME (code $VCODE) locally =="
