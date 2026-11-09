@@ -457,6 +457,52 @@ home
 
 
 fi # section e1
+
+if want pr; then # section pr
+ensurehome
+# ---- PR (BT1a, v1.1, 2026-11-09: "name the profiles: Owner, FBOP (plain pin opens this), Rental ... set up which handshake opens which profile"): Double erase -> Rental,
+#      Tap and erase -> Owner. A plain PIN is always FBOP. With no selected handshake opening Owner, Double erase opens Owner (never locked out). The test PIN is cleared at the end.
+beat "before PR"
+prfeat(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"unlock_pick\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_erase2\\\" value=\\\"true\\\" /><boolean name=\\\"unlock_m_taperase\\\" value=\\\"$1\\\" /><string name=\\\"hs_target_erase2\\\">rental</string><string name=\\\"hs_target_taperase\\\">owner</string></map>\" > shared_prefs/tj_features.xml'"; }
+practive(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml 2>/dev/null" | grep -o 'name="profile_active">[a-z]*' | cut -d'>' -f2; }
+prfeat true
+setmode custom; rebind; home
+adb shell locksettings set-pin 1234 > "$OUT/pr-setpin.txt" 2>&1
+pad(){ for k in "$@"; do case $k in 1) adb shell input tap 177 628;; 2) adb shell input tap 300 628;; 3) adb shell input tap 424 628;; 4) adb shell input tap 177 714;; d) adb shell input tap 177 886;; e) adb shell input tap 424 886;; esac; sleep 0.4; done; }
+lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3; adb shell input swipe 300 900 300 300 300; sleep 2; }
+# (1) Double erase -> Rental
+adb logcat -c; lockpad; pad d d 1 2 3 4 e; sleep 7
+PR_M1="$(getmode)"; PR_A1="$(practive)"; resumed > "$OUT/pr-1-resumed.txt"; adb logcat -d -s TjA11y:I | grep -E "UNLOCKPICK|PROFILE|HANDSHAKE" > "$OUT/pr-1-log.txt" 2>&1
+info "PR1: Double erase -> mode $PR_M1, profile $PR_A1; $(cut -c25-140 "$OUT/pr-1-log.txt" | tr '\n' '|' | cut -c1-400)"
+check "PR1: a handshake set to Rental keeps the CUSTOM launcher (mode custom)" bash -c "[ \"$PR_M1\" = custom ]"
+check "PR1: ... and makes Rental the active profile" bash -c "[ \"$PR_A1\" = rental ]"
+check "PR1: ... with our launcher in front" grep -q 'app.orionmd.profiles' "$OUT/pr-1-resumed.txt"
+# (2) a plain PIN -> FBOP
+adb logcat -c; lockpad; pad 1 2 3 4 e; sleep 7
+PR_M2="$(getmode)"; PR_A2="$(practive)"; resumed > "$OUT/pr-2-resumed.txt"
+info "PR2: plain PIN -> mode $PR_M2, profile $PR_A2"
+check "PR2: a plain PIN opens FBOP" bash -c "[ \"$PR_M2\" = custom ] && [ \"$PR_A2\" = fbop ]"
+check "PR2: ... with our launcher in front" grep -q 'app.orionmd.profiles' "$OUT/pr-2-resumed.txt"
+# (3) Tap and erase x3 -> Owner
+adb logcat -c; lockpad; pad 1 d 2 d 3 d 1 2 3 4 e; sleep 7
+PR_M3="$(getmode)"; resumed > "$OUT/pr-3-resumed.txt"
+info "PR3: Tap and erase -> mode $PR_M3; $(cut -c1-160 "$OUT/pr-3-resumed.txt")"
+check "PR3: a handshake set to Owner opens Quickstep" bash -c "[ \"$PR_M3\" = quickstep ]"
+# (4) back with a plain PIN, then the safety: Tap and erase OFF = nothing selected opens Owner -> Double erase opens Owner
+adb logcat -c; lockpad; pad 1 2 3 4 e; sleep 7
+prfeat false
+setmode custom; rebind; home
+adb logcat -c; lockpad; pad d d 1 2 3 4 e; sleep 7
+PR_M5="$(getmode)"; adb logcat -d -s TjA11y:I | grep -E "UNLOCKPICK|HANDSHAKE" > "$OUT/pr-5-log.txt" 2>&1
+info "PR5: no handshake opens Owner, Double erase -> mode $PR_M5; $(cut -c25-140 "$OUT/pr-5-log.txt" | tr '\n' '|' | cut -c1-300)"
+check "PR5: Owner can never become unreachable: with no selected handshake opening Owner, Double erase opens Quickstep" bash -c "[ \"$PR_M5\" = quickstep ]"
+adb logcat -c; lockpad; pad 1 2 3 4 e; sleep 7
+adb shell locksettings clear --old 1234 > "$OUT/pr-clearpin.txt" 2>&1
+adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
+check "PR: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/pr-clearpin.txt"
+adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
+setmode custom; rebind; home
+fi # section pr
 if want y2; then # section y2
 ensurehome
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
