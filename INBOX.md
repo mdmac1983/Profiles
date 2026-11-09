@@ -1217,3 +1217,8 @@ how does the pin work on current setup
 ```
 what other handshakes can be implemented? i want all handshakes as toggle options in settings
 ```
+
+## 2026-11-09T00:33:16Z
+```
+pin pad and keys options; can we wire handshake to a specific configuration? as in profile a, profile b, profile c?
+```
