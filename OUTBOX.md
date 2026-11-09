@@ -1507,3 +1507,48 @@
 > ## What this means for "a custom PIN per profile"
 > Because Android has only one real PIN and the app deliberately never reads digits, a different real PIN per profile isn't possible without changing that design. It's why I suggested a profile PIN pad shown **after** the normal unlock (option A), or reading a profile code typed and erased on the real pad (option B).
 <!-- sha:eff9f0fc9a31 -->
+
+## 2026-11-09T00:30:07Z
+> All 16 lock-screen handshakes already have their own on/off switch in **Launcher control → Unlock into Quickstep (secret handshakes)**. The ways back to custom and the secret entrances from inside the custom launcher have switches too. Any new handshake gets its switch automatically, because that screen lists every handshake in the code.
+>
+> ## New handshakes that could be added
+> Each one only uses signals the app can already see on the lock screen. None of them reads which digits you type.
+>
+> **On the PIN pad**
+> 1. **PIN rhythm:** pause about 2 seconds after the first two digits, then finish the PIN. The app only sees the timing of the taps, not the digits.
+> 2. **Long-press Delete** on the empty pad, then type the PIN.
+> 3. **Slow start:** wait 5 seconds or more with the PIN pad open before you type the first digit.
+> 4. **Delete before Enter:** type the PIN plus one extra digit, Delete once, then Enter.
+>
+> **Keys**
+> 5. **Hold Volume Up while tapping Enter.**
+> 6. **Volume Up held through the screen turning on:** press the side key while holding Volume Up.
+> 7. **Wake count:** turn the screen on and off 3 times slowly (different from the quick 4-press flurry), then the PIN.
+> 8. **Volume Down ×3, then the side key.**
+>
+> **Sensors** (the tablet's own report lists a proximity sensor, an accelerometer and a gyroscope)
+> 9. **Proximity wave:** wave a hand over the top edge of the screen twice.
+> 10. **Proximity cover:** cover the sensor for 2 seconds, then the PIN.
+> 11. **Face-down flip:** lay the tablet face down, then pick it up within 5 seconds.
+> 12. **Tilt code:** tilt left, right, left.
+> 13. **Gyroscope twist:** a quick twist of the wrist, clockwise then back.
+> 14. **Upside down:** hold the tablet upside down while you type the PIN.
+>
+> **Plugs and screens**
+> 15. **Headphones:** plug headphones in and pull them out, then the PIN.
+> 16. **Charger + volume:** plug in the charger while holding Volume Down.
+> 17. **Shade twice:** pull the notification panel down and close it twice on the lock screen.
+> 18. **Emergency and back:** tap Emergency, press Back, then the PIN.
+>
+> ## What I'd advise against
+> - **Typing a wrong PIN on purpose.** Android counts it as a failed attempt and can lock you out for 30 seconds or more.
+> - **Fingerprint.** The tablet has no fingerprint reader.
+> - **A light sensor.** The tablet's report doesn't list one; it needs a check on the device first.
+> - **Anything that reads the digits themselves.** That is the privacy line the app keeps today.
+>
+> ## Questions
+> 1. Which of these should I add? You could pick numbers, or say "all of them".
+> 2. Should new ones start **off**, as all of them except Double erase do today, so nothing triggers by accident?
+>
+> I've noted these in `TASKS.md` (BP1) and built nothing, as you asked. Still waiting on the earlier questions: who the repo is for and which device, the package-rename scope, which profile-PIN option (A, B or C), which gestures, and whether v0.8.12 ships first.
+<!-- sha:83ea982af6d0 -->
