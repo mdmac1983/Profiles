@@ -1675,3 +1675,36 @@
 >
 > Once these are answered, I'll write the full design for you to check, and start building only when you say "build".
 <!-- sha:a54988f1f156 -->
+
+## 2026-11-09T01:14:11Z
+> v1.0 is coded, but not released yet. Tests and lint pass, a code review found 10 issues (8 fixed), and the full emulator check is running in your repo now (six runs, about 25 minutes).
+>
+> **What's in v1.0:**
+> - **Renamed:** the app ID is `app.orionmd.profiles`. The app is called "Profiles", the settings screen "Profiles settings", and the accessibility helper "Profiles helper". The internal Java code keeps its old package name, as you chose.
+> - **Version 1.0.** Each update goes up 0.1.
+> - **Home-screen curtain:** the half-done fix from the last session is finished.
+> - **In-app updates:** a new "Updates" section near the bottom of settings has "Check automatically", "Check for updates", and "Install vX" when a newer version exists. It reads the Releases of `mdmac1983/Profiles`. It checks that the download is signed with your key before installing, and Android also asks you to confirm.
+>   - Your tablet's notes show the launcher's own internet connections were blocked before, so downloads go through Android's download service instead. I haven't been able to try this on the tablet yet.
+> - **Help pages:** "User guide" and "Features" at the very bottom of settings.
+> - **Releases** are built and published only in your repo.
+> - **Your own signing key.** The old public key from the original project is removed from the repo.
+>
+> **One step only you can do: add the signing key to GitHub.** I sent you two files.
+> 1. Save both somewhere safe outside GitHub, such as a password manager or private cloud. The `.jks` file is the backup. If you lose it, no future update can install over this app.
+> 2. In GitHub, open `mdmac1983/Profiles` → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+> 3. Name it `SIGNING_KEYSTORE_BASE64` and paste the whole contents of `SIGNING_KEYSTORE_BASE64.txt` as the value.
+>
+> Until that secret exists, a build can only make an unsigned test copy, not a release.
+>
+> **When you install 1.0 on the tablet:**
+> 1. In the old app, open settings and run **Restore everything**.
+> 2. Uninstall the old app.
+> 3. Install Profiles.
+> 4. Redo the one-time setup: the adb steps, turning on "Profiles helper" in Accessibility, and choosing Profiles as the Home app.
+>
+> Profiles counts as a new app because of the new app ID. Settings, the visible-apps list and the calibrations start fresh, and the power-menu patch calibrates itself again.
+>
+> **Next:** once the emulator check is green and you tell me the secret is added, I'll publish the v1.0 Release and send you the link. Then I'll start v1.1: the Owner / FBOP / Rental profiles and the handshake-to-profile map.
+>
+> **Still open:** you said "not sure yet" about the extra suggestions, such as app locks, time-based profile switching and settings export/import. Tell me when you decide.
+<!-- sha:c3e64ae8633c -->
