@@ -1227,3 +1227,12 @@ pin pad and keys options; can we wire handshake to a specific configuration? as 
 ```
 name the profiles: Owner, FBOP (plain pin opens this), Rental. I want to be able to set up which handshake opens which profile as well as the customizations for each profile from settings.
 ```
+
+## 2026-11-09T00:43:19Z
+```
+1. yes;
+2. owners only;
+3. all customizations;
+
+what other unanswered questions do you have?
+```
