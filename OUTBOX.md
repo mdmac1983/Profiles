@@ -1770,3 +1770,25 @@
 ## 2026-11-09T03:12:25Z
 > Four emulator runs are in flight: the solo `base,uf,cs` run and the three-run v1.1 gate on the current code. I'll read them all around 03:35 UTC.
 <!-- sha:633c70876d31 -->
+
+## 2026-11-09T03:19:56Z
+> Because I haven't released anything since v1.0. Nothing is wrong with the release process; the next version is built but still being tested.
+>
+> **What's done since v1.0**, all built and passing its unit tests:
+> - the three profiles: Owner, FBOP (plain PIN) and Rental, with the "Opens:" choice for each handshake
+> - the 8 new handshakes
+> - the Rental restrictions (no Settings, no Play Store, no uninstalling)
+> - a separate home-screen layout for each profile
+> - home-screen gestures
+>
+> **Why it's one version, not four:** this repo saves every change to `main` within seconds. So each new feature landed while the one before it was still being tested, and I couldn't release them separately without shipping half-tested code. I'm releasing all of it together as **v1.1** instead of v1.1 to v1.4.
+>
+> **Why v1.1 isn't out yet:** the first emulator run on the combined code had failures, and I won't release until I know they aren't real bugs.
+> - **Fixed:** two were mistakes in my new gesture test.
+> - **Re-running:** a few others are checks this project's history already marks as unreliable.
+> - **Investigating (the one that matters):** in one run, a plain PIN at the end of an Owner session left the tablet on the stock launcher instead of FBOP. That's the most important rule in the app. It may be leftover settings from an earlier test in the same run, but I'm not assuming that.
+>
+> A solo re-run of that check and a full re-run of the release gate are going now. Results are due around 03:35 UTC. If they're clean, I'll publish v1.1 and send you the link. If the plain-PIN problem shows up again, I'll fix it first.
+>
+> **Not built:** a separate wallpaper for each profile. Android gives a wallpaper a new ID every time it's set, so the patch that hides the power menu's Screenshot entry would have to recalibrate after every profile switch. Each recalibration takes a screenshot and flashes the screen once. Do you still want per-profile wallpapers with that flash, or should all profiles share one wallpaper?
+<!-- sha:82517467f550 -->
