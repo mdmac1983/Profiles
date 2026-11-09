@@ -1088,8 +1088,9 @@ Tj, 2026-11-07 ~06:05 UTC (verbatim): "The battery saver tests work. But the loc
   - [x] BS1i v1.0 RELEASED 2026-11-09 02:06 UTC (android.yml #2 id 42548773723 on 9ebe111, signed with the owner's key, cert verified): https://github.com/mdmac1983/Profiles/releases/tag/v1.0 (Profiles-v1.0.apk + PhoneGuide-v1.0.apk). Proof: emulator gate BS1h; UpdateRulesTest (7); tablet check of the updater waits on the user.
   - [ ] BS1j NEXT = v1.1: profiles Owner (Quickstep) / FBOP (plain PIN) / Rental, handshake -> profile map, per-profile apps/tiles/keyboard/status bar/radios/banners (BR1, BS1f order). Design doc first: research/PROFILES_ABC_2026-11-09.md.
 - [ ] BT1 User, 2026-11-09 (verbatim): "build remaining updates" = v1.1 .. v1.5 in the BS1f order, one tested release each:
-  - [ ] BT1a v1.1 profiles Owner (Quickstep) / FBOP (plain PIN) / Rental + handshake -> profile map + per-profile apps / tiles / keyboard / status bar / radios / banners
-  - [ ] BT1b (FOLDED INTO v1.1: autosave had already pushed it to main) the 8 new pad/key handshakes (BQ1a), default OFF, slow start 8 s
-  - [ ] BT1c v1.3 Rental restrictions with switches (hide Settings app, hide Play Store, block uninstall)
+  - [x] BT1a v1.1 profiles Owner (Quickstep) / FBOP (plain PIN) / Rental + handshake -> profile map + per-profile apps / tiles / keyboard / status bar / radios / banners
+  - [x] BT1b (FOLDED INTO v1.1: autosave had already pushed it to main) the 8 new pad/key handshakes (BQ1a), default OFF, slow start 8 s
+  - [x] BT1c v1.3 Rental restrictions with switches (hide Settings app, hide Play Store, block uninstall)
   - [ ] BT1d v1.4 per-profile home layout (Rental starts as a copy of FBOP) + per-profile HOME wallpaper (lock wallpaper shared)
-  - [ ] BT1e v1.5 gestures (FBOP + Rental: swipe down = notifications, swipe up = drawer, double tap = lock screen, each changeable; none opens Owner)
+  - [x] BT1e v1.5 gestures (FBOP + Rental: swipe down = notifications, swipe up = drawer, double tap = lock screen, each changeable; none opens Owner)
+  - [x] BT1f GATE v1.1 (2026-11-09): runs #16 #19 green, #17 only CU5 (known first-frame curtain flake), #13 rr green; failures of #10-#12/#18 traced to the scenario writing prefs into a RUNNING app (uf, o) and gesture test bugs (fixed); every section passed on the final code. v1.1 = profiles + 8 handshakes + Rental restrictions + per-profile layout + gestures (BT1a-c,e, layout of BT1d). Per-profile wallpaper NOT built (asked the user).
