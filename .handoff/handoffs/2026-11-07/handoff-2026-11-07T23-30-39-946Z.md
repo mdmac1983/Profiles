@@ -6,14 +6,14 @@ schema_version: 1
 next_steps_count: 5
 has_blockers: true
 keywords: launcher handoff, recents sweep, clean start, lock screen patch, v0.8.5, tablet check, release routine, gate tiers
-headline: Goal: custom Android 10 Go-edition home launcher (app.orionmd.profiles, Java, sideloaded port of AOSP Launcher3 plus TjAccess
+headline: Goal: custom Android 10 Go-edition home launcher (com.tj.launcher, Java, sideloaded port of AOSP Launcher3 plus TjAccess
 ---
 
 # Session Handoff Snapshot
 > **Generated:** 11/7/2026, 11:30:39 PM
 
 ## 🎯 High-Level Objective
-* **Goal:** Goal: custom Android 10 Go-edition home launcher (app.orionmd.profiles, Java, sideloaded port of AOSP Launcher3 plus TjAccessibilityService) must feel stock-instant and trustworthy on low-RAM Go tablet. Intent: hidden apps stay hidden everywhere incl. Recents; lock-screen transitions flicker-free; custom home reachable from lock screen immediately; Quickstep (stock) may be slower. Claude writes code, GitHub Actions builds signed APK, many sessions over time, handoff must be lossless.
+* **Goal:** Goal: custom Android 10 Go-edition home launcher (com.tj.launcher, Java, sideloaded port of AOSP Launcher3 plus TjAccessibilityService) must feel stock-instant and trustworthy on low-RAM Go tablet. Intent: hidden apps stay hidden everywhere incl. Recents; lock-screen transitions flicker-free; custom home reachable from lock screen immediately; Quickstep (stock) may be slower. Claude writes code, GitHub Actions builds signed APK, many sessions over time, handoff must be lossless.
 
 ## 📌 Current State & Next Steps
 * **Status:** DONE: v0.8.5 released, BE1-BE3, BD1, BD2 ticked in TASKS.md with proof. Final reply with Release link, limits, tablet-check request already sent to Tj. CHECKPOINT.md latest ckpt pushed; branch and main in sync. OPEN: BE4 = Tj tablet check, checklist at research/TABLET_CHECKLIST_v0.8.5.md. Not verified on real hardware. Why: release gate needs emulator plus JVM; tablet-only behaviour (PIN pad timing, Screenshot flash, no-helper cover time) only Tj can confirm.
