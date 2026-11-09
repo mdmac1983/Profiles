@@ -1633,3 +1633,45 @@
 > - Which gestures?
 > - Should v0.8.12 (the home-screen curtain) ship first? I recommend it, because the profiles change the core of the unlock logic.
 <!-- sha:072f1d1b6f9d -->
+
+## 2026-11-09T00:44:14Z
+> I've saved your answers in `TASKS.md`:
+> - **Owner** is the stock Quickstep launcher.
+> - **Settings** open in Owner only.
+> - **FBOP** and **Rental** get all eight customizations.
+> - Owner keeps the stock home screen and drawer, so only its tiles, keyboard, status bar, Wi-Fi/Bluetooth rule, banners and wallpaper can be adjusted.
+>
+> Here's every question still open. Each has my suggestion, so you can answer "defaults" for any you don't mind about.
+>
+> ## Profiles
+> 1. **Rental restrictions:** anything extra? *Suggest:* hide the Settings app and the Play Store, and block uninstalling apps.
+> 2. **Wallpaper:** per profile on the home screen only, or on the lock screen too? *Suggest:* **home screen only.** The lock-screen patch that hides the power menu's Screenshot entry is calibrated to one lock wallpaper. A different lock wallpaper per profile would mean a new calibration, with a screenshot flash, after every switch.
+> 3. **New app installs:** where do they appear? *Suggest:* hidden in FBOP and Rental until you allow them in Owner's settings, which is how it works today.
+> 4. **Starting home layout:** when you first set up Rental, should it be empty or a copy of FBOP's? *Suggest:* **a copy of FBOP's.**
+> 5. **Owner lock-out guard:** at least one handshake must always open Owner, so you can never lose access to settings. *Suggest:* **keep this rule.**
+>
+> ## Handshakes
+> 6. **Do the 8 new handshakes start off?** *Suggest:* **off**, except the ones you turn on.
+> 7. **If two handshakes fire before the same Enter,** which wins? *Suggest:* **the last one.**
+> 8. **Slow start:** keep it at 5 seconds, or longer (8 seconds) to avoid triggering it by hesitating? *Suggest:* **8 seconds.**
+>
+> ## Earlier requests
+> 9. **Who is the repo for, and which device?** This repo is a copy of a project built for "Tj" and one Alps tablet, and its committed signing key is Tj's. Are you Tj on that tablet, or is this a fork for another device? If it's a fork, it needs its own signing key, and the screen calibrations may not fit.
+> 10. **Package rename to `app.orionmd.profiles`:** change only the app ID Android sees, or the internal Java package too? *Suggest:* **app ID only.** Remember the rename installs as a new app: run "Restore everything" in the old one, then uninstall it, then redo the setup.
+> 11. **App name "Profiles":** only the home-screen label, or rename "Launcher control" too? *Suggest:* label **"Profiles"**, settings screen **"Profiles settings"**.
+> 12. **Gestures:** which gestures and actions? And should they differ per profile? *Suggest:* FBOP and Rental each get swipe down (notifications), swipe up (drawer), double tap (lock the screen), each changeable.
+> 13. **Extra suggestions** from my earlier list: any you want? These were app locks, time-based profile switching, usage limits, folders, a profile tile, settings export/import and a switch log.
+>
+> ## Order of work
+> 14. **Ship v0.8.12 (the home-screen curtain) first?** *Suggest:* **yes.** Profiles rewrite the core unlock logic, so it's safer to release the finished curtain before starting.
+> 15. **Build order after that:**
+>     1. rename and app name
+>     2. the 3 profiles with the handshake map, visible apps, tiles, keyboard, status bar, Wi-Fi/Bluetooth and banners
+>     3. the 8 new handshakes
+>     4. per-profile home layout and wallpaper
+>     5. gestures
+>
+>     Each is its own tested release. *Suggest:* **this order.**
+>
+> Once these are answered, I'll write the full design for you to check, and start building only when you say "build".
+<!-- sha:a54988f1f156 -->
