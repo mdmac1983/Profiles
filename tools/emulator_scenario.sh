@@ -477,6 +477,9 @@ info "PR1: Double erase -> mode $PR_M1, profile $PR_A1; $(cut -c25-140 "$OUT/pr-
 check "PR1: a handshake set to Rental keeps the CUSTOM launcher (mode custom)" bash -c "[ \"$PR_M1\" = custom ]"
 check "PR1: ... and makes Rental the active profile" bash -c "[ \"$PR_A1\" = rental ]"
 check "PR1: ... with our launcher in front" grep -q 'app.orionmd.profiles' "$OUT/pr-1-resumed.txt"
+PR_DB="$(adb shell "run-as $PKG ls databases" 2>/dev/null | tr -d '\r' | tr '\n' ' ')"
+info "PR1b: databases after Rental: $PR_DB"
+check "PR1b (v1.3): Rental has its own home layout (launcher_rental.db, a copy of FBOP's)" bash -c "echo '$PR_DB' | grep -q 'launcher_rental.db'"
 # (2) a plain PIN -> FBOP
 adb logcat -c; lockpad; pad 1 2 3 4 e; sleep 7
 PR_M2="$(getmode)"; PR_A2="$(practive)"; resumed > "$OUT/pr-2-resumed.txt"
