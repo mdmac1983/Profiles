@@ -4,7 +4,9 @@ Version 1.1. Each feature has its own switch in Profiles settings unless it says
 # Three profiles
 - Owner (the stock launcher, where settings open), FBOP (a plain PIN always opens it) and Rental (its own apps and settings, starts as a copy of FBOP).
 - Each handshake opens the profile you choose for it; Owner always stays reachable.
-- Per profile: apps shown, pop-up notifications, Wi-Fi / Bluetooth rule, status bar, quick-settings tiles.
+- Per profile: apps shown, home-screen layout, gestures, pop-up notifications, Wi-Fi / Bluetooth rule, status bar, quick-settings tiles.
+- Rental restrictions (each a switch): no Settings, no Play Store, no uninstalling apps.
+- Home-screen gestures per profile: swipe down, double tap, two-finger swipe down (notifications, quick settings, lock, recent apps, app drawer).
 
 # Two worlds, one Home button
 - The custom home screen is the everyday world; the stock Quickstep launcher (Owner) is the private one.

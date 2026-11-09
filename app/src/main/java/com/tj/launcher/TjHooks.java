@@ -114,9 +114,51 @@ public final class TjHooks {
     private static float downX, downY;
     private static long downAt;
     private static boolean downHome, multiTouch;
+    // BT1e (v1.4): home-screen gestures (rules: GestureRules), a separate passive observer next to the page flick
+    private static boolean gDown; private static float gX, gY; private static long gAt; private static int gPointers;
+    private static long gTapUpAt; private static float gTapX, gTapY;
+
+    private static void gestureTouch(android.app.Activity a, MotionEvent ev) {
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN: gDown = homeScreenShowing() && Mode.isCustom(a); gX = ev.getRawX(); gY = ev.getRawY(); gAt = ev.getEventTime(); gPointers = 1; break;
+            case MotionEvent.ACTION_POINTER_DOWN: gPointers = Math.max(gPointers, ev.getPointerCount()); break;
+            case MotionEvent.ACTION_UP:
+                if (gDown) {
+                    int w = a.getResources().getDisplayMetrics().widthPixels;
+                    float dx = ev.getRawX() - gX, dy = ev.getRawY() - gY; long dt = ev.getEventTime() - gAt;
+                    GestureRules.Gesture g = GestureRules.classify(dx, dy, dt, gPointers, w, ev.getEventTime(), ev.getRawX(), ev.getRawY(), gTapUpAt, gTapX, gTapY);
+                    boolean tap = gPointers == 1 && GestureRules.isTap(dx, dy, dt, w);
+                    gTapUpAt = tap && g == null ? ev.getEventTime() : 0; gTapX = ev.getRawX(); gTapY = ev.getRawY();
+                    if (g != null) runGesture(a, g);
+                }
+                gDown = false; break;
+            case MotionEvent.ACTION_CANCEL: gDown = false; gTapUpAt = 0; break;
+            default: break;
+        }
+    }
+
+    private static void runGesture(android.app.Activity a, GestureRules.Gesture g) {
+        android.content.Context c = a.getApplicationContext();
+        GestureRules.Action act = GestureRules.parse(Profiles.getString(c, Profiles.active(c), g.key, ""), GestureRules.defaultFor(g, ReturnReset.isDebuggable(c)));
+        if (act == GestureRules.Action.NOTHING) return;
+        android.util.Log.i("TjHooks", "GESTURE " + g.title + " -> " + act.title);
+        if (act == GestureRules.Action.DRAWER) {
+            com.android.launcher3.Launcher l = launcher();
+            if (l != null) l.getStateManager().goToState(com.android.launcher3.LauncherState.ALL_APPS);
+            return;
+        }
+        TjAccessibilityService s = TjAccessibilityService.get();
+        if (s == null) return;   // the other actions need the accessibility helper
+        int ga = act == GestureRules.Action.NOTIFICATIONS ? android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
+                : act == GestureRules.Action.QUICK_SETTINGS ? android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
+                : act == GestureRules.Action.RECENTS ? android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+                : android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN;
+        s.performGlobalAction(ga);
+    }
 
     /** Called by Launcher.dispatchTouchEvent before the event is handled as usual. */
     public static void onTouch(android.app.Activity a, MotionEvent ev) {
+        try { gestureTouch(a, ev); } catch (Throwable t) { android.util.Log.e("TjHooks", "gesture hook failed", t); }
         try {
             if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {   // BI1: the finger is down: the real-pixel patch over the Screenshot slot goes away in this very frame (before the press feedback and any scroll), ACTION_OUTSIDE is only the second guard
                 lastHomeTouchMs = android.os.SystemClock.uptimeMillis();

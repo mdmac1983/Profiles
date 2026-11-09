@@ -153,7 +153,12 @@ public class ControlActivity extends Activity {
             toggle("Rental: no Play Store", "The Play Store is hidden from Rental's drawer and sent Home if it opens anyway.", Profiles.rentalOn(this, RentalRules.STORE_KEY), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RentalRules.STORE_KEY, v); HiddenApps.reloadLauncher(ControlActivity.this); } });
             toggle("Rental: no uninstalling apps", "Android's \"Uninstall this app?\" screen is closed at once while Rental is in front.", Profiles.rentalOn(this, RentalRules.UNINSTALL_KEY), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RentalRules.UNINSTALL_KEY, v); } });
         }
-        note("Per profile (" + ed.title + "): the apps shown (Everyday), no pop-up notifications (Everyday), no Wi-Fi or Bluetooth (Battery & memory), hidden status bar and tiles (Quick settings). Everything else is shared.");
+        for (final GestureRules.Gesture g : GestureRules.Gesture.values()) {   // BT1e (v1.4): home-screen gestures of this profile (swipe UP stays the app drawer)
+            final GestureRules.Action cur = GestureRules.parse(Profiles.getString(this, ed, g.key, ""), GestureRules.defaultFor(g, ReturnReset.isDebuggable(this)));
+            action(g.title + " on the home screen: " + cur.title, "Tap to change (Nothing, Notifications, Quick settings, Lock the screen, Recent apps, App drawer). Swipe up always opens the app drawer. No gesture opens Owner.", new Runnable() { public void run() {
+                Profiles.setString(ControlActivity.this, Profiles.editing(ControlActivity.this), g.key, GestureRules.next(cur).id); rebuild(); } });
+        }
+        note("Per profile (" + ed.title + "): the apps shown (Everyday), no pop-up notifications (Everyday), no Wi-Fi or Bluetooth (Battery & memory), hidden status bar and tiles (Quick settings), the gestures above and the home-screen layout. Everything else is shared.");
 
         group("everyday", "Everyday", true);
         action("Switch to the custom launcher", "Also closes the apps you opened from Quickstep.", new Runnable() { public void run() {
