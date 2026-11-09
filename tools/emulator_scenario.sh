@@ -565,7 +565,7 @@ setmode custom; rebind; home; sleep 3
 adb shell input swipe 300 420 300 760 200; sleep 2
 GE_SB3="$(ge_sb)"
 info "GE3: with Nothing chosen the status bar window is $GE_SB3"
-check "GE3: with 'Nothing' a swipe down leaves the panel closed" bash -c "! $(declare -f ge_open); ge_open '$GE_SB3'"
+check "GE3: with 'Nothing' a swipe down leaves the panel closed" bash -c "$(declare -f ge_open); ! ge_open '$GE_SB3'"
 adb shell input keyevent KEYCODE_BACK; sleep 1
 adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
 setmode custom; rebind; home
