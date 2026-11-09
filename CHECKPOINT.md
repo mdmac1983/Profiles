@@ -1,13 +1,13 @@
-# CHECKPOINT 739 — read me first, then TASKS.md
+# CHECKPOINT 740 — read me first, then TASKS.md
 
-**Written:** 2026-11-09T00:29:48Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `9508e71` (this checkpoint is the commit after it)
+**Written:** 2026-11-09T00:33:53Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `2da38fb` (this checkpoint is the commit after it)
 
 ## Just done
-BP1 answered: handshakes already toggles; new handshake ideas listed, none built
+BQ1 written: 8 pad/key handshakes chosen; handshake->profile map asked; nothing built
 
 ## Do this next
-wait for user's pick of new handshakes (BP1b) and BO1 answers; do not build until user says so; BL1e still pending
+wait for answers to BQ1b profile questions + the word build; BL1e still pending
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ wait for user's pick of new handshakes (BP1b) and BO1 answers; do not build unti
 
 ## Last ten checkpoints
 ```
+  a0eec15 ckpt 739: BP1 answered: handshakes already toggles; new handshake ideas listed, none bui
   4d9ef4b ckpt 738: BO1 written (package rename, gestures, multi-profile PINs, app name, suggestio
   7f3f7d7 ckpt 737: BN1 written: Tj wants tweaks/customizations, none named yet; asked him which
   f6a978f ckpt 736: BM1 done: README.md rewritten (features, architecture, structure, code map, te
@@ -26,8 +27,7 @@ wait for user's pick of new handshakes (BP1b) and BO1 answers; do not build unti
   66783a5 ckpt 732: BL1d first cu run #418 id 42526557769 (922d886): 13 PASS 1 FAIL (CU5). Wall ke
   922d886 ckpt 731: BL1d: emulator section cu written (calibrate with home_patch+home_curtain ON, 
   3791c9b ckpt 730: BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kep
-  b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
 ```
 
-(4 automatic checkpoint(s) since the last deliberate one — the
+(2 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
