@@ -31,16 +31,19 @@ public class HiddenAppsActivity extends Activity {
 
     private final List<Row> rows = new ArrayList<>();
     private Set<String> shown = new HashSet<>();
+    /** BT1a: the profile whose drawer this screen edits (Profiles settings passes it; default the one being edited there). */
+    public static final String EXTRA_PROFILE = "profile";
+    private ProfileRules.Profile profile = ProfileRules.DEFAULT;
 
     private String summary() {
-        return "Apps shown in the custom launcher\nSwitch ON = shown in the drawer and its search (" + shown.size() + " of " + rows.size() + " shown). Newly installed apps start OFF until you switch them on.";
+        return "Apps shown in " + profile.title + "\nSwitch ON = shown in the drawer and its search (" + shown.size() + " of " + rows.size() + " shown). Newly installed apps start OFF until you switch them on.";
     }
 
     private void setAll(boolean on) {
         for (Row r : rows) {
             if (on == shown.contains(r.pkg)) continue;
             if (on) shown.add(r.pkg); else shown.remove(r.pkg);
-            HiddenApps.setShown(this, r.pkg, on);
+            HiddenApps.setShown(this, profile, r.pkg, on);
         }
         HiddenApps.reloadLauncher(this);
     }
@@ -50,6 +53,7 @@ public class HiddenAppsActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         if (Mode.isCustom(this)) { finish(); return; }   // locked into the custom launcher: this screen only exists in Quickstep mode
+        profile = ProfileRules.customOrDefault(ProfileRules.parse(getIntent().getStringExtra(EXTRA_PROFILE), Profiles.editing(this)));
         PackageManager pm = getPackageManager();
         Set<String> seen = new HashSet<>();
         for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
@@ -60,7 +64,7 @@ public class HiddenAppsActivity extends Activity {
             rows.add(r);
         }
         Collections.sort(rows, new Comparator<Row>() { @Override public int compare(Row a, Row c) { return a.label.compareToIgnoreCase(c.label); } });
-        for (Row r : rows) if (HiddenApps.isPackageShown(this, r.pkg)) shown.add(r.pkg);
+        for (Row r : rows) if (HiddenApps.isPackageShownIn(this, profile, r.pkg)) shown.add(r.pkg);
 
         final float dp = getResources().getDisplayMetrics().density;
         LinearLayout root = new LinearLayout(this);
@@ -115,7 +119,7 @@ public class HiddenAppsActivity extends Activity {
                         boolean on = !shown.contains(r.pkg);
                         if (on) shown.add(r.pkg); else shown.remove(r.pkg);
                         sw.setChecked(on);
-                        HiddenApps.setShown(HiddenAppsActivity.this, r.pkg, on);
+                        HiddenApps.setShown(HiddenAppsActivity.this, profile, r.pkg, on);
                         HiddenApps.reloadLauncher(HiddenAppsActivity.this);
                         head.setText(summary());
                     }
