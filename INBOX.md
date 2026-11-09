@@ -1267,3 +1267,8 @@ build release version in my repo only
 ```
 build remaining updates
 ```
+
+## 2026-11-09T03:19:42Z
+```
+why is the only release v1.0
+```
