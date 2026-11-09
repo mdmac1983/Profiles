@@ -1754,3 +1754,7 @@
 >
 > **Still open:** the extra suggestions you weren't sure about (app locks, time-based profile switching, settings export/import and the others).
 <!-- sha:8fb43b9403b6 -->
+
+## 2026-11-09T02:27:37Z
+> The emulator test of the three profiles (base, e1, pr) is running. I'll read the result when the timer fires around 02:36 UTC.
+<!-- sha:7cb67b572d29 -->
