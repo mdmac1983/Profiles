@@ -1806,3 +1806,7 @@
 >
 > Still open from my last message: should each profile get its own wallpaper, which costs one screenshot flash per profile switch, or should all profiles share one?
 <!-- sha:a3e9d710e6d5 -->
+
+## 2026-11-09T03:54:27Z
+> The local release gate passed, and GitHub is building and signing v1.1 now (about 5 minutes). I'll confirm the Release and send the link when it lands.
+<!-- sha:f53feb48c186 -->
