@@ -1236,3 +1236,29 @@ name the profiles: Owner, FBOP (plain pin opens this), Rental. I want to be able
 
 what other unanswered questions do you have?
 ```
+
+## 2026-11-09T00:55:47Z
+```
+1. yes add restrictions -- add options in settings;
+2. im good with suggested;
+3. okay with suggested
+4. copy of fbop
+5. keep this rule
+6. off except ones i turn on;
+7. the last one
+8. 8 seconds
+9. fork , but screen calibrations will fit, it is the same device
+10. app id only
+11. rename launcher control
+12. ok with suggested;
+13.  not sure yet;
+
+
+add in app updates
+
+start at v 1.0 step .1  each update
+
+in the bottomof settings, add user guide and features 
+
+build release version in my repo only
+```
