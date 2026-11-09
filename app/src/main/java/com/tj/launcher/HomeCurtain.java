@@ -129,6 +129,20 @@ public final class HomeCurtain {
         } catch (Throwable t) { Log.e(TAG, "saving the curtain failed", t); return false; }
     }
 
+    /**
+     * A capture found the home UNCHANGED: renew the stored picture's time stamp (the meta only, no picture is written) once {@link HomeCurtainRules#stampDue} says so, so a home that is never
+     * rearranged does not turn "too old" after {@link HomeCurtainRules#MAX_AGE_MS}. The memory copy keeps its bitmap and takes the new stamp. True = renewed. Worker thread.
+     */
+    public static boolean restampIfDue(Context c, int rot, HomeCurtainRules.Meta m, long nowMs) {
+        try {
+            if (m == null || !HomeCurtainRules.stampDue(nowMs - m.savedAtMs)) return false;
+            Features.setString(c, HomeCurtainRules.curtainMeta(rot), HomeCurtainRules.metaString(m.sig, m.step, m.hash, nowMs));
+            Bitmap b = cachedFor(rot, m.sig);
+            if (b != null && cachedSavedAt() == m.savedAtMs) setCache(rot, m.sig, nowMs, b);
+            return true;
+        } catch (Throwable t) { Log.e(TAG, "renewing the curtain stamp failed", t); return false; }
+    }
+
     /** The stored curtain's meta for this rotation, or null (none, a malformed meta, or the file is gone). A cheap check: no decoding. */
     public static HomeCurtainRules.Meta meta(Context c, int rot) {
         try {

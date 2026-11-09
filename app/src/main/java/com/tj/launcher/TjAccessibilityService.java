@@ -1915,7 +1915,7 @@ public class TjAccessibilityService extends AccessibilityService {
             else {
                 HomeCurtainRules.Meta m = HomeCurtain.meta(app, rot);
                 boolean changed = HomeCurtainRules.changed(m != null, m == null ? "" : m.sig, m == null ? 0 : m.step, m == null ? 0 : m.hash, sig, step, h);
-                if (!changed) { HomeCurtain.preload(app, rot, sig, dispW, dispH); result = "unchanged since the last picture"; noteIt = false; }
+                if (!changed) { boolean renewed = HomeCurtain.restampIfDue(app, rot, m, System.currentTimeMillis()); HomeCurtain.preload(app, rot, sig, dispW, dispH); result = renewed ? "unchanged since the last picture (time stamp renewed)" : "unchanged since the last picture"; noteIt = renewed; }
                 else {
                     android.graphics.Bitmap wall = HomeCurtain.loadWall(app, rot, step, sig);
                     if (wall == null) result = "the wallpaper picture could not be loaded";
