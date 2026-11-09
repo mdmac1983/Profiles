@@ -102,7 +102,7 @@ hpmae(){ compare -metric MAE -extract "$3" "$OUT/$1.png" "$OUT/$2.png" null: 2>&
 hpnums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' ' '; }
 hpstatus(){ adb shell "run-as $PKG cat shared_prefs/tj_features.xml" 2>/dev/null | grep -o 'name="home_patch_status">[^<]*' | cut -d'>' -f2 | tr -d '\r'; }
 hpcrops(){ adb shell "run-as $PKG ls files" 2>/dev/null | tr -d '\r' | grep -c 'homeshot_r0_x.*png$'; }
-hpwall(){ setmode quickstep; rebind; home; adb shell am start -n "$PKG/.SetupActivity" --ez test_home_wallpaper true >/dev/null 2>&1; sleep 6; setmode custom; rebind; home; sleep 3; }
+hpwall(){ setmode quickstep; rebind; home; adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_home_wallpaper true >/dev/null 2>&1; sleep 6; setmode custom; rebind; home; sleep 3; }
 hpopen(){ adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; }
 hpclose(){ adb shell input keyevent KEYCODE_BACK; sleep 3; }
 if want base; then # section base
@@ -979,7 +979,7 @@ beat "before V"
 adb shell pm grant "$PKG" android.permission.READ_EXTERNAL_STORAGE > "$OUT/v-grant.txt" 2>&1
 vfeat true 12; adb shell am force-stop "$PKG"; sleep 1      # lock patch on + a deliberately WRONG model (12 % too big) that the calibration must correct
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" | grep -o 'test_lock_wallpaper_done">[^<]*' > "$OUT/v-lockwp.txt" 2>&1
 info "V2: test lock wallpaper: $(cat $OUT/v-lockwp.txt)"
 setmode custom; rebind; home
@@ -1777,7 +1777,7 @@ aenums(){ echo "$1" | grep -o "$2=[^ ]*" | head -1 | grep -o '[0-9]*' | tr '\n' 
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1                       # phase A: no helper
 aefeat true true 30; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/ae-setpin.txt" 2>&1
 aelock; adb logcat -c
@@ -1974,7 +1974,7 @@ adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: no helper photo, the stored real pixels are the only source
 psfeat 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/ps-setpin.txt" 2>&1
 pslock; adb logcat -c
@@ -2090,7 +2090,7 @@ adb shell "run-as $PKG rm -f shared_prefs/tj_restore.xml" >/dev/null 2>&1
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1     # no helper: the stored real pixels are the only source
 pafeat false 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6      # a lock wallpaper to calibrate against
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6      # a lock wallpaper to calibrate against
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/pa-setpin.txt" 2>&1
 
@@ -2221,7 +2221,7 @@ ptget(){ grep "label=$1 " "$OUT/pt-metrics.txt" | tail -1 | grep -o "$2=[^ ]*" |
 # ---- setup: automatic calibration (proved by section pa), so the patch rests invisibly and opens dimmed
 pafeat true 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/pt-setpin.txt" 2>&1
 palock; adb logcat -c
@@ -3276,7 +3276,7 @@ fpmed(){ local l v; for l in $1; do v="$(fpget $l $2)"; [ -n "$v" ] && echo "$v"
 # ---- setup as section pt: automatic calibration, the lock screen, the measured scrim
 pafeat true 0; adb shell am force-stop "$PKG"; sleep 1
 setmode quickstep; rebind; home
-adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
+adb shell am start -n "$PKG/com.tj.launcher.SetupActivity" --ez test_lock_wallpaper true >/dev/null 2>&1; sleep 6
 setmode custom; rebind; home
 adb shell locksettings set-pin 1234 > "$OUT/fp-setpin.txt" 2>&1
 palock; adb logcat -c
