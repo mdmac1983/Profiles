@@ -1792,3 +1792,17 @@
 >
 > **Not built:** a separate wallpaper for each profile. Android gives a wallpaper a new ID every time it's set, so the patch that hides the power menu's Screenshot entry would have to recalibrate after every profile switch. Each recalibration takes a screenshot and flashes the screen once. Do you still want per-profile wallpapers with that flash, or should all profiles share one wallpaper?
 <!-- sha:82517467f550 -->
+
+## 2026-11-09T03:35:49Z
+> Not released yet. I found the cause of most of the failures, and one re-run is left before I build v1.1.
+>
+> - **The plain-PIN problem was in the tests, not the app.** A few older tests wrote their settings file while the app was still running. The running app ignores that file and keeps its old settings, so the result depended on which test ran before. With `uf` run on its own, a plain PIN opened FBOP both times. I've changed those tests to stop the app first, as the project's own rules require.
+> - **Now passing:** the three profiles, the Rental restrictions, Rental's own home layout, swipe-down gestures and the core lock-safety checks.
+> - **Two small leftovers:**
+>   - **Curtain picture:** one check was slightly over its limit on a single frame. That has happened once before and then passed three times in a row.
+>   - **Double-tap lock:** my code saw the double tap, but the test read the screen as still unlocked. I've added logging so the re-run shows whether Android refused the lock or the test read it wrong.
+>
+> That re-run finishes in about 17 minutes. If it's clean, I'll build and publish v1.1 and send you the link.
+>
+> Still open from my last message: should each profile get its own wallpaper, which costs one screenshot flash per profile switch, or should all profiles share one?
+<!-- sha:a3e9d710e6d5 -->
