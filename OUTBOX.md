@@ -1596,3 +1596,40 @@
 >
 > Still open from before: who the repo is for and which device, the package-rename scope, which gestures, and whether v0.8.12 ships first. Say "build" when you want me to start.
 <!-- sha:d6ea6766b62b -->
+
+## 2026-11-09T00:40:09Z
+> I've written this into `TASKS.md` (BR1). Here's the plan as I understand it. Nothing is built yet.
+>
+> ## The setup
+> | Profile | Opened by |
+> | :- | :- |
+> | **FBOP** | **A plain PIN, always.** This replaces today's "plain PIN = custom launcher" rule. |
+> | **Owner** | Whichever handshakes you assign to it |
+> | **Rental** | Whichever handshakes you assign to it |
+>
+> **Settings would have two new parts:**
+> 1. **Handshakes:** each handshake gets an on/off switch and an "Opens: Owner / FBOP / Rental" choice. At least one handshake would always have to open Owner, so you can never lock yourself out of the profile that has the settings.
+> 2. **Profiles:** one page per profile, with:
+>    - visible apps
+>    - home-screen layout
+>    - wallpaper
+>    - quick-settings tiles
+>    - keyboard
+>    - status bar shown or hidden
+>    - Wi-Fi/Bluetooth rule
+>    - notification banners on or off
+>
+> Locking the tablet would end any session, so the next plain PIN is FBOP again. Moving from one profile to another would close the previous profile's apps and clear its notifications, as leaving Quickstep does today.
+>
+> ## Questions before I write the design
+> 1. **Is Owner the stock Quickstep launcher**, the private world it is today, or a third configuration of the custom launcher? If Owner is Quickstep, its home screen and drawer stay stock and only its settings, such as tiles and keyboard, are adjustable.
+> 2. **Where should settings open?** I'd suggest **Owner only**, so nobody in FBOP or Rental can change anything. That matches today, where settings only open in Quickstep.
+> 3. **First build: all eight customizations, or a smaller first set?** I'd suggest starting with **visible apps, quick-settings tiles, Wi-Fi/Bluetooth rule and banners**, which all reuse existing code. **Home layout** and **wallpaper** would follow as a second step; they're the heaviest, because each needs its own saved layout or picture swapped behind the lock screen.
+> 4. **Should Rental get extra restrictions?** For example: hide the settings app, block app installs or uninstalls, or block the notification panel.
+>
+> Once you answer these, I'll write the full design into a doc for you to check. When you're happy with it, say "build". The still-open questions from before also matter here:
+> - Who is the repo for, and which device?
+> - Package rename: app ID only, or the Java package too?
+> - Which gestures?
+> - Should v0.8.12 (the home-screen curtain) ship first? I recommend it, because the profiles change the core of the unlock logic.
+<!-- sha:072f1d1b6f9d -->
