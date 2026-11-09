@@ -1377,6 +1377,7 @@ public class TjAccessibilityService extends AccessibilityService {
 
     /** A method is on when its switch says so; if Tj switched every one off, the original (double erase) stays on so Quickstep can never become unreachable. */
     private boolean methodOn(UnlockMethods.Method m) {
+        if (ProfileRules.forcedOn(m.id, Profiles.ownerReachable(this))) return true;   // BT1a: Owner must stay reachable: Double erase opens it while no selected handshake does
         boolean any = false;
         for (UnlockMethods.Method x : UnlockMethods.Method.values()) if (Features.get(this, x.prefKey(), x.defaultOn)) { any = true; break; }
         if (!any) return m == UnlockMethods.Method.ERASE2;
@@ -1520,6 +1521,13 @@ public class TjAccessibilityService extends AccessibilityService {
     private void secretAccepted(UnlockMethods.Method m) {
         buzz();
         android.content.Context app = getApplicationContext();
+        ProfileRules.Profile target = Profiles.target(app, m);
+        if (target.custom()) {   // BT1a: this handshake opens FBOP or Rental: the custom launcher stays in front behind the keyguard; the unlock picks the profile (applyUnlockChoiceBody)
+            Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  handshake '" + m.title + "' accepted -> " + target.title);
+            profileNote("handshake '" + m.title + "' accepted: " + target.title + " opens at the unlock");
+            LockLog.add(app, "HANDSHAKE", m.id + " accepted -> profile " + target.title + ", mode " + Mode.get(app));
+            return;
+        }
         if (Mode.isCustom(app)) { Mode.set(app, Mode.QUICKSTEP); flippedByHandshake = true; qsApp = null; resumedPkg = null; }   // review RV1: the lock began in custom = no live Quickstep session, so nothing to resume (a stale app would be cold-started)
         if (ProfileSession.stockBehindLockOnHandshake()) startQuickstepFront("handshake");   // AD5 (the app that was open, else the stock home) / AC9: Quickstep in front NOW, whatever the pre-arm switch says: the custom stack may already be in front (prepared at the wake) and must be replaced before the unlock reveals it
         preArmedThisLock = true;
@@ -1681,6 +1689,9 @@ public class TjAccessibilityService extends AccessibilityService {
                 Log.i(TAG, "UNLOCKPICK Enter click not recognised; pending pad entry evaluated at the unlock: " + (pm == null ? "none" : pm.id));
             }
             UnlockMethods.Method m = unlock.consume(System.currentTimeMillis());
+            ProfileRules.Profile target = ProfileRules.unlockTarget(m != null, m == null ? null : Profiles.target(app, m));   // BT1a: a plain PIN = FBOP; a handshake = the profile chosen for it
+            UnlockMethods.Method customVia = target.custom() ? m : null;
+            if (target.custom()) m = null;   // everything below treats a custom-profile handshake like a plain PIN into the custom launcher, with that profile
             preArmedThisLock = false; preCleanedThisLock = false;
             boolean wasFlipped = flippedByHandshake;
             flippedByHandshake = false;
@@ -1705,8 +1716,21 @@ public class TjAccessibilityService extends AccessibilityService {
             LockQuiet.onUnlockAsync(app, false);   // AK1: a plain unlock (custom launcher): the radios stay off; forget the memory of this lock
             BatterySaverGuard.onUnlockAsync(app, false);   // BA2: the custom launcher keeps the saver off; Quickstep's memory waits for a later gesture unlock
             boolean ends = ProfileSession.plainUnlockEndsQuickstep(Mode.isCustom(app), CrashGuard.automationOff(app));
+            ProfileRules.Profile before = Profiles.active(app);
+            boolean switched = !CrashGuard.automationOff(app) && Profiles.setActive(app, target) && ProfileRules.switchNeedsReset(before, target);
+            String via = customVia == null ? "plain PIN" : "handshake " + customVia.id;
+            if (switched || (ends && target != ProfileRules.DEFAULT)) LockLog.add(app, "PROFILE", target.title + " (" + via + ", before " + before.title + (ends ? ", an Owner session ended" : "") + ")");
+            if (switched && !ends) {   // BT1a: FBOP <-> Rental: the other profile's apps go, its settings come, Recents starts empty (the same clean start as the end of an Owner session)
+                Profiles.applyActive(app, via);
+                startRouter("custom");
+                ReturnReset.run(app);
+                Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  " + target.title + " (" + via + "; switched from " + before.title + ")");
+                Log.i(TAG, "UNLOCKPICK profile " + target.title + " (switched from " + before.title + ")");
+                return;
+            }
             if (ends) {
                 Mode.set(app, Mode.CUSTOM);
+                Profiles.applyActive(app, via);   // BT1a: the profile's own apps / tiles / status bar / banners (Mode.set applied the generic custom ones)
                 startRouter("custom");           // quiet: the stack is already (or about to be) in front; no Home press, no double-Home
                 ReturnReset.run(app);            // closes what Quickstep opened, clears the shade, radios off, Solitaire last (the cover is usually up already)
                 Features.setStringAsync(this, UnlockPick.LAST_KEY, now() + "  custom launcher (plain unlock ended the Quickstep session)");
