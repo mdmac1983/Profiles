@@ -1063,3 +1063,6 @@ Tj, 2026-11-07 ~06:05 UTC (verbatim): "The battery saver tests work. But the loc
   - [ ] BO1d "change app name to profiles". NOT BUILT. app_name in launcher3/res/values/strings.xml (Launcher) + labels of Launcher control etc. Open: which labels.
   - [ ] BO1e "suggest other customizations": list given in the reply (OUTBOX 2026-11-09).
   - [ ] BO1f Asked: is the user Tj with the same tablet, or a fork (repo mdmac1983/Profiles; docs and committed signing key are Tj's)?
+- [ ] BP1 User, 2026-11-09 (verbatim): "what other handshakes can be implemented? i want all handshakes as toggle options in settings"
+  - [x] BP1a ANSWERED: all 16 existing lock-screen handshakes are already toggles (ControlActivity loops UnlockMethods.Method.values(), lines ~181-197); return methods and secret entrances too. Any new Method enum entry gets a toggle automatically.
+  - [ ] BP1b NEW HANDSHAKE IDEAS listed in the reply (OUTBOX 2026-11-09): pad rhythm, long-press Delete, PIN pad pull from the shade, proximity wave/cover, flip face-down, tilt, gyroscope twist, headphone plug, hold volume while Enter, shade pull-down x2 on lock screen, emergency-button tap-and-back, charger + volume combo, wake-count. NOT BUILT (user rule BO1: "do not build until i say so"); waits on which ones to build.

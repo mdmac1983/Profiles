@@ -1,13 +1,13 @@
-# CHECKPOINT 738 — read me first, then TASKS.md
+# CHECKPOINT 739 — read me first, then TASKS.md
 
-**Written:** 2026-11-09T00:21:49Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
-**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `b50ce7d` (this checkpoint is the commit after it)
+**Written:** 2026-11-09T00:29:48Z · **tests:** all 5 fast checks green (gradle suite: see ship.sh)
+**Branch:** `claude/kind-pasteur-ccqmmc` · **builds on:** `9508e71` (this checkpoint is the commit after it)
 
 ## Just done
-BO1 written (package rename, gestures, multi-profile PINs, app name, suggestions); nothing built per user
+BP1 answered: handshakes already toggles; new handshake ideas listed, none built
 
 ## Do this next
-wait for answers to BO1a-f questions; do not build until user says so; BL1e still pending
+wait for user's pick of new handshakes (BP1b) and BO1 answers; do not build until user says so; BL1e still pending
 
 *(resuming? CLAUDE.md's "FIRST ACTION OF EVERY SESSION" comes before "Starting a session" — do that one first, or autosave stays off all session.)*
 
@@ -17,6 +17,7 @@ wait for answers to BO1a-f questions; do not build until user says so; BL1e stil
 
 ## Last ten checkpoints
 ```
+  4d9ef4b ckpt 738: BO1 written (package rename, gestures, multi-profile PINs, app name, suggestio
   7f3f7d7 ckpt 737: BN1 written: Tj wants tweaks/customizations, none named yet; asked him which
   f6a978f ckpt 736: BM1 done: README.md rewritten (features, architecture, structure, code map, te
   4de1d25 ckpt 735: BM1 README request written into TASKS. Interrupted change 041aa83..HEAD (HomeC
@@ -26,8 +27,7 @@ wait for answers to BO1a-f questions; do not build until user says so; BL1e stil
   922d886 ckpt 731: BL1d: emulator section cu written (calibrate with home_patch+home_curtain ON, 
   3791c9b ckpt 730: BL1c steps 3-6 BUILT (compiles; unit suite running): TAS wiring (full wall kep
   b72bb88 ckpt 729: BL1c step 2 DONE: HomeCurtain.java (store: walls per rot+step, composed curtai
-  631f26d ckpt 728: BL1c step 1 DONE: HomeCurtainRules (pure: switch default, whyNotUse, whyNotCap
 ```
 
-(2 automatic checkpoint(s) since the last deliberate one — the
+(4 automatic checkpoint(s) since the last deliberate one — the
 session was still mid-step. `git diff` against it shows what changed.)
