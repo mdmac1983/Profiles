@@ -1073,4 +1073,5 @@ Tj, 2026-11-07 ~06:05 UTC (verbatim): "The battery saver tests work. But the loc
   - [ ] BR1a Three profiles: Owner, FBOP (DEFAULT: a plain PIN always opens it; replaces "plain PIN = custom launcher"), Rental.
   - [ ] BR1b Settings: per handshake an "Opens: Owner / FBOP / Rental" choice (plus on/off).
   - [ ] BR1c Settings: per-profile customizations (list from BQ1: visible apps, home layout, wallpaper, QS tiles, keyboard, status bar, Wi-Fi/Bluetooth rule, banners, name).
+  - [x] BR1e ANSWERED 2026-11-09 (verbatim "1. yes; 2. owners only; 3. all customizations"): Owner = the stock Quickstep launcher; settings open in Owner only; ALL customizations (FBOP + Rental get all eight; Owner = stock, so only tiles / keyboard / status bar / radios / banners / wallpaper apply). Rental restrictions (Q4) unanswered.
   - [ ] BR1d OPEN questions sent: is Owner = stock Quickstep or a third custom config; where settings live (Owner only?); which customizations in the first build; switching cleanup. NOT BUILT (BO1 rule: wait for "build").
