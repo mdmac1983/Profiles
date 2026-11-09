@@ -36,6 +36,9 @@ public final class Features {
     public static void setInt(Context c, String key, int v) { p(c).edit().putInt(key, v).commit(); }
     public static void allOff(Context c) { p(c).edit().clear().commit(); }
     /** Removes a stored value (the code default applies again). */
+    /** BS1a: a screen that shows a value written in the background. SharedPreferences keeps listeners weakly: the caller holds the listener in a field. */
+    public static void listen(Context c, SharedPreferences.OnSharedPreferenceChangeListener l) { p(c).registerOnSharedPreferenceChangeListener(l); }
+    public static void unlisten(Context c, SharedPreferences.OnSharedPreferenceChangeListener l) { p(c).unregisterOnSharedPreferenceChangeListener(l); }
     public static void remove(Context c, String key) { p(c).edit().remove(key).commit(); }
     /** Every stored preference. Only {@link ReportState} reads this, and only through its allow-list. */
     static java.util.Map<String, ?> all(Context c) { return p(c).getAll(); }   // package-private on purpose: only ReportState may read every preference (code review, 2026-11-05)

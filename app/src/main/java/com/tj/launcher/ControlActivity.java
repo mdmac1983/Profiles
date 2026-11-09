@@ -63,7 +63,21 @@ public class ControlActivity extends Activity {
         RecentsGuard.describeAsTarget(this);
         if (Mode.isCustom(this)) { finish(); return; }
         build();
+        Updater.autoCheck(this);   // BS1a: at most every 6 hours
+        Features.listen(this, updateListener);
     }
+
+    @Override protected void onPause() {
+        super.onPause();
+        Features.unlisten(this, updateListener);
+    }
+
+    /** BS1a: the update status changes in the background (download results): show it at once. */
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener updateListener = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+        @Override public void onSharedPreferenceChanged(android.content.SharedPreferences sp, String key) {
+            if (Updater.KEY_STATUS.equals(key)) runOnUiThread(new Runnable() { @Override public void run() { if (!isFinishing()) rebuild(); } });
+        }
+    };
 
     private int px(int v) { return Math.round(v * dp); }
 
@@ -372,6 +386,18 @@ public class ControlActivity extends Activity {
                         rebuild();
                     } }).setNegativeButton("Cancel", null).show();
         }});
+
+        // BS1a: in-app updates (Owner only, like every setting here)
+        section("Updates");
+        note("Installed: Profiles " + Updater.installedVersion(this) + "\nStatus: " + Updater.statusLine(this));
+        final String avail = Updater.available(this);
+        if (avail != null) action("Install " + avail, "Downloads the update from the Profiles Releases page and installs it. Android asks you to confirm.", new Runnable() { public void run() { Updater.download(ControlActivity.this); rebuild(); } });
+        action("Check for updates", "Looks for a newer version on " + UpdateRules.RELEASES_PAGE.replace("https://", "") + " (also checked by itself when this screen opens, at most every 6 hours).", new Runnable() { public void run() { Updater.check(ControlActivity.this); rebuild(); } });
+
+        // BS1c (user: "in the bottom of settings, add user guide and features")
+        section("Help");
+        action("User guide", "How unlocking, the handshakes, the ways back, setup and updates work.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, HelpActivity.class).putExtra(HelpActivity.EXTRA_PAGE, HelpActivity.GUIDE)); } });
+        action("Features", "Everything Profiles does, in one list.", new Runnable() { public void run() { startActivity(new Intent(ControlActivity.this, HelpActivity.class).putExtra(HelpActivity.EXTRA_PAGE, HelpActivity.FEATURES)); } });
     }
 
     private String describeTarget() {
