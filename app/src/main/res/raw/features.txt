@@ -21,10 +21,11 @@ Version 1.1. Each feature has its own switch in Profiles settings unless it says
 - The Recents list only ever shows apps that the custom home screen is allowed to show.
 - Every custom session starts clean: an empty Recents list and the home screen alone.
 
-# 16 secret handshakes into Owner
+# 24 secret handshakes (each opens Owner, FBOP or Rental)
 - On the PIN pad: Double erase, Tap and erase, Erase ladder, Peek three times, Peek five times.
 - Keys: Volume code, Volume ping-pong, Both volume keys, Hold then tap, Three Backs + Volume Up, Volume Up + double erase, Side-key flurry.
 - Sensors and plugs: Charger flick, Tablet twirl, Triple shake, Double knock.
+- New in 1.1 (all off until you switch them on): PIN rhythm, Long-press Delete, Slow start (8 s), Delete before Enter, Hold Volume Up while tapping Enter, Volume Up right after waking, Slow wake count, Volume Down x3 then the side key.
 - An optional 40 ms buzz confirms a handshake; Owner can reopen the app you left.
 
 # Back to the custom home screen

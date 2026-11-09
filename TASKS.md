@@ -1089,7 +1089,7 @@ Tj, 2026-11-07 ~06:05 UTC (verbatim): "The battery saver tests work. But the loc
   - [ ] BS1j NEXT = v1.1: profiles Owner (Quickstep) / FBOP (plain PIN) / Rental, handshake -> profile map, per-profile apps/tiles/keyboard/status bar/radios/banners (BR1, BS1f order). Design doc first: research/PROFILES_ABC_2026-11-09.md.
 - [ ] BT1 User, 2026-11-09 (verbatim): "build remaining updates" = v1.1 .. v1.5 in the BS1f order, one tested release each:
   - [ ] BT1a v1.1 profiles Owner (Quickstep) / FBOP (plain PIN) / Rental + handshake -> profile map + per-profile apps / tiles / keyboard / status bar / radios / banners
-  - [ ] BT1b v1.2 the 8 new pad/key handshakes (BQ1a), default OFF, slow start 8 s
+  - [ ] BT1b (FOLDED INTO v1.1: autosave had already pushed it to main) the 8 new pad/key handshakes (BQ1a), default OFF, slow start 8 s
   - [ ] BT1c v1.3 Rental restrictions with switches (hide Settings app, hide Play Store, block uninstall)
   - [ ] BT1d v1.4 per-profile home layout (Rental starts as a copy of FBOP) + per-profile HOME wallpaper (lock wallpaper shared)
   - [ ] BT1e v1.5 gestures (FBOP + Rental: swipe down = notifications, swipe up = drawer, double tap = lock screen, each changeable; none opens Owner)
