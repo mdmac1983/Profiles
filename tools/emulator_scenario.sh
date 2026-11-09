@@ -536,6 +536,39 @@ adb shell input keyevent KEYCODE_HOME; sleep 1
 adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
 setmode custom; rebind; home
 fi # section rr
+
+if want ge; then # section ge
+ensurehome
+# ---- GE (BT1e, v1.4, 2026-11-09: gestures "ok with suggested"): on the settled custom home screen a swipe down opens the notification panel and a double tap
+#      locks the screen (debug builds default to "Nothing", so the section sets both); with "Nothing" a swipe down leaves the panel closed.
+beat "before GE"
+gefeat(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"gesture_swipe_down\\\">$1</string><string name=\\\"gesture_double_tap\\\">$2</string></map>\" > shared_prefs/tj_features.xml'"; }
+ge_kg(){ adb shell dumpsys window policy 2>/dev/null | grep -o 'showing=[a-z]*' | head -1; }
+ge_sb(){ adb shell dumpsys window windows 2>/dev/null | awk '/u0 StatusBar}/{f=1} f { l=tolower($0); if (match(l, /m?frame=\[[0-9,]*\]\[[0-9,]*\]/)) { s=substr(l, RSTART, RLENGTH); sub(/^m?frame=/, "", s); print s; exit } }'; }
+gefeat notifications lock
+setmode custom; rebind; home; sleep 3
+adb logcat -c
+adb shell input swipe 300 420 300 760 200; sleep 2
+GE_SB="$(ge_sb)"; adb logcat -d -s TjHooks:I | grep GESTURE > "$OUT/ge-log.txt" 2>&1
+info "GE1: after a swipe down the status bar window is $GE_SB; log: $(cut -c25-120 "$OUT/ge-log.txt" | tr '\n' '|')"
+check "GE1: a swipe down on the home screen opens the notification panel (the status bar window is full height)" bash -c "echo '$GE_SB' | grep -qv '\]\[600,24\]'"
+check "GE1: ... and the hook logged the gesture" grep -q "GESTURE Swipe down -> Notifications" "$OUT/ge-log.txt"
+adb shell input keyevent KEYCODE_BACK; sleep 1; home; sleep 3
+adb shell input tap 300 470; sleep 0.15; adb shell input tap 300 470; sleep 3
+GE_KG="$(ge_kg)"
+info "GE2: after a double tap: $GE_KG"
+check "GE2: a double tap on the home screen locks the screen" bash -c "[ '$GE_KG' = showing=true ]"
+adb shell input keyevent KEYCODE_WAKEUP; sleep 1; adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 2
+gefeat none none
+setmode custom; rebind; home; sleep 3
+adb shell input swipe 300 420 300 760 200; sleep 2
+GE_SB3="$(ge_sb)"
+info "GE3: with Nothing chosen the status bar window is $GE_SB3"
+check "GE3: with 'Nothing' a swipe down leaves the panel closed" bash -c "echo '$GE_SB3' | grep -q '\]\[600,24\]'"
+adb shell input keyevent KEYCODE_BACK; sleep 1
+adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
+setmode custom; rebind; home
+fi # section ge
 if want y2; then # section y2
 ensurehome
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
