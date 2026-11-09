@@ -1198,3 +1198,12 @@ analyze code and generate a read me of all features and structure of app
 ```
 ok now that i have a general idea of what the app does, id like to make some tweeks and customizations
 ```
+
+## 2026-11-09T00:20:37Z
+```
+change package name to app.orionmd.profiles;
+add gesture customizations;
+add multiple profiles with custom pin  for each profile;
+change app name to profiles;
+suggest other customizations i can implement and do not build until i say so
+```
