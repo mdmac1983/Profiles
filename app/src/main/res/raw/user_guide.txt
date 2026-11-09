@@ -1,0 +1,31 @@
+# Profiles: user guide
+Profiles replaces the home screen of this tablet. It keeps two worlds apart: the everyday custom home screen, which opens with your normal PIN, and the stock Quickstep launcher (Owner), which opens only after a secret handshake on the lock screen. These settings only open in Owner.
+
+# Unlocking
+Your PIN is the tablet's normal lock-screen PIN. Profiles never reads or stores it.
+- Type just the PIN: the custom home screen opens. This always works.
+- Do a handshake first, then type the PIN: Owner (Quickstep) opens.
+The default handshake is "Double erase": on the empty PIN pad tap Delete twice, then type your PIN. A short buzz tells you the handshake counted.
+Choose your handshakes under "Unlock into Quickstep (secret handshakes)". You can switch several on; at least one always stays on.
+Locking the tablet ends an Owner session. The next plain PIN opens the custom home screen again.
+
+# Going back to the custom home screen from Owner
+Use any way that is switched on under "Return to the custom launcher": press Home twice, tap the "Back to custom" icon or quick-settings tile, a volume-key code, or simply lock the tablet. The apps opened in Owner are closed and their notifications cleared.
+
+# If you cannot get into Owner
+Master failsafes work from the custom home screen: the key code under "Safety" (Volume Up, Up, Down, Down, Back, Back, Up, Down within 20 seconds) or the hidden corner of Solitaire (tap it 5 times quickly, then hold).
+
+# Apps shown on the custom home screen
+Open "Apps shown in the custom launcher" and tick the apps that may appear. New installs start hidden. The Recents list only ever shows apps that are ticked.
+
+# The power menu
+Hold the side key: on the lock screen and the custom home screen the Screenshot entry is hidden behind a picture of the wallpaper. If it ever looks out of place, use "Calibrate the patch" under "Power menu".
+
+# One-time setup with adb
+Some features (quick-settings tiles, keyboard, status bar, faster clean-up, animations) need a permission that only a computer or phone with adb can give. Open "Tablet setup & report" or "adb setup guide" under "Advanced" and follow the steps. Until then those features simply do nothing.
+
+# Updates
+Under "Updates", tap "Check for updates". When a newer version exists, tap "Install"; Android asks you to confirm. The first time, Android asks you to allow "Install unknown apps" for Profiles. Only an update signed with the same key as your installed Profiles can install.
+
+# Undo everything
+"Restore everything" (near the bottom) switches every feature off and puts every Android setting back as it was before Profiles changed it. Use it before you uninstall Profiles.
