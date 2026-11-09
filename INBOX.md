@@ -1222,3 +1222,8 @@ what other handshakes can be implemented? i want all handshakes as toggle option
 ```
 pin pad and keys options; can we wire handshake to a specific configuration? as in profile a, profile b, profile c?
 ```
+
+## 2026-11-09T00:39:20Z
+```
+name the profiles: Owner, FBOP (plain pin opens this), Rental. I want to be able to set up which handshake opens which profile as well as the customizations for each profile from settings.
+```
