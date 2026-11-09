@@ -1838,3 +1838,12 @@
 > 1. **Per-profile wallpaper:** do you want it? Each profile switch would cost one screenshot flash while the power-menu patch recalibrates. The alternative is one shared wallpaper.
 > 2. **The extra ideas you weren't sure about:** app locks, time-based profile switching, usage limits, folders, a profile tile, settings export/import and a switch log.
 <!-- sha:5508385af44b -->
+
+## 2026-11-09T04:04:55Z
+> Noted both. All profiles keep one shared wallpaper, so v1.1 is already complete there. The extra ideas are parked in the task list until you bring them up.
+>
+> Nothing else is waiting on me. When you've installed v1.1 on the tablet, tell me how these three went:
+> 1. **The in-app update:** in Profiles settings, Updates, check, then install. If it doesn't work, send me the status line.
+> 2. **Double tap** on the home screen: does it lock the screen?
+> 3. **Any of the new key handshakes** you switch on: do they open the profile you chose?
+<!-- sha:819a60272114 -->
