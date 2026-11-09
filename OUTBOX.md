@@ -1552,3 +1552,47 @@
 >
 > I've noted these in `TASKS.md` (BP1) and built nothing, as you asked. Still waiting on the earlier questions: who the repo is for and which device, the package-rename scope, which profile-PIN option (A, B or C), which gestures, and whether v0.8.12 ships first.
 <!-- sha:83ea982af6d0 -->
+
+## 2026-11-09T00:34:13Z
+> Yes, a handshake can open a specific profile, and the app already has most of what that needs. When you tap Enter, the code already knows *which* handshake fired, not just *whether* one did. Sending each handshake to a chosen profile is a lookup on top of that.
+>
+> I've noted your pick of handshakes 1–8, the PIN-pad and key ones, in `TASKS.md` (BQ1). Nothing is built yet.
+>
+> ## How it would work
+> In Launcher control, each handshake would get an **on/off switch** and an **"Opens:" choice**: Quickstep, Profile A, Profile B, Profile C, and so on.
+>
+> | You do | You get |
+> | :- | :- |
+> | Plain PIN | **Default profile** (you choose which one; Profile A if you don't) |
+> | Double erase + PIN | e.g. **Quickstep** |
+> | PIN rhythm + PIN | e.g. **Profile B** |
+> | Hold Volume Up + Enter | e.g. **Profile C** |
+>
+> All the switching happens behind the lock screen, the same way it does today. When the unlock finishes, the right profile is already showing.
+>
+> ## What a profile could hold
+> Profiles A, B and C would be configurations of the custom launcher. Quickstep stays the stock launcher, as one fixed target. Each profile could have its own:
+> - **Visible apps** in the drawer. Recents would only ever show that profile's apps.
+> - **Home-screen layout:** its own icon arrangement.
+> - **Wallpaper.**
+> - **Quick-settings tiles, keyboard, and the status bar shown or hidden.**
+> - **Wi-Fi / Bluetooth rule:** forced off, or left alone.
+> - **Notification banners** on or off.
+> - **Name**, shown in Launcher control.
+>
+> Switching to a different profile would also clean up after the previous one, the way leaving Quickstep does today: it closes that profile's apps and clears its notifications.
+>
+> ## Questions before I design it
+> 1. **How many profiles?** A fixed three (A, B, C), or as many as you like?
+> 2. **Which items from that list should differ** between profiles? Fewer items means a smaller, safer build.
+> 3. **What does a plain PIN open?** Always the same default profile, or the last profile you used? Today it is always the custom launcher, which is a safety rule.
+> 4. **Two handshakes at once:** if two fire before the same Enter, which wins? I'd suggest the last one.
+> 5. **Keep Quickstep as a target?**
+> 6. **Where is the settings screen?** Today it is only reachable while Quickstep is active. Should it stay there, or should a profile be able to have it too?
+>
+> ## Two notes on your chosen handshakes
+> - **Slow start** (waiting 5 seconds before the first digit) can trigger by accident if you just hesitate. I'd make the wait longer or leave it off by default.
+> - **Delete before Enter** is safe from normal typo fixes: fixing a typo ends with a digit before Enter, never with Delete.
+>
+> Still open from before: who the repo is for and which device, the package-rename scope, which gestures, and whether v0.8.12 ships first. Say "build" when you want me to start.
+<!-- sha:d6ea6766b62b -->
