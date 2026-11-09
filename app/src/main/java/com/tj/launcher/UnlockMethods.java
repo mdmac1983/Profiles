@@ -34,7 +34,16 @@ public final class UnlockMethods {
         CHARGER("charger", "Charger flick", "Plug the charger in, pull it out, plug it in again within 8 seconds on the lock screen, then the PIN.", false),
         ROTATE("rotate", "Tablet twirl", "Turn the tablet to landscape, back to portrait, landscape, portrait within 8 seconds (auto-rotate on), then the PIN.", false),
         SHAKE("shake", "Triple shake (experimental)", "Shake the tablet firmly three times on the lock screen, then the PIN. Thresholds are a first guess: tell me if it is too touchy or too stiff.", false),
-        KNOCK("knock", "Double knock (experimental)", "Knock twice on the back of the tablet with your knuckle, about half a second apart, on the lock screen, then the PIN. Thresholds are a first guess.", false);
+        KNOCK("knock", "Double knock (experimental)", "Knock twice on the back of the tablet with your knuckle, about half a second apart, on the lock screen, then the PIN. Thresholds are a first guess.", false),
+        // ---- BQ1a / BT1b (user, 2026-11-09: "pin pad and keys options"), v1.2: all OFF until switched on
+        RHYTHM("rhythm", "PIN rhythm", "Type the first two digits of your PIN, wait about 2 seconds, then type the rest and Enter.", false),
+        LONGDEL("longdel", "Long-press Delete", "On the empty PIN pad touch and HOLD Delete for a second, then type your PIN.", false),
+        SLOWSTART("slowstart", "Slow start", "Pull up the PIN pad and wait 8 seconds before the first digit, then type your PIN.", false),
+        DELENTER("delenter", "Delete before Enter", "Type your PIN plus one extra digit, tap Delete once, then Enter.", false),
+        VOLUP_ENTER("volupenter", "Hold Volume Up while tapping Enter", "Type your PIN, then hold Volume Up and tap Enter while you still hold it.", false),
+        VOLUP_WAKE("volupwake", "Volume Up right after waking", "Press the side key to wake the tablet and, within 3 seconds, hold Volume Up for a second; then the PIN.", false),
+        WAKE3("wake3", "Slow wake count", "Turn the screen on and off slowly 3 times (about 2 seconds each, within 30 seconds), leave it on, then the PIN.", false),
+        VOLDOWN3_SIDE("voldown3side", "Volume Down x3, then the side key", "On the lock screen press Volume Down 3 times, then the side key twice (screen off, on) within 10 seconds, then the PIN.", false);
 
         public final String id, title, how;
         public final boolean defaultOn;
@@ -51,6 +60,9 @@ public final class UnlockMethods {
     public static final long VALID_FREE_MS = 90_000;        // a latch made away from the pad (volume / side key / peek) lasts this long
     public static final long VOLUME_WINDOW_MS = 6_000, SIDEKEY_WINDOW_MS = 4_000, PEEK_WINDOW_MS = 15_000, VOLUP_ERASE_WINDOW_MS = 10_000;
     public static final long PEEK5_WINDOW_MS = 25_000, CHARGER_WINDOW_MS = 8_000, ROTATE_WINDOW_MS = 8_000, HOLD_TAP_MS = 4_000;
+    /** BT1b (v1.2) timings. */
+    public static final long RHYTHM_PAUSE_MS = 2_000, RHYTHM_OTHER_MAX_MS = 1_500, SLOWSTART_MS = 8_000, VOLUP_ENTER_MS = 700, VOLUP_WAKE_MS = 3_000;
+    public static final long WAKE3_WINDOW_MS = 30_000, WAKE3_MIN_GAP_MS = 1_500, VOLDOWN3_MS = 6_000, VOLDOWN3_SIDE_MS = 10_000;
     public static final int HOLD_REPEATS = 40;               // ~3 s of Volume Down auto-repeat (first repeat after ~0.5 s, then every ~50 ms)
 
     /** The methods that are effectively ON: the stored switches, but if every one is off the original (double erase) stays on, so Quickstep can never become unreachable. */
@@ -64,7 +76,8 @@ public final class UnlockMethods {
     /** True if any method that needs the hardware-key access is selected. */
     public static boolean needsKeys(Enabled stored) {
         for (Method m : selected(stored))
-            if (m == Method.VOLUME || m == Method.VOLUP_ERASE || m == Method.VOLBOTH || m == Method.PINGPONG || m == Method.VOLHOLD || m == Method.BACKS_UP) return true;
+            if (m == Method.VOLUME || m == Method.VOLUP_ERASE || m == Method.VOLBOTH || m == Method.PINGPONG || m == Method.VOLHOLD || m == Method.BACKS_UP
+                    || m == Method.VOLUP_ENTER || m == Method.VOLUP_WAKE || m == Method.VOLDOWN3_SIDE) return true;
         return false;
     }
 
@@ -83,6 +96,10 @@ public final class UnlockMethods {
 
     // ---- pad session: what was tapped since this PIN pad appeared. 'N' = digit, 'D' = delete.
     private final StringBuilder pad = new StringBuilder();
+    private final long[] padAt = new long[12];             // BT1b: when each pad key of this entry was tapped (the rhythm)
+    private long padShownAt = 0, lastVolUpRepeatAt = 0, screenOnAt = 0, vd3OffAt = 0;
+    private boolean longDelOnEmpty = false;
+    private final ArrayDeque<Long> wakeOns = new ArrayDeque<>(), volDowns = new ArrayDeque<>();
     // ---- free detectors
     private final long[] vol = new long[4];                 // last 4 volume events: time
     private final boolean[] volUp = new boolean[4];         // ... and whether each was Up
@@ -116,6 +133,7 @@ public final class UnlockMethods {
     public void reset() {
         pad.setLength(0); dismissedPad = null; volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
         lastVolDownAt = 0; volDownHeld = false; heldAt = 0; pingPong.reset(); backsUp.reset(); power.clear(); rotations.clear();
+        padShownAt = 0; lastVolUpRepeatAt = 0; screenOnAt = 0; vd3OffAt = 0; longDelOnEmpty = false; wakeOns.clear(); volDowns.clear();
         disarm();
     }
 
@@ -131,7 +149,8 @@ public final class UnlockMethods {
         // The pad going away right after typing = the Enter that unlocked: the keyguard tears its keys down before the Enter click can be recognised, so remember what was typed.
         if (!shown && pad.length() > 0) { dismissedPad = pad.toString(); dismissedAt = now; }
         pad.setLength(0);
-        padMatch = null; volUpBeforeErase = false;
+        padMatch = null; volUpBeforeErase = false; longDelOnEmpty = false;
+        padShownAt = shown ? now : 0;
         if (shown) {
             peeks.addLast(now);
             while (!peeks.isEmpty() && now - peeks.peekFirst() > PEEK5_WINDOW_MS) peeks.pollFirst();
@@ -161,7 +180,11 @@ public final class UnlockMethods {
     }
     private String dismissedPad; private long dismissedAt;
 
+    /** BT1b: Delete was long-pressed (TYPE_VIEW_LONG_CLICKED). Counts for "Long-press Delete" only on an EMPTY pad. */
+    public void onLongDelete(long now) { if (pad.length() == 0) longDelOnEmpty = true; }
+
     public void onKey(UnlockPick.Key k, long now) {
+        if (pad.length() < padAt.length) padAt[pad.length()] = now;
         if (k == UnlockPick.Key.DIGIT) pad.append('N');
         else if (k == UnlockPick.Key.DELETE) {
             pad.append('D');
@@ -181,13 +204,31 @@ public final class UnlockMethods {
         else if (enabled.on(Method.VOLUP_ERASE) && p.startsWith("DD") && volUpBeforeErase) m = Method.VOLUP_ERASE;
         else if (enabled.on(Method.LADDER) && p.startsWith("DNDNDN")) m = Method.LADDER;
         else if (enabled.on(Method.ERASE2) && p.startsWith("DD")) m = Method.ERASE2;
-        pad.setLength(0); volUpBeforeErase = false;
+        // BT1b (v1.2): checked after the older ones, so an entry that already matched one keeps it
+        if (m == null && enabled.on(Method.VOLUP_ENTER) && lastVolUpRepeatAt > 0 && now - lastVolUpRepeatAt <= VOLUP_ENTER_MS && digitsOnly(p)) m = Method.VOLUP_ENTER;
+        if (m == null && enabled.on(Method.LONGDEL) && longDelOnEmpty && digitsOnly(p)) m = Method.LONGDEL;
+        if (m == null && enabled.on(Method.DELENTER) && p.length() >= 3 && p.endsWith("D") && digitsOnly(p.substring(0, p.length() - 1))) m = Method.DELENTER;
+        if (m == null && enabled.on(Method.RHYTHM) && rhythm(p)) m = Method.RHYTHM;
+        if (m == null && enabled.on(Method.SLOWSTART) && padShownAt > 0 && p.length() > 0 && padAt[0] - padShownAt >= SLOWSTART_MS && digitsOnly(p)) m = Method.SLOWSTART;
+        pad.setLength(0); volUpBeforeErase = false; longDelOnEmpty = false; padShownAt = now;
         if (m != null) arm(m, now, true);
         else if (armedAtPad) {
             if (!inheritedOnce && now - armedFirstAt <= RETRY_GRACE_MS) { armedAt = now; inheritedOnce = true; }   // AC7: the FIRST retry after a wrong PIN inherits the gesture (a correct PIN would have unlocked within a second or two)
             else disarm();                                        // a second retry, or one long after the gesture, withdraws the pad latch; free latches (volume, side key, peek) stay
         }
         return m;
+    }
+
+    private static boolean digitsOnly(String p) { return p.length() > 0 && p.indexOf('D') < 0; }
+
+    /** PIN rhythm: digits only (at least 4), a pause of at least 2 s between the 2nd and 3rd digit, every other gap shorter than 1.5 s. */
+    private boolean rhythm(String p) {
+        if (p.length() < 4 || !digitsOnly(p) || p.length() > padAt.length) return false;
+        for (int i = 1; i < p.length(); i++) {
+            long gap = padAt[i] - padAt[i - 1];
+            if (i == 2 ? gap < RHYTHM_PAUSE_MS : gap >= RHYTHM_OTHER_MAX_MS) return false;
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------ volume keys (lock screen only: the service checks)
@@ -210,8 +251,13 @@ public final class UnlockMethods {
      * (The plain volume-code and Volume Up + erase detectors keep their own {@link #onVolume}.)
      */
     public void onHwKey(int code, int repeatCount, long now) {
+        if (code == KeySeq.VOL_UP && repeatCount >= 1) {   // BT1b: Volume Up is being HELD
+            lastVolUpRepeatAt = now;
+            if (repeatCount >= 10 && screenOnAt > 0 && now - screenOnAt <= VOLUP_WAKE_MS + 1_000 && enabled.on(Method.VOLUP_WAKE) && armed != Method.VOLUP_WAKE) arm(Method.VOLUP_WAKE, now, false);
+        }
         if (code == KeySeq.VOL_DOWN && repeatCount >= HOLD_REPEATS) { volDownHeld = true; heldAt = now; return; }
         if (repeatCount != 0) return;
+        if (code == KeySeq.VOL_DOWN) { volDowns.addLast(now); while (volDowns.size() > 3) volDowns.pollFirst(); }
         if (code == KeySeq.VOL_UP) {
             if (volDownHeld && now - heldAt <= HOLD_TAP_MS && enabled.on(Method.VOLHOLD)) { volDownHeld = false; arm(Method.VOLHOLD, now, false); }
             lastVolUpAt = now;
@@ -254,13 +300,28 @@ public final class UnlockMethods {
         screenChanges.addLast(now);
         while (!screenChanges.isEmpty() && now - screenChanges.peekFirst() > SIDEKEY_WINDOW_MS) screenChanges.pollFirst();
         if (!on) {                     // the screen going dark ends the lock session: pad, volume code, peeks and any free latch are gone
+            vd3OffAt = volDowns.size() == 3 && now - volDowns.peekFirst() <= VOLDOWN3_MS + VOLDOWN3_SIDE_MS ? now : 0;   // BT1b: Volume Down x3, then the side key (this OFF) ...
+            volDowns.clear(); screenOnAt = 0; lastVolUpRepeatAt = 0;
             pad.setLength(0); volN = 0; peeks.clear(); lastVolUpAt = 0; volUpBeforeErase = false;
             lastVolDownAt = 0; volDownHeld = false; heldAt = 0; pingPong.reset(); backsUp.reset(); power.clear(); rotations.clear();
             disarm();
         } else if (screenChanges.size() >= 4 && enabled.on(Method.SIDEKEY)) {
             screenChanges.clear();
             arm(Method.SIDEKEY, now, false);
+        } else {
+            screenOnAt = now;   // BT1b: Volume Up right after waking
+            if (vd3OffAt > 0 && now - vd3OffAt <= VOLDOWN3_SIDE_MS && enabled.on(Method.VOLDOWN3_SIDE)) { vd3OffAt = 0; arm(Method.VOLDOWN3_SIDE, now, false); return; }   // ... and on again
+            vd3OffAt = 0;
+            wakeOns.addLast(now);
+            while (!wakeOns.isEmpty() && now - wakeOns.peekFirst() > WAKE3_WINDOW_MS) wakeOns.pollFirst();
+            if (wakeOns.size() >= 3 && enabled.on(Method.WAKE3) && slowGaps(wakeOns)) { wakeOns.clear(); arm(Method.WAKE3, now, false); }
         }
+    }
+
+    private static boolean slowGaps(ArrayDeque<Long> times) {
+        Long prev = null;
+        for (Long t : times) { if (prev != null && t - prev < WAKE3_MIN_GAP_MS) return false; prev = t; }
+        return true;
     }
 
     // ------------------------------------------------------------------ latch
