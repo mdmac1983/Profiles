@@ -1272,3 +1272,9 @@ build remaining updates
 ```
 why is the only release v1.0
 ```
+
+## 2026-11-09T04:04:13Z
+```
+1. shared wallpaper;
+2. we will revisit later
+```
