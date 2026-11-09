@@ -252,7 +252,7 @@ public class UnlockMethodsTest {
             assertTrue(ids.add(m.id)); assertTrue(m.prefKey().startsWith("unlock_m_")); assertFalse(m.how.isEmpty());
         }
         assertEquals(UnlockMethods.Method.values().length, ids.size());
-        assertEquals(16, ids.size());
+        assertEquals("16 original + 8 of v1.2 (BT1b)", 24, ids.size());
     }
 
     // ---- O1: the ten extra methods

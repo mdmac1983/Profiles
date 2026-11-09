@@ -34,8 +34,8 @@ public class UnlockMethodsV12Test {
 
     @Test public void slowStartWaitsEightSecondsBeforeTheFirstDigit() {
         UnlockMethods u = only(Method.SLOWSTART);
-        u.onPad(true, 0); digits(u, 8_500, 200, 200, 200);
-        assertEquals(Method.SLOWSTART, u.onEnter(9_500));
+        u.onPad(true, 1_000); digits(u, 9_500, 200, 200, 200);   // real times are wall-clock ms, never 0
+        assertEquals(Method.SLOWSTART, u.onEnter(10_500));
         u.onPad(true, 20_000); digits(u, 23_000, 200, 200, 200);
         assertNull("3 s of hesitation is not the handshake", u.onEnter(24_000));
     }
