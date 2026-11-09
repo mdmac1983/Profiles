@@ -27,14 +27,30 @@ public final class HiddenApps {
         return s;
     }
 
-    private static Set<String> allowed(Context c) {
+    /** BT1a: the allowed set of the ACTIVE custom profile (FBOP keeps the old key, Rental has its own and starts as a copy of FBOP's). */
+    private static Set<String> allowed(Context c) { return allowed(c, Profiles.active(c)); }
+
+    private static Set<String> allowed(Context c, ProfileRules.Profile profile) {
         SharedPreferences sp = p(c);
         if (!sp.getBoolean(BASELINE, false)) {
             Set<String> base = AppVisibility.baseline(installedLaunchablePackages(c), c.getPackageName());
             sp.edit().putStringSet(ALLOWED, base).putBoolean(BASELINE, true).commit();
-            return base;
         }
-        return new HashSet<>(sp.getStringSet(ALLOWED, new HashSet<String>()));
+        String key = ProfileRules.scopedKey(ALLOWED, profile);
+        if (!key.equals(ALLOWED) && !sp.contains(key)) return new HashSet<>(sp.getStringSet(ALLOWED, new HashSet<String>()));   // a new Rental = a copy of FBOP
+        return new HashSet<>(sp.getStringSet(key, new HashSet<String>()));
+    }
+
+    /** BT1a: shown in THAT profile's drawer (the apps screen edits one profile at a time). */
+    public static boolean isPackageShownIn(Context c, ProfileRules.Profile profile, String pkg) {
+        try { synchronized (LOCK) { return AppVisibility.isShown(allowed(c, profile), pkg, null, c.getPackageName()); } } catch (Throwable t) { return true; }
+    }
+
+    public static void setShown(Context c, ProfileRules.Profile profile, String pkg, boolean shown) {
+        synchronized (LOCK) {
+            Set<String> a = AppVisibility.withShown(allowed(c, profile), pkg, shown);
+            p(c).edit().putStringSet(ProfileRules.scopedKey(ALLOWED, profile), a).commit();
+        }
     }
 
     public static boolean isShown(Context c, ComponentName app) {
@@ -52,18 +68,16 @@ public final class HiddenApps {
         } catch (Throwable t) { return true; }
     }
 
-    public static void setShown(Context c, String pkg, boolean shown) {
-        synchronized (LOCK) {
-            Set<String> a = AppVisibility.withShown(allowed(c), pkg, shown);
-            p(c).edit().putStringSet(ALLOWED, a).commit();
-        }
-    }
+    public static void setShown(Context c, String pkg, boolean shown) { setShown(c, Profiles.active(c), pkg, shown); }
 
     public static void onRemoved(Context c, String pkg) {
         try {
-            synchronized (LOCK) {
-                Set<String> a = AppVisibility.withoutRemoved(allowed(c), pkg);
-                p(c).edit().putStringSet(ALLOWED, a).commit();
+            synchronized (LOCK) {   // BT1a: an uninstalled app is forgotten by every profile (a reinstall is new = hidden everywhere until allowed)
+                for (ProfileRules.Profile pr : new ProfileRules.Profile[] { ProfileRules.Profile.FBOP, ProfileRules.Profile.RENTAL }) {
+                    String key = ProfileRules.scopedKey(ALLOWED, pr);
+                    if (!key.equals(ALLOWED) && !p(c).contains(key)) continue;
+                    p(c).edit().putStringSet(key, AppVisibility.withoutRemoved(allowed(c, pr), pkg)).commit();
+                }
             }
         } catch (Throwable ignored) { }
     }

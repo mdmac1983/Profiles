@@ -44,7 +44,7 @@ public final class TileProfile {
 
     public static String tilesFor(Context c, String mode) {
         return Mode.QUICKSTEP.equals(mode) ? sanitize(Features.getString(c, QUICKSTEP_KEY, DEFAULT_QUICKSTEP), DEFAULT_QUICKSTEP)
-                                           : sanitize(Features.getString(c, CUSTOM_KEY, DEFAULT_CUSTOM), DEFAULT_CUSTOM);
+                                           : sanitize(Profiles.getString(c, Profiles.active(c), CUSTOM_KEY, DEFAULT_CUSTOM), DEFAULT_CUSTOM);   // BT1a: per custom profile
     }
 
     public static final String APPLIED_KEY = "qs_tiles_applied_mode";     // the mode whose list was last written

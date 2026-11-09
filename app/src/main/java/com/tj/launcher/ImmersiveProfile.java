@@ -21,7 +21,7 @@ public final class ImmersiveProfile {
 
     private ImmersiveProfile() {}
 
-    public static boolean enabled(Context c) { return Features.get(c, KEY, false); }
+    public static boolean enabled(Context c) { return Profiles.getBool(c, Profiles.active(c), KEY, false); }   // BT1a: per custom profile
     public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == android.content.pm.PackageManager.PERMISSION_GRANTED; }
 
     /**

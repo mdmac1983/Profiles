@@ -33,7 +33,7 @@ public final class NotifQuiet {
     public static boolean permitted(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == PackageManager.PERMISSION_GRANTED; }
 
     /** The switch (shipped default ON, debug builds OFF: {@link NotifQuietPolicy#defaultOn}). */
-    public static boolean switchOn(Context c) { return Features.get(c, NotifQuietPolicy.KEY, NotifQuietPolicy.defaultOn(ReturnReset.isDebuggable(c))); }
+    public static boolean switchOn(Context c) { return Profiles.getBool(c, Profiles.active(c), NotifQuietPolicy.KEY, NotifQuietPolicy.defaultOn(ReturnReset.isDebuggable(c))); }   // BT1a: per custom profile
 
     private static SharedPreferences p(Context c) { return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
 

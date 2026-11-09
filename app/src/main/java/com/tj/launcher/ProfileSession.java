@@ -23,7 +23,7 @@ public final class ProfileSession {
     private ProfileSession() {}
 
     public static boolean prearm(Context c) { return Features.get(c, PREARM_KEY, true); }
-    public static boolean radiosOff(Context c) { return Features.get(c, RADIOS_KEY, true); }
+    public static boolean radiosOff(Context c) { return Profiles.getBool(c, Profiles.active(c), RADIOS_KEY, true); }   // BT1a: per custom profile
     public static boolean preClean(Context c) { return Features.get(c, PRECLEAN_KEY, true); }
     public static boolean buzz(Context c) { return Features.get(c, BUZZ_KEY, true); }
 

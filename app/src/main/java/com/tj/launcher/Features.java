@@ -39,6 +39,8 @@ public final class Features {
     /** BS1a: a screen that shows a value written in the background. SharedPreferences keeps listeners weakly: the caller holds the listener in a field. */
     public static void listen(Context c, SharedPreferences.OnSharedPreferenceChangeListener l) { p(c).registerOnSharedPreferenceChangeListener(l); }
     public static void unlisten(Context c, SharedPreferences.OnSharedPreferenceChangeListener l) { p(c).unregisterOnSharedPreferenceChangeListener(l); }
+    /** BT1a: is a value stored at all (Rental falls back to FBOP's value for a key it has not stored)? */
+    public static boolean has(Context c, String key) { return p(c).contains(key); }
     public static void remove(Context c, String key) { p(c).edit().remove(key).commit(); }
     /** Every stored preference. Only {@link ReportState} reads this, and only through its allow-list. */
     static java.util.Map<String, ?> all(Context c) { return p(c).getAll(); }   // package-private on purpose: only ReportState may read every preference (code review, 2026-11-05)
