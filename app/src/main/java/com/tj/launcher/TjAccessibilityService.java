@@ -93,6 +93,7 @@ public class TjAccessibilityService extends AccessibilityService {
         trackUnlockKey(event);
         if (probeWanted()) { try { probeEvent(event); } catch (Throwable t) { Log.e(TAG, "probe failed", t); } }
         if (event != null) { try { guardStrayHome(event); } catch (Throwable t) { Log.e(TAG, "guard failed", t); } }
+        if (event != null) { try { guardRental(event); } catch (Throwable t) { Log.e(TAG, "rental guard failed", t); } }   // BT1c
         if (!coverOn) {
             if (overlay != null || overlayShown) removeOverlay();
             return;   // nothing to do and nothing scanned: zero cost when the feature is off
@@ -2437,6 +2438,27 @@ public class TjAccessibilityService extends AccessibilityService {
     private final long[] guardHist = new long[StrayHomeGuard.MAX];
     private int guardIdx = 0;
     private long standDownUntil = 0, lastGuardMs = 0, guardPausedUntil = 0;
+
+    // ---------------------------------------------------------------- BT1c (v1.2): Rental's restrictions (rules: RentalRules)
+    private long rentalLastActMs = 0; private String rentalLastPkg = "";
+
+    private void guardRental(AccessibilityEvent e) {
+        if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        CharSequence pk = e.getPackageName(), cl = e.getClassName();
+        if (pk == null) return;
+        String p = pk.toString();
+        if (!RentalRules.SETTINGS_PKG.equals(p) && !RentalRules.STORE_PKG.equals(p) && !p.endsWith("packageinstaller")) return;   // cheap early out for every other window
+        android.content.Context app = getApplicationContext();
+        int act = RentalRules.windowAction(Mode.isCustom(app), keyguardLockedFast(), Profiles.active(app), p, cl == null ? "" : cl.toString(),
+                Profiles.rentalOn(app, RentalRules.SETTINGS_KEY), Profiles.rentalOn(app, RentalRules.STORE_KEY), Profiles.rentalOn(app, RentalRules.UNINSTALL_KEY));
+        if (act == RentalRules.NOTHING) return;
+        long now = android.os.SystemClock.uptimeMillis();
+        if (p.equals(rentalLastPkg) && now - rentalLastActMs < 800) return;   // one action per burst of window events
+        rentalLastPkg = p; rentalLastActMs = now;
+        performGlobalAction(act == RentalRules.GO_BACK ? GLOBAL_ACTION_BACK : GLOBAL_ACTION_HOME);
+        Log.i(TAG, "RENTAL blocked " + p + "/" + cl + (act == RentalRules.GO_BACK ? " (Back)" : " (Home)"));
+        LockLog.add(app, "RENTAL", "blocked " + p + (act == RentalRules.GO_BACK ? ": the uninstall screen was closed" : ": sent Home"));
+    }
 
     private void guardStrayHome(AccessibilityEvent e) {
         if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;

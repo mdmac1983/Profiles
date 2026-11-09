@@ -55,6 +55,7 @@ public final class HiddenApps {
 
     public static boolean isShown(Context c, ComponentName app) {
         try {
+            if (Profiles.restrictedInDrawer(c, Profiles.active(c), app.getPackageName())) return false;   // BT1c: a Rental restriction
             synchronized (LOCK) { return AppVisibility.isShown(allowed(c), app.getPackageName(), app.getClassName(), c.getPackageName()); }
         } catch (Throwable t) {
             android.util.Log.e("TjHidden", "isShown failed, showing the app", t);
@@ -64,6 +65,7 @@ public final class HiddenApps {
 
     public static boolean isPackageShown(Context c, String pkg) {
         try {
+            if (Profiles.restrictedInDrawer(c, Profiles.active(c), pkg)) return false;   // BT1c: a Rental restriction
             synchronized (LOCK) { return AppVisibility.isShown(allowed(c), pkg, null, c.getPackageName()); }
         } catch (Throwable t) { return true; }
     }

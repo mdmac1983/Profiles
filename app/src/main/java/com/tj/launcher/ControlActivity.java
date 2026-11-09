@@ -148,6 +148,11 @@ public class ControlActivity extends Activity {
             }
             box.addView(pick);
         }
+        if (ed == ProfileRules.Profile.RENTAL) {   // BT1c (user: "yes add restrictions -- add options in settings")
+            toggle("Rental: no Settings", "The Settings app is hidden from Rental's drawer, and a Settings screen that opens anyway (the gear in the panel, App info) is sent Home.", Profiles.rentalOn(this, RentalRules.SETTINGS_KEY), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RentalRules.SETTINGS_KEY, v); HiddenApps.reloadLauncher(ControlActivity.this); } });
+            toggle("Rental: no Play Store", "The Play Store is hidden from Rental's drawer and sent Home if it opens anyway.", Profiles.rentalOn(this, RentalRules.STORE_KEY), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RentalRules.STORE_KEY, v); HiddenApps.reloadLauncher(ControlActivity.this); } });
+            toggle("Rental: no uninstalling apps", "Android's \"Uninstall this app?\" screen is closed at once while Rental is in front.", Profiles.rentalOn(this, RentalRules.UNINSTALL_KEY), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, RentalRules.UNINSTALL_KEY, v); } });
+        }
         note("Per profile (" + ed.title + "): the apps shown (Everyday), no pop-up notifications (Everyday), no Wi-Fi or Bluetooth (Battery & memory), hidden status bar and tiles (Quick settings). Everything else is shared.");
 
         group("everyday", "Everyday", true);

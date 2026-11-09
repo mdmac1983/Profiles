@@ -51,6 +51,14 @@ public final class Profiles {
     }
     public static void setString(Context c, Profile p, String key, String v) { Features.setString(c, ProfileRules.scopedKey(key, p), v); }
 
+    // ---------------------------------------------------------------- BT1c (v1.2): Rental's restrictions (each a switch, release ON / debug OFF)
+    public static boolean rentalOn(Context c, String key) { return Features.get(c, key, RentalRules.defaultOn(ReturnReset.isDebuggable(c))); }
+
+    /** Hidden by a Rental restriction in this profile's drawer (on top of its app list)? */
+    public static boolean restrictedInDrawer(Context c, Profile p, String pkg) {
+        return p == Profile.RENTAL && RentalRules.hiddenInDrawer(p, pkg, rentalOn(c, RentalRules.SETTINGS_KEY), rentalOn(c, RentalRules.STORE_KEY));
+    }
+
     // ---------------------------------------------------------------- handshake -> profile
     private static Profile storedTarget(Context c, UnlockMethods.Method m) { return ProfileRules.parse(Features.getString(c, TARGET_PREFIX + m.id, ""), Profile.OWNER); }
 
