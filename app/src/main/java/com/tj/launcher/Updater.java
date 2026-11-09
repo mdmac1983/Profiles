@@ -115,8 +115,8 @@ public final class Updater {
         int st = -1, reason = 0;
         try (Cursor q = dm.query(new DownloadManager.Query().setFilterById(id))) {
             if (q != null && q.moveToFirst()) {
-                st = q.getInt(q.getColumnIndex(DownloadManager.COLUMN_STATUS));
-                reason = q.getInt(q.getColumnIndex(DownloadManager.COLUMN_REASON));
+                st = q.getInt(q.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                reason = q.getInt(q.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));
             }
         } catch (Throwable t) { Log.e(TAG, "query failed", t); }
         if (st != DownloadManager.STATUS_SUCCESSFUL) {
