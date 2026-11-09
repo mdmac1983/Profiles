@@ -133,6 +133,23 @@ public class ControlActivity extends Activity {
         both.addView(smallButton("Close all groups", new Runnable() { public void run() { setAllGroups(false); } }));
         box.addView(both);
 
+        // BT1a (user 2026-11-09: "name the profiles: Owner, FBOP (plain pin opens this), Rental ... set up which handshake opens which profile as well as the customizations for each profile from settings")
+        group("profiles", "Profiles: Owner, FBOP, Rental", true);
+        note("Owner = this stock launcher (settings only open here). FBOP = the custom launcher a plain PIN always opens. Rental = the custom launcher with its own settings (it starts as a copy of FBOP). Which handshake opens which profile: \"Unlock with handshakes\" below.");
+        note("Last custom profile: " + Profiles.active(this).title + (Profiles.ownerReachable(this) ? "" : "\nNo selected handshake opens Owner, so Double erase opens Owner (you can never lock yourself out)."));
+        final ProfileRules.Profile ed = Profiles.editing(this);
+        if (!collapsed()) {
+            LinearLayout pick = row();
+            pick.addView(text("Settings below are for:", 15, INK, true), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            for (final ProfileRules.Profile pr : new ProfileRules.Profile[] { ProfileRules.Profile.FBOP, ProfileRules.Profile.RENTAL }) {
+                Button bt = smallButton((pr == ed ? "[ " : "") + pr.title + (pr == ed ? " ]" : ""), new Runnable() { public void run() { Profiles.setEditing(ControlActivity.this, pr); rebuild(); } });
+                bt.setEnabled(pr != ed);
+                pick.addView(bt);
+            }
+            box.addView(pick);
+        }
+        note("Per profile (" + ed.title + "): the apps shown (Everyday), no pop-up notifications (Everyday), no Wi-Fi or Bluetooth (Battery & memory), hidden status bar and tiles (Quick settings). Everything else is shared.");
+
         group("everyday", "Everyday", true);
         action("Switch to the custom launcher", "Also closes the apps you opened from Quickstep.", new Runnable() { public void run() {
             CrashGuard.clearTripped(ControlActivity.this);
@@ -140,8 +157,8 @@ public class ControlActivity extends Activity {
             goHome();
             ReturnReset.run(ControlActivity.this);
         }});
-        action("Choose the apps shown in the custom launcher", "Everything else stays hidden there (new installs start hidden).", new Runnable() { public void run() {
-            startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class));
+        action("Choose the apps shown in " + Profiles.editing(this).title, "Everything else stays hidden there (new installs start hidden). Pick the profile at the top (Profiles).", new Runnable() { public void run() {
+            startActivity(new Intent(ControlActivity.this, HiddenAppsActivity.class).putExtra(HiddenAppsActivity.EXTRA_PROFILE, Profiles.editing(ControlActivity.this).id));
         }});
         toggle("Start the custom launcher clean (no Solitaire)", "ON (recommended): when the custom launcher starts (after a Quickstep session, after the tablet was restarted) the home screen is alone on screen and the Recents list is completely emptied; nothing is opened for you, so the unlock is as fast as it can be. OFF: the old behaviour (Solitaire in front, only the apps opened in Quickstep closed); the two Solitaire settings below only matter then.", ReturnReset.cleanStart(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ReturnReset.CLEAN_START_KEY, v); rebuild(); } });
         toggle("Open Solitaire automatically", "ON: Solitaire is put in front after boot / a launcher restart AND behind the lock screen when the tablet wakes. OFF: it is never opened for you (it then also stays out of Quickstep's Recents). The return from Quickstep has its own group: \"Plain (no app)\".", Features.get(this, TjHooks.STARTUP_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjHooks.STARTUP_KEY, v); } });
@@ -158,7 +175,7 @@ public class ControlActivity extends Activity {
 
         toggle("Animations off in Quickstep (faster)", AnimationSpeedup.permitted(this) ? "ON: while you use Quickstep (its home screen and the apps you open there) every animation is off, so the tablet feels faster. They come back the moment the tablet locks (the lock screen and its power menu need real animations) and the moment the custom launcher takes over, put back exactly as they were; a value you set yourself in Developer options in the meantime is left alone. Nothing is ever switched off in the custom launcher or on the lock screen. Needs the accessibility helper to be running." : "Needs the adb permission (not granted yet).", AnimationSpeedup.quickstepSwitch(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, AnimationPolicy.KEY, v); AnimationSpeedup.syncNow(ControlActivity.this, "switched in Profiles settings"); rebuild(); } });   // BF1
         note("Animations: " + AnimationSpeedup.describe(this));
-        toggle("No pop-up notifications outside Quickstep", NotifQuiet.permitted(this) ? "ON: a notification that arrives while the custom launcher is in front, or while the tablet is dark or locked (in any launcher), does not pop up at the top of the screen. In an unlocked Quickstep session pop-ups work as usual: the setting is put back exactly as it was, and a value you set yourself meanwhile is left alone. This hides only the pop-up banner: the lock screen's own list is the lock-screen switch above, and what is already in the shade is cleared when the custom launcher starts. In a Quickstep session this needs the accessibility helper to be running (without it the pop-ups simply stay as Android has them)." : "Needs the adb permission (not granted yet).", NotifQuiet.switchOn(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, NotifQuietPolicy.KEY, v); AnimationSpeedup.syncNow(ControlActivity.this, "switched in Profiles settings"); rebuild(); } });   // BH1
+        toggle("No pop-up notifications outside Quickstep", NotifQuiet.permitted(this) ? "ON: a notification that arrives while the custom launcher is in front, or while the tablet is dark or locked (in any launcher), does not pop up at the top of the screen. In an unlocked Quickstep session pop-ups work as usual: the setting is put back exactly as it was, and a value you set yourself meanwhile is left alone. This hides only the pop-up banner: the lock screen's own list is the lock-screen switch above, and what is already in the shade is cleared when the custom launcher starts. In a Quickstep session this needs the accessibility helper to be running (without it the pop-ups simply stay as Android has them)." : "Needs the adb permission (not granted yet).", Profiles.getBool(this, Profiles.editing(this), NotifQuietPolicy.KEY, NotifQuietPolicy.defaultOn(ReturnReset.isDebuggable(this))), new Chg() { public void on(boolean v) { Profiles.setBool(ControlActivity.this, Profiles.editing(ControlActivity.this), NotifQuietPolicy.KEY, v); AnimationSpeedup.syncNow(ControlActivity.this, "switched in Profiles settings"); rebuild(); } });   // BH1
         note("Pop-up notifications: " + NotifQuiet.describe(this));
 
         group("lock", "Lock screen", false);
@@ -182,7 +199,7 @@ public class ControlActivity extends Activity {
         toggle("Prepare the custom launcher behind the lock screen", "On waking to the lock screen the custom home screen is put in front behind it, so the unlock opens it at once with no delay (Solitaire too, only if \"Open Solitaire automatically\" is on). A handshake puts Quickstep there instead, at once.", ProfileSession.prearm(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.PREARM_KEY, v); } });
         toggle("A gesture unlock comes back to the app I had open", "ON: after the lock-screen gesture, Quickstep opens the app that was in front when you locked the tablet, exactly as you left it (like tapping its icon). OFF: it opens the Quickstep home screen instead, with the apps minimised. With no app open it is always the home screen.", Features.get(this, ResumeTarget.KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ResumeTarget.KEY, v); } });
 
-        group("handshakes", "Unlock into Quickstep (secret handshakes)", false);
+        group("handshakes", "Unlock with handshakes (Owner, FBOP, Rental)", false);
         note("Locking the tablet ALWAYS ends a Quickstep session (no switch any more): a plain PIN or fingerprint gives the custom launcher again and closes what Quickstep left open. Only the crash breaker and \"Restore everything\" pause this, until you switch to the custom launcher yourself.");
         note("The custom launcher is the default: a plain PIN or fingerprint always opens it. Quickstep opens only after one of the handshakes you SELECT below, done on the lock screen BEFORE the PIN. Select as many as you like; at least one always stays selected, so you can never lock yourself out. Which digits you type is never read.");
         final UnlockMethods.Enabled stored = new UnlockMethods.Enabled() { @Override public boolean on(UnlockMethods.Method m) { return Features.get(ControlActivity.this, m.prefKey(), m.defaultOn); } };
@@ -214,6 +231,15 @@ public class ControlActivity extends Activity {
                         }
                     }
                 } });
+                if (on || ProfileRules.forcedOn(m.id, Profiles.ownerReachable(this))) {   // BT1a: which profile this handshake opens
+                    final ProfileRules.Profile tg = Profiles.target(this, m);
+                    action("    Opens: " + tg.title, "Tap to change (Owner, FBOP, Rental). At least one selected handshake always opens Owner.", new Runnable() { public void run() {
+                        ProfileRules.Profile nx = ProfileRules.next(Profiles.chosenTarget(ControlActivity.this, m));
+                        Profiles.setTarget(ControlActivity.this, m, nx);
+                        if (!Profiles.ownerReachable(ControlActivity.this)) android.widget.Toast.makeText(ControlActivity.this, "No selected handshake opens Owner now: Double erase will open Owner", android.widget.Toast.LENGTH_LONG).show();
+                        rebuild();
+                    } });
+                }
             }
         }
         toggle("Buzz when a handshake is accepted", "A 40 ms vibration so you know it counted.", ProfileSession.buzz(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.BUZZ_KEY, v); } });
@@ -314,7 +340,7 @@ public class ControlActivity extends Activity {
         toggle("Battery saver off on the lock screen (any launcher)", BatterySaverGuard.permitted(this) ? "While the lock screen is up battery saver is always OFF, whichever launcher you locked from (the dark theme and the lock screen's animations then never depend on it). If something turns it on while the lock screen is up it is switched off again within a moment. The custom launcher keeps it off after an unlock." : "Needs the adb permission (not granted yet).", BatterySaverGuard.lockOffEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.LOCK_OFF_KEY, v); } });
         toggle("Bring Quickstep's battery saver back after a gesture unlock", "When you unlock into Quickstep with your gesture, the saver goes back to what it was the last time you were in Quickstep. Only when Android cannot have lost track of it: not while charging, not after the tablet was plugged in or restarted meanwhile (then the tile in the shade is one tap away). A plain unlock into the custom launcher leaves it off.", BatterySaverGuard.lockRestoreEnabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, BatterySaverPolicy.LOCK_RESTORE_KEY, v); } });
         note("Lock-screen battery saver: " + BatterySaverGuard.lockStatus(this));
-        toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", ProfileSession.radiosOff(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, ProfileSession.RADIOS_KEY, v); } });
+        toggle("No Wi-Fi or Bluetooth in the custom launcher", "If something turns them on while the custom launcher is active they are switched off again. Quickstep keeps whatever you set.", Profiles.getBool(this, Profiles.editing(this), ProfileSession.RADIOS_KEY, true), new Chg() { public void on(boolean v) { Profiles.setBool(ControlActivity.this, Profiles.editing(ControlActivity.this), ProfileSession.RADIOS_KEY, v); } });
         toggle("Keep the launcher in memory (faster unlock)", "A do-nothing foreground service stops Android from closing the launcher while the tablet sleeps, so an unlock never has to start it again. Cost: it stays in memory and ONE silent notification (\"Launcher is kept ready\") sits in the notification shade. Its status-bar icon is transparent; Android, not the app, decides whether it also shows on the lock screen (hide it under Settings > Notifications if it does). Off = Android may close the launcher when memory is short. OFF by default (version 0.7.2): on one tablet its notification crashed the launcher, so it must be proven first; if Android ever refuses the notification again, this switch turns itself off.", KeepAliveService.enabled(this), new Chg() { public void on(boolean v) {
             KeepAliveService.setUserChoice(ControlActivity.this, v);
             KeepAliveService.ensure(ControlActivity.this);
@@ -324,14 +350,15 @@ public class ControlActivity extends Activity {
 
         group("qs", "Quick settings & keyboard", false);
         toggle("Hide and disable the pencil (Edit)", "Custom launcher only: a white cover over the pencil while the panel is open. Quickstep never has it.", Features.get(this, TjAccessibilityService.PEN_KEY, true), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TjAccessibilityService.PEN_KEY, v); } });
-        toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", ImmersiveProfile.enabled(this), new Chg() { public void on(boolean v) {
-            Features.set(ControlActivity.this, ImmersiveProfile.KEY, v);
+        toggle("Hide the status bar in the custom launcher (experimental)", ImmersiveProfile.permitted(this) ? "A quieter look: no clock, battery or notification icons while the custom launcher is active; Quickstep always keeps its bar. NOT a lock: one swipe down from the top edge shows the bar again and a second swipe opens the panel, so the rotation tile still works. Uses Android's own immersive setting (put back for Quickstep)." : "Needs the adb permission (not granted yet).", Profiles.getBool(this, Profiles.editing(this), ImmersiveProfile.KEY, false), new Chg() { public void on(boolean v) {
+            Profiles.setBool(ControlActivity.this, Profiles.editing(ControlActivity.this), ImmersiveProfile.KEY, v);
             ImmersiveProfile.apply(ControlActivity.this, Mode.get(ControlActivity.this));
         } });
         toggle("Different tiles for each launcher", TileProfile.permitted(this) ? "Applied the moment you switch launcher." : "Needs the adb permission (not granted yet).", TileProfile.enabled(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, TileProfile.KEY, v); } });
         if (TileProfile.enabled(this)) {
-            tileChooser("Tiles in the custom launcher", TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM);
-            tileChooser("Tiles in Quickstep", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
+            final ProfileRules.Profile edTiles = Profiles.editing(this);   // BT1a: per custom profile (a new Rental shows FBOP's list until changed)
+            tileChooser("Tiles in " + edTiles.title, ProfileRules.scopedKey(TileProfile.CUSTOM_KEY, edTiles), Profiles.getString(this, edTiles, TileProfile.CUSTOM_KEY, TileProfile.DEFAULT_CUSTOM));
+            tileChooser("Tiles in Owner (Quickstep)", TileProfile.QUICKSTEP_KEY, TileProfile.DEFAULT_QUICKSTEP);
         } else note("Per-launcher tiles are OFF: both launchers keep whatever quick-settings tiles Android has.");
         toggle("Stock keyboard in custom, SwiftKey in Quickstep", KeyboardSwitch.status(this), KeyboardSwitch.enabled(this), new Chg() { public void on(boolean v) {
             Features.set(ControlActivity.this, KeyboardSwitch.KEY, v);
@@ -427,7 +454,7 @@ public class ControlActivity extends Activity {
 
 
     // ---------------------------------------------------------------- AR1: collapsible groups
-    private static final String[] GROUPS = { "everyday", "lock", "handshakes", "power", "recents", "return", "battery", "qs", "safety", "advanced" };
+    private static final String[] GROUPS = { "profiles", "everyday", "lock", "handshakes", "power", "recents", "return", "battery", "qs", "safety", "advanced" };
 
     private void setAllGroups(boolean open) {
         for (String id : GROUPS) Features.set(this, "ctl_open_" + id, open);
