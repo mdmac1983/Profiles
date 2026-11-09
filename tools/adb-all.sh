@@ -8,7 +8,7 @@
 # Plug the tablet in, USB debugging ON, tap Allow. Everything lands in ./probe-out : send me that folder (zip it) or paste probe-out/launcher-probe.txt and probe-out/status.txt.
 # Safe: every permission step is reversible (research/ADB_TODO.md has the UNDO block); the probe only READS (names of settings, no accounts / serial / Wi-Fi names).
 set -u
-PKG=com.tj.launcher
+PKG=app.orionmd.profiles
 A11Y="$PKG/$PKG.TjAccessibilityService"
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT=probe-out; mkdir -p "$OUT/shots" "$OUT/apk"

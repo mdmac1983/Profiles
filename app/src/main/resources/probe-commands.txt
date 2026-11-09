@@ -73,7 +73,7 @@ pm path android
 cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | head -8
 ## this launcher
 dumpsys package com.tj.launcher | grep -E 'versionName|versionCode|granted=(true|false)' | head -60
-cmd appops get com.tj.launcher | head -40
+cmd appops get app.orionmd.profiles | head -40
 dumpsys deviceidle whitelist | grep -i tj
 dumpsys accessibility | grep -iE 'Enabled services|Bound services|tj' | head -12
 ps -A -o ARGS | grep -c '[S]hellServer'
@@ -86,7 +86,7 @@ getprop pm.dexopt.bg-dexopt
 getprop pm.dexopt.first-boot
 getprop dalvik.vm.dex2oat-filter
 ## W1 speed: memory and process state (is the launcher killed in the background on this low-memory tablet?)
-dumpsys meminfo com.tj.launcher | head -22
+dumpsys meminfo app.orionmd.profiles | head -22
 dumpsys meminfo com.android.systemui | head -12
 dumpsys activity lru | head -25
 dumpsys activity processes | grep -iE 'launcher|systemui' | grep -iE 'oom|adj|state' | head -12
@@ -96,7 +96,7 @@ getprop ro.hardware
 getconf _NPROCESSORS_ONLN
 cat /proc/cpuinfo | grep -iE 'model name|hardware|processor' | head -8
 head -6 /proc/meminfo
-dumpsys gfxinfo com.tj.launcher | head -16
+dumpsys gfxinfo app.orionmd.profiles | head -16
 settings get global window_animation_scale
 settings get global transition_animation_scale
 settings get global animator_duration_scale
@@ -115,12 +115,12 @@ getprop | grep -iE 'ro.product|ro.build.flavor|ro.build.description|ro.build.tag
 dumpsys activity recents | grep -E 'Recent #|realActivity=|affinity=' | head -40
 dumpsys notification | grep 'NotificationRecord(' | cut -c1-160 | head -8
 settings get global policy_control
-dumpsys activity services com.tj.launcher | grep -E 'ServiceRecord|isForeground' | head -6
+dumpsys activity services app.orionmd.profiles | grep -E 'ServiceRecord|isForeground' | head -6
 dumpsys activity service com.android.systemui/.SystemUIService | grep -oE '[A-Za-z]+Tile:' | sort -u
 ## the side key (Power menu v2): which input device carries it
 getevent -pl | grep -E 'add device|name:|KEY_POWER'
 ## adb over the network: a count only, no addresses
 netstat -ltn | grep -c ':555'
 ## how the launcher has been doing: its crashes, then its own log
-logcat -b crash -d -v time | grep -A12 'com.tj.launcher' | head -60
+logcat -b crash -d -v time | grep -A12 'app.orionmd.profiles' | head -60
 logcat -d -v time -s TjReset:I TjTasks:I TjA11y:I TjKeepAlive:I TjImmersive:I TjRouter:I TjHooks:I TjKeyboard:I TjRecentsGuard:I | tail -250

@@ -11,7 +11,7 @@ public class StrayHomeGuardTest {
     @Test public void stockHomeMatchesOnlyTheHomeActivity() {
         assertTrue(StrayHomeGuard.isStockHome("com.android.launcher3", "com.android.launcher3.Launcher", "com.android.launcher3", "com.android.launcher3.Launcher"));
         assertFalse(StrayHomeGuard.isStockHome("com.android.launcher3", "com.android.quickstep.RecentsActivity", "com.android.launcher3", "com.android.launcher3.Launcher"));
-        assertFalse(StrayHomeGuard.isStockHome("com.tj.launcher", "com.android.launcher3.Launcher", "com.android.launcher3", "com.android.launcher3.Launcher"));
+        assertFalse(StrayHomeGuard.isStockHome("app.orionmd.profiles", "com.android.launcher3.Launcher", "com.android.launcher3", "com.android.launcher3.Launcher"));
         assertFalse(StrayHomeGuard.isStockHome(null, null, "a", "b"));
     }
     @Test public void redirectsInCustomModeWhenStockHomeAppears() {

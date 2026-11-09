@@ -39,12 +39,12 @@ public class KeepAlivePolicyTest {
     }
     @Test public void theRealTabletsCrashIsRecognised() {
         // verbatim from the tablet's crash buffer (logcat -b crash, 2026-11-05 12:48:47)
-        String m = "Bad notification(tag=null, id=7471) posted from package com.tj.launcher, crashing app(uid=10243, pid=9473): Couldn't create icon: StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.tj.launcher id=0x7f07009a) visible user=0 )";
+        String m = "Bad notification(tag=null, id=7471) posted from package com.tj.launcher, crashing app(uid=10243, pid=9473): Couldn't create icon: StatusBarIcon(icon=Icon(typ=RESOURCE pkg=app.orionmd.profiles id=0x7f07009a) visible user=0 )";
         assertTrue(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", m));
     }
     @Test public void theOtherAndroidWordingsForTheSameFamilyAreRecognisedToo() {
         assertTrue(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", "Bad notification for startForeground: java.lang.RuntimeException: invalid channel for service notification"));
-        assertTrue(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", "Context.startForegroundService() did not then call Service.startForeground(): ServiceRecord{1 u0 com.tj.launcher/.KeepAliveService}"));
+        assertTrue(KeepAlivePolicy.isBadNotificationCrash("android.app.RemoteServiceException", "Context.startForegroundService() did not then call Service.startForeground(): ServiceRecord{1 u0 app.orionmd.profiles/com.tj.launcher.KeepAliveService}"));
     }
     @Test public void otherCrashesAreNeverTheFuses() {
         assertFalse(KeepAlivePolicy.isBadNotificationCrash("java.lang.NullPointerException", "Bad notification in a made-up NPE"));   // not the system's crash class

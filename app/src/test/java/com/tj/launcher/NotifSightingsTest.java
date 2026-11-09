@@ -21,15 +21,15 @@ public class NotifSightingsTest {
     }
 
     @Test public void aNotificationOfAnOrdinaryAppCounts() {
-        assertTrue(NotifSightings.counts("org.telegram.messenger", "com.tj.launcher"));
+        assertTrue(NotifSightings.counts("org.telegram.messenger", "app.orionmd.profiles"));
     }
 
     @Test public void ourOwnAndTheSystemsNotificationsDoNotCount() {
-        assertFalse(NotifSightings.counts("com.tj.launcher", "com.tj.launcher"));
-        assertFalse(NotifSightings.counts("android", "com.tj.launcher"));
-        assertFalse(NotifSightings.counts("com.android.systemui", "com.tj.launcher"));
-        assertFalse(NotifSightings.counts(null, "com.tj.launcher"));
-        assertFalse(NotifSightings.counts("", "com.tj.launcher"));
+        assertFalse(NotifSightings.counts("app.orionmd.profiles", "app.orionmd.profiles"));
+        assertFalse(NotifSightings.counts("android", "app.orionmd.profiles"));
+        assertFalse(NotifSightings.counts("com.android.systemui", "app.orionmd.profiles"));
+        assertFalse(NotifSightings.counts(null, "app.orionmd.profiles"));
+        assertFalse(NotifSightings.counts("", "app.orionmd.profiles"));
     }
 
     @Test public void aLockLogLineIsWrittenForTheFirstOneAndThenOncePerMinute() {

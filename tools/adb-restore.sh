@@ -6,10 +6,10 @@
 #  1. disables our app for the user -> Android immediately falls back to the stock Quickstep (this alone fixes a broken Home screen)
 #  2. wipes our app's saved state (modes, switches, snapshots)
 #  3. restores the settings Tj had before (overridable): keyboard + quick-settings tiles
-#  4. re-enables nothing: to use the launcher again, run:  adb shell pm enable com.tj.launcher
-# Fully removing it:  adb uninstall com.tj.launcher   (or Settings > Apps). Safe mode (hold power-off, long-press) also disables it.
+#  4. re-enables nothing: to use the launcher again, run:  adb shell pm enable app.orionmd.profiles
+# Fully removing it:  adb uninstall app.orionmd.profiles   (or Settings > Apps). Safe mode (hold power-off, long-press) also disables it.
 set -u
-PKG=com.tj.launcher
+PKG=app.orionmd.profiles
 IME_DEFAULT="${IME_DEFAULT:-com.touchtype.swiftkey/com.touchtype.KeyboardService}"   # Microsoft SwiftKey (Tj's usual); set "" to leave the keyboard alone
 TILES_DEFAULT="${TILES_DEFAULT:-rotation}"                                            # Tj's current quick settings: only Auto-rotate; set "" to leave alone
 adb get-state >/dev/null 2>&1 || { echo "No device. Plug the tablet in with USB debugging enabled."; exit 1; }

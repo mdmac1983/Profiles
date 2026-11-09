@@ -1,6 +1,6 @@
 # The phone guide's list. SAME FILE as research/ADB_PHONE_COMMANDS.txt (copy it after editing: tools/test_handoff.sh checks they are identical).
 # Format: "## group" (open) or "##- group" (closed until tapped; the text before the first ":" is the short name on the jump button), "@ card title" (no numbers: the app numbers the cards), then why: / cmd: / alt: / undo: (any number) / note: / mark: must / special: a11y.  "plan:" lines before the first group are the "Your plan" box.  "cmd:" is the line as typed in an ADB OTG shell (no "adb", no "adb shell").
-# SAFETY RULES for this list: read-only, or a change that only affects com.tj.launcher, or reversible with an undo line below. Never: uninstall, wipe, reset, reboot, change the lock, accounts, Wi-Fi, or overwrite a settings list without merging.
+# SAFETY RULES for this list: read-only, or a change that only affects app.orionmd.profiles, or reversible with an undo line below. Never: uninstall, wipe, reset, reboot, change the lock, accounts, Wi-Fi, or overwrite a settings list without merging.
 # ORDER RULE (Tj, 2026-11-05: "limited time with the otg cable"): only what NEEDS the cable comes before "unplug", and of that only ONE line is a must. Everything else is a button on the tablet afterwards (PART 3), then the same steps by hand (FALLBACK), the read-only questions (EXTRAS) and the undo cards (UNDO), all closed until tapped. The tablet's report (PART 3) holds every answer the EXTRAS ask for, so nothing has to be copied by hand.
 plan: PART 1, on the TABLET, no cable (about 3 minutes): install the newest launcher and allow USB debugging.
 plan: PART 2, with the CABLE (about 2 minutes): connect the phone, then type ONE line that starts the helper. Then unplug.
@@ -21,17 +21,17 @@ why: On the PHONE install an "ADB OTG" shell app. Plug the OTG cable into the PH
 @ Check the connection and the launcher
 why: The first line must print uid=2000(shell). The second must print package:/data/app/.../base.apk (that is the launcher). If either prints something else, stop and fix that first: cable, the Allow box on the tablet, USB debugging, or install the launcher (PART 1).
 cmd: id
-cmd: pm path com.tj.launcher
+cmd: pm path app.orionmd.profiles
 @ START THE HELPER (the one line that matters)
 mark: must
 why: Starts a small program that only the launcher can talk to. It prints nothing. It lets the tablet set itself up with buttons (PART 3). It survives unplugging the cable, but not a restart of the tablet.
-cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &
-alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+cmd: CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &
+alt: sh -c 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
 note: If the app says "not found" or does nothing, use the second form. If the app cannot do $( ) at all, use the two-step card right below.
 undo: pkill -f com.tj.launcher.ShellServer
 @ Two-step start (only if the card above did nothing)
 why: First copy the next line and run it; it prints package:/data/app/.../base.apk. Then take the second line and replace PATH by what was printed AFTER "package:" (the app does not do this for you).
-cmd: pm path com.tj.launcher
+cmd: pm path app.orionmd.profiles
 alt: sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
 @ Is the helper running?
 mark: must
@@ -58,24 +58,24 @@ note: Claude saves what you send into the project (serial numbers, addresses and
 ##- FALLBACK: if "Do everything" failed, do the same steps by hand from the phone (about 5 minutes)
 @ Permissions the launcher needs (4 lines)
 why: Only for this app; they survive updates. Lets the launcher switch the keyboard, the quick-settings tiles per launcher, the animation speed-up, the status-bar hiding, read what is in front, and (for the lock-screen patch) read the wallpaper.
-cmd: pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
-cmd: pm grant com.tj.launcher android.permission.DUMP
-cmd: pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION
-cmd: pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
-undo: pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
-undo: pm revoke com.tj.launcher android.permission.DUMP
-undo: pm revoke com.tj.launcher android.permission.CHANGE_CONFIGURATION
-undo: pm revoke com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+cmd: pm grant app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS
+cmd: pm grant app.orionmd.profiles android.permission.DUMP
+cmd: pm grant app.orionmd.profiles android.permission.CHANGE_CONFIGURATION
+cmd: pm grant app.orionmd.profiles android.permission.READ_EXTERNAL_STORAGE
+undo: pm revoke app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS
+undo: pm revoke app.orionmd.profiles android.permission.DUMP
+undo: pm revoke app.orionmd.profiles android.permission.CHANGE_CONFIGURATION
+undo: pm revoke app.orionmd.profiles android.permission.READ_EXTERNAL_STORAGE
 @ Background, usage and battery settings (5 lines)
 why: So Android does not freeze the helper on this low-memory tablet, and the clean-up still works with the screen off. Usage access: which app was used last (read-only). Modify system settings: for later features.
-cmd: cmd appops set com.tj.launcher GET_USAGE_STATS allow
-cmd: cmd appops set com.tj.launcher WRITE_SETTINGS allow
-cmd: cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow
-cmd: cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow
-cmd: dumpsys deviceidle whitelist +com.tj.launcher
-undo: cmd appops set com.tj.launcher GET_USAGE_STATS default
-undo: cmd appops set com.tj.launcher WRITE_SETTINGS default
-undo: dumpsys deviceidle whitelist -com.tj.launcher
+cmd: cmd appops set app.orionmd.profiles GET_USAGE_STATS allow
+cmd: cmd appops set app.orionmd.profiles WRITE_SETTINGS allow
+cmd: cmd appops set app.orionmd.profiles RUN_IN_BACKGROUND allow
+cmd: cmd appops set app.orionmd.profiles RUN_ANY_IN_BACKGROUND allow
+cmd: dumpsys deviceidle whitelist +app.orionmd.profiles
+undo: cmd appops set app.orionmd.profiles GET_USAGE_STATS default
+undo: cmd appops set app.orionmd.profiles WRITE_SETTINGS default
+undo: dumpsys deviceidle whitelist -app.orionmd.profiles
 @ Check the permissions took (read-only)
 why: Every line should end in granted=true (4 of them are ours).
 cmd: dumpsys package com.tj.launcher | grep granted=true
@@ -90,7 +90,7 @@ cmd: settings put secure accessibility_enabled 1
 note: Run the line built above FIRST, then the second line (accessibility_enabled 1). If anything looks wrong afterwards: Settings > Accessibility on the tablet shows the list and lets you switch it off.
 @ Speed: compile the launcher ahead of time
 why: Sideloaded apps run half-optimised until Android has time to compile them; this does it now (about a minute) so the launcher starts faster after an unlock. Should end with Success. Repeat after every launcher update.
-cmd: cmd package compile -m speed -f com.tj.launcher
+cmd: cmd package compile -m speed -f app.orionmd.profiles
 @ Optional: switch the old Browser app off
 why: Nothing in Android needs it; links open in your other browser. It is only hidden, not deleted.
 cmd: pm disable-user --user 0 com.android.browser
@@ -143,8 +143,8 @@ alt: wm size
 cmd: cmd overlay list
 @ Can the shell switch the stock power menu off for 3 seconds?
 why: Runs a tiny test program from the launcher: it asks Android to disable the power menu for 3 seconds and prints the answer ("OK" or "REFUSED ..."). Nothing lasts: Android removes the setting when the program ends. If you press the power key during these 3 seconds the menu may not appear. The "3. Side-key test" button on the tablet does a longer version of this and also checks that the side key can be read.
-cmd: CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3
-alt: sh -c 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3'
+cmd: CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3
+alt: sh -c 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.ShellProbe statusbar 0 0x8 3'
 note: Skip if the app cannot do $( ). The reply is 3 lines; send them to Claude.
 ##- UNDO: take everything back (only if something looks odd)
 @ Stop the helper
@@ -162,7 +162,7 @@ why: Only if the tiles look wrong after you switched launchers. Android rebuilds
 cmd: settings delete secure sysui_qs_tiles
 @ Launcher "compiled" state back to a plain install
 why: Optional, and not needed for safety (a compiled app only starts faster). Puts the launcher back to the light "verify" state a fresh install has; installing the launcher again does the same. Android 10 refuses the shorter "compile --reset" to the shell user (the emulator run said: Only the system can clear all profile data).
-cmd: cmd package compile -m verify -f com.tj.launcher
+cmd: cmd package compile -m verify -f app.orionmd.profiles
 @ Take the permissions back
 why: One undo line per permission is on the cards in FALLBACK; the launcher keeps working without them, those features just switch off. Also available inside the launcher: Launcher control > Restore everything puts back every setting the launcher changed.
 note: Accessibility: switch the helper off in the tablet's Settings > Accessibility.

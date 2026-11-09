@@ -32,7 +32,7 @@ public final class KeyboardSwitch {
     public static void apply(Context c, String mode) {
         try {
             if (!enabled(c)) return;
-            if (!permitted(c)) { say(c, "needs the adb grant: adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS"); return; }
+            if (!permitted(c)) { say(c, "needs the adb grant: adb shell pm grant app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS"); return; }
             InputMethodManager imm = (InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
             List<KeyboardPolicy.Ime> enabledImes = new ArrayList<>();
             for (InputMethodInfo i : imm.getEnabledInputMethodList()) {

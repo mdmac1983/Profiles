@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class AppVisibilityTest {
     private static Set<String> set(String... s) { return new HashSet<>(Arrays.asList(s)); }
-    private static final String SELF = "com.tj.launcher";
+    private static final String SELF = "app.orionmd.profiles";
 
     @Test public void baselineKeepsEverythingInstalledButNotUs() {
         Set<String> b = AppVisibility.baseline(set("a", "b", SELF), SELF);

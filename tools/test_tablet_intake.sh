@@ -124,7 +124,7 @@ rep("Recents tasks parsed: 2", "Recents tasks parsed: 0")
 rep("Apps with a notification now (as the clean-up sees them): [com.android.systemui, com.whatsapp]", "Apps with a notification now (as the clean-up sees them): (none)")
 rep("keytest_summary: the side key WAS seen (held 1.5 s); the shell MAY switch the normal power menu off", "keytest_summary: the side key was NOT seen (no KEY_POWER event in 9 s); the shell was REFUSED when it tried to switch the normal power menu off")
 rep("keytest_menu: not_shown", "keytest_menu: shown")
-rep("$ logcat -b crash -d -v time | grep -A12 'com.tj.launcher' | head -60\n", "$ logcat -b crash -d -v time | grep -A12 'com.tj.launcher' | head -60\nFATAL EXCEPTION: main\n  Process: com.tj.launcher, PID: 4242\n")
+rep("$ logcat -b crash -d -v time | grep -A12 'app.orionmd.profiles' | head -60\n", "$ logcat -b crash -d -v time | grep -A12 'app.orionmd.profiles' | head -60\nFATAL EXCEPTION: main\n  Process: app.orionmd.profiles, PID: 4242\n")
 open(sys.argv[2], "w").write(s)
 PY
 $INTAKE "$T/badin" --out "$T/outbad" --date 2026-11-05 >/dev/null 2>&1

@@ -9,7 +9,7 @@ import org.junit.Test;
 
 /** AD5 (Tj, 2026-11-06): a gesture unlock comes back to the app that was open, not the stock home. */
 public class ResumeTargetTest {
-    private static final String OWN = "com.tj.launcher", STOCK = "com.android.launcher3";
+    private static final String OWN = "app.orionmd.profiles", STOCK = "com.android.launcher3";
 
     @Test public void anAppOpenedInQuickstepWhileUnlockedIsRemembered() { assertTrue(ResumeTarget.remember("com.android.chrome", OWN, STOCK, false, false)); }
     @Test public void nothingIsRememberedInTheCustomLauncher() { assertFalse(ResumeTarget.remember("com.android.chrome", OWN, STOCK, true, false)); }

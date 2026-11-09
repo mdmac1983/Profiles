@@ -35,7 +35,7 @@ import java.util.List;
  * not done yet, the one card that matters marked, and the by-hand fallbacks / read-only questions / undo cards closed until tapped.
  */
 public class GuideActivity extends Activity {
-    private static final String A11Y = "com.tj.launcher/com.tj.launcher.TjAccessibilityService";
+    private static final String A11Y = "app.orionmd.profiles/com.tj.launcher.TjAccessibilityService";
     private static final int BLUE = Color.parseColor("#0B57D0"), MUST_BG = Color.parseColor("#FFF4D6");
     private SharedPreferences prefs;
     private float dp;

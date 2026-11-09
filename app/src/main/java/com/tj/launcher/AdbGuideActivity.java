@@ -25,7 +25,7 @@ import android.widget.Toast;
  * Only opens in Quickstep mode (like the rest of Launcher control).
  */
 public class AdbGuideActivity extends Activity {
-    private static final String PKG = "com.tj.launcher";
+    private static final String PKG = "app.orionmd.profiles";
     private LinearLayout list;
 
     private static final class Step {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher3 (android-10.0.0_r47, Go flavor, no Quickstep) merged manifest for com.tj.launcher. Changes vs upstream are listed in launcher3/PATCHES.md.
+<!-- Launcher3 (android-10.0.0_r47, Go flavor, no Quickstep) merged manifest for app.orionmd.profiles. Changes vs upstream are listed in launcher3/PATCHES.md.
      Licensed under the Apache License 2.0 (AOSP). -->
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -277,7 +277,7 @@
             </intent-filter>
         </activity>
 
-        <!-- N4: quick-settings tile "Back to custom" (add it with the pencil in Quickstep; tiles are listed in sysui_qs_tiles as custom(com.tj.launcher/.ReturnTile)). -->
+        <!-- N4: quick-settings tile "Back to custom" (add it with the pencil in Quickstep; tiles are listed in sysui_qs_tiles as custom(app.orionmd.profiles/com.tj.launcher.ReturnTile)). -->
         <service
             android:name="com.tj.launcher.ReturnTile"
             android:exported="true"

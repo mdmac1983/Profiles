@@ -6,12 +6,12 @@ plugins {
 
 android {
     // Resource namespace stays com.android.launcher3 (the AOSP code imports com.android.launcher3.R);
-    // the installed package is com.tj.launcher (applicationId below), so it can sit beside the stock launcher.
+    // the installed package is app.orionmd.profiles (applicationId below), so it can sit beside the stock launcher.
     namespace = "com.android.launcher3"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tj.launcher"
+        applicationId = "app.orionmd.profiles"
         // Android 10 (API 29) Go edition is the target device (BRIEF.md). targetSdk is 28 (AOSP value), below the
         // runtime so no newer-Android compatibility behaviour is silently assumed; revisit if
         // the app is ever to run on a newer phone.
@@ -70,7 +70,7 @@ android {
         getByName("release") { res.srcDirs("../launcher3/go/res") }
     }
 
-    buildFeatures { buildConfig = true }   // Launcher3 reads BuildConfig.APPLICATION_ID (authority = com.tj.launcher.settings)
+    buildFeatures { buildConfig = true }   // Launcher3 reads BuildConfig.APPLICATION_ID (authority = app.orionmd.profiles.settings)
 
     lint {
         abortOnError = false   // AOSP Launcher3 code has many upstream lint findings; our own code is checked by tests (revisit)

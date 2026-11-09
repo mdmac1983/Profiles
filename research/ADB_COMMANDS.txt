@@ -1,4 +1,4 @@
-LAUNCHER (com.tj.launcher) - ADB COMMANDS, LINE BY LINE
+LAUNCHER (app.orionmd.profiles) - ADB COMMANDS, LINE BY LINE
 Saved 2026-11-04. Copy one line at a time into a terminal on the computer the tablet is plugged into.
 Lines starting with # are explanations, not commands.
 
@@ -21,55 +21,55 @@ adb devices
 SECTION 2 - THE ONE THAT MATTERS MOST [NOW]
 # WRITE_SECURE_SETTINGS lets the launcher: switch the keyboard (stock <-> SwiftKey), turn animations off during the double-Home reset and put them back,
 # and (later features) keep different quick-settings tiles / status-bar icons for each launcher.
-adb shell pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
+adb shell pm grant app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS
 
 SECTION 3 - WALLPAPER PATCH FOR THE POWER MENU [NOW]
 # Same as tapping "Allow wallpaper access" inside Launcher control; this just does it from the computer.
-adb shell pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
+adb shell pm grant app.orionmd.profiles android.permission.READ_EXTERNAL_STORAGE
 
 SECTION 4 - KEEP THE HELPER ALIVE ON THIS LOW-MEMORY TABLET [NOW]
 # Stops Android from freezing the accessibility helper (power-menu cover, lock-screen number, double-Home reset) while the screen is off.
-adb shell dumpsys deviceidle whitelist +com.tj.launcher
-adb shell cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow
-adb shell cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow
+adb shell dumpsys deviceidle whitelist +app.orionmd.profiles
+adb shell cmd appops set app.orionmd.profiles RUN_IN_BACKGROUND allow
+adb shell cmd appops set app.orionmd.profiles RUN_ANY_IN_BACKGROUND allow
 
 SECTION 5 - TURN THE ACCESSIBILITY HELPER ON FROM THE COMPUTER [NOW] (optional: you can also do it in Settings > Accessibility)
 # First read what is already switched on:
 adb shell settings get secure enabled_accessibility_services
 # If it prints "null": use these two lines as they are:
-adb shell settings put secure enabled_accessibility_services com.tj.launcher/com.tj.launcher.TjAccessibilityService
+adb shell settings put secure enabled_accessibility_services app.orionmd.profiles/com.tj.launcher.TjAccessibilityService
 adb shell settings put secure accessibility_enabled 1
 # If it printed something else (for example com.other.app/com.other.Service), keep it by joining with a colon, e.g.:
-#   adb shell settings put secure enabled_accessibility_services com.other.app/com.other.Service:com.tj.launcher/com.tj.launcher.TjAccessibilityService
+#   adb shell settings put secure enabled_accessibility_services com.other.app/com.other.Service:app.orionmd.profiles/com.tj.launcher.TjAccessibilityService
 #   adb shell settings put secure accessibility_enabled 1
 
 SECTION 6 - ADVANCE PERMISSIONS FOR LATER FEATURES [v0.3.5+]
 # DUMP: read-only. Lets the launcher read "what is in Recents / what is running" so the double-Home reset only closes apps when there are apps.
-adb shell pm grant com.tj.launcher android.permission.DUMP
+adb shell pm grant app.orionmd.profiles android.permission.DUMP
 # CHANGE_CONFIGURATION: font size / orientation / locale changes by the launcher (used by later features).
-adb shell pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION
+adb shell pm grant app.orionmd.profiles android.permission.CHANGE_CONFIGURATION
 # Usage access: lets the launcher see which app was used last (read-only list).
-adb shell cmd appops set com.tj.launcher GET_USAGE_STATS allow
+adb shell cmd appops set app.orionmd.profiles GET_USAGE_STATS allow
 # Modify system settings (brightness, screen timeout ...) for later features.
-adb shell cmd appops set com.tj.launcher WRITE_SETTINGS allow
+adb shell cmd appops set app.orionmd.profiles WRITE_SETTINGS allow
 
 SECTION 7 - IF ANDROID EVER SHOWS "CHOOSE A HOME APP" [NOW]
 # (Happens after the launcher crashes once, because Android clears its default-home setting for home-type launchers.)
 # Put it back from the computer without tapping through the dialog:
-adb shell cmd package set-home-activity com.tj.launcher/com.tj.launcher.RouterActivity
+adb shell cmd package set-home-activity app.orionmd.profiles/com.tj.launcher.RouterActivity
 
 SECTION 8 - CHECK WHAT IS GRANTED [NOW]
 adb shell dumpsys package com.tj.launcher | grep -E "WRITE_SECURE_SETTINGS|READ_EXTERNAL_STORAGE|DUMP|CHANGE_CONFIGURATION"
 # Each granted one shows "granted=true".
 
 SECTION 9 - UNDO [NOW]
-adb shell pm revoke com.tj.launcher android.permission.WRITE_SECURE_SETTINGS
-adb shell pm revoke com.tj.launcher android.permission.READ_EXTERNAL_STORAGE
-adb shell pm revoke com.tj.launcher android.permission.DUMP
-adb shell pm revoke com.tj.launcher android.permission.CHANGE_CONFIGURATION
-adb shell cmd appops set com.tj.launcher GET_USAGE_STATS default
-adb shell cmd appops set com.tj.launcher WRITE_SETTINGS default
-adb shell dumpsys deviceidle whitelist -com.tj.launcher
+adb shell pm revoke app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS
+adb shell pm revoke app.orionmd.profiles android.permission.READ_EXTERNAL_STORAGE
+adb shell pm revoke app.orionmd.profiles android.permission.DUMP
+adb shell pm revoke app.orionmd.profiles android.permission.CHANGE_CONFIGURATION
+adb shell cmd appops set app.orionmd.profiles GET_USAGE_STATS default
+adb shell cmd appops set app.orionmd.profiles WRITE_SETTINGS default
+adb shell dumpsys deviceidle whitelist -app.orionmd.profiles
 # If animations ever stay switched off (they are put back automatically, this is only a manual safety net):
 adb shell settings put global window_animation_scale 1.0
 adb shell settings put global transition_animation_scale 1.0
@@ -94,9 +94,9 @@ SECTION 11 - INVISIBLE CLEAN-UP HELPER [v0.4.0+]  *** run again after EVERY tabl
 # launcher: their Recents cards, notifications and processes vanish with no black cover, no notification shade, no Recents screen. It only answers the launcher app
 # (checked by uid) and only knows "are you there" and "force-stop these apps" (never the system, the keyboard, the launcher or the stock launcher).
 # Mac / Linux (one line; the single quotes matter):
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'
 # Windows (two steps): 1) this prints package:/data/app/.../base.apk  - copy the part after "package:"
-adb shell pm path com.tj.launcher
+adb shell pm path app.orionmd.profiles
 #   2) paste that path in place of PATH:
 adb shell "CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &"
 # Check it: Launcher control > Invisible clean-up shows "RUNNING".

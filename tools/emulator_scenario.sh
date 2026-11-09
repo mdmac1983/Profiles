@@ -7,7 +7,7 @@ adb(){ timeout 60 "$(command -v adb)" "$@"; }
 export -f adb
 OUT=emulator-out; mkdir -p "$OUT"
 APK=app/build/outputs/apk/debug/app-debug.apk
-PKG=com.tj.launcher
+PKG=app.orionmd.profiles
 FAILS=0
 shot(){ adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null; }
 # BK1 gate triage (2026-11-08; runs #400 uf on main, #403 uf on the TAG v0.8.10, #401 cs on main): what UF2 and CS-B5 protect is "nothing of Quickstep is VISIBLE after the Enter", not "no stock activity ever resumes". With no helper the reset runs
@@ -119,7 +119,7 @@ check "HOME resolves to our router" grep -q 'com.tj.launcher.RouterActivity' "$O
 
 # ---- CUSTOM mode: Home shows our Launcher
 setmode custom; home; shot 01-home; resumed | tee "$OUT/resumed-custom.txt"
-check "custom mode: our Launcher is on screen" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom.txt"
+check "custom mode: our Launcher is on screen" grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher' "$OUT/resumed-custom.txt"
 adb shell input swipe 300 700 300 700 1200; sleep 2; shot 02-longpress
 # AE7 (Tj, 2026-11-06, photo of the stock popup): a long press on the home screen shows WALLPAPERS ONLY (no Widgets, no Home settings). The label may read "Styles & wallpapers" on an image that has a style picker.
 adb shell uiautomator dump /sdcard/lp.xml >/dev/null 2>&1; adb shell cat /sdcard/lp.xml 2>/dev/null | tr '>' '\n' > "$OUT/longpress-dump.txt"
@@ -132,17 +132,17 @@ adb shell input keyevent KEYCODE_HOME; sleep 3
 
 # ---- QUICKSTEP mode: Home goes to the stock launcher, and back
 setmode quickstep; home; shot 05-quickstep-mode; resumed | tee "$OUT/resumed-quickstep.txt"
-check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.android.launcher3/' $OUT/resumed-quickstep.txt && ! grep -q 'com.tj.launcher' $OUT/resumed-quickstep.txt"
+check "quickstep mode: stock launcher is on screen" bash -c "grep -q 'com.android.launcher3/' $OUT/resumed-quickstep.txt && ! grep -q 'app.orionmd.profiles' $OUT/resumed-quickstep.txt"
 # C5: the STOCK launcher started by our router is a HOME-type task too (an explicit component made it an ordinary task that Recents listed as "Quickstep")
 adb shell dumpsys activity activities > "$OUT/activities-quickstep.txt" 2>&1
 check "C5: the stock launcher task started by the router is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-quickstep.txt | grep -q 'com.android.launcher3/'"
 setmode custom; home; resumed > "$OUT/resumed-custom2.txt"
-check "switching back to custom works" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
+check "switching back to custom works" grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher' "$OUT/resumed-custom2.txt"
 
 # ---- double-press Home in Quickstep mode returns to the custom launcher (BACK1)
 setmode quickstep; home; sleep 2
 adb shell "input keyevent KEYCODE_HOME; input keyevent KEYCODE_HOME"; sleep 4; resumed > "$OUT/resumed-doublehome.txt"
-check "double Home in Quickstep mode returns to the custom launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
+check "double Home in Quickstep mode returns to the custom launcher" grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher' "$OUT/resumed-doublehome.txt"
 setmode custom; home
 
 # ---- RESET1: double Home back to custom closes apps, clears notifications, turns Wi-Fi off and opens the chosen app
@@ -208,7 +208,7 @@ done
 sleep 3; echo "mode after 3 crashes: $(getmode)" | tee "$OUT/crash-mode.txt"
 check "crash breaker switched to quickstep" bash -c "[ \"$(getmode)\" = quickstep ]"
 home; resumed > "$OUT/resumed-after-crashes.txt"
-check "after the breaker, Home shows the stock launcher" bash -c "grep -q 'com.android.launcher3/' $OUT/resumed-after-crashes.txt && ! grep -q 'com.tj.launcher' $OUT/resumed-after-crashes.txt"
+check "after the breaker, Home shows the stock launcher" bash -c "grep -q 'com.android.launcher3/' $OUT/resumed-after-crashes.txt && ! grep -q 'app.orionmd.profiles' $OUT/resumed-after-crashes.txt"
 
 # ---- the control icon opens (reachable from the stock launcher)
 adb shell am start -n "$PKG/com.tj.launcher.ControlActivity" >/dev/null 2>&1; sleep 3; shot 06-control
@@ -237,7 +237,7 @@ prefhome(){ { echo "== $1"; adb shell cmd package resolve-activity -a android.in
 setpower(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"power_card\\\" value=\\\"true\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><string name=\\\"power_mode\\\">$1</string></map>\" > shared_prefs/tj_features.xml'"; adb shell am force-stop "$PKG"; sleep 1; }
 A11Y="$PKG/com.tj.launcher.TjAccessibilityService"
 rebind(){ adb shell settings put secure enabled_accessibility_services ""; sleep 1; adb shell settings put secure enabled_accessibility_services "$A11Y"; adb shell settings put secure accessibility_enabled 1; sleep 3; }
-a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|com.tj.launcher)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
+a11ydump(){ { echo "== $1"; adb shell settings get secure enabled_accessibility_services; adb shell dumpsys accessibility | grep -iE 'tj|Bound services|Enabled services' | head -8; resumed; adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(GlobalActions|ActionsDialog|TjA11y|app.orionmd.profiles)' | head -6; adb logcat -d -s TjA11y:I | tail -8; } >> "$OUT/a11y-diag.txt" 2>&1; }
 rebind
 prefhome start
 if want legacy; then # section legacy
@@ -246,7 +246,7 @@ adb shell input keyevent --longpress KEYCODE_POWER; sleep 3; shot 10-power-menu-
 adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower hide_screenshot; prefhome after-setpower; rebind; prefhome after-rebind; home; prefhome after-home
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 0.3; shot 15-card-immediately; sleep 2.7; shot 11-power-menu-hide-screenshot; a11ydump hide
-adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|com.tj.launcher)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
+adb shell dumpsys window windows | grep -iE 'Window\{.*(TjA11y|app.orionmd.profiles)' | head -5 > "$OUT/power-hide-windows.txt" 2>&1
 adb shell input keyevent KEYCODE_BACK; sleep 1; adb shell dumpsys window windows | grep -c 'type=2032' > "$OUT/warm-overlay-count.txt" 2>&1; info "W3/W4: accessibility-overlay windows still attached after the power menu closed (pre-built card): $(tr -d ' \r\n' < $OUT/warm-overlay-count.txt)"
 adb shell input keyevent KEYCODE_BACK; sleep 1
 setpower block; rebind; home
@@ -278,17 +278,17 @@ adb shell input keyevent KEYCODE_HOME; sleep 1
 check "recents: the target app (Clock) is in Recents" grep -qiE 'clock' "$OUT/recents-policy.txt"
 check "recents: an ordinary app launched from the launcher (Messaging) is NOT in Recents" bash -c "! grep -qi 'messaging' $OUT/recents-policy.txt"
 # The raw dump always lists the current top task even when it is excluded, so test the thing that matters: every task of ours carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS (0x800000).
-ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/' "$1" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2; }
+ourflags(){ grep -o 'flg=0x[0-9a-f]* [^}]*cmp=app.orionmd.profiles/' "$1" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2; }
 V4BAD=0; for f in $(ourflags "$OUT/recents-policy.txt"); do [ $(( f & 0x800000 )) -eq 0 ] && V4BAD=$((V4BAD+1)); done
 check "recents: every task of our launcher carries the exclude-from-Recents flag (V4)" test "$V4BAD" -eq 0
 # ---- B1: our Launcher is a HOME-type task (never listed in Recents, not even as the most recent task). The switch is OFF by default (a crash then clears the default home), so turn it on here.
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /><boolean name=\\\"home_type_launcher\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; home; sleep 2
 adb shell dumpsys activity activities > "$OUT/activities-home.txt" 2>&1
-check "B1: our Launcher task is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-home.txt | grep -q 'com.tj.launcher/com.android.launcher3.Launcher'"
+check "B1: our Launcher task is in the HOME-type stack" bash -c "awk '/Stack #/{h=(\$0 ~ /type=home/)} h' $OUT/activities-home.txt | grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher'"
 adb shell input keyevent KEYCODE_APP_SWITCH; sleep 3
 adb shell dumpsys activity recents > "$OUT/recents-from-home.txt" 2>&1; shot 52-recents-from-custom-home
-check "B1: Recents opened from the custom home does not list com.tj.launcher among the visible tasks" bash -c "! sed -n '/Visible recent tasks/,\$p' $OUT/recents-from-home.txt | grep -q com.tj.launcher"
+check "B1: Recents opened from the custom home does not list app.orionmd.profiles among the visible tasks" bash -c "! sed -n '/Visible recent tasks/,\$p' $OUT/recents-from-home.txt | grep -q app.orionmd.profiles"
 adb shell input keyevent KEYCODE_HOME; sleep 2
 
 beat "before RESET2"
@@ -336,7 +336,7 @@ setlabel Clock; home
 
 beat "before W5: the stock"
 # ---- W5: the stock launcher's home screen must never appear in custom mode unless Tj did the gesture (the helper presses Home); W2: our tasks carry the exclude flag at runtime
-STOCK="$(adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tr -d '\r' | grep '/' | grep -v com.tj.launcher | head -1)"
+STOCK="$(adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tr -d '\r' | grep '/' | grep -v app.orionmd.profiles | head -1)"
 echo "stock home component: $STOCK" | tee "$OUT/stock-component.txt"
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_battery_saver_on_quickstep\\\" value=\\\"false\\\" /></map>\" > shared_prefs/tj_features.xml'"
 setmode custom; rebind; home
@@ -350,18 +350,18 @@ resumed > "$OUT/resumed-stray.txt"; shot 40-stray-stock-home
 adb logcat -d -s TjA11y:I | grep STRAY > "$OUT/stray-log.txt" 2>&1
 info "W5 after: resumed: $(grep -o 'ActivityRecord{[^}]*}' "$OUT/resumed-stray.txt" | head -1 | cut -c1-90); log in the 5 s: $(adb logcat -d -s TjA11y:I | grep -E 'RESET|STRAY|ROUTER|MODE' | sed 's/^.*TjA11y *: //' | cut -c1-44 | tail -n 8 | tr '\n' '|')"
 if [ -n "$STOCK" ]; then
-  check "W5: stock home started without the gesture (custom mode) is sent back to our launcher" grep -q 'com.tj.launcher/com.android.launcher3.Launcher' "$OUT/resumed-stray.txt"
+  check "W5: stock home started without the gesture (custom mode) is sent back to our launcher" grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher' "$OUT/resumed-stray.txt"
   check "W5: the helper logged the redirect" grep -q STRAY "$OUT/stray-log.txt"
   setmode quickstep; rebind; home
   adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME -n "$STOCK" >/dev/null 2>&1; sleep 4
   resumed > "$OUT/resumed-quickstep-guard.txt"
-  check "W5: in Quickstep mode (after the gesture) the stock home is left alone" bash -c "! grep -q 'com.tj.launcher/com.android.launcher3.Launcher' $OUT/resumed-quickstep-guard.txt"
+  check "W5: in Quickstep mode (after the gesture) the stock home is left alone" bash -c "! grep -q 'app.orionmd.profiles/com.android.launcher3.Launcher' $OUT/resumed-quickstep-guard.txt"
   setmode custom; home
 else
   info "W5: no separate stock home component on this emulator image; guard not exercised"
 fi
 adb shell dumpsys activity recents > "$OUT/recents-flags.txt" 2>&1
-OURS="$(grep -o 'flg=0x[0-9a-f]* [^}]*cmp=com.tj.launcher/[A-Za-z.0-9]*' "$OUT/recents-flags.txt" | head -5)"
+OURS="$(grep -o 'flg=0x[0-9a-f]* [^}]*cmp=app.orionmd.profiles/[A-Za-z.0-9]*' "$OUT/recents-flags.txt" | head -5)"
 BAD=0; for f in $(echo "$OURS" | grep -o 'flg=0x[0-9a-f]*' | cut -d= -f2); do [ $(( f & 0x800000 )) -eq 0 ] && BAD=$((BAD+1)); done
 if [ -n "$OURS" ]; then check "W2: every task of ours in the Recents dump carries FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS" test "$BAD" -eq 0; else info "W2: no task of ours listed in the Recents dump (fine: excluded)"; fi
 
@@ -449,7 +449,7 @@ pad 1 2 3 4 e; sleep 7
 resumed > "$OUT/e1-resumed-plain.txt"; getmode > "$OUT/e1-mode-plain.txt"
 adb logcat -d -s TjA11y:I | grep UNLOCKPICK > "$OUT/e1-log-plain.txt" 2>&1
 check "E1: a plain PIN returns to the CUSTOM launcher (mode switched back)" grep -q custom "$OUT/e1-mode-plain.txt"
-check "E1: and our Launcher is on screen" grep -q 'com.tj.launcher' "$OUT/e1-resumed-plain.txt"
+check "E1: and our Launcher is on screen" grep -q 'app.orionmd.profiles' "$OUT/e1-resumed-plain.txt"
 adb shell locksettings clear --old 1234 > "$OUT/e1-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "E1: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/e1-clearpin.txt"
@@ -650,11 +650,11 @@ pad 1 2 3 4 e; sleep 1.5; resumed > "$OUT/n3-plain-1s5.txt"; sleep 5.5
 getmode > "$OUT/n3-plain-mode.txt"; resumed > "$OUT/n3-plain-resumed.txt"
 info "N3: 1.5 s after the Enter tap of a plain PIN (a Quickstep session ended): $(cat $OUT/n3-plain-1s5.txt)"
 check "N3: a plain PIN after a Quickstep session ends it (custom mode)" grep -q custom "$OUT/n3-plain-mode.txt"
-check "N3: and Solitaire/our launcher is on screen, not Quickstep" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/n3-plain-resumed.txt"
+check "N3: and Solitaire/our launcher is on screen, not Quickstep" bash -c "grep -qiE 'calendar|app.orionmd.profiles' $OUT/n3-plain-resumed.txt"
 # a CUSTOM-to-CUSTOM unlock: the wake pre-armed the stack, nothing is closed or cleared
 lockpad
 pad 1 2 3 4 e; sleep 2; resumed > "$OUT/n3-c2c-resumed.txt"
-check "N3: a plain unlock from the custom account lands on the custom stack at once" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/n3-c2c-resumed.txt"
+check "N3: a plain unlock from the custom account lands on the custom stack at once" bash -c "grep -qiE 'calendar|app.orionmd.profiles' $OUT/n3-c2c-resumed.txt"
 adb shell locksettings clear --old 1234 > "$OUT/n2-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 check "N2: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exception' $OUT/n2-clearpin.txt"
@@ -666,7 +666,7 @@ ensurehome
 # ---- N6: the invisible clean-up helper (shell-uid process started by one adb line): Quickstep's apps are force-stopped with no cover, their Recents cards vanish
 beat "before N6"
 setfeat; setmode quickstep; rebind; home; sleep 2
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/n6-start.txt" 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/n6-start.txt" 2>&1; sleep 5
 adb shell cat /data/local/tmp/tjshell.log > "$OUT/n6-server-log.txt" 2>&1
 info "N6: the helper's own output: $(tr '\n' ' ' < $OUT/n6-server-log.txt | head -c 300)"
 adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/n6-ps.txt" 2>&1
@@ -725,7 +725,7 @@ getmode > "$OUT/o-plain-mode.txt"
 check "O1: a plain PIN is still the custom launcher (no handshake, no accident)" grep -q custom "$OUT/o-plain-mode.txt"
 
 # O4 + O3: with the shell helper, locking from Quickstep closes its apps BEFORE any wake; the unlock then has nothing left to do
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 4
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 4
 setfeat3; setmode quickstep; rebind; home; sleep 2
 for APP in com.android.contacts com.android.gallery3d com.android.email; do adb shell monkey -p $APP -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 2; adb shell input keyevent KEYCODE_HOME; sleep 1; done
 adb logcat -c
@@ -785,7 +785,7 @@ adb shell settings get global device_demo_mode > "$OUT/t-demo-custom.txt" 2>&1
 check "AB1: after a Quickstep session and back in the custom launcher the retail-demo flag is still off" bash -c "v=\$(tr -d ' \r\n' < $OUT/t-demo-custom.txt); [ \"\$v\" = 0 ] || [ \"\$v\" = null ]"
 lockpad; pad 1 2 3 4 e; sleep 6                                             # the lock screen + a plain PIN
 resumed > "$OUT/t-demo-unlock.txt"
-check "AB1: the lock screen and a plain PIN work (custom stack in front)" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/t-demo-unlock.txt"
+check "AB1: the lock screen and a plain PIN work (custom stack in front)" bash -c "grep -qiE 'calendar|app.orionmd.profiles' $OUT/t-demo-unlock.txt"
 # the guard: something adds a tile while the custom account is active -> it is taken out again
 adb shell settings put secure sysui_qs_tiles "rotation,flashlight" >/dev/null 2>&1; sleep 4
 adb shell settings get secure sysui_qs_tiles > "$OUT/t-guard-setting.txt" 2>&1
@@ -853,7 +853,7 @@ info "S5b pm suspend com.android.shell -> [$(tr '\n' ' ' < $OUT/s-suspend-shell.
 adb shell dumpsys notification --noredact 2>/dev/null | grep -B2 -A12 'tagS' | head -40 > "$OUT/s-notif-dump.txt"
 adb shell pm unsuspend com.android.shell >/dev/null 2>&1
 # the input monitor probe (as the shell user)
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.InputProbe' > "$OUT/s-inputprobe.txt" 2>&1
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) app_process /system/bin com.tj.launcher.InputProbe' > "$OUT/s-inputprobe.txt" 2>&1
 info "S6 input monitor probe: $(grep -E 'RESULT' $OUT/s-inputprobe.txt | tr '\n' ' ' | head -c 300)"
 # knobs
 adb shell cmd overlay list > "$OUT/s-overlays.txt" 2>&1
@@ -894,7 +894,7 @@ check "S1: the probe report has the Settings app facts" bash -c "grep -q 'dumpsy
 info "S1: probe report $(wc -l < probe-out/launcher-probe.txt) lines; status table: $(grep -c 'granted=' probe-out/status.txt) permission rows"
 # T1: the DEVICE-shell helper line (what a phone running an adb app types, no "adb shell" prefix) starts the helper too
 adb shell pkill -f com.tj.launcher.ShellServer >/dev/null 2>&1; sleep 1
-echo 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &' | adb shell >/dev/null 2>&1; sleep 4
+echo 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &' | adb shell >/dev/null 2>&1; sleep 4
 adb shell "ps -A -o ARGS | grep -c '[S]hellServer'" > "$OUT/x-devline-ps.txt" 2>&1
 check "T1: the device-shell helper line (phone adb app, no adb shell prefix) starts the helper" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/x-devline-ps.txt)\" -ge 1 ]"
 # S2: take three things away, then let the app put them back through the helper
@@ -983,7 +983,7 @@ adb shell am start -n "$PKG/.SetupActivity" --ez test_lock_wallpaper true >/dev/
 adb shell "run-as $PKG cat shared_prefs/tj_features.xml" | grep -o 'test_lock_wallpaper_done">[^<]*' > "$OUT/v-lockwp.txt" 2>&1
 info "V2: test lock wallpaper: $(cat $OUT/v-lockwp.txt)"
 setmode custom; rebind; home
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/v-helper-start.txt" 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/v-helper-start.txt" 2>&1; sleep 5
 adb shell locksettings set-pin 1234 > "$OUT/v-setpin.txt" 2>&1
 adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keyevent KEYCODE_WAKEUP; sleep 3
 adb logcat -c
@@ -1203,7 +1203,7 @@ info "R3 Recents now: $(tr '\n' '|' < $OUT/rs-recents-before.txt | cut -c1-700)"
 CTASK=$(grep 'A=com.android.contacts' "$OUT/rs-recents-before.txt" | head -1 | grep -o ' #[0-9]* ' | tr -d ' #')
 CSTACK=$(grep 'A=com.android.contacts' "$OUT/rs-recents-before.txt" | head -1 | grep -o 'StackId=[0-9]*' | cut -d= -f2)
 adb shell am stack list > "$OUT/rs-stacks.txt" 2>&1
-HOMESTACK=$(awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:.*(com.tj.launcher|com.android.launcher3)/{print sid; exit}' "$OUT/rs-stacks.txt")
+HOMESTACK=$(awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:.*(app.orionmd.profiles|com.android.launcher3)/{print sid; exit}' "$OUT/rs-stacks.txt")
 info "R3 contacts task=$CTASK stack=$CSTACK, the stack holding our launcher=$HOMESTACK; stacks: $(grep -E 'Stack id=|taskId=' $OUT/rs-stacks.txt | sed 's/^ *//' | cut -c1-90 | tr '\n' '|' | cut -c1-900)"
 CPID0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
 if [ -n "$CTASK" ] && [ -n "$HOMESTACK" ]; then
@@ -1392,7 +1392,7 @@ check "AC2: and it is not in Recents" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/ac-a-
 check "AC8: the custom home WAS still prepared behind the lock screen" grep -q "custom home" "$OUT/ac-a-off-log.txt"
 pad 1 2 3 4 e; sleep 4
 resumed > "$OUT/ac-a-off-resumed.txt"
-check "AC1/AC8: a plain PIN lands on the custom launcher at once" grep -q "com.tj.launcher" "$OUT/ac-a-off-resumed.txt"
+check "AC1/AC8: a plain PIN lands on the custom launcher at once" grep -q "app.orionmd.profiles" "$OUT/ac-a-off-resumed.txt"
 check "AC2: still no Solitaire stand-in after the unlock" bash -c "[ -z \"\$(adb shell pidof com.android.calendar | tr -d '\r\n')\" ]"
 # positive control: with the switch ON the same flow does start it
 acfeat true true true; setmode custom; rebind; home; sleep 3
@@ -1406,7 +1406,7 @@ acfeat true false true; setmode quickstep; rebind; home; sleep 2
 lockpad; pad 1 2 3 4 e; sleep 7
 getmode > "$OUT/ac1-mode.txt"; resumed > "$OUT/ac1-resumed.txt"
 check "AC1: a plain PIN after a Quickstep session ends it although the old switch is stored as off" grep -q custom "$OUT/ac1-mode.txt"
-check "AC1: and the custom account (our launcher, or the stand-in app the return reset opens) is on screen, not Quickstep" bash -c "grep -qE 'calendar|com.tj.launcher' $OUT/ac1-resumed.txt && ! grep -q 'com.android.launcher3/' $OUT/ac1-resumed.txt"
+check "AC1: and the custom account (our launcher, or the stand-in app the return reset opens) is on screen, not Quickstep" bash -c "grep -qE 'calendar|app.orionmd.profiles' $OUT/ac1-resumed.txt && ! grep -q 'com.android.launcher3/' $OUT/ac1-resumed.txt"
 
 # ---- AC9: the pre-arm switch is OFF, the handshake still puts Quickstep behind the lock screen AT ONCE (a wrong PIN keeps the tablet locked, so the log is the evidence)
 acfeat false false true; setmode custom; rebind; home; sleep 2; adb logcat -c
@@ -1690,7 +1690,7 @@ check "AD7a: the power-menu cover works on that lock screen (action=1)" grep -q 
 adb shell input swipe 300 900 300 300 300; sleep 2
 pad 1 2 3 4 e; sleep 7
 resumed > "$OUT/ad-plain.txt"
-check "AD1: a plain PIN after that Quickstep session opens the custom launcher" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/ad-plain.txt && ! grep -q 'com.android.contacts' $OUT/ad-plain.txt"
+check "AD1: a plain PIN after that Quickstep session opens the custom launcher" bash -c "grep -qiE 'calendar|app.orionmd.profiles' $OUT/ad-plain.txt && ! grep -q 'com.android.contacts' $OUT/ad-plain.txt"
 # ---------------- round 2: the switch OFF = the Quickstep home as before
 adfeat false; adb shell am force-stop "$PKG"; ensurehome; rebind; home; sleep 2
 lockpad; pad d d 1 2 3 4 e; sleep 7
@@ -1807,7 +1807,7 @@ if [ -n "$FL" ] && [ -n "$CB" ]; then
   check "AE3: ... and ONLY there: the part above our card is left alone (MAE < 0.005)" awk -v m="$MAA" 'BEGIN{exit !(m!="" && m+0 < 0.005)}'
 else info "AE3 A: no CARD line in the log"; check "AE3: the menu rectangle was learned (CARD line)" false; fi
 # ---------------- phase B: the helper runs, the patch is a PHOTO of the real lock screen
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/ae-helper-start.txt" 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' > "$OUT/ae-helper-start.txt" 2>&1; sleep 5
 aefeat true true 0; adb shell am force-stop "$PKG"; sleep 1; rebind; aelock; adb logcat -c
 adb shell input keyevent --longpress KEYCODE_POWER; sleep 3
 adb shell input keyevent KEYCODE_BACK; sleep 14                     # the helper photographs the lock screen (the resting patch hides for the shot), then the patch rests again
@@ -1912,7 +1912,7 @@ resumed > "$OUT/ao-picker-resumed.txt"; shot ao-picker
 info "AO1: after tapping Wallpapers: $(cut -c1-220 "$OUT/ao-picker-resumed.txt"); SET_WALLPAPER handlers: $(adb shell pm query-activities --brief -a android.intent.action.SET_WALLPAPER 2>/dev/null | tr '\n' '|' | cut -c1-300)"
 check "AO1: the Wallpapers entry never shows an 'Open with' / chooser list (one explicit picker)" bash -c "! grep -qE 'ResolverActivity|ChooserActivity' $OUT/ao-picker-resumed.txt"
 # AO1b (Tj: "the reference is the screenshot without the my photos button"): the entry opens the launcher's OWN copy of the AOSP picker, which has no "My photos" tile at all
-check "AO1b: the Wallpapers entry opens the launcher's own picker (com.tj.launcher / WallpaperPickerActivity)" grep -q 'com.tj.launcher/com.android.wallpaperpicker.WallpaperPickerActivity' "$OUT/ao-picker-resumed.txt"
+check "AO1b: the Wallpapers entry opens the launcher's own picker (app.orionmd.profiles / WallpaperPickerActivity)" grep -q 'app.orionmd.profiles/com.android.wallpaperpicker.WallpaperPickerActivity' "$OUT/ao-picker-resumed.txt"
 adb shell uiautomator dump /sdcard/ao-picker.xml >/dev/null 2>&1; adb shell cat /sdcard/ao-picker.xml 2>/dev/null | tr '>' '\n' > "$OUT/ao-picker-dump.txt"
 info "AO1b: picker texts: $(grep -o 'text="[^"]*"' $OUT/ao-picker-dump.txt | grep -v 'text=""' | head -12 | tr '\n' ' '); strip tiles (bounds): $(grep -o 'resource-id="[^"]*wallpaper_list"[^>]*bounds="[^"]*"' $OUT/ao-picker-dump.txt | head -2 | tr '\n' ' ')"
 check "AO1b: there is NO 'My photos' tile in it" bash -c "! grep -qi 'my photos' $OUT/ao-picker-dump.txt"
@@ -2492,14 +2492,14 @@ lockpad(){ adb shell input keyevent KEYCODE_POWER; sleep 2; adb shell input keye
 uffeat(){ adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><boolean name=\\\"profile_prearm\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
 ufev(){ adb logcat -b events -d -v time 2>/dev/null | grep am_resume_activity | sed -E 's/^([0-9-]+ [0-9:.]+) .*,([^],]+)\].*$/\1 \2/'; }
 ufspan(){ awk '{split($2,a,":"); ms=int((((a[1]*60)+a[2])*60+a[3])*1000+0.5); if (NR==1) f=ms; l=ms} END {if (NR>0) printf "%d", l-f; else printf "0"}' "$1"; }
-ufnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#g'; }
+ufnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#app.orionmd.profiles/com.android.launcher3.Launcher#CUSTOM#g'; }
 # ---- 1) a plain PIN in a custom session: our launcher, never the stock one
 uffeat; setmode custom; rebind; home; sleep 2
 lockpad; adb logcat -b events -c
 pad 1 2 3 4 e; sleep 5
 ufev > "$OUT/uf-custom.txt"
 info "UF1 plain PIN, custom session: resumed in order: $(ufnames "$OUT/uf-custom.txt"); span ${UFSPAN:-$(ufspan "$OUT/uf-custom.txt")} ms"
-check "UF1: a plain PIN in a custom session ends on our launcher" bash -c "tail -1 $OUT/uf-custom.txt | grep -q 'com.tj.launcher/'"
+check "UF1: a plain PIN in a custom session ends on our launcher" bash -c "tail -1 $OUT/uf-custom.txt | grep -q 'app.orionmd.profiles/'"
 check "UF1: ... and the stock launcher / Recents was NEVER resumed on the way (no flash of Quickstep)" bash -c "! grep -q ' com.android.launcher3/' $OUT/uf-custom.txt"
 # ---- 2) a plain PIN after a Quickstep session (an app open in Quickstep): no Quickstep item may appear after the Enter
 uffeat; setmode quickstep; rebind; home; sleep 2
@@ -2510,9 +2510,9 @@ ufev > "$OUT/uf-after-qs.txt"
 info "UF2 plain PIN after a Quickstep session (Contacts was open): resumed in order: $(ufnames "$OUT/uf-after-qs.txt"); span $(ufspan "$OUT/uf-after-qs.txt") ms; mode now: $(getmode)"
 check "UF2: after a Quickstep session a plain PIN ends in the custom world (mode custom)" bash -c "[ \"$(getmode)\" = custom ]"
 UF2_OUT="$(cover_resumes "$OUT/uf-after-qs.txt" ' (com.android.launcher3/|com.android.contacts/)')"
-info "UF2 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' "$OUT/cover-times.txt" | tr '\n' '|' | cut -c1-120); every resume with its time: $(sed 's/^[0-9-]* //; s#com.android.launcher3/#STOCK:#; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#' "$OUT/uf-after-qs.txt" | tr '\n' '|' | cut -c1-260); stock / Contacts resumes OUTSIDE the cover: [$(echo "$UF2_OUT" | tr '\n' '|' | cut -c1-200)]"
+info "UF2 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' "$OUT/cover-times.txt" | tr '\n' '|' | cut -c1-120); every resume with its time: $(sed 's/^[0-9-]* //; s#com.android.launcher3/#STOCK:#; s#app.orionmd.profiles/com.android.launcher3.Launcher#CUSTOM#' "$OUT/uf-after-qs.txt" | tr '\n' '|' | cut -c1-260); stock / Contacts resumes OUTSIDE the cover: [$(echo "$UF2_OUT" | tr '\n' '|' | cut -c1-200)]"
 check "UF2: ... the stock HOME / Recents screens and the Quickstep app (Contacts) resume only UNDER the reset's black cover, never visible after the Enter (the released v0.8.10 resumes the stock HOME under the cover too: runs #400 / #403)" test -z "$UF2_OUT"
-check "UF2: ... and the last thing resumed is ours" bash -c "tail -1 $OUT/uf-after-qs.txt | grep -q ' com.tj.launcher/'"
+check "UF2: ... and the last thing resumed is ours" bash -c "tail -1 $OUT/uf-after-qs.txt | grep -q ' app.orionmd.profiles/'"
 # ---- 3) the Quickstep handshake: the stock launcher is the last thing, our launcher does not flash in after it
 uffeat; setmode custom; rebind; home; sleep 2
 lockpad; adb logcat -b events -c
@@ -2520,7 +2520,7 @@ pad d d 1 2 3 4 e; sleep 6
 ufev > "$OUT/uf-qs.txt"
 info "UF3 Quickstep handshake: resumed in order: $(ufnames "$OUT/uf-qs.txt"); span $(ufspan "$OUT/uf-qs.txt") ms; mode now: $(getmode)"
 check "UF3: the handshake ends on the stock launcher (Quickstep)" bash -c "tail -1 $OUT/uf-qs.txt | grep -q ' com.android.launcher3/'"
-check "UF3: ... and our launcher is not resumed AFTER the stock one (no custom flash into Quickstep)" bash -c "awk '/ com.android.launcher3\\//{s=1; next} s && / com.tj.launcher\\//{bad=1} END{exit bad}' $OUT/uf-qs.txt"
+check "UF3: ... and our launcher is not resumed AFTER the stock one (no custom flash into Quickstep)" bash -c "awk '/ com.android.launcher3\\//{s=1; next} s && / app.orionmd.profiles\\//{bad=1} END{exit bad}' $OUT/uf-qs.txt"
 adb shell locksettings clear --old 1234 > "$OUT/uf-clearpin.txt" 2>&1
 adb shell wm dismiss-keyguard >/dev/null 2>&1; sleep 1
 adb shell "run-as $PKG sh -c 'rm -f shared_prefs/tj_features.xml'" >/dev/null 2>&1
@@ -2537,9 +2537,9 @@ cscount(){ adb shell dumpsys activity recents 2>/dev/null | grep -cE "(A=|cmp=|a
 csshow(){ adb shell dumpsys activity recents 2>/dev/null | grep -E "Recent #|A=|cmp=" | cut -c1-130 | head -${1:-8} | tr '\n' '|'; }
 csopen(){ adb shell monkey -p "$1" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 2; }
 csev(){ adb logcat -b events -d -v time 2>/dev/null | grep am_resume_activity | sed -E 's/^([0-9-]+ [0-9:.]+) .*,([^],]+)\].*$/\1 \2/'; }
-csnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#g'; }
+csnames(){ awk '{printf "%s ", $3}' "$1" | sed 's#com.android.launcher3/#STOCK:#g; s#app.orionmd.profiles/com.android.launcher3.Launcher#CUSTOM#g'; }
 cslog(){ adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | tail -${1:-40}; }
-csshell(){ adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5; }
+csshell(){ adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5; }
 csclean(){ adb shell am force-stop com.android.calendar; adb shell am force-stop com.android.contacts; adb shell am force-stop com.android.gallery3d; adb shell "run-as $PKG rm -f shared_prefs/tj_crash.xml shared_prefs/tj_origin.xml shared_prefs/tj_dirty.xml shared_prefs/tj_task_origin.xml"; }
 if want cs; then # section cs
 ensurehome
@@ -2594,9 +2594,9 @@ check "CS-B8: the on-screen clean-up ran ('RESET plan' in the lock log)" grep -q
 check "CS-B1 (BE3): after a Quickstep session a plain PIN ends in the custom world (mode custom)" grep -q custom "$OUT/cs-b-mode.txt"
 check "CS-B2 (BE2): Recents is COMPLETELY cleared (a drawer app and a hidden app of the Quickstep session are both gone)" bash -c "[ \"${CSB_CON:-9}\" = 0 ] && [ \"${CSB_CAL:-9}\" = 0 ]"
 check "CS-B3 (BE3): no stand-in app was started although 'Open Solitaire' is ON (clean start wins): Calendar has no process" bash -c "[ -z \"\$(adb shell pidof com.android.calendar | tr -d '\r\n')\" ]"
-check "CS-B4 (BE3): the last thing resumed is our launcher (the custom home is the screen)" bash -c "tail -1 $OUT/cs-b-resumed.txt | grep -q ' com.tj.launcher/'"
+check "CS-B4 (BE3): the last thing resumed is our launcher (the custom home is the screen)" bash -c "tail -1 $OUT/cs-b-resumed.txt | grep -q ' app.orionmd.profiles/'"
 CSB5_OUT="$(cover_resumes "$OUT/cs-b-resumed.txt" ' (com.android.launcher3/|com.android.contacts/|com.android.calendar/)')"
-info "CS-B5 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' "$OUT/cover-times.txt" | tr '\n' '|' | cut -c1-120); every resume with its time: $(sed 's/^[0-9-]* //; s#com.android.launcher3/#STOCK:#; s#com.tj.launcher/com.android.launcher3.Launcher#CUSTOM#' "$OUT/cs-b-resumed.txt" | tr '\n' '|' | cut -c1-260); stock / Quickstep-app resumes OUTSIDE the cover: [$(echo "$CSB5_OUT" | tr '\n' '|' | cut -c1-200)]"
+info "CS-B5 (gate triage): the cover's life: $(sed 's/^[0-9-]* //; s/I.TjA11y *([ 0-9]*): //' "$OUT/cover-times.txt" | tr '\n' '|' | cut -c1-120); every resume with its time: $(sed 's/^[0-9-]* //; s#com.android.launcher3/#STOCK:#; s#app.orionmd.profiles/com.android.launcher3.Launcher#CUSTOM#' "$OUT/cs-b-resumed.txt" | tr '\n' '|' | cut -c1-260); stock / Quickstep-app resumes OUTSIDE the cover: [$(echo "$CSB5_OUT" | tr '\n' '|' | cut -c1-200)]"
 check "CS-B5 (BE3): the stock launcher's HOME / Recents screens and the Quickstep apps resume only UNDER the black cover after the Enter, never visible (run #401: the stock HOME resumed under the cover on a good run, the old check called that a failure)" test -z "$CSB5_OUT"
 check "CS-B6 (BE3): the lock log shows the custom home in front after the clean-up ('HOME custom home in front')" grep -q 'HOME custom home in front' "$OUT/cs-b-log.txt"
 info "CS progress: part B read, +${SECONDS}s"
@@ -3123,7 +3123,7 @@ check "CU7: the curtain starts swallowing touches only when the unlock is confir
 check "CU8: a tap on the picture was swallowed by the curtain's own window" test "$CU_SW" -ge 1
 CU_RES="$(adb shell dumpsys activity activities 2>/dev/null | grep -m1 mResumedActivity | cut -c1-150)"
 info "CU C: resumed at the end: $CU_RES; mode $(getmode); the 'COVER' lock-log lines: $(adb shell "run-as $PKG cat files/lock-events.log" 2>/dev/null | grep ' COVER ' | tail -2 | cut -c1-130 | tr '\n' '|')"
-CU_RESL="$(echo "$CU_RES" | grep -c 'com.tj.launcher')"
+CU_RESL="$(echo "$CU_RES" | grep -c 'app.orionmd.profiles')"
 check "CU9: at the end the real custom home is in front" test "$CU_RESL" -ge 1
 adb shell locksettings clear --old 1234 >/dev/null 2>&1; setmode custom; rebind; home
 fi # section cu
@@ -3381,7 +3381,7 @@ adb shell monkey -p com.android.calendar -c android.intent.category.LAUNCHER 1 >
 adb shell am stack list > "$OUT/rs2-stacks.txt" 2>&1
 awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:/{t=$1; sub(/taskId=/,"",t); sub(/:/,"",t); print sid, t, $2}' "$OUT/rs2-stacks.txt" > "$OUT/rs2-tasks.txt"
 info "RS2 c tasks (stack task component): $(tr '\n' '|' < $OUT/rs2-tasks.txt | cut -c1-500)"
-CT=$(grep 'com.android.contacts' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'com.tj.launcher|com.android.launcher3' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $1}')
+CT=$(grep 'com.android.contacts' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'app.orionmd.profiles|com.android.launcher3' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $1}')
 CALT=$(grep 'com.android.calendar' "$OUT/rs2-tasks.txt" | head -1 | awk '{print $1" "$2}')
 recents(){ adb shell dumpsys activity recents 2>/dev/null | grep -E 'Recent #[0-9]+:|realActivity=' | sed 's/^ *//' | cut -c1-110 | tr '\n' '|' | cut -c1-700; }
 info "RS2 c Recents before: $(recents)"
@@ -3408,7 +3408,7 @@ ensurehome
 #      tasks go: apps that exist only in Quickstep are closed as before, an app the custom account also has (Contacts here) is spared and loses only Quickstep's own extra task.
 beat "before RT"
 setfeat; setmode custom; adb shell am force-stop "$PKG"; adb shell "run-as $PKG rm -f shared_prefs/tj_origin.xml"; rebind; home; sleep 2   # AA3 starts from a clean origin record: Quickstep-opened marks left by an earlier section (ad opens Contacts in Quickstep) made the clean-up close Contacts (run 181)
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
 for APP in com.android.email com.android.gallery3d com.android.camera2; do adb shell am force-stop $APP; done; sleep 1   # the apps this section opens ONLY in Quickstep must not already have a task: run #334 (order base,e1,x,ac,rt) failed AA3 because `base` had left an Email task, which the clean-up then correctly spared (force-stop removes the app's tasks)
 rec(){ adb shell dumpsys activity recents 2>/dev/null | grep -oE '(realActivity|cmp|I)=[A-Za-z][A-Za-z0-9_.]*/' | sed 's/^[A-Za-z]*=//; s#/$##' | sort | uniq -c | tr -s ' ' | tr '\n' '|'; }
 adb shell dumpsys activity recents > "$OUT/rt-recents-dump.txt" 2>&1; info "RT what Android prints for Recents (first lines): $(sed -n 1,16p $OUT/rt-recents-dump.txt | sed 's/^ *//' | cut -c1-110 | tr '\n' '|')"
@@ -3523,7 +3523,7 @@ check "AA1: it is a quieter look, NOT a lock: a second swipe from the top still 
 adb shell cmd statusbar collapse; sleep 1.5
 lockpad; pad 1 2 3 4 e; sleep 6                                                  # the lock screen + a plain PIN with the bar hidden
 resumed > "$OUT/im-unlock.txt"
-check "AA1: the lock screen and a plain PIN still work with the bar hidden (custom stack in front)" bash -c "grep -qiE 'calendar|com.tj.launcher' $OUT/im-unlock.txt"
+check "AA1: the lock screen and a plain PIN still work with the bar hidden (custom stack in front)" bash -c "grep -qiE 'calendar|app.orionmd.profiles' $OUT/im-unlock.txt"
 lockpad; pad d d 1 2 3 4 e; sleep 7                                             # handshake again -> Quickstep: the original comes back
 adb shell settings get global policy_control > "$OUT/im-quickstep2.txt" 2>&1
 check "AA1: back in Quickstep the original value is restored exactly" bash -c "[ \"\$(tr -d '\r\n' < $OUT/im-quickstep2.txt)\" = 'immersive.preconfirms=*' ]"
@@ -3544,7 +3544,7 @@ recents(){ adb shell dumpsys activity recents 2>/dev/null | grep -E 'Recent #[0-
 adb shell monkey -p com.android.contacts -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3
 adb shell am stack list > "$OUT/rs3-stacks.txt" 2>&1
 awk '/Stack id=/{sid=$2; sub(/id=/,"",sid)} /taskId=[0-9]+:/{t=$1; sub(/taskId=/,"",t); sub(/:/,"",t); print sid, t, $2}' "$OUT/rs3-stacks.txt" > "$OUT/rs3-tasks.txt"
-CT=$(grep 'com.android.contacts' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'com.tj.launcher|com.android.launcher3' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $1}')
+CT=$(grep 'com.android.contacts' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $2}'); HS=$(grep -E 'app.orionmd.profiles|com.android.launcher3' "$OUT/rs3-tasks.txt" | head -1 | awk '{print $1}')
 info "RS3 a am stack help: $(adb shell am stack help 2>&1 | head -12 | tr -s ' ' | tr '\n' '|' | cut -c1-500)"
 if [ -n "$CT" ] && [ -n "$HS" ]; then
   P0=$(adb shell pidof com.android.contacts | tr -d '\r\n')
@@ -3684,7 +3684,7 @@ pf_dump(){ adb shell uiautomator dump /sdcard/tjpf.xml >/dev/null 2>&1; adb shel
 # "tracked": the steady state after the first return (the one-time "first run closes every non-custom app" is not what is under test)
 adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"tracked\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_origin.xml'"
 setfeat; setmode custom; rebind; home; sleep 2
-adb shell 'CLASSPATH=$(pm path com.tj.launcher | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
+adb shell 'CLASSPATH=$(pm path app.orionmd.profiles | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/data/local/tmp/tjshell.log 2>&1 &' >/dev/null 2>&1; sleep 5
 adb shell locksettings set-pin 1234 > "$OUT/pf-setpin.txt" 2>&1
 adb shell monkey -p $CN -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 3; adb shell input keyevent KEYCODE_HOME; sleep 1     # the custom account's own app: its notification must stay
 info "PF custom account before Quickstep: notifications [$(pf_notifs)]"
@@ -3811,12 +3811,12 @@ for try in 1 2 3 4; do
 done
 info "RB unlock after the restart: $([ $RBUNLOCKED = 1 ] && echo "done on try $try ($RBHOW)" || echo "NOT done"); resumed: $(cut -c1-110 $OUT/rb-resumed.txt)"
 info "RB display after the restart: $(adb shell wm size | tr -d '\r' | tr '\n' ' ')| $(adb shell wm density | tr -d '\r' | tr '\n' ' ')| overscan: $(adb shell dumpsys window displays | grep -m1 -oE 'overscan=\([0-9, -]*\)|mOverscan[A-Za-z]*=[^ ]*' | tr '\n' ' ')| font_scale=$(adb shell settings get system font_scale | tr -d '\r\n')"
-check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|com.tj.launcher|launcher3' $OUT/rb-resumed.txt"
+check "RB4: after the restart the PIN unlocks and Home shows the launcher or Solitaire" bash -c "grep -qiE 'calendar|app.orionmd.profiles|launcher3' $OUT/rb-resumed.txt"
 for i in $(seq 1 20); do adb shell dumpsys accessibility 2>/dev/null | grep -q 'Service\[label=' && break; sleep 2; done   # Android binds the helper a few seconds after the unlock
 sleep 3
 adb shell dumpsys accessibility > "$OUT/rb-a11y.txt" 2>&1
 adb shell settings get secure enabled_accessibility_services > "$OUT/rb-a11y-list.txt" 2>&1
-check "RB5a: the accessibility helper is still switched on after the restart (the list survived)" grep -q 'com.tj.launcher/' "$OUT/rb-a11y-list.txt"
+check "RB5a: the accessibility helper is still switched on after the restart (the list survived)" grep -q 'app.orionmd.profiles/' "$OUT/rb-a11y-list.txt"
 check "RB5b: Android bound the helper again by itself (a bound accessibility service exists; the emulator has no other)" grep -q 'Service\[label=' "$OUT/rb-a11y.txt"
 adb shell settings get secure sysui_qs_tiles > "$OUT/rb-tiles-after.txt" 2>&1
 check "RB6: the one-tile list survived the restart" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-tiles-after.txt)\" = \"\$(tr -d ' \r\n' < $OUT/rb-tiles-before.txt)\" ]"
@@ -3825,7 +3825,7 @@ check "RB7: the keep-alive service is running again after the restart" grep -q K
 adb shell "run-as $PKG cat shared_prefs/tj_crash.xml 2>/dev/null" > "$OUT/rb-crash-after.txt"
 check "RB7b: the launcher data is readable again after the unlock (so RB8 and RB9 mean something)" bash -c "[ -n \"\$(adb shell run-as $PKG ls shared_prefs 2>/dev/null | head -1)\" ]"
 check "RB8: the crash breaker did not trip during the restart" bash -c "! grep -q 'tripped.*true' $OUT/rb-crash-after.txt"
-command adb logcat -d -b crash 2>/dev/null | grep -c "com.tj.launcher" > "$OUT/rb-crashes.txt"
+command adb logcat -d -b crash 2>/dev/null | grep -c "app.orionmd.profiles" > "$OUT/rb-crashes.txt"
 check "RB9: the launcher did not crash while the tablet started up" bash -c "[ \"\$(tr -d ' \r\n' < $OUT/rb-crashes.txt)\" = 0 ]"
 info "RB after the restart: tiles '$(tr -d '\r\n' < $OUT/rb-tiles-after.txt)', policy_control '$(adb shell settings get global policy_control | tr -d '\r\n')', mode: $(getmode), resumed: $(cut -c1-120 $OUT/rb-resumed.txt)"
 adb shell locksettings clear --old 1234 > "$OUT/rb-clearpin.txt" 2>&1
@@ -3847,11 +3847,11 @@ set -- $RECT
 if [ "$#" -ge 4 ]; then
   X=$(( ($1 + $3) / 2 )); Y=$(( $2 + ($4 - $2) * 3 / 4 ))
   echo "card rect: $RECT -> tap Restart at $X,$Y" | tee "$OUT/press-restart.txt"
-  adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|com.tj.launcher|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
+  adb shell dumpsys window windows | grep -iE 'Window\{[^}]*(TjA11y|app.orionmd.profiles|ActionsDialog)' -A0 | head -6 >> "$OUT/press-restart.txt"
   adb shell input tap $X $Y   # the tap REBOOTS the emulator: read the log before the device goes away. Poll (a single read after a fixed 0.6 s missed the line once, run 113)
   for i in 1 2 3 4 5 6 7 8 9 10; do adb logcat -d -s TjA11y:I > "$OUT/tja11y-full.txt" 2>&1; grep -q "press 'Restart'" "$OUT/tja11y-full.txt" && break; sleep 0.25; done
   grep "press" "$OUT/tja11y-full.txt" >> "$OUT/press-restart.txt"
-  adb shell dumpsys input 2>/dev/null | grep -iE 'TjA11y|com.tj.launcher|ActionsDialog' | head -8 >> "$OUT/press-restart.txt"
+  adb shell dumpsys input 2>/dev/null | grep -iE 'TjA11y|app.orionmd.profiles|ActionsDialog' | head -8 >> "$OUT/press-restart.txt"
 else
   echo "no card rect found in log" | tee -a "$OUT/press-restart.txt"
 fi

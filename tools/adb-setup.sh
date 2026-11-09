@@ -4,7 +4,7 @@
 #   bash tools/adb-setup.sh --check  # only show what is granted
 # Nothing here installs software, touches the lock screen or makes the launcher a device admin.
 set -u
-PKG=com.tj.launcher
+PKG=app.orionmd.profiles
 adb get-state >/dev/null 2>&1 || { echo "No device found: is USB debugging on and the tablet plugged in? (research/ADB_COMMANDS.txt section 0)"; exit 1; }
 # the invisible clean-up helper (section 11): lasts until the tablet restarts, so it has its own switch:  bash tools/adb-setup.sh --helper
 start_helper(){

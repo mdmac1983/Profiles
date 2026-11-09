@@ -14,7 +14,7 @@ public class ShellProtocolTest {
         assertTrue(ShellProtocol.allowed("org.mozilla.firefox"));
     }
     @Test public void systemAndOurOwnPackagesAreNeverStopped() {
-        for (String p : new String[] { "android", "com.android.systemui", "com.android.phone", "com.tj.launcher", "com.android.launcher3", "com.android.providers.contacts",
+        for (String p : new String[] { "android", "com.android.systemui", "com.android.phone", "app.orionmd.profiles", "com.android.launcher3", "com.android.providers.contacts",
                 "com.google.android.gms", "com.android.inputmethod.latin", "com.mediatek.ims", "com.android.shell", "com.android.bluetooth", "com.android.server.telecom" })
             assertFalse(p, ShellProtocol.allowed(p));
     }
@@ -38,8 +38,8 @@ public class ShellProtocolTest {
         assertEquals(ShellProtocol.MAX_PACKAGES, ShellProtocol.forceStopTargets(b.toString()).size());
     }
     @Test public void parsesTheUidFromPmOutput() {
-        assertEquals(10123, ShellProtocol.parseUid("package:com.tj.launcher uid:10123\n"));
-        assertEquals(10123, ShellProtocol.parseUid("package:com.tj.launcherX uid:1\npackage:com.tj.launcher uid:10123"));
+        assertEquals(10123, ShellProtocol.parseUid("package:app.orionmd.profiles uid:10123\n"));
+        assertEquals(10123, ShellProtocol.parseUid("package:app.orionmd.profilesX uid:1\npackage:app.orionmd.profiles uid:10123"));
         assertEquals(-1, ShellProtocol.parseUid("Error: nothing"));
         assertEquals(-1, ShellProtocol.parseUid(null));
     }
@@ -108,14 +108,14 @@ public class ShellProtocolTest {
 
     // ---- S2: the allow-listed jobs
     @Test public void onlyListedJobsHaveALine() {
-        assertEquals("pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS", ShellProtocol.runLine("GRANT_WSS"));
+        assertEquals("pm grant app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS", ShellProtocol.runLine("GRANT_WSS"));
         assertNull(ShellProtocol.runLine("pm grant com.evil.app android.permission.WRITE_SECURE_SETTINGS"));
         assertNull(ShellProtocol.runLine("GRANT_WSS; reboot"));
         assertNull(ShellProtocol.runLine(null));
     }
     @Test public void everyJobLineOnlyTouchesThisAppOrTheBrowser() {
         for (String[] r : ShellProtocol.RUN) {
-            assertTrue(r[0], r[1].contains("com.tj.launcher") || r[1].contains("com.android.browser") || r[1].startsWith("mkdir -p /sdcard/Download/launcher-probe") || r[1].equals("screencap -p /sdcard/Download/launcher-probe/cal.png"));   // CAL_SHOT: the one fixed screenshot path (V4)
+            assertTrue(r[0], r[1].contains("app.orionmd.profiles") || r[1].contains("com.android.browser") || r[1].startsWith("mkdir -p /sdcard/Download/launcher-probe") || r[1].equals("screencap -p /sdcard/Download/launcher-probe/cal.png"));   // CAL_SHOT: the one fixed screenshot path (V4)
             assertFalse(r[0], r[1].contains(";") || r[1].contains("&") || r[1].contains("|") || r[1].contains("`") || r[1].contains("$"));
         }
     }
@@ -164,7 +164,7 @@ public class ShellProtocolTest {
             assertTrue(l.contains("app_process") && l.contains("com.tj.launcher.ShellServer"));
         }
         assertTrue(ShellProtocol.START_DEVICE_SH_C.startsWith("sh -c '"));
-        assertTrue(ShellProtocol.START_DEVICE_LINE.contains("$(pm path com.tj.launcher"));
+        assertTrue(ShellProtocol.START_DEVICE_LINE.contains("$(pm path app.orionmd.profiles"));
     }
     @Test public void shotsAndApksAreFixedRoutines() {
         assertTrue(ShellProtocol.isShots(" SHOTS ")); assertTrue(ShellProtocol.isApks("APKS"));

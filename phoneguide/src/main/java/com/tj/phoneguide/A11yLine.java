@@ -2,7 +2,7 @@ package com.tj.phoneguide;
 
 /** Builds the line that switches the launcher's accessibility helper on WITHOUT switching off a service that is already on. */
 final class A11yLine {
-    static final String COMPONENT = "com.tj.launcher/com.tj.launcher.TjAccessibilityService";
+    static final String COMPONENT = "app.orionmd.profiles/com.tj.launcher.TjAccessibilityService";
     private A11yLine() {}
 
     static String build(String printed) {

@@ -17,7 +17,7 @@ import org.junit.Test;
 /** AA3: the task-precise clean-up rules (pure parts) and the helper's two new protocol lines. */
 public class TaskOriginTest {
     private static final TaskOrigin.Guard GUARD = new TaskOrigin.Guard() {
-        @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, "com.tj.launcher", "com.android.launcher3", "com.android.inputmethod.latin"); }
+        @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, "app.orionmd.profiles", "com.android.launcher3", "com.android.inputmethod.latin"); }
     };
 
     private static LinkedHashMap<Integer, String> tasks(Object... idPkg) {
@@ -42,10 +42,10 @@ public class TaskOriginTest {
             + "    affinity=android.task.contacts\n"
             + "    intent={act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=com.android.contacts/.activities.PeopleActivity}\n"
             + "    realActivity=com.android.contacts/.activities.PeopleActivity\n"
-            + "* Recent #2: TaskRecord{8de2eac #7 I=com.tj.launcher/com.android.launcher3.Launcher U=0 StackId=0 sz=1}\n"
+            + "* Recent #2: TaskRecord{8de2eac #7 I=app.orionmd.profiles/com.android.launcher3.Launcher U=0 StackId=0 sz=1}\n"
             + "    userId=0 effectiveUid=u0a95 mCallingUid=u0a95 mUserSetupComplete=true mCallingPackage=null\n"
-            + "    intent={act=android.intent.action.MAIN cat=[android.intent.category.SECONDARY_HOME] flg=0x10200000 pkg=com.tj.launcher cmp=com.tj.launcher/com.android.launcher3.Launcher}\n"
-            + "    realActivity=com.tj.launcher/com.android.launcher3.Launcher\n"
+            + "    intent={act=android.intent.action.MAIN cat=[android.intent.category.SECONDARY_HOME] flg=0x10200000 pkg=app.orionmd.profiles cmp=app.orionmd.profiles/com.android.launcher3.Launcher}\n"
+            + "    realActivity=app.orionmd.profiles/com.android.launcher3.Launcher\n"
             + "* Recent #3: TaskRecord{dda7775 #5 I=com.android.launcher3/.Launcher U=0 StackId=0 sz=1}\n"
             + "    userId=0 effectiveUid=u0a60 mCallingUid=u0a60 mUserSetupComplete=true mCallingPackage=null\n"
             + "* Recent #4: TaskRecord{5d777b #2 A=com.android.settings.FallbackHome U=0 StackId=-1 sz=0}\n";
@@ -54,7 +54,7 @@ public class TaskOriginTest {
         Map<Integer, String> t = ShellProtocol.parseTasks(DUMP);
         assertEquals("com.android.calendar", t.get(8));
         assertEquals("com.android.contacts", t.get(10));        // affinity android.task.contacts would have been wrong
-        assertEquals("com.tj.launcher", t.get(7));
+        assertEquals("app.orionmd.profiles", t.get(7));
         assertEquals("com.android.launcher3", t.get(5));        // only the header says it (no realActivity line)
         assertEquals(Arrays.asList(8, 10, 7, 5, 2), Arrays.asList(t.keySet().toArray(new Integer[0])));   // order = Recents order
     }
@@ -91,9 +91,9 @@ public class TaskOriginTest {
 
     @Test public void theMainCase_newQuickstepAppsAreClosedAndASharedAppKeepsItsCustomTask() {
         // custom account at the start: home tasks, Solitaire (the target, here Calendar) and Contacts (opened earlier in the custom account)
-        LinkedHashMap<Integer, String> base = tasks(5, "com.android.launcher3", 7, "com.tj.launcher", 8, "com.android.calendar", 10, "com.android.contacts");
+        LinkedHashMap<Integer, String> base = tasks(5, "com.android.launcher3", 7, "app.orionmd.profiles", 8, "com.android.calendar", 10, "com.android.contacts");
         // during Quickstep: Gallery and Email were opened, Contacts was opened a SECOND time in its own new task, and Solitaire was pre-armed again
-        LinkedHashMap<Integer, String> now = tasks(5, "com.android.launcher3", 7, "com.tj.launcher", 8, "com.android.calendar", 10, "com.android.contacts",
+        LinkedHashMap<Integer, String> now = tasks(5, "com.android.launcher3", 7, "app.orionmd.profiles", 8, "com.android.calendar", 10, "com.android.contacts",
                 11, "com.android.gallery3d", 12, "com.android.email", 13, "com.android.contacts", 14, "com.android.calendar");
         TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.gallery3d", "com.android.contacts", "com.android.email"), new HashSet<String>(), "com.android.calendar", GUARD);
         assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.gallery3d", "com.android.email")), p.stopPackages);   // closed completely
@@ -116,8 +116,8 @@ public class TaskOriginTest {
     }
     @Test public void nothingProtectedIsEverPlanned() {
         TaskOrigin.Plan p = TaskOrigin.plan(tasks(8, "com.android.calendar"),
-                tasks(8, "com.android.calendar", 30, "com.tj.launcher", 31, "com.android.launcher3", 32, "com.android.inputmethod.latin", 33, "com.android.systemui", 34, "android"),
-                Arrays.asList("com.tj.launcher", "com.android.launcher3", "com.android.systemui"), new HashSet<String>(), "com.android.calendar", GUARD);
+                tasks(8, "com.android.calendar", 30, "app.orionmd.profiles", 31, "com.android.launcher3", 32, "com.android.inputmethod.latin", 33, "com.android.systemui", 34, "android"),
+                Arrays.asList("app.orionmd.profiles", "com.android.launcher3", "com.android.systemui"), new HashSet<String>(), "com.android.calendar", GUARD);
         assertTrue(p.stopPackages.isEmpty()); assertTrue(p.removeIds.isEmpty()); assertEquals(0, p.newTasks);
     }
     @Test public void anOldTaskNeverLooksNew() {
@@ -138,13 +138,13 @@ public class TaskOriginTest {
             + "    NotificationRecord(0x0aa30a1f: pkg=com.android.contacts user=UserHandle{0} id=1 tag=null importance=3 key=0|com.android.contacts|1|null|10080: Notification(channel=missed pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x10 color=0x00000000 vis=PRIVATE))\n"
             + "      uid=10080 userId=0\n"
             + "    NotificationRecord(0x0b7733c2: pkg=com.example.work user=UserHandle{10} id=4 tag=x importance=2 key=10|com.example.work|4|x|1010080: Notification(channel=a pri=0))\n"
-            + "    NotificationRecord(0x0c1d44a0: pkg=com.tj.launcher user=UserHandle{0} id=7471 tag=null importance=2 key=0|com.tj.launcher|7471|null|10095: Notification(channel=tj_keep_alive pri=0))\n"
+            + "    NotificationRecord(0x0c1d44a0: pkg=app.orionmd.profiles user=UserHandle{0} id=7471 tag=null importance=2 key=0|app.orionmd.profiles|7471|null|10095: Notification(channel=tj_keep_alive pri=0))\n"
             + "  mArchive (last 5 removed notifications):\n"
             + "    StatusBarNotification(pkg=com.android.email user=UserHandle{0} id=2 tag=null key=0|com.android.email|2|null|10071: Notification(channel=mail pri=0))\n";
 
     @Test public void theNotificationParserReadsOnlyActiveRecordsOfUserZero() {
         Set<String> got = ShellProtocol.parseNotifPackages(NOTIF_DUMP);
-        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts", "com.tj.launcher")), got);   // not the work profile, not the archive
+        assertEquals(new LinkedHashSet<>(Arrays.asList("com.android.contacts", "app.orionmd.profiles")), got);   // not the work profile, not the archive
         assertTrue(ShellProtocol.parseNotifPackages(null).isEmpty());
         assertTrue(ShellProtocol.parseNotifPackages("nothing here").isEmpty());
         assertTrue(ShellProtocol.isNotifPkgs("NOTIFPKGS")); assertTrue(ShellProtocol.isNotifPkgs(" NOTIFPKGS \n")); assertFalse(ShellProtocol.isNotifPkgs("NOTIFPKGS x")); assertFalse(ShellProtocol.isNotifPkgs(null));
@@ -176,10 +176,10 @@ public class TaskOriginTest {
 
     @Test public void theTargetAndTheProtectedAppsKeepTheirNotifications() {
         // Solitaire (the target), the keyboard, this app and the stock launcher are never closed, whatever the notification list says
-        LinkedHashMap<Integer, String> base = tasks(8, "com.android.calendar", 6, "com.tj.launcher", 5, "com.android.launcher3");
-        LinkedHashMap<Integer, String> now = tasks(14, "com.android.calendar", 15, "com.tj.launcher", 16, "com.android.launcher3", 8, "com.android.calendar", 6, "com.tj.launcher", 5, "com.android.launcher3");
-        Set<String> notified = new HashSet<>(Arrays.asList("com.android.calendar", "com.tj.launcher", "com.android.launcher3", "com.android.inputmethod.latin"));
-        TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.calendar", "com.tj.launcher", "com.android.inputmethod.latin"), new HashSet<String>(), "com.android.calendar", GUARD, notified);
+        LinkedHashMap<Integer, String> base = tasks(8, "com.android.calendar", 6, "app.orionmd.profiles", 5, "com.android.launcher3");
+        LinkedHashMap<Integer, String> now = tasks(14, "com.android.calendar", 15, "app.orionmd.profiles", 16, "com.android.launcher3", 8, "com.android.calendar", 6, "app.orionmd.profiles", 5, "com.android.launcher3");
+        Set<String> notified = new HashSet<>(Arrays.asList("com.android.calendar", "app.orionmd.profiles", "com.android.launcher3", "com.android.inputmethod.latin"));
+        TaskOrigin.Plan p = TaskOrigin.plan(base, now, Arrays.asList("com.android.calendar", "app.orionmd.profiles", "com.android.inputmethod.latin"), new HashSet<String>(), "com.android.calendar", GUARD, notified);
         assertTrue(p.stopPackages.isEmpty()); assertTrue(p.removeIds.isEmpty()); assertTrue(p.notificationStops.isEmpty());
     }
 

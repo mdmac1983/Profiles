@@ -22,8 +22,8 @@ t(){ # t <name> <expected: empty|hit> <cover lines> <events>
   else echo "FAIL  $name (expected $exp, got: [$got])"; fails=$((fails+1)); fi
 }
 C1=$'11-08 10:00:01.000 I/TjA11y( 100): RESET cover shown\n11-08 10:00:03.000 I/TjA11y( 100): RESET cover removed\n'
-CUS=$'11-08 10:00:00.900 com.tj.launcher/com.android.launcher3.Launcher\n'
-t "stock HOME inside the cover's life"            empty "$C1" "${CUS}11-08 10:00:02.000 com.android.launcher3/.Launcher"$'\n'"11-08 10:00:03.100 com.tj.launcher/com.android.launcher3.Launcher"$'\n'
+CUS=$'11-08 10:00:00.900 app.orionmd.profiles/com.android.launcher3.Launcher\n'
+t "stock HOME inside the cover's life"            empty "$C1" "${CUS}11-08 10:00:02.000 com.android.launcher3/.Launcher"$'\n'"11-08 10:00:03.100 app.orionmd.profiles/com.android.launcher3.Launcher"$'\n'
 t "stock HOME 500 ms BEFORE the cover"            hit   "$C1" "11-08 10:00:00.500 com.android.launcher3/.Launcher"$'\n'
 t "stock HOME 500 ms AFTER the cover is gone"     hit   "$C1" "11-08 10:00:03.500 com.android.launcher3/.Launcher"$'\n'
 t "Contacts resumed outside the cover"            hit   "$C1" "11-08 10:00:05.000 com.android.contacts/.activities.PeopleActivity"$'\n'

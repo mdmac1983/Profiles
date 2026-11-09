@@ -225,7 +225,7 @@ def facts_markdown(rep, source, when):
         flags.append("Android is not 10 (%s): every Android-10 assumption in the project needs a second look." % sdk)
     crash = rep.get("logcat -b crash")
     if crash and crash.strip():
-        flags.append("The crash log has %d line(s) about com.tj.launcher: read them." % len(crash.strip().splitlines()))
+        flags.append("The crash log has %d line(s) about app.orionmd.profiles: read them." % len(crash.strip().splitlines()))
     sc_tasks = None
     m = re.search(r"Recents tasks parsed: (\d+)", rep.text)
     if m:
@@ -285,7 +285,7 @@ def facts_markdown(rep, source, when):
     row("Status bar customised? (policy_control)", rep.first_line("settings get global policy_control") or kv.get("status-bar hiding"), "settings get global policy_control")
     row("Recents format check", ("the launcher's reader parsed %d task(s)" % sc_tasks) if sc_tasks is not None else None, "PARSER SELF-CHECK")
     row("Notification format check", mn.group(1).strip() if mn else None, "PARSER SELF-CHECK")
-    row("Keep-alive", "running=%s; services: %s" % (kv.get("keep-alive service running", "?"), "; ".join(" ".join(x.split()) for x in (rep.get("dumpsys activity services com.tj.launcher") or "").splitlines()[:3])), "state + dumpsys")
+    row("Keep-alive", "running=%s; services: %s" % (kv.get("keep-alive service running", "?"), "; ".join(" ".join(x.split()) for x in (rep.get("dumpsys activity services app.orionmd.profiles") or "").splitlines()[:3])), "state + dumpsys")
     cost = " | ".join(kv[k] for k in ("process memory (AD8)", "start-up (AD8)", "accessibility helper load (AD8)") if kv.get(k))
     row("Launcher cost on this tablet (AD8: memory, start-up, helper load)", cost or None, "state section")
     adj = rep.get("dumpsys activity processes")

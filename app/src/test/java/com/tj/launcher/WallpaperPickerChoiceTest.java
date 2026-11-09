@@ -8,7 +8,7 @@ import org.junit.Test;
 
 /** AO1: the wallpaper picker is ONE explicit system component; a gallery app, a user app or a guess is never "offered". */
 public class WallpaperPickerChoiceTest {
-    private static final String OWN = "com.tj.launcher";
+    private static final String OWN = "app.orionmd.profiles";
 
     private static int pick(String[] pk, String[] cl, boolean[] sys, int[] pr, String hint) { return WallpaperPickerChoice.choose(pk, cl, sys, pr, hint, OWN); }
 

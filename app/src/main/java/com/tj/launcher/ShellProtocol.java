@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  */
 public final class ShellProtocol {
     public static final String SOCKET = "tj_shell_helper";
-    public static final String SELF = "com.tj.launcher", STOCK = "com.android.launcher3";
+    public static final String SELF = "app.orionmd.profiles", STOCK = "com.android.launcher3";
     public static final int MAX_PACKAGES = 40;
     /** Fallback transport: loopback TCP (an app may be refused a shell-owned abstract socket by SELinux; loopback TCP is allowed). First free port of this range wins. */
     public static final int TCP_PORT_FIRST = 47631, TCP_PORT_LAST = 47635;
@@ -46,7 +46,7 @@ public final class ShellProtocol {
     public static boolean isPing(String line) { return line != null && line.trim().equals("PING"); }
     public static boolean isQuit(String line) { return line != null && line.trim().equals("QUIT"); }
 
-    /** The uid in the output of {@code cmd package list packages -U com.tj.launcher} ("package:com.tj.launcher uid:10123"), or -1. */
+    /** The uid in the output of {@code cmd package list packages -U app.orionmd.profiles} ("package:app.orionmd.profiles uid:10123"), or -1. */
     public static int parseUid(String listOutput) {
         if (listOutput == null) return -1;
         for (String l : listOutput.split("\\n")) {
@@ -174,24 +174,24 @@ public final class ShellProtocol {
     // ------------------------------------------------------------------ S2 (Tj, 2026-11-04: "do everything in one session"): a fixed list of jobs the helper runs FOR the launcher
     /** id -> the exact shell line. Nothing from the caller is ever put into a line: only these ids exist. Each one is either a grant for THIS app or a read-only look. */
     public static final String[][] RUN = {
-        {"GRANT_WSS", "pm grant com.tj.launcher android.permission.WRITE_SECURE_SETTINGS"},
-        {"GRANT_DUMP", "pm grant com.tj.launcher android.permission.DUMP"},
-        {"GRANT_CFG", "pm grant com.tj.launcher android.permission.CHANGE_CONFIGURATION"},
-        {"GRANT_STORAGE", "pm grant com.tj.launcher android.permission.READ_EXTERNAL_STORAGE"},
-        {"OP_USAGE", "cmd appops set com.tj.launcher GET_USAGE_STATS allow"},
-        {"OP_WRITE", "cmd appops set com.tj.launcher WRITE_SETTINGS allow"},
-        {"OP_BG", "cmd appops set com.tj.launcher RUN_IN_BACKGROUND allow"},
-        {"OP_ANYBG", "cmd appops set com.tj.launcher RUN_ANY_IN_BACKGROUND allow"},
-        {"IDLE_WL", "dumpsys deviceidle whitelist +com.tj.launcher"},
+        {"GRANT_WSS", "pm grant app.orionmd.profiles android.permission.WRITE_SECURE_SETTINGS"},
+        {"GRANT_DUMP", "pm grant app.orionmd.profiles android.permission.DUMP"},
+        {"GRANT_CFG", "pm grant app.orionmd.profiles android.permission.CHANGE_CONFIGURATION"},
+        {"GRANT_STORAGE", "pm grant app.orionmd.profiles android.permission.READ_EXTERNAL_STORAGE"},
+        {"OP_USAGE", "cmd appops set app.orionmd.profiles GET_USAGE_STATS allow"},
+        {"OP_WRITE", "cmd appops set app.orionmd.profiles WRITE_SETTINGS allow"},
+        {"OP_BG", "cmd appops set app.orionmd.profiles RUN_IN_BACKGROUND allow"},
+        {"OP_ANYBG", "cmd appops set app.orionmd.profiles RUN_ANY_IN_BACKGROUND allow"},
+        {"IDLE_WL", "dumpsys deviceidle whitelist +app.orionmd.profiles"},
         // U2 (Tj: "significant delay when loading either launcher"): sideloaded apps run half-optimised until Android compiles them in idle time; this compiles our launcher fully now
-        {"COMPILE_SELF", "cmd package compile -m speed -f com.tj.launcher"},
+        {"COMPILE_SELF", "cmd package compile -m speed -f app.orionmd.profiles"},
         {"BROWSER_OFF", "pm disable-user --user 0 com.android.browser"},
         {"BROWSER_ON", "pm enable com.android.browser"},
         // T1: publishing to a folder a file manager can see (the shell user may write /sdcard/Download)
         {"MKDIR_PUBLISH", "mkdir -p /sdcard/Download/launcher-probe/shots /sdcard/Download/launcher-probe/apk"},
         // V4: a screenshot of the CURRENT screen for the wallpaper-patch auto-calibration (run MKDIR_PUBLISH first)
         {"CAL_SHOT", "screencap -p /sdcard/Download/launcher-probe/cal.png"},
-        {"PUBLISH_REPORT", "cp /sdcard/Android/data/com.tj.launcher/files/probe/tablet-report.txt /sdcard/Download/launcher-probe/tablet-report.txt"},
+        {"PUBLISH_REPORT", "cp /sdcard/Android/data/app.orionmd.profiles/files/probe/tablet-report.txt /sdcard/Download/launcher-probe/tablet-report.txt"},
     };
 
     /** SHOTS and APKS are fixed routines inside the helper (loops over fixed lists, nothing from the caller). */
@@ -335,7 +335,7 @@ public final class ShellProtocol {
     public static final String START_DEVICE_LINE = "CLASSPATH=$(pm path " + SELF + " | head -1 | cut -d: -f2) setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &";
     /** For adb apps that run each line directly instead of through a shell: wrap it in sh -c. */
     public static final String START_DEVICE_SH_C = "sh -c '" + START_DEVICE_LINE + "'";
-    /** Two steps for apps that cannot substitute $(...): first `pm path com.tj.launcher`, then this with the printed path (without "package:") in place of PATH. */
+    /** Two steps for apps that cannot substitute $(...): first `pm path app.orionmd.profiles`, then this with the printed path (without "package:") in place of PATH. */
     public static final String START_DEVICE_TWO_STEP = "sh -c 'CLASSPATH=PATH setsid nohup app_process /system/bin com.tj.launcher.ShellServer >/dev/null 2>&1 &'";
     public static final String STOP_LINE = "adb shell pkill -f com.tj.launcher.ShellServer";
 }

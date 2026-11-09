@@ -7,7 +7,7 @@ rem   adb-all.bat --status              only show what is granted / running, cha
 rem   adb-all.bat --no-pull             skip the big file copies and the screenshots
 rem Plug the tablet in, USB debugging ON, tap Allow. Everything lands in the folder probe-out : send me that folder (zip it).
 setlocal EnableDelayedExpansion
-set PKG=com.tj.launcher
+set PKG=app.orionmd.profiles
 set A11Y=%PKG%/%PKG%.TjAccessibilityService
 set OUT=probe-out
 if not exist %OUT%\shots mkdir %OUT%\shots

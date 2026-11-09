@@ -18,18 +18,18 @@ public class StockLauncherTest {
     }
 
     @Test public void neverPicksOurselves() {
-        assertNull(StockLauncher.choose(Collections.singletonList(home("com.tj.launcher", "R", false)), "com.tj.launcher"));
+        assertNull(StockLauncher.choose(Collections.singletonList(home("app.orionmd.profiles", "R", false)), "app.orionmd.profiles"));
     }
 
     @Test public void prefersSystemQuickstep() {
         ActivityInfo c = StockLauncher.choose(Arrays.asList(
-                home("com.tj.launcher", "R", false), home("com.nova", "N", false),
-                home("com.android.launcher3", "com.android.launcher3.uioverrides.QuickstepLauncher", true)), "com.tj.launcher");
+                home("app.orionmd.profiles", "R", false), home("com.nova", "N", false),
+                home("com.android.launcher3", "com.android.launcher3.uioverrides.QuickstepLauncher", true)), "app.orionmd.profiles");
         assertEquals("com.android.launcher3", c.packageName);
     }
 
     @Test public void fallsBackToAnyOtherHome() {
-        ActivityInfo c = StockLauncher.choose(Arrays.asList(home("com.tj.launcher", "R", false), home("com.other", "O", false)), "com.tj.launcher");
+        ActivityInfo c = StockLauncher.choose(Arrays.asList(home("app.orionmd.profiles", "R", false), home("com.other", "O", false)), "app.orionmd.profiles");
         assertEquals("com.other", c.packageName);
     }
 }

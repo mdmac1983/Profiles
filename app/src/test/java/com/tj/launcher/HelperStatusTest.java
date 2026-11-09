@@ -8,7 +8,7 @@ import org.junit.Test;
 
 /** ACC1: "enabled but not connected" is its own state. */
 public class HelperStatusTest {
-    private static final String PKG = "com.tj.launcher", CLS = "com.tj.launcher.TjAccessibilityService";
+    private static final String PKG = "app.orionmd.profiles", CLS = "com.tj.launcher.TjAccessibilityService";
 
     @Test public void connectedIsConnectedWhateverElse() {
         assertEquals(HelperStatus.CONNECTED, HelperStatus.of(true, true, true));
@@ -31,7 +31,7 @@ public class HelperStatusTest {
         assertFalse(HelperStatus.listed("com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService", PKG, CLS));
         assertFalse(HelperStatus.listed("", PKG, CLS));
         assertFalse(HelperStatus.listed(null, PKG, CLS));
-        assertFalse(HelperStatus.listed("com.tj.launcherx/com.tj.launcherx.TjAccessibilityService", PKG, CLS));
+        assertFalse(HelperStatus.listed("app.orionmd.profilesx/app.orionmd.profilesx.TjAccessibilityService", PKG, CLS));
     }
     @Test public void theWordsSayWhatToDo() {
         assertTrue(HelperStatus.describe(HelperStatus.ENABLED_NOT_CONNECTED).contains("restart the tablet"));

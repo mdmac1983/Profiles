@@ -14,7 +14,7 @@ import org.junit.Test;
 /** BE2: the drawer-membership rule for Recents tasks (pure parts of RecentsSweep). */
 public class RecentsSweepTest {
     private static final TaskOrigin.Guard GUARD = new TaskOrigin.Guard() {
-        @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, "com.tj.launcher", "com.android.launcher3", "com.android.inputmethod.latin"); }
+        @Override public boolean mayClose(String pkg) { return ResetPolicy.shouldKill(pkg, "app.orionmd.profiles", "com.android.launcher3", "com.android.inputmethod.latin"); }
     };
 
     private static RecentsSweep.Membership drawer(final String... shown) {
@@ -30,7 +30,7 @@ public class RecentsSweepTest {
 
     @Test public void hiddenOnlyRemovesEveryTaskOfAnAppThatIsNotInTheDrawer() {
         // BD1 (Tj, 2026-11-07): "telegram and Claude were in the recent apps list ... they are hidden from the custom launcher" - whatever their origin
-        LinkedHashMap<Integer, String> t = tasks(21, "org.telegram.messenger", 20, "com.anthropic.claude", 19, "com.android.contacts", 18, "com.tj.launcher", 17, "com.android.launcher3");
+        LinkedHashMap<Integer, String> t = tasks(21, "org.telegram.messenger", 20, "com.anthropic.claude", 19, "com.android.contacts", 18, "app.orionmd.profiles", 17, "com.android.launcher3");
         RecentsSweep.Plan p = RecentsSweep.plan(t, RecentsSweep.HIDDEN_ONLY, drawer("com.android.contacts"), GUARD, null);
         assertEquals(Arrays.asList(21, 20), p.removeIds);
         assertEquals(new HashSet<>(Arrays.asList("org.telegram.messenger", "com.anthropic.claude")), p.packages);
@@ -54,7 +54,7 @@ public class RecentsSweepTest {
     }
 
     @Test public void theProtectedPackagesSurviveBothPolicies() {
-        LinkedHashMap<Integer, String> t = tasks(1, "com.tj.launcher", 2, "com.android.launcher3", 3, "com.android.systemui", 4, "android", 5, "com.android.phone", 6, "com.android.inputmethod.latin", 7, "com.mediatek.ims");
+        LinkedHashMap<Integer, String> t = tasks(1, "app.orionmd.profiles", 2, "com.android.launcher3", 3, "com.android.systemui", 4, "android", 5, "com.android.phone", 6, "com.android.inputmethod.latin", 7, "com.mediatek.ims");
         for (int policy : new int[] { RecentsSweep.HIDDEN_ONLY, RecentsSweep.ALL }) {
             RecentsSweep.Plan p = RecentsSweep.plan(t, policy, drawer(), GUARD, null);
             assertTrue("policy " + policy, p.removeIds.isEmpty());
