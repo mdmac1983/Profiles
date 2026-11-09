@@ -1724,3 +1724,33 @@
 ## 2026-11-09T02:03:43Z
 > The local gate passed, and the signed v1.0 release build is now running on GitHub (about 9 minutes). I'll check it when it finishes.
 <!-- sha:1e46e0c4b7d1 -->
+
+## 2026-11-09T02:13:52Z
+> Profiles v1.0 is released in your repo, signed with your own key, which GitHub found in place and matched before building.
+>
+> https://github.com/mdmac1983/Profiles/releases/tag/v1.0
+>
+> **Install it on the tablet**, in this order:
+> 1. In the **old** launcher's settings, run **Restore everything**, then uninstall the old launcher. Profiles has a new app ID, so it installs as a separate app, not as an update.
+> 2. On the tablet, open the link above and install **Profiles-v1.0.apk**. **PhoneGuide-v1.0.apk** is the separate adb guide for your phone.
+> 3. Redo the one-time setup:
+>    - the adb steps (the phone guide or "Tablet setup & report")
+>    - Settings → Accessibility → **Profiles helper** on
+>    - choose **Profiles** as the Home app
+> 4. Settings, the visible-apps list and the patch calibrations start fresh. The power-menu patch recalibrates itself.
+>
+> **Testing:**
+> - **Emulator:** every section of the full emulator check passes. The one exception is the older `legacy` section: two runs of the same app code failed different checks, and each of those checks passed on the other run, so it looks like unreliable tests rather than an app bug. I've logged it to fix.
+> - **Bug found and fixed:** the check caught one real problem from the rename. Some test commands still used the old short component name, so the test wallpaper was never set. I fixed it and added a guard to the repo's self-test so it can't happen again.
+> - **Not yet tried on the tablet:** the in-app updater. On this tablet, the launcher's own internet connections were blocked in the past. The updater downloads through Android's download service to get around that, but only the tablet can confirm it works.
+>   - Once v1.1 exists, open Profiles settings → **Updates** → **Check for updates**, and tell me what the status line says.
+>
+> **Next:** v1.1 adds the Owner / FBOP / Rental profiles:
+> - each handshake chooses which profile it opens
+> - a plain PIN opens FBOP
+> - each profile gets its own visible apps, tiles, keyboard, status bar, Wi-Fi/Bluetooth rule and banners
+>
+> I'll write the design doc first, then build it.
+>
+> **Still open:** the extra suggestions you weren't sure about (app locks, time-based profile switching, settings export/import and the others).
+<!-- sha:8fb43b9403b6 -->
