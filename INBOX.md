@@ -1207,3 +1207,8 @@ add multiple profiles with custom pin  for each profile;
 change app name to profiles;
 suggest other customizations i can implement and do not build until i say so
 ```
+
+## 2026-11-09T00:26:05Z
+```
+how does the pin work on current setup
+```
