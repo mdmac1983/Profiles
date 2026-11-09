@@ -356,6 +356,14 @@ public class LauncherProvider extends ContentProvider {
         if (Binder.getCallingUid() != Process.myUid()) {
             return null;
         }
+        if (com.tj.launcher.ProfileLayout.METHOD_SWITCH.equals(method)) {   // BT1d: the active custom profile changed: let go of the other profile's database
+            synchronized (this) {
+                String want = com.tj.launcher.ProfileLayout.dbNameFor(com.tj.launcher.Profiles.active(getContext()));
+                if (mOpenHelper != null && !want.equals(mOpenHelper.getDatabaseName())) { mOpenHelper.close(); mOpenHelper = null; }
+                if (mOpenHelper == null && com.tj.launcher.ProfileLayout.RENTAL_DB.equals(want)) com.tj.launcher.ProfileLayout.ensureCopy(getContext());
+            }
+            return null;
+        }
         createDbIfNotExists();
 
         switch (method) {
@@ -574,7 +582,7 @@ public class LauncherProvider extends ContentProvider {
         private boolean mBackupTableExists;
 
         DatabaseHelper(Context context, Handler widgetHostResetHandler) {
-            this(context, widgetHostResetHandler, LauncherFiles.LAUNCHER_DB);
+            this(context, widgetHostResetHandler, com.tj.launcher.ProfileLayout.dbName(context));   // BT1d: each custom profile has its own home layout
             // Table creation sometimes fails silently, which leads to a crash loop.
             // This way, we will try to create a table every time after crash, so the device
             // would eventually be able to recover.

@@ -86,6 +86,7 @@ public final class Profiles {
         try { TileProfile.apply(app, Mode.CUSTOM); } catch (Throwable t) { Log.e(TAG, "tiles failed", t); }
         try { ImmersiveProfile.apply(app, Mode.CUSTOM); } catch (Throwable t) { Log.e(TAG, "status bar failed", t); }
         try { AnimationSpeedup.syncNow(app, "profile " + active(app).title + " (" + why + ")"); } catch (Throwable t) { Log.e(TAG, "banner sync failed", t); }   // NotifQuiet follows the same sync
+        try { ProfileLayout.switchDb(app); } catch (Throwable t) { Log.e(TAG, "layout switch failed", t); }   // BT1d (v1.3): the profile's own home layout
         try { HiddenApps.reloadLauncher(app); } catch (Throwable t) { Log.e(TAG, "app list reload failed", t); }
         Log.i(TAG, "applied profile " + active(app).title + " (" + why + ")");
     }
