@@ -23,7 +23,7 @@ import java.util.Arrays;
  *
  * Every download goes through the system's DownloadManager, never a socket of our own: on this tablet the launcher's UID is refused TCP sockets (TASKS HLP2, EPERM), while the
  * download service runs in its own process. Flow: (1) download the "latest release" JSON, (2) newer version -> the user taps Install, (3) download the APK, (4) check that it is
- * signed with OUR key, (5) install it with a PackageInstaller session (Android shows its own confirmation). {@link UpdateReceiver} receives the download and install results.
+ * signed with OUR key, (5) install it with a PackageInstaller session (Android shows its own confirmation). {@link UpdateReceiver} receives the download results, {@link UpdateStatusReceiver} the installer's.
  */
 public final class Updater {
     private static final String TAG = "TjUpdate";
@@ -31,6 +31,14 @@ public final class Updater {
             KEY_JSON_ID = "update_json_id", KEY_APK_ID = "update_apk_id";
     static final String ACTION_INSTALL_STATUS = "com.tj.launcher.UPDATE_INSTALL_STATUS";
     private static final String JSON_FILE = "latest.json", APK_FILE = "update.apk";
+
+    /** The installer's confirmation screen when Android refused to open it from the background; Profiles settings opens it when it is shown. Process-local on purpose. */
+    static volatile Intent pendingConfirm;
+
+    /** BS1a / code review 2026-11-09 (CLAUDE.md: new behaviour = release ON, debug OFF): the automatic check when Profiles settings opens. */
+    public static final String KEY_AUTO = "update_auto";
+    public static boolean autoDefault(Context c) { return (c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0; }
+    public static boolean autoOn(Context c) { return Features.get(c, KEY_AUTO, autoDefault(c)); }
 
     private Updater() {}
 
@@ -61,7 +69,7 @@ public final class Updater {
     public static void autoCheck(Context c) {
         long last = 0;
         try { last = Long.parseLong(Features.getString(c, KEY_CHECKED, "0")); } catch (NumberFormatException ignored) {}
-        if (UpdateRules.autoCheckDue(last, System.currentTimeMillis())) check(c);
+        if (autoOn(c) && UpdateRules.autoCheckDue(last, System.currentTimeMillis())) check(c);
     }
 
     /** Step 1: download the newest release's description. */
@@ -69,7 +77,7 @@ public final class Updater {
         try {
             File d = dir(c);
             if (d == null) { status(c, "cannot check: no storage for the download"); return; }
-            new File(d, JSON_FILE).delete();
+            if (!fresh(new File(d, JSON_FILE))) { status(c, "cannot check: the old download could not be removed"); return; }
             DownloadManager dm = (DownloadManager) c.getSystemService(Context.DOWNLOAD_SERVICE);
             DownloadManager.Request r = new DownloadManager.Request(Uri.parse(UpdateRules.LATEST_API))
                     .addRequestHeader("Accept", "application/vnd.github+json")
@@ -95,7 +103,7 @@ public final class Updater {
             }
             File d = dir(c);
             if (d == null) { status(c, "cannot download: no storage"); return; }
-            new File(d, APK_FILE).delete();
+            if (!fresh(new File(d, APK_FILE))) { status(c, "cannot download: the old download could not be removed"); return; }
             DownloadManager dm = (DownloadManager) c.getSystemService(Context.DOWNLOAD_SERVICE);
             DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url))
                     .addRequestHeader("User-Agent", "Profiles-updater")
@@ -120,6 +128,7 @@ public final class Updater {
             }
         } catch (Throwable t) { Log.e(TAG, "query failed", t); }
         if (st != DownloadManager.STATUS_SUCCESSFUL) {
+            if (json) forget(c);   // an offer from an older check is not trusted any more
             status(c, (json ? "check" : "download") + " failed (" + (reason == 404 ? "no release published yet" : "reason " + reason) + ")");
             return;
         }
@@ -127,7 +136,7 @@ public final class Updater {
         if (json) {
             String text = read(new File(d, JSON_FILE));
             UpdateRules.Release r = UpdateRules.parse(text);
-            if (r == null) { status(c, "no release with a Profiles APK found"); return; }
+            if (r == null) { forget(c); status(c, "no release with a Profiles APK found"); return; }
             Features.setString(c, KEY_TAG, r.tag);
             Features.setString(c, KEY_URL, r.apkUrl);
             status(c, UpdateRules.newer(r.tag, installedVersion(c)) ? r.tag + " is available: tap Install" : "up to date (" + installedVersion(c) + ", newest release " + r.tag + ")");
@@ -138,6 +147,8 @@ public final class Updater {
             install(c, f);
         }
     }
+
+    private static void forget(Context c) { Features.setString(c, KEY_TAG, ""); Features.setString(c, KEY_URL, ""); }
 
     /** "" when the file is a newer Profiles signed with the same key as the installed app, else why not. */
     static String whyNotOurs(Context c, File f) {
@@ -176,7 +187,7 @@ public final class Updater {
                 while ((n = in.read(b)) > 0) out.write(b, 0, n);
                 s.fsync(out);
             }
-            Intent i = new Intent(c, UpdateReceiver.class).setAction(ACTION_INSTALL_STATUS);
+            Intent i = new Intent(c, UpdateStatusReceiver.class).setAction(ACTION_INSTALL_STATUS);
             PendingIntent done = PendingIntent.getBroadcast(c, sid, i, PendingIntent.FLAG_UPDATE_CURRENT);
             status(c, "installing " + Features.getString(c, KEY_TAG, "") + " ...");
             s.commit(done.getIntentSender());
@@ -188,6 +199,9 @@ public final class Updater {
             if (s != null) try { s.close(); } catch (Throwable ignored) {}
         }
     }
+
+    /** DownloadManager never overwrites: with the old file still there it would write "name-1" and we would read the old one. True = the name is free. */
+    private static boolean fresh(File f) { return (!f.exists() || f.delete()) && !f.exists(); }
 
     private static String read(File f) {
         if (f == null || !f.isFile() || f.length() > 512 * 1024) return null;

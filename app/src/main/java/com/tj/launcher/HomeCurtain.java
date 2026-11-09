@@ -137,8 +137,8 @@ public final class HomeCurtain {
         try {
             if (m == null || !HomeCurtainRules.stampDue(nowMs - m.savedAtMs)) return false;
             Features.setString(c, HomeCurtainRules.curtainMeta(rot), HomeCurtainRules.metaString(m.sig, m.step, m.hash, nowMs));
-            Bitmap b = cachedFor(rot, m.sig);
-            if (b != null && cachedSavedAt() == m.savedAtMs) setCache(rot, m.sig, nowMs, b);
+            Cached e = cached;
+            if (e.bmp != null && e.key.equals(keyPrefix(rot, m.sig) + m.savedAtMs)) setCache(rot, m.sig, nowMs, e.bmp);
             return true;
         } catch (Throwable t) { Log.e(TAG, "renewing the curtain stamp failed", t); return false; }
     }
@@ -153,31 +153,31 @@ public final class HomeCurtain {
 
     // ================================================================ the in-memory copy (the Enter tap never reads the disk)
 
-    private static volatile Bitmap cachedBmp;
-    private static volatile String cachedKey = "";
+    /** One immutable entry, swapped in ONE volatile write (code review 2026-11-09): the main thread at the Enter tap never sees a bitmap with another picture's key. */
+    private static final class Cached { final Bitmap bmp; final String key; Cached(Bitmap b, String k) { bmp = b; key = k; } }
+    private static volatile Cached cached = new Cached(null, "");
 
     private static String keyPrefix(int rot, String sig) { return rot + "|" + sig + "|"; }
 
     /** The in-memory curtain for exactly this rotation and signature, or null. NO disk access: this runs on the main thread at the Enter tap. */
     public static Bitmap cachedFor(int rot, String sig) {
         try {
-            Bitmap b = cachedBmp;
+            Cached e = cached; Bitmap b = e.bmp;
             if (b == null || b.isRecycled() || sig == null || sig.isEmpty()) return null;
-            return cachedKey.startsWith(keyPrefix(rot, sig)) ? b : null;
+            return e.key.startsWith(keyPrefix(rot, sig)) ? b : null;
         } catch (Throwable t) { return null; }
     }
 
     /** Puts a curtain in the memory cache. The replaced bitmap is NOT recycled (a cover may be showing it right now). */
     public static void setCache(int rot, String sig, long savedAtMs, Bitmap b) {
-        cachedBmp = b;
-        cachedKey = b == null ? "" : keyPrefix(rot, sig) + savedAtMs;
+        cached = new Cached(b, b == null ? "" : keyPrefix(rot, sig) + savedAtMs);
     }
 
-    public static void dropCache() { cachedBmp = null; cachedKey = ""; }
+    public static void dropCache() { cached = new Cached(null, ""); }
 
     /** How the cache stands, for the status line: the saved-at of the cached picture or 0. */
     public static long cachedSavedAt() {
-        try { String k = cachedKey; int i = k.lastIndexOf('|'); return cachedBmp == null || i < 0 ? 0 : Long.parseLong(k.substring(i + 1)); } catch (Throwable t) { return 0; }
+        try { Cached e = cached; int i = e.key.lastIndexOf('|'); return e.bmp == null || i < 0 ? 0 : Long.parseLong(e.key.substring(i + 1)); } catch (Throwable t) { return 0; }
     }
 
     /** Reads the stored curtain into the memory cache if it is for this signature and exactly the display size. Worker thread (a PNG decode). True = it is cached now. */

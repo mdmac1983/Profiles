@@ -958,6 +958,7 @@ public class TjAccessibilityService extends AccessibilityService {
                 final String dims = crop.getWidth() + "x" + crop.getHeight();
                 if (saved && curtainSwitchOn()) {   // BL1: the WHOLE plain-wallpaper screenshot is kept too (it used to be thrown away after the crop was cut): it is the wallpaper half of the home curtain
                     final boolean wallKept = HomeCurtain.saveWall(app, rot, step, full, sig, wid, W, H);
+                    if (!wallKept) curtainWallFailed = true;   // code review 2026-11-09: a failing write must not make every later look ask for a new calibration (a screenshot flash each time)
                     Log.i(TAG, "CURTAIN wallpaper picture " + (wallKept ? "kept" : "NOT kept") + " (" + W + "x" + H + ", wallpaper position " + step + ")");
                 }
                 full.recycle();
@@ -1804,8 +1805,9 @@ public class TjAccessibilityService extends AccessibilityService {
     private boolean curtainSwitchOn() { return Features.get(this, HomeCurtainRules.KEY, HomeCurtainRules.defaultOn(debuggable())); }
 
     /** The curtain is wanted but the plain-wallpaper picture of THIS page is not stored yet (a calibration made before the curtain existed kept only the crop): the next calibration takes it (one flash). */
+    private volatile boolean curtainWallFailed = false;   // a wallpaper picture could not be kept in this process: do not keep asking for calibrations to get one
     private boolean curtainWallMissing() {
-        try { return curtainSwitchOn() && !HomeCurtain.hasWall(this, rotation(), homeStepNow(), homeSig()); } catch (Throwable t) { return false; }
+        try { return !curtainWallFailed && curtainSwitchOn() && !HomeCurtain.hasWall(this, rotation(), homeStepNow(), homeSig()); } catch (Throwable t) { return false; }
     }
 
     /** The facts the rules need to say whether the stored picture may be the cover now. Main thread, NO decoding and no disk read of the picture (two preference reads and a file check). */

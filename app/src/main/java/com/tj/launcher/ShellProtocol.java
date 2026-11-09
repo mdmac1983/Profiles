@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  *   QUIT                      -> OK (the process ends)
  */
 public final class ShellProtocol {
-    public static final String SOCKET = "tj_shell_helper";
+    public static final String SOCKET = "profiles_shell_helper";   // BS1 (code review 2026-11-09): not the old app's "tj_shell_helper", so a helper of the old com.tj.launcher still running until the next reboot never blocks or answers this one
     public static final String SELF = "app.orionmd.profiles", STOCK = "com.android.launcher3";
     public static final int MAX_PACKAGES = 40;
     /** Fallback transport: loopback TCP (an app may be refused a shell-owned abstract socket by SELinux; loopback TCP is allowed). First free port of this range wins. */
