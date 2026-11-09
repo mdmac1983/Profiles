@@ -1212,3 +1212,8 @@ suggest other customizations i can implement and do not build until i say so
 ```
 how does the pin work on current setup
 ```
+
+## 2026-11-09T00:28:50Z
+```
+what other handshakes can be implemented? i want all handshakes as toggle options in settings
+```
