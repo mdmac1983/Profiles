@@ -1716,3 +1716,7 @@
 ## 2026-11-09T02:00:23Z
 > The quick secret check is running. I'll read it in about a minute.
 <!-- sha:591cb66aae57 -->
+
+## 2026-11-09T02:01:59Z
+> The local release gate is running (handoff self-test, unit tests, lint, version check). When it finishes I'll start the signed release build on GitHub.
+<!-- sha:9ef066e66338 -->
