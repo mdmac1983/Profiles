@@ -503,6 +503,36 @@ check "PR: the test PIN was cleared again" bash -c "! grep -qiE 'fail|error|exce
 adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
 setmode custom; rebind; home
 fi # section pr
+
+if want rr; then # section rr
+ensurehome
+# ---- RR (BT1c, 2026-11-09: "yes add restrictions -- add options in settings"): with Rental active and its switches ON, a Settings screen or the Play Store that opens
+#      anyway is sent Home and the uninstall screen is closed; with FBOP active the same Settings screen stays open.
+beat "before RR"
+rrfeat(){ adb shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; adb shell "run-as $PKG sh -c 'mkdir -p shared_prefs; printf \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" standalone=\\\"yes\\\"?><map><boolean name=\\\"startup_open\\\" value=\\\"false\\\" /><string name=\\\"profile_active\\\">$1</string><boolean name=\\\"rental_block_settings\\\" value=\\\"true\\\" /><boolean name=\\\"rental_block_store\\\" value=\\\"true\\\" /><boolean name=\\\"rental_block_uninstall\\\" value=\\\"true\\\" /></map>\" > shared_prefs/tj_features.xml'"; }
+rrfeat rental
+setmode custom; rebind; home; sleep 2
+adb logcat -c
+adb shell am start -a android.settings.WIFI_SETTINGS >/dev/null 2>&1; sleep 4
+resumed > "$OUT/rr-settings-rental.txt"; adb logcat -d -s TjA11y:I | grep RENTAL > "$OUT/rr-log.txt" 2>&1
+info "RR1: Rental, Wi-Fi settings opened: $(cut -c1-160 "$OUT/rr-settings-rental.txt"); log: $(cut -c25-140 "$OUT/rr-log.txt" | tr '\n' '|' | cut -c1-300)"
+check "RR1: Rental: a Settings screen that opens anyway is sent Home" bash -c "! grep -q 'com.android.settings' $OUT/rr-settings-rental.txt"
+check "RR1: ... and the helper logged it" grep -q "RENTAL blocked com.android.settings" "$OUT/rr-log.txt"
+adb logcat -c
+adb shell am start -a android.intent.action.DELETE -d package:com.android.calendar >/dev/null 2>&1; sleep 4
+resumed > "$OUT/rr-uninstall-rental.txt"; adb logcat -d -s TjA11y:I | grep RENTAL > "$OUT/rr-log2.txt" 2>&1
+info "RR2: Rental, uninstall screen: $(cut -c1-160 "$OUT/rr-uninstall-rental.txt"); log: $(cut -c25-140 "$OUT/rr-log2.txt" | tr '\n' '|' | cut -c1-300)"
+check "RR2: Rental: the uninstall screen is closed (Calendar is still installed)" bash -c "adb shell pm path com.android.calendar | grep -q package:"
+check "RR2: ... and the helper logged it" grep -q "RENTAL blocked .*packageinstaller" "$OUT/rr-log2.txt"
+rrfeat fbop
+setmode custom; rebind; home; sleep 2
+adb shell am start -a android.settings.WIFI_SETTINGS >/dev/null 2>&1; sleep 4
+resumed > "$OUT/rr-settings-fbop.txt"
+check "RR3: FBOP: the same Settings screen stays open (the restrictions are Rental's only)" grep -q 'com.android.settings' "$OUT/rr-settings-fbop.txt"
+adb shell input keyevent KEYCODE_HOME; sleep 1
+adb shell am force-stop "$PKG" >/dev/null 2>&1; adb shell "run-as $PKG rm -f shared_prefs/tj_features.xml" >/dev/null 2>&1
+setmode custom; rebind; home
+fi # section rr
 if want y2; then # section y2
 ensurehome
 # ---- Y2: the return reset with the animation speed-up: animations are turned off for the reset and put back exactly as they were
