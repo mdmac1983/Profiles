@@ -63,7 +63,9 @@ public class ControlActivity extends Activity {
         RecentsGuard.describeAsTarget(this);
         if (Mode.isCustom(this)) { finish(); return; }
         build();
-        Updater.autoCheck(this);   // BS1a: at most every 6 hours
+        Updater.autoCheck(this);   // BS1a: at most every 6 hours (switch: release ON, debug OFF)
+        final Intent confirm = Updater.pendingConfirm;   // BS1a: Android refused to open the installer's screen from the background: open it now
+        if (confirm != null) { Updater.pendingConfirm = null; try { startActivity(confirm); } catch (Throwable t) { Updater.status(this, "the install screen could not be opened: " + t.getClass().getSimpleName()); } }
         Features.listen(this, updateListener);
     }
 
@@ -392,7 +394,8 @@ public class ControlActivity extends Activity {
         note("Installed: Profiles " + Updater.installedVersion(this) + "\nStatus: " + Updater.statusLine(this));
         final String avail = Updater.available(this);
         if (avail != null) action("Install " + avail, "Downloads the update from the Profiles Releases page and installs it. Android asks you to confirm.", new Runnable() { public void run() { Updater.download(ControlActivity.this); rebuild(); } });
-        action("Check for updates", "Looks for a newer version on " + UpdateRules.RELEASES_PAGE.replace("https://", "") + " (also checked by itself when this screen opens, at most every 6 hours).", new Runnable() { public void run() { Updater.check(ControlActivity.this); rebuild(); } });
+        toggle("Check automatically", "Looks for a newer version by itself when this screen opens, at most every 6 hours.", Updater.autoOn(this), new Chg() { public void on(boolean v) { Features.set(ControlActivity.this, Updater.KEY_AUTO, v); } });
+        action("Check for updates", "Looks for a newer version on " + UpdateRules.RELEASES_PAGE.replace("https://", "") + ".", new Runnable() { public void run() { Updater.check(ControlActivity.this); rebuild(); } });
 
         // BS1c (user: "in the bottom of settings, add user guide and features")
         section("Help");

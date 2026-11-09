@@ -316,7 +316,7 @@
             android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar"
             android:label="Profiles help" />
 
-        <!-- BS1a: in-app updater results (our own DownloadManager ids only; the PackageInstaller session status is sent to this receiver explicitly). -->
+        <!-- BS1a: in-app updater download results (our own DownloadManager ids only). -->
         <receiver
             android:name="com.tj.launcher.UpdateReceiver"
             android:exported="true">
@@ -324,6 +324,10 @@
                 <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
             </intent-filter>
         </receiver>
+        <!-- BS1a: the installer's answer. NOT exported: only our own PendingIntent reaches it (code review 2026-11-09). -->
+        <receiver
+            android:name="com.tj.launcher.UpdateStatusReceiver"
+            android:exported="false" />
 
         <!-- AA2: keep-alive foreground service (does no work; one silent notification). Started by the router and the accessibility helper, stopped by the switch / Restore everything. -->
         <service
