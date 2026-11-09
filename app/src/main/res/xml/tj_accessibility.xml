@@ -4,7 +4,7 @@
      BH1: typeNotificationStateChanged is subscribed ONLY to note which app posted a notification and when (the package name; its title and text are never read), so the tablet report can say which app
      showed up and the start-of-session clean-up knows when to look in the shade. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged|typeViewClicked|typeNotificationStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged|typeViewClicked|typeViewLongClicked|typeNotificationStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagReportViewIds"
     android:canRetrieveWindowContent="true"

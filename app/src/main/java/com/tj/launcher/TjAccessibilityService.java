@@ -1415,7 +1415,9 @@ public class TjAccessibilityService extends AccessibilityService {
 
     private void trackUnlockKey(AccessibilityEvent e) {
         try {
-            if (e == null || e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED) return;
+            if (e == null) return;
+            final boolean longClick = e.getEventType() == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED;   // BT1b: "Long-press Delete"
+            if (e.getEventType() != AccessibilityEvent.TYPE_VIEW_CLICKED && !longClick) return;
             CharSequence pkg = e.getPackageName();
             if (pkg == null || !"com.android.systemui".contentEquals(pkg)) return;
             // The Enter tap unlocks the tablet, and its click event can be delivered AFTER the keyguard already reports "unlocked" (race seen in emulator runs 63/64: ten pad taps
@@ -1429,6 +1431,7 @@ public class TjAccessibilityService extends AccessibilityService {
             Log.i(TAG, "UNLOCKCLICK class=" + (k == null ? "none" : k.name()));   // diagnostics (full emulator runs 59-61): the KIND of key only, never which digit
             if (k == null) return;
             long now = System.currentTimeMillis();
+            if (longClick) { if (k == UnlockPick.Key.DELETE) { unlock.onLongDelete(now); Log.i(TAG, "UNLOCKCLICK long-press Delete"); } return; }
             lastPadKeyAt = now;
             if (k == UnlockPick.Key.ENTER) {
                 String lead = unlock.padLead();   // read BEFORE onEnter clears the pad: the first two key KINDS only (never a digit, never the length)
