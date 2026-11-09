@@ -1,0 +1,50 @@
+# Features of Profiles
+Version 1.0. Each feature has its own switch in Profiles settings unless it says otherwise.
+
+# Two worlds, one Home button
+- The custom home screen is the everyday world; the stock Quickstep launcher (Owner) is the private one.
+- A plain PIN always opens the custom home screen; a secret handshake plus the PIN opens Owner.
+- If Profiles ever crashes 3 times in 2 minutes, it switches to the stock launcher and undoes its changes by itself.
+- Profiles stays in memory so the home screen appears at once (keep-alive).
+
+# Looks like the stock launcher
+- 5 columns by 8 rows, no dock, no search bar, the same drawer tint as the stock launcher.
+- The long-press menu offers Wallpapers only, always in the system picker, without "My photos".
+
+# Apps and Recents
+- Choose which apps the custom home screen shows; new installs start hidden.
+- The Recents list only ever shows apps that the custom home screen is allowed to show.
+- Every custom session starts clean: an empty Recents list and the home screen alone.
+
+# 16 secret handshakes into Owner
+- On the PIN pad: Double erase, Tap and erase, Erase ladder, Peek three times, Peek five times.
+- Keys: Volume code, Volume ping-pong, Both volume keys, Hold then tap, Three Backs + Volume Up, Volume Up + double erase, Side-key flurry.
+- Sensors and plugs: Charger flick, Tablet twirl, Triple shake, Double knock.
+- An optional 40 ms buzz confirms a handshake; Owner can reopen the app you left.
+
+# Back to the custom home screen
+- Double Home, a "Back to custom" icon, a quick-settings tile, volume codes, three Backs + Volume Down, both volume keys, a side-key flurry, shake or knock.
+- On the way back, the apps opened in Owner are closed, notifications cleared and radios switched off.
+- While that clean-up runs, a picture of your home screen covers it (or black if no picture fits).
+
+# Lock screen
+- Wi-Fi, Bluetooth and notifications are off whenever the lock screen is up.
+- No pop-up notification banners on the lock screen or the custom home screen.
+- An optional number at the bottom of the lock screen, hidden when you pull up the PIN pad.
+- The quick-settings pencil is covered.
+
+# Power menu
+- The Screenshot entry is hidden behind a real picture of the wallpaper, on the lock screen and on the custom home screen; it fades with the menu exactly like the stock dimming.
+- Or: block the power menu completely.
+
+# Different settings per world (needs the adb permission)
+- Quick-settings tiles: one tile in custom, three in Owner.
+- Keyboard: stock keyboard in custom, SwiftKey in Owner.
+- Status bar hidden in custom.
+- Battery saver switched off when custom starts.
+- Animations off only inside Owner.
+
+# Help and safety
+- Setup screen and adb guide, a tablet report, a lock-screen log.
+- "Restore everything" puts every Android setting back. Nothing ever needs a factory reset.
+- In-app updates from the Profiles Releases page, signed with your own key.
