@@ -14,6 +14,9 @@ check(){ if eval "$2" >/dev/null 2>&1; then ok; else bad "$1"; fi; }
 # ---------------------------------------------------------------- the tiered emulator gate (AJ1, Tj 2026-11-06): the table and the scenario must agree
 check "tools/gate.sh --check: gate-map.txt agrees with the scenario" "bash '$D/tools/gate.sh' --check"
 check "tools/gate.sh --list prints the gate table" "bash '$D/tools/gate.sh' --list"
+# BS1 (2026-11-09): the app ID (app.orionmd.profiles) is not the Java package (com.tj.launcher): a "<pkg>/.Class" shorthand names a class that does not exist
+# (emulator run 5 on 3af5ec5: the test wallpaper was never set, HP5/HP6/HP8/HP11 failed). Components of our own app are always "<pkg>/com.tj.launcher.Class".
+check "no package-relative component of our own app in the scripts (\$PKG/.Class, app.orionmd.profiles/.Class)" "! grep -rnE '(\\\$\\{?PKG\\}?|app\\.orionmd\\.profiles)/\\.[A-Z]' '$D/tools' '$D/.github' '$D/phoneguide/src' '$D/app/src/main' --include=*.sh --include=*.yml --include=*.txt --include=*.java --include=*.xml --include=*.bat"
 
 # ---------------------------------------------------------------- workflow minute rules
 for W in "$D"/.github/workflows/*.yml; do
