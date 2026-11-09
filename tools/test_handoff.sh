@@ -16,7 +16,7 @@ check "tools/gate.sh --check: gate-map.txt agrees with the scenario" "bash '$D/t
 check "tools/gate.sh --list prints the gate table" "bash '$D/tools/gate.sh' --list"
 # BS1 (2026-11-09): the app ID (app.orionmd.profiles) is not the Java package (com.tj.launcher): a "<pkg>/.Class" shorthand names a class that does not exist
 # (emulator run 5 on 3af5ec5: the test wallpaper was never set, HP5/HP6/HP8/HP11 failed). Components of our own app are always "<pkg>/com.tj.launcher.Class".
-check "no package-relative component of our own app in the scripts (\$PKG/.Class, app.orionmd.profiles/.Class)" "! grep -rnE '(\\\$\\{?PKG\\}?|app\\.orionmd\\.profiles)/\\.[A-Z]' '$D/tools' '$D/.github' '$D/phoneguide/src' '$D/app/src/main' --include=*.sh --include=*.yml --include=*.txt --include=*.java --include=*.xml --include=*.bat"
+check "no package-relative component of our own app in the scripts (\$PKG/.Class, app.orionmd.profiles/.Class)" "! grep -rnE '(\\\$\\{?PKG\\}?|app\\.orionmd\\.profiles)/\\.[A-Z]' '$D/tools' '$D/.github' '$D/phoneguide/src' '$D/app/src/main' --include=*.sh --include=*.yml --include=*.txt --include=*.java --include=*.xml --include=*.bat --exclude=test_handoff.sh"
 
 # ---------------------------------------------------------------- workflow minute rules
 for W in "$D"/.github/workflows/*.yml; do
