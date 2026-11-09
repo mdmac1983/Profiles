@@ -1,8 +1,11 @@
-# Signing key (committed on purpose)
+# Signing key
 
-Tj, 2026-11-02: "it can be signed by github if possible, security isn't important". `launcher-keystore.b64` is the base64 of
-`app/sideload.jks` (alias/password `launcher`). `android.yml` restores it (or the `SIGNING_KEYSTORE_BASE64` secret if one is ever set,
-which wins) and signs every release with it, so GitHub signs and each update installs over the last one.
-Because the repo is PUBLIC, anyone can sign an APK with this key; that only matters if someone tricks Tj into installing it. If that ever
-matters: make the repo private or move the key to the secret and delete this file (a key change forces one uninstall).
-Never regenerate it once anything is installed. SHA-256 is pinned in `tools/keystore.fingerprint`.
+Profiles (`app.orionmd.profiles`) is signed with the owner's OWN key (created 2026-11-09). The key is NOT in this repo:
+`android.yml` reads it from the GitHub Actions secret `SIGNING_KEYSTORE_BASE64` (base64 of the keystore; alias and
+passwords `launcher`). Without the secret a build is a debug-signed PREVIEW (a 14-day artifact, not a Release).
+
+The key's SHA-256 is pinned in `tools/keystore.fingerprint`; `tools/checkkeystore.sh` and `tools/verify-apk.sh` refuse
+any other key. In-app updates only install an APK signed with this same key, so keep a backup of the keystore outside
+GitHub. Never regenerate it once Profiles is installed: a different key cannot update the app in place.
+
+(The original project committed its key here on purpose; that public key was removed when this fork moved to its own.)
